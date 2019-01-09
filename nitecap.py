@@ -10,7 +10,7 @@ N_PERMS = 100
 N_ITERS = 50
 
 ### the main function of nitecap which encapsulates all the work
-def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
+def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_ITERS = N_ITERS, N_PERMS = N_PERMS, output="minimal"):
     '''Identify circadian behavior in `data`
 
     `data` is an numpy array with the following format:
@@ -22,20 +22,25 @@ def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_ITERS = N_
     num_replicates is the number of replicates at each timepoint
     num_cycles is the number of cycles worth of data present
 
-    Returns (q, td)
+    If output == "minimal" then output (q,td) where:
     `q` is a numpy array with a q value
         (i.e. rejecting all null hypotheses for features with q < alpha controls the FDR at level alpha)
     `td` is a numpy array with the total delta statistics of each feature.  
         Lower total_delta indicates more circadian behavior
+    If output == "full" then output (q,td, perm_td) where:
+    `perm_td` is a numpy array with total_delta statitics of features with permuted time points
+            useful for diagnostics of the nitecap method on ones data and plotting results
 
     The assumption is that all timepoints are independent samples (no repeated measures on the same individual)
     Technical replicates may be used, so long as all replicates within a single timepoint are either all technical
     replicates or are all biological replicates
     '''
-    data_formatted = format_data(data, timepoints_per_cycle, num_replicates, num_cycles)
+    data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
     td, perm_td, perm_data = nitecap_statistics(data_formatted, N_ITERS, N_PERMS)
-    q = FDR(td, perm_td, N_PERMS)
+    q = FDR(td, perm_td)
+    if output == "full":
+        return q, td, perm_td
     return q, td
 
 def FDR(td, perm_td):
@@ -144,7 +149,12 @@ def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
     perm_data = numpy.array([permute_timepoints(data) for i in range(N_PERMS)])
 
     td = total_delta(data, contains_nans, N_ITERS)
-    perm_td = numpy.array([statistic(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
+    perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
+
+    # Center the statistics for each feature
+    meds = numpy.nanmedian(perm_td, axis=0)
+    td = td - meds
+    perm_td = perm_td - meds
     return td, perm_td, perm_data
 
 def permute_timepoints(data):
@@ -165,7 +175,7 @@ def permute_and_reflect(data):
     result = permuted - 2*(permuted - grand_median) * reflections
     return result
 
-def format_data(data, timepoints_per_cycle, num_replicates, num_cycles):
+def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
     '''Reformats data into the expected shape for nitecap's internal use
 
     Turns a 2D array of shape (num_features, num_samples) into a 3D array of shape
@@ -177,6 +187,6 @@ def format_data(data, timepoints_per_cycle, num_replicates, num_cycles):
 
     # For each cycle, fold the repeated cycles over on top of each other
     # i.e. now the shape will be (timepoints_per_cycle, num_replicates*num_cycles, num_features)
-    data_formatted = numpy.concatenate( [data_formated[i*timepoints_per_cycle:(i+1)*timepoints_per_cycle,:,:]
+    data_formatted = numpy.concatenate( [data_formatted[i*timepoints_per_cycle:(i+1)*timepoints_per_cycle,:,:]
                                             for i in range(num_cycles)], axis=1 )
     return data_formatted
