@@ -3,7 +3,7 @@ Non-parametric method for identification of circadian behavior
 
 The main functionality is in nitecap.py with the nitecap() function providing a simple interface.
 
-```
+```python
 from nitecap import nitecap
 # 6 timepoints, each with 2 replicates. Data is grouped with replicates together and
 data = [[5,6, 10,11, 20,21, 15,16,  8, 9, 2,1], # A very cyclic gene with low variance between samples
