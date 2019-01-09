@@ -35,6 +35,7 @@ def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_ITERS = N_
     Technical replicates may be used, so long as all replicates within a single timepoint are either all technical
     replicates or are all biological replicates
     '''
+    data = numpy.array(data)
     data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
     td, perm_td, perm_data = nitecap_statistics(data_formatted, N_ITERS, N_PERMS)
