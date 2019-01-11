@@ -1,3 +1,5 @@
+import numpy
+
 def BH_FDR(ps):
     ''' Benjamini-Hochberg FDR control
 
