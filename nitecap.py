@@ -2,6 +2,7 @@ import numpy
 import pandas
 import pylab
 import scipy.stats
+import util
 
 # Number of permutations to take for permuted test statistics
 N_PERMS = 100
@@ -79,6 +80,11 @@ def FDR(td, perm_td):
         #expected_false_discoveries[gene] = (2.0)*numpy.sum((perm_td <= tentative_cutoff) * ps_okay) / N_PERMS
 
         q[gene] = expected_false_discoveries[gene] / (i+1)
+
+    # Make q's monotone increasing (step-up)
+    for i, gene in enumerate(sort_order):
+        q[gene] = numpy.min(q[sort_order[i:]])
+
     return q
 
 def total_delta(data, contains_nans = False, N_ITERS = N_ITERS, median = False):
