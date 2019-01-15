@@ -237,7 +237,7 @@ def compute_peak_time(data, hours_per_timepoint):
     # Compute a cyclic average of the timepoints with the above weights
     c = numpy.cos(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape( (-1,1) )
     s = numpy.sin(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape( (-1,1) )
-    phase = numpy.arctan2(numpy.sum(s*weights), numpy.sum(c*weights))
+    phase = numpy.arctan2(numpy.sum(s*weights, axis=0), numpy.sum(c*weights, axis=0))
 
     peak_time = phase * hours_per_timepoint * N_TIMEPOINTS / (2 * numpy.pi)
     return peak_time
