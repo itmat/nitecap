@@ -199,6 +199,15 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
     return data_formatted
 
 def compute_peak_time(data, hours_per_timepoint):
+    ''' Calculate the time of peak of each feature
+
+    Returns a time in hours where the peak of the data is estimated to lie.
+    It is computed as the average of peaks where one replicate is picked randomly
+    at each timepoint. An exact average is computed in lieu of a random selection.
+
+    `data` is an array of shape (num timepoints, num replicates, num features)
+    return an array of peak times  of shape (num features,)
+    '''
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
     # TODO: What about TIES?!
