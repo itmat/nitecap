@@ -197,3 +197,38 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
     data_formatted = numpy.concatenate( [data_formatted[i*timepoints_per_cycle:(i+1)*timepoints_per_cycle,:,:]
                                             for i in range(num_cycles)], axis=1 )
     return data_formatted
+
+def compute_peak_time(data, hours_per_timepoint):
+    (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+
+    # TODO: What about TIES?!
+    # TODO: what about NaNs?
+
+    data = data.copy()
+    data.sort(axis=1) # Sort replicates within each timepoint
+
+    A = data.reshape( (N_TIMEPOINTS * N_REPS, 1, N_GENES) )
+    B = data.reshape( (1, N_TIMEPOINTS * N_REPS, N_GENES) )
+    comparisons = (A >= B).reshape( (N_TIMEPOINTS, N_REPS, N_TIMEPOINTS, N_REPS, N_GENES) )
+    # For each replicate at each timepoint, compare all other replicates (within a gene)
+    # and then count the number larger than it in each timepoint
+    num_smaller_in_timepoint = comparisons.sum(axis=3)
+
+    # Remove from consideration the timepoint of the replicate at hand
+    i = numpy.arange(N_TIMEPOINTS)
+    num_smaller_in_timepoint[i,:,i,:] = N_REPS
+
+    # Compute the probability that this is larger than all the other reps (i.e. is the peak)
+    # by computing the probability that it's larger than a randomly chosen entry in each timepoint (indpendent of others)
+    prob_largest = numpy.prod(num_smaller_in_timepoint / N_REPS, axis = 2)
+
+    # We now weight each timepoint by the probability that (a randomly chosen rep in that timepoint) is the highest
+    weights = numpy.sum(prob_largest, axis=1)
+
+    # Compute a cyclic average of the timepoints with the above weights
+    c = numpy.cos(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS)
+    s = numpy.sin(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS)
+    phase = numpy.arctan2(numpy.sum(s*weights), numpy.sum(c*weights))
+
+    peak_time = phase * hours_per_timepoint * N_TIMEPOINTS / (2 * numpy.pi)
+    return peak_time
