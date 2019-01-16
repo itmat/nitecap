@@ -198,7 +198,7 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
                                             for i in range(num_cycles)], axis=1 )
     return data_formatted
 
-def compute_peak_time(data, hours_per_timepoint):
+def peak_time(data, hours_per_timepoint):
     ''' Calculate the time of peak of each feature
 
     Returns a time in hours where the peak of the data is estimated to lie.
@@ -239,5 +239,6 @@ def compute_peak_time(data, hours_per_timepoint):
     s = numpy.sin(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape( (-1,1) )
     phase = numpy.arctan2(numpy.sum(s*weights, axis=0), numpy.sum(c*weights, axis=0))
 
-    peak_time = phase * hours_per_timepoint * N_TIMEPOINTS / (2 * numpy.pi)
+    # Return phase translated into the interval [0, hours_per_timepoint*N_TIMEPOINTS)
+    peak_time = phase * hours_per_timepoint * N_TIMEPOINTS / (2 * numpy.pi) % (hours_per_timepoint * N_TIMEPOINTS)
     return peak_time
