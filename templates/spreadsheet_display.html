@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+  <div id="spreadsheet-display-page" class="container">
+    <h2>Identify Columns</h2>
+    <p>
+        Show are the first 10 rows of your data.  Please indicate those columns that represent timepoints.
+        Use the same label from the droplist for each replicate.  All columns not representing timepoints
+        should be set to 'Ignore'.
+    </p>
+    <form id="spreadsheet-display-form" action="/spreadsheet_display_action" method="post">
+      <table>
+        <tr>
+            {% for heading in spreadsheet.columns %}
+              <th>{{ heading }}</th>
+            {% endfor %}
+        </tr>
+        <tr>
+            {% for heading in spreadsheet.columns %}
+                <th>
+                  <select name="col{{ loop.index }}" id="col{{ loop.index }}">
+                      {% for selection in spreadsheet.selections %}
+                          <option value="{{selection}}">{{selection}}</option>
+                      {% endfor %}
+                  </select>
+                </th>
+            {% endfor %}
+        </tr>
+        {% for record in spreadsheet.sample %}
+          <tr>
+              {% for value in record %}
+                <td>{{ value }}</td>
+              {% endfor %}
+          </tr>
+        {% endfor %}
+
+      </table>
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+  </div>
+{% endblock %}

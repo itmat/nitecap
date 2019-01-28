@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+    <script>
+
+    $( document ).ready(function() {
+
+        labels = {{ ids | safe }};
+        x_values = {{ x_values | safe }};
+        data = {{ data | safe }};
+        y_values = [];
+        trace_name = 'Nothing selected';
+        marker_settings = { size: 12, symbol: 'circle-open', color: '#FF00FF'};
+
+        var scatter_plot = document.getElementById('scatter_plot');
+
+        var layout = {
+            xaxis: {
+            },
+            yaxis: {
+            },
+            legend: {
+                y: 0.5,
+                yref: 'paper',
+                font: {
+                    family: 'Arial, sans-serif',
+                    size: 20,
+                    color: 'grey'
+                }
+             },
+            title:'Plot Title Here'
+        };
+
+        var values = [{
+	        x: x_values,
+	        y: y_values,
+            name: trace_name,
+            type: 'scatter',
+            mode: 'lines+markers',
+            marker: marker_settings
+	    }];
+
+        Plotly.newPlot(scatter_plot, values, layout);
+
+        $("#coarse_slider").slider({
+            orientation: "horizontal",
+            min: 0,
+            value: 0,
+            step: labels.length/100,
+            max: labels.length,
+          slide: function (event, ui) {
+              $("#row_selector").val(ui.value);
+              y_values = data[ui.value];
+              console.log(labels[ui.value]);
+              values = [{x: x_values, y: y_values,
+                  mode: 'lines+markers',
+                  marker: marker_settings,
+                  name: labels[ui.value],
+                  type: 'scatter'}];
+              Plotly.react(scatter_plot, values);
+          }
+        });
+
+        y_values = data[$("#course_slider").value];
+
+        values = [{x: x_values, y: y_values,
+            type: 'scatter',
+            name: trace_name,
+            marker: marker_settings,
+            mode: 'lines+markers'}];
+        Plotly.react(scatter_plot, values);
+
+        $('#row_selector').change(function() {
+            $("#coarse_slider").slider( "option", "value", this.value );
+            y_values = data[this.value];
+            console.log("Selector changed: " + this.value)
+            values = [{x: x_values, y: y_values,
+                  mode: 'lines+markers',
+                  marker: marker_settings,
+                  name: labels[this.value],
+                  type: 'scatter'}];
+              Plotly.react(scatter_plot, values);
+        });
+
+        $.each(labels, function (i, label) {
+            $('#row_selector').append($('<option>', {
+                value: i,
+                text : label
+            }));
+        });
+
+    });
+    </script>
+
+    <div id="spreadsheet-breakpoint-page" class="container">
+        <div id="coarse_slider" class="coarse-slider"></div>
+        <div>
+            <div style="display: inline-block">
+                <select size="20" name="row_selector" id="row_selector">
+                </select>
+            </div>
+            <div id="scatter_plot" style="width:600px;height:450px;display:inline-block"></div>
+        </div>
+    </div>
+{% endblock %}
