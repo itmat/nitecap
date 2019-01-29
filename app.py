@@ -49,7 +49,7 @@ def spreadsheet_display_action():
     data = spreadsheet.trimmed_df.to_json(orient='values')
     return render_template('spreadsheet_breakpoint.html',
                             data=data,
-                            x_values=spreadsheet.x_values,
+                            x_values=spreadsheet.x_labels,
                             ids=ids,
                             column_pairs=spreadsheet.column_pairs,
                             timepoint_pairs = spreadsheet.timepoint_pairs)
