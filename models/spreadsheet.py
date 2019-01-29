@@ -43,14 +43,7 @@ class Spreadsheet:
         self.column_labels = column_labels
         #self.x_values = [(index, value) for index, value in enumerate(self.column_labels) if value != 'Ignore']
 
-        def get_timepoint_number(label):
-            match = re.search("Day(\d+) Timepoint(\d+)", label)
-            if match:
-                d,t = match.groups()
-                return int(t)-1 + (int(d)-1)*self.timepoints
-            else:
-                return None
-        x_values = [get_timepoint_number(label) for label in self.column_labels]
+        x_values = [self.label_to_timepoint(label) for label in self.column_labels]
         self.x_values = [value for value in x_values if value is not None]
 
         x_indices = [index for index, value in enumerate(self.column_labels) if value != 'Ignore']
@@ -76,7 +69,28 @@ class Spreadsheet:
                                         for _ in range(len(columns_by_timepoint[timepoint])
                                                         * len(columns_by_timepoint[next_timepoint]))] )
 
+    def validate(self, columns):
+        ''' Check spreadhseet for consistency.
 
+        In particular, need the column identifies to match what NITECAP can support.
+        Every timepoint must have the same number of columns and every day must have all of its timepoints'''
+        if self.columns is None:
+            return "No columns selected"
+
+        daytimes = [self.label_to_daytime(column_daytime) for column_daytime in columns]
+        daytimes = [daytime for daytime in daytimes if daytime is not None]
+        days = [daytime[0] for daytime in daytimes if daytime is not None]
+        times_of_day = [daytime[1] for daytime in daytimes if daytime is not None]
+
+        # Check that each day has all the timepoints
+        all_times = set(range(1,self.timepoints+1))
+        for i in range(self.days):
+            times_in_day = set([time for day, time in daytimes if day == i+1])
+            if times_in_day != all_times:
+                missing = all_times.difference(times_in_day)
+                return f"Day {i+1} does not have data for all timepoints. Missing timepoint {', '.join(str(time) for time in missing)}"
+
+        return "okay"
 
     def to_json(self):
         return {
@@ -87,6 +101,23 @@ class Spreadsheet:
             "column_labels": self.column_labels
         }
 
+    def label_to_daytime(self, label):
+        ''' returns the day and time of column label '''
+        match = re.search("Day(\d+) Timepoint(\d+)", label)
+        if match:
+            d,t = match.groups()
+            return int(d), int(t)
+        else:
+            return None
+
+    def label_to_timepoint(self, label):
+        match = self.label_to_daytime(label)
+        if match:
+            d,t = match
+            return (t-1) + (d-1)*self.timepoints
+        else:
+            return None
+
     @classmethod
     def from_json(cls, data):
         days = data['days']
@@ -94,5 +125,3 @@ class Spreadsheet:
         file_path = data['file_path']
         column_labels = data['column_labels']
         return cls(days, timepoints, file_path, column_labels)
-
-

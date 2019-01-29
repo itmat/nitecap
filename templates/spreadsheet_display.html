@@ -36,5 +36,12 @@
       </table>
       <button type="submit" class="btn btn-primary">Submit</button>
     </form>
+
+    {% if error %}
+        <p>
+            <strong>Error:</strong> {{ error }}
+        </p>
+    {% endif %}
+
   </div>
 {% endblock %}
