@@ -44,7 +44,15 @@ def spreadsheet_details_action():
 def spreadsheet_display_action():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
     column_labels = list(request.form.values())
+
+
+    validation = spreadsheet.validate(column_labels)
+    if validation is not "okay":
+        spreadsheet.column_defaults = list(zip(spreadsheet.columns, column_labels))
+        return render_template("spreadsheet_display.html", spreadsheet=spreadsheet, error=validation)
+
     spreadsheet.identify_columns(column_labels)
+
     ids = list(spreadsheet.df['id'])
     data = spreadsheet.trimmed_df.to_json(orient='values')
     return render_template('spreadsheet_breakpoint.html',
