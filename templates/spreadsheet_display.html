@@ -15,11 +15,11 @@
             {% endfor %}
         </tr>
         <tr>
-            {% for heading in spreadsheet.columns %}
+            {% for heading, default_selection in spreadsheet.column_defaults %}
                 <th>
                   <select name="col{{ loop.index }}" id="col{{ loop.index }}">
                       {% for selection in spreadsheet.selections %}
-                          <option value="{{selection}}">{{selection}}</option>
+                          <option value="{{selection}}" {{'selected' if selection == default_selection else ''}} >{{selection}}</option>
                       {% endfor %}
                   </select>
                 </th>
