@@ -7,6 +7,8 @@
         labels = {{ ids | safe }};
         x_values = {{ x_values | safe }};
         data = {{ data | safe }};
+        column_pairs = {{ column_pairs | safe}}
+        timepoint_pairs = {{timepoint_pairs | safe }}.flat()
         y_values = [];
         trace_name = 'Nothing selected';
         marker_settings = { size: 12, symbol: 'circle-open', color: '#FF00FF'};
@@ -49,9 +51,12 @@
             max: labels.length,
           slide: function (event, ui) {
               $("#row_selector").val(ui.value);
-              y_values = data[ui.value];
+              raw_y_values = data[ui.value];
+              paired_y_values = column_pairs.flatMap( function(pair) {
+                    return [raw_y_values[pair[0]], raw_y_values[pair[1]]]
+              });
               console.log(labels[ui.value]);
-              values = [{x: x_values, y: y_values,
+              values = [{x: timepoint_pairs, y: paired_y_values,
                   mode: 'lines+markers',
                   marker: marker_settings,
                   name: labels[ui.value],
@@ -71,9 +76,13 @@
 
         $('#row_selector').change(function() {
             $("#coarse_slider").slider( "option", "value", this.value );
-            y_values = data[this.value];
             console.log("Selector changed: " + this.value)
-            values = [{x: x_values, y: y_values,
+              raw_y_values = data[this.value];
+              paired_y_values = column_pairs.flatMap( function(pair) {
+                    return [raw_y_values[pair[0]], raw_y_values[pair[1]]]
+              });
+              console.log(labels[this.value]);
+              values = [{x: timepoint_pairs, y: paired_y_values,
                   mode: 'lines+markers',
                   marker: marker_settings,
                   name: labels[this.value],

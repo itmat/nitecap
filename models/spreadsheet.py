@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 class Spreadsheet:
 
@@ -11,6 +12,8 @@ class Spreadsheet:
         self.sample = mini_df.values.tolist()
         self.columns = self.df.columns.values.tolist()
         self.column_labels = column_labels
+        if column_labels:
+            self.identify_columns(column_labels)
         self.selections = ['Ignore'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
                       for day in range(self.days) for timepoint in range(self.timepoints)]
 
@@ -38,9 +41,41 @@ class Spreadsheet:
 
     def identify_columns(self, column_labels):
         self.column_labels = column_labels
-        self.x_values = [(index, value) for index, value in enumerate(self.column_labels) if value != 'Ignore']
-        x_indices = list(list(zip(*self.x_values))[0])
+        #self.x_values = [(index, value) for index, value in enumerate(self.column_labels) if value != 'Ignore']
+
+        def get_timepoint_number(label):
+            match = re.search("Day(\d+) Timepoint(\d+)", label)
+            if match:
+                d,t = match.groups()
+                return int(t)-1 + (int(d)-1)*self.timepoints
+            else:
+                return None
+        x_values = [get_timepoint_number(label) for label in self.column_labels]
+        self.x_values = [value for value in x_values if value is not None]
+
+        x_indices = [index for index, value in enumerate(self.column_labels) if value != 'Ignore']
         self.trimmed_df = self.df.iloc[:, [j for j, _ in enumerate(self.df.columns) if j in x_indices]]
+
+        # Also compute all the ways that we can pair adjacent data points, for use in plotting
+        # TODO: for this, we need to validate that all possible timepoints have at least one datapoint
+        # and in fact for nitecap we need to validate that all timepoints have the same number of datapoints
+        # TODO: should this be moved elsewhere? only possible to do after getting column_labels
+        columns_by_timepoint = dict()
+        for column, x_value in enumerate(self.x_values):
+            if x_value in columns_by_timepoint:
+                columns_by_timepoint[x_value].append(column)
+            else:
+                columns_by_timepoint[x_value] = [column]
+        self.column_pairs =  []
+        self.timepoint_pairs = []
+        for timepoint in range(max(columns_by_timepoint.keys())):
+            next_timepoint = timepoint + 1
+            self.column_pairs.extend( [[a,b] for a in columns_by_timepoint[timepoint]
+                                            for b in columns_by_timepoint[next_timepoint]] )
+            self.timepoint_pairs.extend( [[timepoint, next_timepoint]
+                                        for _ in range(len(columns_by_timepoint[timepoint])
+                                                        * len(columns_by_timepoint[next_timepoint]))] )
+
 
 
     def to_json(self):

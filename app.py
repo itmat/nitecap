@@ -47,7 +47,12 @@ def spreadsheet_display_action():
     spreadsheet.identify_columns(column_labels)
     ids = list(spreadsheet.df['id'])
     data = spreadsheet.trimmed_df.to_json(orient='values')
-    return render_template('spreadsheet_breakpoint.html', data=data, x_values=spreadsheet.x_values, ids=ids)
+    return render_template('spreadsheet_breakpoint.html',
+                            data=data,
+                            x_values=spreadsheet.x_values,
+                            ids=ids,
+                            column_pairs=spreadsheet.column_pairs,
+                            timepoint_pairs = spreadsheet.timepoint_pairs)
 
 
 if __name__ == '__main__':
