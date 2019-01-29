@@ -50,9 +50,10 @@
             orientation: "horizontal",
             min: 0,
             value: 0,
-            step: labels.length/100,
+            step: 1,
             max: labels.length,
           slide: function (event, ui) {
+              console.log(ui.value);
               $("#row_selector").val(ui.value);
               raw_y_values = data[ui.value];
               paired_y_values = column_pairs.flatMap( function(pair) {
