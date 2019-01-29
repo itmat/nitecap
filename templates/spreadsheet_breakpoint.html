@@ -8,7 +8,10 @@
         x_values = {{ x_values | safe }};
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe}}
-        timepoint_pairs = {{timepoint_pairs | safe }}.flat()
+        timepoint_pairs = {{timepoint_pairs | safe }}.flatMap(function(pair) {
+            // Nulls get skipped when drawing lines to disconnect our lines
+            return [pair[0], pair[1], null];
+        });
         y_values = [];
         trace_name = 'Nothing selected';
         marker_settings = { size: 12, symbol: 'circle-open', color: '#FF00FF'};
@@ -53,7 +56,8 @@
               $("#row_selector").val(ui.value);
               raw_y_values = data[ui.value];
               paired_y_values = column_pairs.flatMap( function(pair) {
-                    return [raw_y_values[pair[0]], raw_y_values[pair[1]]]
+                    // Nulls get skipped when drawing lines to disconnect our lines
+                    return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
               });
               console.log(labels[ui.value]);
               values = [{x: timepoint_pairs, y: paired_y_values,
@@ -79,7 +83,8 @@
             console.log("Selector changed: " + this.value)
               raw_y_values = data[this.value];
               paired_y_values = column_pairs.flatMap( function(pair) {
-                    return [raw_y_values[pair[0]], raw_y_values[pair[1]]]
+                    // Nulls get skipped when drawing lines to disconnect our lines
+                    return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
               });
               console.log(labels[this.value]);
               values = [{x: timepoint_pairs, y: paired_y_values,
