@@ -41,10 +41,12 @@ class Spreadsheet:
 
     def identify_columns(self, column_labels):
         self.column_labels = column_labels
-        #self.x_values = [(index, value) for index, value in enumerate(self.column_labels) if value != 'Ignore']
 
         x_values = [self.label_to_timepoint(label) for label in self.column_labels]
         self.x_values = [value for value in x_values if value is not None]
+
+        # Essentially the x coordinate for the basketweave plots.
+        self.x_labels = [label for label in self.column_labels if re.search("Day(\d+) Timepoint(\d+)", label)]
 
         x_indices = [index for index, value in enumerate(self.column_labels) if value != 'Ignore']
         self.trimmed_df = self.df.iloc[:, [j for j, _ in enumerate(self.df.columns) if j in x_indices]]
