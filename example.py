@@ -16,7 +16,7 @@ N_CYCLES = 1 # One day of data
 WAVEFORM = [0, -0.8, -1.0, 0.3, 1.0, 0.60] # A nice, simple wave form
 WAVEFORM= 1/2*numpy.array(WAVEFORM)
 WAVEFORM.shape = (-1,1,1)
-N_GENES = 200
+N_GENES = 1000
 PORTION_CIRC = 0.2 # Fraction of genes that are 'circadian'
 MAX_AMPLITUDE  = 0.3
 
@@ -40,7 +40,7 @@ data = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all 
 
 ##### Run nitecap
 # Use the following for most use-cases:
-#q, td, perm_td  = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
+#q, td = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
 
 # We use this instead for plotting results
 q, td, perm_td  = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")

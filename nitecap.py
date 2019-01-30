@@ -87,60 +87,58 @@ def FDR(td, perm_td):
 
     return q
 
-def total_delta(data, contains_nans = False, N_ITERS = N_ITERS, median = False):
+def total_delta(data, contains_nans = "check", N_ITERS = N_ITERS):
     # Compute Delta as total absolute differences for each of the replicate
     # Random choices of the points to compute for
     # Set contains_nans = True if data may contain nans (interpretted as missing data)
+    # default of contains_nans = "check" will check for you
     # if instead is False, a marginally more efficient method is used that would propogate nans inappropriately
     # NOTE: assumes that NANs are the last of the reps else we will
     # if you are getting NANs, this could be why!
 
-    (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+    if data.ndim == 3:
+        data = data.reshape( (1, *data.shape) )
+        no_permutations = True
+    else:
+        no_permutations = False
 
-    # Choose random points (avoiding NANs if necessary
+    # Put the permutation variations as the last axis
+    data = data.swapaxes(0,1).swapaxes(1,2).swapaxes(2,3)
+    (N_TIMEPOINTS, N_REPS, N_GENES, N_PERMS) = data.shape
+
+    if contains_nans == "check":
+        contains_nans = numpy.isnan(data).any()
+
+    # Choose random points (avoiding NANs if necessary)
     if contains_nans:
         # want to choose non-nan points, so we only pick numbers up to the number of finite points
         # this work since we require NaNs to be in the back of the array (eg: by sorting data along axis=1 first)
         okay_pts = numpy.isfinite(data)
-        num_okay = okay_pts.sum(axis=1).reshape( (N_TIMEPOINTS, N_GENES, 1) )
-        all_pts = (numpy.random.random( (N_TIMEPOINTS, N_GENES, N_ITERS) )*num_okay).astype("int32")
+        num_okay = okay_pts.sum(axis=1).reshape( (N_TIMEPOINTS, N_GENES, N_PERMS, 1) )
+        all_pts = (numpy.random.random( (N_TIMEPOINTS, N_GENES, N_PERMS, N_ITERS) )*num_okay).astype("int32")
     else:
-        all_pts = numpy.random.choice( N_REPS, size=(N_TIMEPOINTS, N_GENES, N_ITERS) )
+        all_pts = numpy.random.choice( N_REPS, size=(N_TIMEPOINTS, N_GENES, N_PERMS, N_ITERS) )
 
     num_iters = numpy.zeros(N_GENES)
 
-    if median:
-        deltas = numpy.zeros( (N_GENES,N_ITERS) )
-    else:
-        deltas = numpy.zeros( (N_GENES,) )
+    deltas = numpy.zeros( (N_GENES,N_PERMS) )
     
-    for i in range(N_ITERS):
-        pts = all_pts[:,:,i]
-        d = data.swapaxes(0,1)
-        selected = numpy.choose(pts, d) # Select on the 'rep' axis of data
-        #selected = selected.reshape( (N_TIMEPOINTS, N_GENES) )
-        diffs = numpy.abs(selected[1:] - selected[:-1])
-        wrap_around_terms = numpy.abs(selected[-1] - selected[0])
-        spans = numpy.max(selected, axis=0) - numpy.min(selected, axis=0)
-        
-        #valid = numpy.isfinite(spans)
-        #num_iters += valid
-        #deltas[valid] += (numpy.sum(diffs, axis=0)[valid] + wrap_around_terms[valid]) / spans[valid]
+    d = data.reshape((*data.shape,1)).swapaxes(0,1)
+    selected = numpy.choose(all_pts, d)
+    diffs = numpy.abs(selected[1:] - selected[:-1])
+    wrap_around_terms = numpy.abs(selected[-1] - selected[0])
+    spans = numpy.max(selected, axis=0) - numpy.min(selected, axis=0)
+    deltas = numpy.sum( (numpy.sum(diffs, axis=0) + wrap_around_terms) / spans, axis=-1)
 
-        if median:
-            deltas[:,i] = (numpy.sum(diffs, axis=0) + wrap_around_terms) / spans
-        else:
-            deltas += (numpy.sum(diffs, axis=0) + wrap_around_terms) / spans
-
-    if median:
-        deltas = numpy.median(deltas, axis=1)
-    else:
-        deltas /= N_ITERS
+    deltas /= N_ITERS
 
     # TODO: reimplement NaN handling for the case when there are completely flat occurances
     # only happens if there is a value that every single timepoint has exactly in common
     # But this is common for low-expressed genes or other count data
-    return deltas
+    if no_permutations:
+        return deltas.reshape( (N_GENES) )
+    else:
+        return deltas.swapaxes(0,1)
 
 def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
     ''' Compute total_delta statistic and permutation versions of this statistic '''
@@ -156,7 +154,8 @@ def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
     perm_data = numpy.array([permute_timepoints(data) for i in range(N_PERMS)])
 
     td = total_delta(data, contains_nans, N_ITERS)
-    perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
+    #perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
+    perm_td = total_delta(perm_data, contains_nans, N_ITERS)
 
     # Center the statistics for each feature
     meds = numpy.nanmedian(perm_td, axis=0)
