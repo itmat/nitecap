@@ -96,6 +96,8 @@ def total_delta(data, contains_nans = "check", N_ITERS = N_ITERS):
     # NOTE: assumes that NANs are the last of the reps else we will
     # if you are getting NANs, this could be why!
 
+    # Data without permutations is expected to be 3 dimensional (timepoints, reps, genes)
+    # so add a dimension to it represent that it is "one permutation" so the code is consistent
     if data.ndim == 3:
         data = data.reshape( (1, *data.shape) )
         no_permutations = True
@@ -114,30 +116,32 @@ def total_delta(data, contains_nans = "check", N_ITERS = N_ITERS):
         # want to choose non-nan points, so we only pick numbers up to the number of finite points
         # this work since we require NaNs to be in the back of the array (eg: by sorting data along axis=1 first)
         okay_pts = numpy.isfinite(data)
-        num_okay = okay_pts.sum(axis=1).reshape( (N_TIMEPOINTS, N_GENES, N_PERMS, 1) )
-        all_pts = (numpy.random.random( (N_TIMEPOINTS, N_ITERS) )*num_okay).astype("int32")
+        num_okay = okay_pts.sum(axis=1).reshape( (N_TIMEPOINTS, 1, N_GENES, N_PERMS, 1) )
+        all_pts = (numpy.random.random( (N_TIMEPOINTS, 1, N_GENES, N_PERMS, N_ITERS) )*num_okay).astype("int32")
     else:
-        all_pts = numpy.random.choice( N_REPS, size=(N_TIMEPOINTS, N_ITERS) )
+        all_pts = numpy.random.choice( N_REPS, size=(N_TIMEPOINTS, 1, N_GENES, N_PERMS, N_ITERS) )
 
+    # Select each rep at each timepoint (for each gene, permutation, and iteration)
+    # according to the numbers chosen in all_pts
     I = numpy.arange(N_TIMEPOINTS).reshape( (N_TIMEPOINTS,1,1,1,1) )
-    J = all_pts.reshape((N_TIMEPOINTS, 1, 1, 1, N_ITERS))
+    J = all_pts
     K = numpy.arange(N_GENES).reshape((1,1,N_GENES,1,1))
     L = numpy.arange(N_PERMS).reshape((1,1,1,N_PERMS,1))
     selected = data[I,J,K,L].reshape( (N_TIMEPOINTS, N_GENES, N_PERMS, N_ITERS) )
+
+    # Compute the "total delta" statistic for each of the random choices of replicates
     diffs = numpy.abs(selected[1:] - selected[:-1])
     wrap_around_terms = numpy.abs(selected[-1] - selected[0])
     spans = numpy.max(selected, axis=0) - numpy.min(selected, axis=0)
-    deltas = numpy.sum( (numpy.sum(diffs, axis=0) + wrap_around_terms) / spans, axis=-1)
-
-    deltas /= N_ITERS
+    deltas = numpy.sum( (numpy.sum(diffs, axis=0) + wrap_around_terms) / spans, axis=-1) / N_ITERS
 
     # TODO: reimplement NaN handling for the case when there are completely flat occurances
     # only happens if there is a value that every single timepoint has exactly in common
     # But this is common for low-expressed genes or other count data
     if no_permutations:
-        return deltas.reshape( (N_GENES) )
+        return deltas.reshape( (N_GENES) ) # If we were given a 3-dim array, return a 1-dim array
     else:
-        return deltas.swapaxes(0,1)
+        return deltas.swapaxes(0,1) # If we were given a 4-dim array, return a 2-dim array
 
 def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
     ''' Compute total_delta statistic and permutation versions of this statistic '''
