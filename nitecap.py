@@ -203,36 +203,36 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
 def peak_time(data, hours_per_timepoint):
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
-    # TODO: what about NaNs?
-
     data = data.copy()
-    data.sort(axis=1) # Sort replicates within each timepoint
 
-    A = data.reshape( (N_TIMEPOINTS * N_REPS, 1, N_GENES) )
-    B = data.reshape( (1, N_TIMEPOINTS * N_REPS, N_GENES) )
-    strict_comparisons = (A > B).reshape( (N_TIMEPOINTS, N_REPS, N_TIMEPOINTS, N_REPS, N_GENES) )
-    equalities = (A == B).reshape((N_TIMEPOINTS, N_REPS, N_TIMEPOINTS, N_REPS, N_GENES))
     # For each replicate at each timepoint, compare all other replicates (within a gene)
-    # and then count the number larger than it in each timepoint
+    A = data.reshape((N_TIMEPOINTS * N_REPS, 1, N_GENES))
+    B = data.reshape((1, N_TIMEPOINTS * N_REPS, N_GENES))
+    strict_comparisons = (A > B).reshape((N_TIMEPOINTS, N_REPS, N_TIMEPOINTS, N_REPS, N_GENES))
+    equalities = (A == B).reshape((N_TIMEPOINTS, N_REPS, N_TIMEPOINTS, N_REPS, N_GENES))
+    # and then count the number smaller than it in each timepoint
     num_smaller_in_timepoint = strict_comparisons.sum(axis=3)
     num_equal_in_timepoint = equalities.sum(axis=3)
-    # Break ties as 50-50 shot of either being higher
+    # Break ties as if there were a 50-50 shot of either being higher
     num_smaller_or_equal_in_timepoint = num_smaller_in_timepoint + num_equal_in_timepoint/2
+
+    # Number of non-nans replicates in each timepoint in each gene
+    num_reps = numpy.isfinite(data).sum(axis=1).reshape((N_TIMEPOINTS, 1, N_GENES))
 
     # Remove from consideration the timepoint of the replicate at hand
     i = numpy.arange(N_TIMEPOINTS)
-    num_smaller_or_equal_in_timepoint[i,:,i,:] = N_REPS
+    num_smaller_or_equal_in_timepoint[i,:,i,:] = num_reps
 
     # Compute the probability that this is larger than all the other reps (i.e. is the peak)
     # by computing the probability that it's larger than a randomly chosen entry in each timepoint (indpendent of others)
-    prob_largest = numpy.prod(num_smaller_or_equal_in_timepoint / N_REPS, axis = 2)
+    prob_largest = numpy.prod(num_smaller_or_equal_in_timepoint / num_reps.reshape((1,1,N_TIMEPOINTS,N_GENES)), axis = 2)
 
     # We now weight each timepoint by the probability that (a randomly chosen rep in that timepoint) is the highest
     weights = numpy.sum(prob_largest, axis=1)
 
     # Compute a cyclic average of the timepoints with the above weights
-    c = numpy.cos(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape( (-1,1) )
-    s = numpy.sin(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape( (-1,1) )
+    c = numpy.cos(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape((-1,1))
+    s = numpy.sin(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape((-1,1))
     phase = numpy.arctan2(numpy.sum(s*weights, axis=0), numpy.sum(c*weights, axis=0))
 
     peak_time = phase * hours_per_timepoint * N_TIMEPOINTS / (2 * numpy.pi)
