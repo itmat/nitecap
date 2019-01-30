@@ -115,16 +115,15 @@ def total_delta(data, contains_nans = "check", N_ITERS = N_ITERS):
         # this work since we require NaNs to be in the back of the array (eg: by sorting data along axis=1 first)
         okay_pts = numpy.isfinite(data)
         num_okay = okay_pts.sum(axis=1).reshape( (N_TIMEPOINTS, N_GENES, N_PERMS, 1) )
-        all_pts = (numpy.random.random( (N_TIMEPOINTS, N_GENES, N_PERMS, N_ITERS) )*num_okay).astype("int32")
+        all_pts = (numpy.random.random( (N_TIMEPOINTS, N_ITERS) )*num_okay).astype("int32")
     else:
-        all_pts = numpy.random.choice( N_REPS, size=(N_TIMEPOINTS, N_GENES, N_PERMS, N_ITERS) )
+        all_pts = numpy.random.choice( N_REPS, size=(N_TIMEPOINTS, N_ITERS) )
 
-    num_iters = numpy.zeros(N_GENES)
-
-    deltas = numpy.zeros( (N_GENES,N_PERMS) )
-    
-    d = data.reshape((*data.shape,1)).swapaxes(0,1)
-    selected = numpy.choose(all_pts, d)
+    I = numpy.arange(N_TIMEPOINTS).reshape( (N_TIMEPOINTS,1,1,1,1) )
+    J = all_pts.reshape((N_TIMEPOINTS, 1, 1, 1, N_ITERS))
+    K = numpy.arange(N_GENES).reshape((1,1,N_GENES,1,1))
+    L = numpy.arange(N_PERMS).reshape((1,1,1,N_PERMS,1))
+    selected = data[I,J,K,L].reshape( (N_TIMEPOINTS, N_GENES, N_PERMS, N_ITERS) )
     diffs = numpy.abs(selected[1:] - selected[:-1])
     wrap_around_terms = numpy.abs(selected[-1] - selected[0])
     spans = numpy.max(selected, axis=0) - numpy.min(selected, axis=0)
@@ -154,7 +153,6 @@ def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
     perm_data = numpy.array([permute_timepoints(data) for i in range(N_PERMS)])
 
     td = total_delta(data, contains_nans, N_ITERS)
-    #perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
     perm_td = total_delta(perm_data, contains_nans, N_ITERS)
 
     # Center the statistics for each feature
