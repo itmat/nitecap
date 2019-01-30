@@ -200,7 +200,7 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
                                             for i in range(num_cycles)], axis=1 )
     return data_formatted
 
-def compute_peak_time(data, hours_per_timepoint):
+def peak_time(data, hours_per_timepoint):
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
     # TODO: What about TIES?!
