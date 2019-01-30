@@ -1,7 +1,4 @@
 import numpy
-import pandas
-import pylab
-import scipy.stats
 import util
 
 # Number of permutations to take for permuted test statistics
