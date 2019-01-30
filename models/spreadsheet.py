@@ -2,6 +2,8 @@ import pandas as pd
 import re
 from collections import OrderedDict
 
+import nitecap
+
 class Spreadsheet:
 
     def __init__(self, days, timepoints, file_path, column_labels=None):
@@ -12,6 +14,8 @@ class Spreadsheet:
         mini_df = self.df[:10]
         self.sample = mini_df.values.tolist()
         self.columns = self.df.columns.values.tolist()
+
+        self.data_columns = None
         self.column_labels = column_labels
         if column_labels:
             self.identify_columns(column_labels)
@@ -71,6 +75,25 @@ class Spreadsheet:
             self.timepoint_pairs.extend( [[timepoint, next_timepoint]
                                         for _ in range(len(columns_by_timepoint[timepoint])
                                                         * len(columns_by_timepoint[next_timepoint]))] )
+
+        # Order the columns by their timepoint (not their days, so we collect across days)
+        filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels) if label != 'Ignore']
+        ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1])[1] )
+        self.data_columns = [column for column, label in ordered_columns]
+
+    def compute_ordering(self):
+        # Runs NITECAP on the data but just to order the features
+
+        # TODO: right now this assumes all timepoints have the same number of replicates
+        data = self.df[self.data_columns].values
+        num_replicates = data.shape[1] // (self.timepoints * self.days)
+        data_formatted = nitecap.reformat_data(data, self.timepoints, num_replicates, self.days)
+        td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
+
+        self.df["total_delta"] = td
+        self.df = self.df.sort_values(by="total_delta")
+        self.trimmed_df = self.df[self.data_columns]
+
 
     def validate(self, columns):
         ''' Check spreadhseet for consistency.

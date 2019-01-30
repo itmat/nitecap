@@ -3,6 +3,8 @@ from werkzeug.utils import secure_filename
 import os
 from models.spreadsheet import Spreadsheet
 
+import nitecap
+
 UPLOAD_FOLDER = '/tmp/uploads'
 ALLOWED_EXTENSIONS = set(['txt', 'csv', 'xlsx'])
 
@@ -52,9 +54,11 @@ def spreadsheet_display_action():
         return render_template("spreadsheet_display.html", spreadsheet=spreadsheet, error=validation)
 
     spreadsheet.identify_columns(column_labels)
+    spreadsheet.compute_ordering()
 
     ids = list(spreadsheet.df['id'])
     data = spreadsheet.trimmed_df.to_json(orient='values')
+
     return render_template('spreadsheet_breakpoint.html',
                             data=data,
                             x_values=spreadsheet.x_labels,
