@@ -157,7 +157,8 @@ def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
     perm_data = numpy.array([permute_timepoints(data) for i in range(N_PERMS)])
 
     td = total_delta(data, contains_nans, N_ITERS)
-    perm_td = total_delta(perm_data, contains_nans, N_ITERS)
+    perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
+    #perm_td = total_delta(perm_data, contains_nans, N_ITERS)
 
     # Center the statistics for each feature
     meds = numpy.nanmedian(perm_td, axis=0)
