@@ -201,6 +201,13 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
     return data_formatted
 
 def peak_time(data, hours_per_timepoint):
+    ''' Given data of shape (N_TIMEPOINTS, N_REPS, N_GENES) compute the time of day when each gene is highest.
+
+    Handles NaNs in data so long as no gene has a timepoint with ALL NaNs
+    (i.e. every timepoint must have at least one datapoint). Inclusion of Nans
+    increases variance of peak time estimate.
+    '''
+
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
     data = data.copy()
@@ -237,3 +244,13 @@ def peak_time(data, hours_per_timepoint):
 
     peak_time = phase * hours_per_timepoint * N_TIMEPOINTS / (2 * numpy.pi)
     return peak_time
+
+def trough_time(data, hours_per_timepoint):
+    ''' Given data of shape (N_TIMEPOINTS, N_REPS, N_GENES) compute the time of day when each gene is lowest.
+
+    Handles NaNs in data so long as no gene has a timepoint with ALL NaNs
+    (i.e. every timepoint must have at least one datapoint). Inclusion of Nans
+    increases variance of trough time estimate.
+    '''
+
+    return peak_time(-data, hours_per_timepoint)
