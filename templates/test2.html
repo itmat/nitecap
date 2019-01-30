@@ -11,61 +11,104 @@
     <script src="https://cdn.plot.ly/plotly-1.2.0.min.js"></script>
 </head>
 <body>
-<style>
-    .coarse-slider {
-    -webkit-appearance: none;
-    background: #BBB;
-    width: 600px;
-    opacity: 2;
-  }
 
-  .coarse-slider:hover {
-    opacity: 1;
-  }
+<style>
+    #find_adj {
+        height: 200px;
+        margin: 10px;
+        width: 25px;
+        text-align: center;
+    }
+    .selected_item {
+        background-color: rgba(0, 0, 255, 0.25);
+        font-size: larger;
+        font-weight: bold;
+    }
+
 </style>
 
- <script>
+<div id="spreadsheet-breakpoint-page">
+
+    <div id="coarse_slider" class="coarse-slider"></div>
+    <p>Value: <span id="slider_value"></span></p>
+    <div>
+        <div id="fine_adj" style="display: inline-block;"></div>
+        <div style="display: inline-block">
+            <div><button id="up">Up</button></div>
+            <div><button id="down">Down</button></div>
+        </div>
+    </div>
+    <div id="tester" style="width:600px;height:250px;"></div>
+
+</div>
+
+
+<script>
+
     $( document ).ready(function() {
+
         $("#coarse_slider").slider({
           orientation: 'horizonal',
           min: 0,
-          max: 200,
+          max: 199,
           slide: function (event, ui) {
               console.log("Change " + ui.value);
               $("#slider_value").html(ui.value);
-              $("#row_selector").val(ui.value)
+              manageTuner(ui.value)
           }
         });
 
-        str = "";
-        for(var i=0; i<200; i++ ) {
-           $("#row_selector").append($('<option>', {
-                value: i,
-                text: "row " + i
-            }));
-        }
+
 
         TESTER = $('#tester');
         TESTER = document.getElementById('tester');
-	Plotly.plot( TESTER, [{
-	x: [1, 2, 3, 4, 5],
-	y: [1, 2, 4, 8, 16] }], {
-	margin: { t: 0 } } );
+	    Plotly.plot( TESTER, [{
+	        x: [1, 2, 3, 4, 5],
+	        y: [1, 2, 4, 8, 16] }], {
+	        margin: { t: 0 } });
+
+	    function manageTuner(value) {
+	        additional = 2.0
+	        $('#find_adj').empty();
+	        new_divs = '';
+	        lower_limit = Math.max(value - additional, 0);
+	        upper_limit = Math.min(value + additional, 199);
+	        for(var i=upper_limit; i>=lower_limit; i--) {
+                if(i == value) {
+                    new_divs += ('<div class="selected_item" id="r' + i + '">' + i + '</div>');
+                }
+	            else {
+	                new_divs += ('<div id="r' + i + '">' + i + '</div>');
+                }
+            }
+            $('#fine_adj').html(new_divs);
+        }
+
+        $("#up").click(function() {
+            new_value = parseInt($("#slider_value").html());
+            console.log(new_value,  Math.min(new_value + 1, 199));
+            new_value = Math.min(new_value + 1, 199);
+            console.log(new_value);
+            $("#coarse_slider").slider( "option", "value", new_value );
+            $("#slider_value").html(new_value);
+            manageTuner(new_value)
+        });
+	    $("#down").click(function() {
+            new_value = parseInt($("#slider_value").html());
+            new_value = Math.max(new_value - 1, 0);
+            console.log(new_value);
+            $("#coarse_slider").slider( "option", "value", new_value );
+            $("#slider_value").html(new_value);
+            manageTuner(new_value)
+        });
 
     });
-    </script>
 
-    <div id="spreadsheet-breakpoint-page" class="container">
-        <div id="coarse_slider" class="coarse-slider"></div>
-        <p>Value: <span id="slider_value"></span></p>
 
-        <div>
-            <select size="5" name="row_selector" id="row_selector">
-            </select>
-        </div>
 
-        <div id="tester" style="width:600px;height:250px;"></div>
-    </div>
+
+</script>
+
 
 </body>
 </html>
