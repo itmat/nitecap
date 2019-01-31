@@ -17,7 +17,7 @@ def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_ITERS = N_
     So that all replicates (if any) of the timepoints are clumped together and the timepoints are in ascending order
 
     timepoints_per_cycle is the number of timepoints measured per cycle (eg: every four hours gives 6 timespoints per day)
-    num_replicates is the number of replicates at each timepoint
+    num_replicates is the number of replicates at each timepoint, or is a list of replicates at each timepoint
     num_cycles is the number of cycles worth of data present
 
     If output == "minimal" then output (q,td) where:
@@ -34,6 +34,28 @@ def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_ITERS = N_
     replicates or are all biological replicates
     '''
     data = numpy.array(data)
+    num_features, _ = data.shape
+
+    # If the number of replicates varies between timepoints, then we need to put nans in to fill the missing gaps
+    if isinstance(num_replicates, (list, tuple)):
+        num_timepoints = timepoints_per_cycle * num_cycles
+        if len(num_replicates) != num_timepoints:
+            raise ValueError(f"num_replicates must be equal in length to the expected number of timepoints {num_timepoints}, instead is length {len(num_replicates)}")
+        if min(num_replicates) < 0:
+            raise ValueError("num_replicates must have at least 1 replicate per timepoint")
+
+        max_num_replicates = max(num_replicates)
+
+        # Fill the 'missing' replicate columns with nans
+        existing_columns = [i*max_num_replicates + j for i in range(num_timepoints)
+                                                     for j in range(max_num_replicates)
+                                                     if j < num_replicates[i]]
+        full_data = numpy.full((num_features, num_timepoints*max_num_replicates), float("nan"))
+        full_data[:,existing_columns] = data
+        data = full_data
+
+        num_replicates = max_num_replicates
+
     data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
     td, perm_td, perm_data = nitecap_statistics(data_formatted, N_ITERS, N_PERMS)
