@@ -40,3 +40,12 @@ def FWER(tds, perm_tds):
         p_hats[gene] = p_hats[sort_order[:i+1]].max() # make monotone
     return p_hats
 
+def zero_nans(array):
+    ''' Sets all nans in a numpy array to zero, works in-place
+
+    Faster than numpy.nan_to_num, doesn't interfere with infinities
+    and has a more descriptive name
+    '''
+
+    nans = numpy.isnan(array)
+    array[nans] = 0
