@@ -85,8 +85,6 @@ def FDR(td, perm_td):
     return q
 
 def total_delta(data, contains_nans = "check", N_ITERS = None):
-    #TODO: remove unused arguments
-
     # Data without permutations is expected to be 3 dimensional (timepoints, reps, genes)
     # so add a dimension to it represent that it is "one permutation" so the code is consistent
     if data.ndim == 3:
@@ -94,6 +92,9 @@ def total_delta(data, contains_nans = "check", N_ITERS = None):
         no_permutations = True
     else:
         no_permutations = False
+
+    if contains_nans == "check":
+        contains_nans = numpy.isnan(data).any()
 
     (N_PERMS, N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
@@ -105,16 +106,20 @@ def total_delta(data, contains_nans = "check", N_ITERS = None):
 
     # Sum all the differences across all rep-rep pairs across all timepoints
     diffs = data_A - data_B
+    if contains_nans:
+        util.zero_nans(diffs)
     numpy.abs(diffs, out=diffs)
     total_delta = numpy.sum(diffs, axis=(1,2,3))
 
     # Now compute the normalization factor
-    # NOTE: median computation assumes that all the permutations have the same median
+    # NOTE: this computation assumes that all the permutations have the same median
     # i.e. that they really are permutations and not just unrelated data
-    med = numpy.nanmedian(data[0], axis=(0,1)).reshape((1, 1, 1, N_GENES)) #Median of each gene
-    med_diffs = data - med
+    med = numpy.nanmedian(data[0], axis=(0,1)).reshape((1, 1, N_GENES)) #Median of each gene
+    med_diffs = data[0] - med
     numpy.abs(med_diffs, out=med_diffs)
-    max_delta = numpy.sum( med_diffs, axis=(1,2) )
+    if contains_nans:
+        util.zero_nans(med_diffs)
+    max_delta = numpy.sum( med_diffs, axis=(0,1) )
 
     statistic =  total_delta / max_delta
     if no_permutations:
