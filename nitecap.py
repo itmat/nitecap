@@ -151,11 +151,11 @@ def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
         data = numpy.sort(data, axis=1)
 
     #perm_data = numpy.array([permute_and_reflect(data) for i in range(N_PERMS)])
-    perm_data = numpy.array([permute_timepoints(data) for i in range(N_PERMS)])
+    perm_data = permute_timepoints(data, N_PERMS)
 
     td = total_delta(data, contains_nans, N_ITERS)
-    perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
-    #perm_td = total_delta(perm_data, contains_nans, N_ITERS)
+    #perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
+    perm_td = total_delta(perm_data, contains_nans, N_ITERS)
 
     # Center the statistics for each feature
     meds = numpy.nanmedian(perm_td, axis=0)
@@ -163,13 +163,19 @@ def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
     perm_td = perm_td - meds
     return td, perm_td, perm_data
 
-def permute_timepoints(data):
+def permute_timepoints(data, N_PERMS = None):
     # Take data with shape (N_timespoints, N_reps)
     # and return a permutation which randomizes the timepoints
-    # but not the samples with a timepoint - replicates stay together
-    new_data = data.copy()
-    numpy.random.shuffle(new_data)
-    return new_data
+    # but not the samples within a timepoint - replicates stay together
+    if N_PERMS is None:
+        new_data = data.copy()
+        numpy.random.shuffle(new_data)
+        return new_data
+    else:
+        perm_data = numpy.broadcast_to(data, (N_PERMS,*data.shape)).copy()
+        # Shuffle (in place) each "permutation" along timepoints
+        [numpy.random.shuffle(perm_data[i]) for i in range(N_PERMS)]
+        return perm_data
 
 def permute_and_reflect(data):
     # permutes timepoints and reflects points randomly around the median
