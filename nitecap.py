@@ -33,29 +33,8 @@ def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_ITERS = N_
     Technical replicates may be used, so long as all replicates within a single timepoint are either all technical
     replicates or are all biological replicates
     '''
+
     data = numpy.array(data)
-    num_features, _ = data.shape
-
-    # If the number of replicates varies between timepoints, then we need to put nans in to fill the missing gaps
-    if isinstance(num_replicates, (list, tuple)):
-        num_timepoints = timepoints_per_cycle * num_cycles
-        if len(num_replicates) != num_timepoints:
-            raise ValueError(f"num_replicates must be equal in length to the expected number of timepoints {num_timepoints}, instead is length {len(num_replicates)}")
-        if min(num_replicates) < 0:
-            raise ValueError("num_replicates must have at least 1 replicate per timepoint")
-
-        max_num_replicates = max(num_replicates)
-
-        # Fill the 'missing' replicate columns with nans
-        existing_columns = [i*max_num_replicates + j for i in range(num_timepoints)
-                                                     for j in range(max_num_replicates)
-                                                     if j < num_replicates[i]]
-        full_data = numpy.full((num_features, num_timepoints*max_num_replicates), float("nan"))
-        full_data[:,existing_columns] = data
-        data = full_data
-
-        num_replicates = max_num_replicates
-
     data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
     td, perm_td, perm_data = nitecap_statistics(data_formatted, N_ITERS, N_PERMS)
@@ -77,6 +56,7 @@ def FDR(td, perm_td):
 
     q = numpy.zeros(N_GENES)
     expected_false_discoveries = numpy.zeros(N_GENES)
+    working_array = numpy.zeros((N_PERMS, N_GENES))
     for i, gene in enumerate(sort_order):
         # We try rejecting the lowest (i+1) td-values and computing how many false rejections we expect
         # by assuming that any td-values we get after a random permutation must correspond to a null
@@ -260,7 +240,34 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
     Turns a 2D array of shape (num_features, num_samples) into a 3D array of shape
     (num_timepoints, num_replicates*num_cycles, num_features)
     Assumption is that the order of samples is with increasing time and with replicates of a single timepoint placed together
+
+    If the number of replicates varies between timepoints, num_replicates should be a list
+    of the number of replicates at each timepoint. The formatted data will include NaN columns
+    so that the resulting array is rectangular.
     '''
+
+    num_features, _ = data.shape
+
+    # If the number of replicates varies between timepoints, then we need to put nans in to fill the missing gaps
+    if isinstance(num_replicates, (list, tuple)):
+        num_timepoints = timepoints_per_cycle * num_cycles
+        if len(num_replicates) != num_timepoints:
+            raise ValueError(f"num_replicates must be equal in length to the expected number of timepoints {num_timepoints}, instead is length {len(num_replicates)}")
+        if min(num_replicates) < 0:
+            raise ValueError("num_replicates must have at least 1 replicate per timepoint")
+
+        max_num_replicates = max(num_replicates)
+
+        # Fill the 'missing' replicate columns with nans
+        existing_columns = [i*max_num_replicates + j for i in range(num_timepoints)
+                                                     for j in range(max_num_replicates)
+                                                     if j < num_replicates[i]]
+        full_data = numpy.full((num_features, num_timepoints*max_num_replicates), float("nan"))
+        full_data[:,existing_columns] = data
+        data = full_data
+
+        num_replicates = max_num_replicates
+
     # Put the data into the shape of a 3d array with dimensions [timepoints, replicates, features]
     data_formatted = data.reshape( (-1, timepoints_per_cycle*num_cycles, num_replicates) ).swapaxes(0,1).swapaxes(1,2)
 
