@@ -84,7 +84,45 @@ def FDR(td, perm_td):
 
     return q
 
-def total_delta(data, contains_nans = "check", N_ITERS = N_ITERS):
+def total_delta(data, contains_nans = "check", N_ITERS = None):
+    #TODO: remove unused arguments
+
+    # Data without permutations is expected to be 3 dimensional (timepoints, reps, genes)
+    # so add a dimension to it represent that it is "one permutation" so the code is consistent
+    if data.ndim == 3:
+        data = data.reshape( (1, *data.shape) )
+        no_permutations = True
+    else:
+        no_permutations = False
+
+    (N_PERMS, N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+
+    #  Find sum of distances traverse going from each replicate to its adjacent replicates
+    data_A = data.reshape((N_PERMS, N_TIMEPOINTS, N_REPS, 1, N_GENES))
+    data_B = data.reshape((N_PERMS, N_TIMEPOINTS, 1, N_REPS, N_GENES))
+    # cycle data_B one step over so that we'll compare time 1 in A to time 2 in B
+    data_B = numpy.concatenate( (data_B[:,1:], data_B[:,:1]), axis=1 )
+
+    # Sum all the differences across all rep-rep pairs across all timepoints
+    diffs = data_A - data_B
+    numpy.abs(diffs, out=diffs)
+    total_delta = numpy.sum(diffs, axis=(1,2,3))
+
+    # Now compute the normalization factor
+    # NOTE: median computation assumes that all the permutations have the same median
+    # i.e. that they really are permutations and not just unrelated data
+    med = numpy.nanmedian(data[0], axis=(0,1)).reshape((1, 1, 1, N_GENES)) #Median of each gene
+    med_diffs = data - med
+    numpy.abs(med_diffs, out=med_diffs)
+    max_delta = numpy.sum( med_diffs, axis=(1,2) )
+
+    statistic =  total_delta / max_delta
+    if no_permutations:
+        return statistic.reshape( (N_GENES) ) # If we were given a 3-dim array, return a 1-dim array
+    else:
+        return statistic
+
+def total_delta_old(data, contains_nans = "check", N_ITERS = N_ITERS):
     # Compute Delta as total absolute differences for each of the replicate
     # Random choices of the points to compute for
     # Set contains_nans = True if data may contain nans (interpretted as missing data)
@@ -150,11 +188,9 @@ def nitecap_statistics(data, N_ITERS = N_ITERS, N_PERMS = N_PERMS):
         # Sorting (or rearranging) the reps doesn't make a difference and sorting puts NaNs at the end
         data = numpy.sort(data, axis=1)
 
-    #perm_data = numpy.array([permute_and_reflect(data) for i in range(N_PERMS)])
     perm_data = permute_timepoints(data, N_PERMS)
 
     td = total_delta(data, contains_nans, N_ITERS)
-    #perm_td = numpy.array([total_delta(perm_data[i], contains_nans, N_ITERS) for i in range(N_PERMS)])
     perm_td = total_delta(perm_data, contains_nans, N_ITERS)
 
     # Center the statistics for each feature
