@@ -15,6 +15,7 @@ class Spreadsheet:
         self.sample = mini_df.values.tolist()
         self.columns = self.df.columns.values.tolist()
 
+        self.num_replicates = None
         self.data_columns = None
         self.column_labels = column_labels
         if column_labels:
@@ -56,16 +57,18 @@ class Spreadsheet:
         x_indices = [index for index, value in enumerate(self.column_labels) if value != 'Ignore']
         self.trimmed_df = self.df.iloc[:, [j for j, _ in enumerate(self.df.columns) if j in x_indices]]
 
-        # Also compute all the ways that we can pair adjacent data points, for use in plotting
-        # TODO: for this, we need to validate that all possible timepoints have at least one datapoint
-        # and in fact for nitecap we need to validate that all timepoints have the same number of datapoints
-        # TODO: should this be moved elsewhere? only possible to do after getting column_labels
         columns_by_timepoint = dict()
         for column, x_value in enumerate(self.x_values):
             if x_value in columns_by_timepoint:
                 columns_by_timepoint[x_value].append(column)
             else:
                 columns_by_timepoint[x_value] = [column]
+
+        # Count the number of replicates at each timepoint
+        self.num_replicates = [len(columns_by_timepoint.get(i, [])) for i in range(self.timepoints * self.days)]
+
+        # Also compute all the ways that we can pair adjacent data points, for use in plotting
+        # TODO: should this be moved elsewhere? only possible to do after getting column_labels
         self.column_pairs =  []
         self.timepoint_pairs = []
         for timepoint in range(max(columns_by_timepoint.keys())):
@@ -86,8 +89,7 @@ class Spreadsheet:
 
         # TODO: right now this assumes all timepoints have the same number of replicates
         data = self.df[self.data_columns].values
-        num_replicates = data.shape[1] // (self.timepoints * self.days)
-        data_formatted = nitecap.reformat_data(data, self.timepoints, num_replicates, self.days)
+        data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
 
         self.df["total_delta"] = td
