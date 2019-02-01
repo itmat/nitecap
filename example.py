@@ -68,10 +68,13 @@ for gene in sort_order: # Doesn't actually need to be in sorted order
 found, = numpy.where(q <= TARGET_FDR)
 num_rejected = len(found)
 num_false_positives = numpy.sum(found < N_NONCIRC)
-CUTOFF = numpy.sort(td)[num_rejected]
-print(f"Rejected {num_rejected} genes with FDR <= {TARGET_FDR}")
-print(f"True proportion of false discoveries was {num_false_positives / num_rejected:.2f} with {num_false_positives} false rejections")
-print(f"Found {num_rejected - num_false_positives} true positives out of a total of {N_CIRC} possible")
+if num_rejected > 0:
+    CUTOFF = numpy.sort(td)[num_rejected-1]
+    print(f"Rejected {num_rejected} genes with FDR <= {TARGET_FDR}")
+    print(f"True proportion of false discoveries was {num_false_positives / num_rejected:.2f} with {num_false_positives} false rejections")
+    print(f"Found {num_rejected - num_false_positives} true positives out of a total of {N_CIRC} possible")
+else:
+    print(f"No genes were rejected at FDR <= {TARGET_FDR}")
 
 ###### Plot the data
 import pylab
