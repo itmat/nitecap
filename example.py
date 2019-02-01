@@ -20,6 +20,7 @@ WAVEFORM.shape = (-1,1,1)
 N_GENES = 1000
 PORTION_CIRC = 0.2 # Fraction of genes that are 'circadian'
 MAX_AMPLITUDE  = 0.3
+TIMEPOINT_NOISE = 0.02 # Small amount of variation of between timepoints, consistent among replicates in that timepoint
 
 N_CIRC = int(N_GENES * PORTION_CIRC)
 N_NONCIRC = N_GENES - N_CIRC
@@ -33,6 +34,7 @@ AMPLITUDES = numpy.array( [0]*N_NONCIRC #The non-circ parts
 AMPLITUDES.shape = (1,1,N_GENES)
 
 DATA_MEANS = (WAVEFORM * AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS
+DATA_MEANS *= numpy.random.uniform(1 - TIMEPOINT_NOISE, 1 + TIMEPOINT_NOISE, size=(N_TIMEPOINTS, 1, N_GENES))
 
 
 ###### Create the random data
@@ -75,6 +77,7 @@ if num_rejected > 0:
     print(f"Found {num_rejected - num_false_positives} true positives out of a total of {N_CIRC} possible")
 else:
     print(f"No genes were rejected at FDR <= {TARGET_FDR}")
+    CUTOFF = float('-inf')
 
 ###### Plot the data
 import pylab
