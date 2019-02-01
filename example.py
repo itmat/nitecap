@@ -1,3 +1,4 @@
+import time
 import numpy
 
 import nitecap
@@ -38,12 +39,20 @@ DATA_MEANS = (WAVEFORM * AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS
 data = numpy.random.poisson(DATA_MEANS, size=(N_TIMEPOINTS, N_REPS, N_GENES))
 data = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all replicates in a timepoint
 
+# timing measurement
+start = time.time()
+
 ##### Run nitecap
 # Use the following for most use-cases:
 #q, td = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
 
 # We use this instead for plotting results
 q, td, perm_td  = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")
+##### End nitecap
+
+# Finish timing
+end = time.time()
+print(f"Ran nitecap on {N_GENES} genes in {end-start:.2f} seconds")
 
 
 ####### Compute the actual false discoveries and report the results
