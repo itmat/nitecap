@@ -25,21 +25,49 @@ def spreadsheet_details_action():
     #http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
     days = request.form['days']
     timepoints = request.form['timepoints']
+    upload_file = request.files['upload_file']
+
+    # Validate and give errors
+    error = False
+    try:
+        if int(days) < 1:
+            flash("Number of days must be at least 1")
+            error = True
+    except ValueError:
+        flash("Number of days must be an integer")
+        error = True
+
+    try:
+        if int(timepoints) < 1:
+            error = True
+            flash("Timepoints must be at least 1")
+    except ValueError:
+        flash("Timepoints must be an integer")
+        error = True
+
     if 'upload_file' not in request.files:
         flash('No file part')
-        return spreadsheet_details
-    upload_file = request.files['upload_file']
+        error = True
     # if user does not select file, browser also
     # submit an empty part without filename
     if upload_file.filename == '':
         flash('No selected file')
-        return spreadsheet_details
+        error = True
+
+    if not allowed_file(upload_file.filename):
+        flash(f"File must be one of the following types: {', '.join(ALLOWED_EXTENSIONS)}")
+        error=True
+
+    if error:
+        return spreadsheet_details()
+
     if upload_file and allowed_file(upload_file.filename):
         filename = secure_filename(upload_file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         upload_file.save(file_path)
         spreadsheet = Spreadsheet(days, timepoints, file_path)
         session['spreadsheet'] = spreadsheet.to_json()
+
     return render_template('spreadsheet_display.html', spreadsheet=spreadsheet)
 
 @app.route('/spreadsheet_display_action', methods=['POST'])
