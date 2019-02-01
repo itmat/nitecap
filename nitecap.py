@@ -52,7 +52,18 @@ def FDR(td, perm_td):
     (N_PERMS, N_GENES) = perm_td.shape
     sort_order = numpy.argsort(td)
 
+    # p-values of the (non-permuted) data
     ps = (numpy.sum(perm_td <= td, axis=0) + 1)/ (perm_td.shape[0]+1)
+
+
+    # Want to sum how many permutations end up less than a given cutoff
+    # so sort them all so that they can be counted efficiently
+    perm_td_sort_order = numpy.argsort(perm_td, axis=None)
+    perm_td_sorted = perm_td.flat[perm_td_sort_order]
+    # And give each permutation the p-value of it's actual (non-permuted) data
+    # but put them in the same order as the statistics above, so that we can weight by this p
+    ps_sorted = numpy.broadcast_to(ps, (N_PERMS, N_GENES))# Each permutation gets the same p-value
+    ps_sorted = ps_sorted.flat[perm_td_sort_order]
 
     q = numpy.zeros(N_GENES)
     expected_false_discoveries = numpy.zeros(N_GENES)
@@ -72,7 +83,12 @@ def FDR(td, perm_td):
         #expected_false_discoveries[gene] = numpy.sum(perm_td <= tentative_cutoff) / N_PERMS
 
         # Weight each gene by it's original p-value and multiply by 2
-        expected_false_discoveries[gene] = 2*numpy.sum((perm_td <= tentative_cutoff) * ps) / N_PERMS
+        #expected_false_discoveries[gene] = 2*numpy.sum((perm_td <= tentative_cutoff) * ps) / N_PERMS
+
+        # Equivalent to the above, but much faster to compute
+        num_below_cutoff = numpy.searchsorted(perm_td_sorted, tentative_cutoff)
+        # TODO: this could be sped up by summing only the ones that weren't already summed in the previous iteration
+        expected_false_discoveries[gene] = 2 * numpy.sum(ps_sorted[:num_below_cutoff]) / N_PERMS
 
         # Weight by any function of p and divide by it's integral from 0 to 1...
         #ps_okay = (ps > 0.25) & (ps < 0.75)
