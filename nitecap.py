@@ -128,8 +128,11 @@ def total_delta(data, contains_nans = "check", N_ITERS = None):
         possible_pairs = N_TIMEPOINTS * N_REPS * N_REPS
         num_pairs = numpy.sum(~numpy.isnan(diffs[0]), axis=(0,1,2))
         util.zero_nans(diffs)
-    numpy.abs(diffs, out=diffs)
-    total_delta = numpy.sum(diffs, axis=(1,2,3))
+        numpy.abs(diffs, out=diffs)
+        total_delta = numpy.sum(diffs, axis=(1,2,3)) * possible_pairs / num_pairs
+    else:
+        numpy.abs(diffs, out=diffs)
+        total_delta = numpy.sum(diffs, axis=(1,2,3))
 
     # Now compute the normalization factor
     # NOTE: this computation assumes that all the permutations have the same median
@@ -139,9 +142,7 @@ def total_delta(data, contains_nans = "check", N_ITERS = None):
     numpy.abs(med_diffs, out=med_diffs)
     if contains_nans:
         util.zero_nans(med_diffs)
-        max_delta = numpy.sum( med_diffs, axis=(0,1) ) * possible_pairs / num_pairs
-    else:
-        max_delta = numpy.sum( med_diffs, axis=(0,1) )
+    max_delta = numpy.sum( med_diffs, axis=(0,1) )
 
     statistic =  total_delta / max_delta
     if no_permutations:
