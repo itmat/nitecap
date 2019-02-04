@@ -94,7 +94,7 @@
                     return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
               });
               console.log(labels[this.value]);
-              $('input[name="row_id"]').val(labels[ui.value]);
+              $('input[name="row_id"]').val(labels[this.value]);
               values = [{x: x_labels, y: paired_y_values,
                   mode: 'lines+markers',
                   marker: marker_settings,
