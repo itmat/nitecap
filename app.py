@@ -13,7 +13,7 @@ ALLOWED_EXTENSIONS = set(['txt', 'csv', 'xlsx'])
 app = Flask(__name__)
 app.secret_key = 'cris'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['DEBUG']
+app.debug = True
 
 
 @app.route('/', methods=['GET'])
@@ -80,8 +80,6 @@ def allowed_file(filename):
 @app.route('/identify_spreadsheet_columns', methods=['GET','POST'])
 def identify_spreadsheet_columns():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
-    session['selections'] = spreadsheet.selections
-    session['sample'] = spreadsheet.sample
     if request.method == 'POST':
         column_labels = list(request.form.values())
 

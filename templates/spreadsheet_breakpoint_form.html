@@ -95,6 +95,7 @@
               });
               console.log(labels[this.value]);
               $('input[name="row_id"]').val(labels[this.value]);
+              console.log("row: " + this.value + ",id: " + labels(this.value))
               values = [{x: x_labels, y: paired_y_values,
                   mode: 'lines+markers',
                   marker: marker_settings,
