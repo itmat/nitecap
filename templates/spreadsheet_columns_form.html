@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
+
+  {% set spreadsheet = session['spreadsheet'] %}
+  {% set selections = session['selections'] %}
+  {% set sample = session['sample'] %}
+
   <div id="spreadsheet-display-page" class="container">
     <h2>Identify Columns</h2>
     <p>
@@ -18,14 +23,14 @@
             {% for heading, default_selection in spreadsheet.column_defaults %}
                 <th>
                   <select name="col{{ loop.index }}" id="col{{ loop.index }}">
-                      {% for selection in spreadsheet.selections %}
+                      {% for selection in selections %}
                           <option value="{{selection}}" {{'selected' if selection == default_selection else ''}} >{{selection}}</option>
                       {% endfor %}
                   </select>
                 </th>
             {% endfor %}
         </tr>
-        {% for record in spreadsheet.sample %}
+        {% for record in sample %}
           <tr>
               {% for value in record %}
                 <td>{{ value }}</td>

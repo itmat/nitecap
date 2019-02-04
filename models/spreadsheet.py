@@ -6,7 +6,7 @@ import nitecap
 
 class Spreadsheet:
 
-    def __init__(self, days, timepoints, file_path, column_labels=None):
+    def __init__(self, days, timepoints, file_path, column_labels=None, breakpoint=None, trimmed_df=None):
         self.days = int(days)
         self.timepoints = int(timepoints)
         self.file_path = file_path
@@ -14,12 +14,14 @@ class Spreadsheet:
         mini_df = self.df[:10]
         self.sample = mini_df.values.tolist()
         self.columns = self.df.columns.values.tolist()
-
+        self.trimmed_df = trimmed_df
         self.num_replicates = None
         self.data_columns = None
         self.column_labels = column_labels
+        self.breakpoint = breakpoint
         if column_labels:
             self.identify_columns(column_labels)
+
         self.selections = ['Ignore'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
                       for day in range(self.days) for timepoint in range(self.timepoints)]
 
@@ -126,7 +128,9 @@ class Spreadsheet:
             "timepoints": self.timepoints,
             "file_path": self.file_path,
             "columns": self.columns,
-            "column_labels": self.column_labels
+            "column_defaults": self.column_defaults,
+            "column_labels": self.column_labels,
+            "breakpoint": self.breakpoint,
         }
 
     def label_to_daytime(self, label):
@@ -152,4 +156,6 @@ class Spreadsheet:
         timepoints = data['timepoints']
         file_path = data['file_path']
         column_labels = data['column_labels']
-        return cls(days, timepoints, file_path, column_labels)
+        column_defaults = data['column_defaults']
+        breakpoint = data['breakpoint']
+        return cls(days, timepoints, file_path, column_labels, column_defaults, breakpoint)

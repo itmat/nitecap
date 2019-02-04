@@ -67,7 +67,7 @@ def load_spreadsheet():
             spreadsheet = Spreadsheet(days, timepoints, file_path)
             session['spreadsheet'] = spreadsheet.to_json()
 
-        return redirect(url_for('.identify_spreadsheet_columns', spreadsheet=spreadsheet))
+        return redirect(url_for('.identify_spreadsheet_columns'))
 
     return render_template('spreadsheet_upload_form.html')
 
@@ -78,6 +78,8 @@ def allowed_file(filename):
 @app.route('/identify_spreadsheet_columns', methods=['GET','POST'])
 def identify_spreadsheet_columns():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    session['selections'] = spreadsheet.selections
+    session['sample'] = spreadsheet.sample
     if request.method == 'POST':
         column_labels = list(request.form.values())
 
@@ -87,17 +89,23 @@ def identify_spreadsheet_columns():
             return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet, error=validation)
 
         spreadsheet.identify_columns(column_labels)
-        print(spreadsheet.column_labels)
-        session['spreadsheet'] = spreadsheet.to_json()
-        spreadsheet.compute_ordering()
 
-        return redirect(url_for('.set_spreadsheet_breakpoint'))
-    return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet)
+        spreadsheet.compute_ordering()
+        session['spreadsheet'] = spreadsheet.to_json()
+        return render_template('spreadsheet_breakpoint_form.html',
+                                data=spreadsheet.trimmed_df.to_json(orient='values'),
+                                x_values=spreadsheet.x_labels,
+                                ids=list(spreadsheet.df['id']),
+                                column_pairs=spreadsheet.column_pairs,
+                                timepoint_pairs = spreadsheet.timepoint_pairs)
+    return render_template('spreadsheet_columns_form.html')
 
 @app.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
 def set_spreadsheet_breakpoint():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
     if request.method == 'POST':
+        row_id = request.form['row_id']
+        print(row_id)
         # Create reduced spreadsheet data
         return redirect(url_for('.display_heatmap',
                                 data=spreadsheet.trimmed_df.to_json(orient='values'),
