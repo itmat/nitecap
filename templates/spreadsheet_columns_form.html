@@ -7,7 +7,7 @@
         Use the same label from the droplist for each replicate.  All columns not representing timepoints
         should be set to 'Ignore'.
     </p>
-    <form id="spreadsheet-display-form" action="/spreadsheet_display_action" method="post">
+    <form id="spreadsheet-display-form" action="{{ url_for('.identify_spreadsheet_columns') }}" method="post">
       <table>
         <tr>
             {% for heading in spreadsheet.columns %}
