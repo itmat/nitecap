@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<script>
+    $(document).ready(function () {
+        var data = [{
+            z: [[1, 20, 30], [20, 1, 60], [30, 60, 1]],
+            type: 'heatmap'
+        }];
+
+        Plotly.newPlot('heatmap', data);
+    });
+</script>
+<div id="heatmap-page" class="page-header">
+    <h1>Heatmap</h1>
+</div>
+<div>
+    <div id="heatmap" style="width:600px;height:450px;display:inline-block"></div>
+    <div id="scatter_plot" style="width:600px;height:450px;display:inline-block"></div>
+</div>
+
+{% endblock %}

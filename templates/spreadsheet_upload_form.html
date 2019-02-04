@@ -3,14 +3,14 @@
     <div id="spreadsheet-details-page" class="container">
     <h1>Welcome to NITECAP</h1>
         <p>We first need a few details about your spreadsheet along with the spreadsheet itself</p>
-    <form id="spreadsheet-details-form" action="/spreadsheet_details_action" method="post" enctype="multipart/form-data">
+    <form id="spreadsheet-details-form"  action="{{ url_for('.load_spreadsheet') }}" method="post" enctype="multipart/form-data">
         <div class="form-group">
             <label for="days">Enter Number of Days of Data:</label>
-            <input type="text" id="days" name="days" class="form-control" />
+            <input type="number" id="days" name="days" class="form-control" />
         </div>
         <div class="form-group">
             <label for="timepoints">Enter the Number of Timepoints Per Day:</label>
-            <input type="text" id="timepoints" name="timepoints" class="form-control" />
+            <input type="number" id="timepoints" name="timepoints" class="form-control" />
         </div>
         <div class="form-group">
             <input type="file" id="upload_file" name="upload_file">
