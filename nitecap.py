@@ -60,54 +60,32 @@ def FDR(td, perm_td):
     # so sort them all so that they can be counted efficiently
     perm_td_sort_order = numpy.argsort(perm_td, axis=None)
     perm_td_sorted = perm_td.flat[perm_td_sort_order]
+
     # And give each permutation the p-value of it's actual (non-permuted) data
     # but put them in the same order as the statistics above, so that we can weight by this p
     ps_sorted = numpy.broadcast_to(ps, (N_PERMS, N_GENES))# Each permutation gets the same p-value
     ps_sorted = ps_sorted.flat[perm_td_sort_order]
 
-    q = numpy.zeros(N_GENES)
-    expected_false_discoveries = numpy.zeros(N_GENES)
-    working_array = numpy.zeros((N_PERMS, N_GENES))
-    last_rejections = 0
-    last_expected_false_discoveries = 0
-    for i, gene in enumerate(sort_order):
-        # We try rejecting the lowest (i+1) td-values and computing how many false rejections we expect
-        # by assuming that any td-values we get after a random permutation must correspond to a null
+    # Sum up all the p-values in order
+    ps_sorted_cumsum = numpy.concatenate( ([0], numpy.cumsum(ps_sorted)) )
 
-        tentative_cutoff = td[gene]
+    # Compute the number of gene-permutation combinations below any given cutoff td
+    num_below_cutoff = numpy.searchsorted(perm_td_sorted, td[sort_order], side="right")
 
-        # Handle NaN values by giving them NaN q's
-        if numpy.isnan(tentative_cutoff):
-            q[gene] = numpy.nan
-            continue
+    # Estimate the number of nulls among those below the cutoff by summing their p values and multiplying by 2
+    expected_false_discoveries = ps_sorted_cumsum[num_below_cutoff] * (2 / N_PERMS)
 
-        # Simplest version
-        #expected_false_discoveries[gene] = numpy.sum(perm_td <= tentative_cutoff) / N_PERMS
-
-        # Weight each gene by it's original p-value and multiply by 2
-        #expected_false_discoveries[gene] = 2*numpy.sum((perm_td <= tentative_cutoff) * ps) / N_PERMS
-
-        ## Equivalent to the above, but much faster to compute:
-        # Find which gene-permutation combinations result in statistics less than the cutoff
-        num_below_cutoff = numpy.searchsorted(perm_td_sorted, tentative_cutoff)
-        # Sum the p-values of those gene-permutations above, by finding the new p-values that weren't
-        # already below the last cutoff
-        expected_false_discoveries[gene] = (last_expected_false_discoveries +
-                                                2 * numpy.sum(ps_sorted[last_rejections:num_below_cutoff]) / N_PERMS)
-        last_rejections = num_below_cutoff
-        last_expected_false_discoveries = expected_false_discoveries[gene]
-
-        # Weight by any function of p and divide by it's integral from 0 to 1...
-        #ps_okay = (ps > 0.25) & (ps < 0.75)
-        #expected_false_discoveries[gene] = (2.0)*numpy.sum((perm_td <= tentative_cutoff) * ps_okay) / N_PERMS
-
-        q[gene] = expected_false_discoveries[gene] / (i+1)
+    # Compute q values by dividing by the number of rejected genes at each td
+    q = expected_false_discoveries / numpy.arange(1, 1+N_GENES)
 
     # Make q's monotone increasing (step-up)
-    for i, gene in enumerate(sort_order):
-        q[gene] = numpy.min(q[sort_order[i:]])
+    # i.e. if a later gene (with worse td) has a better q, then we use it's q
+    # so take the minimum of all q's that are later than your own
+    q = numpy.minimum.accumulate( q[::-1] )[::-1]
 
-    return q
+    # Return the q's in the order they came in, not in the order of increasing td (i.e. sort_order)
+    unsort_order = numpy.argsort(sort_order)
+    return q[unsort_order]
 
 def total_delta(data, contains_nans = "check", N_ITERS = None):
     # Data without permutations is expected to be 3 dimensional (timepoints, reps, genes)
