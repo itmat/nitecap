@@ -1,3 +1,5 @@
+import itertools
+
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 import os
@@ -67,7 +69,7 @@ def load_spreadsheet():
             spreadsheet = Spreadsheet(days, timepoints, file_path)
             session['spreadsheet'] = spreadsheet.to_json()
 
-        return redirect(url_for('.identify_spreadsheet_columns'))
+        return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet)
 
     return render_template('spreadsheet_upload_form.html')
 
@@ -105,14 +107,19 @@ def set_spreadsheet_breakpoint():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
     if request.method == 'POST':
         row_id = request.form['row_id']
-        print(row_id)
-        # Create reduced spreadsheet data
-        return redirect(url_for('.display_heatmap',
-                                data=spreadsheet.trimmed_df.to_json(orient='values'),
+        data = spreadsheet.reduce_dataframe(row_id).to_json(orient='values')
+        heatmap_x_values = []
+        for count, x_value in zip(spreadsheet.num_replicates, spreadsheet.x_labels):
+            for item in range(count):
+                heatmap_x_values.append(f"{x_value} rep {item + 1}")
+
+        return render_template('heatmap.html',
+                                data=data,
                                 x_values=spreadsheet.x_labels,
+                                heatmap_x_values = heatmap_x_values,
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
-                                timepoint_pairs = spreadsheet.timepoint_pairs))
+                                timepoint_pairs = spreadsheet.timepoint_pairs)
 
     return render_template('spreadsheet_breakpoint_form.html',
                                 data=spreadsheet.trimmed_df.to_json(orient='values'),
@@ -120,18 +127,6 @@ def set_spreadsheet_breakpoint():
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 timepoint_pairs = spreadsheet.timepoint_pairs)
-
-@app.route('/display_heatmap', methods=['GET'])
-def display_heatmap():
-    spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
-    return render_template('heatmap.html',
-                                data=spreadsheet.trimmed_df.to_json(orient='values'),
-                                x_values=spreadsheet.x_labels,
-                                ids=list(spreadsheet.df['id']),
-                                column_pairs=spreadsheet.column_pairs,
-                                timepoint_pairs = spreadsheet.timepoint_pairs)
-
-
 
 
 if __name__ == '__main__':

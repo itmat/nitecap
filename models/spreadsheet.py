@@ -6,7 +6,7 @@ import nitecap
 
 class Spreadsheet:
 
-    def __init__(self, days, timepoints, file_path, column_labels=None, breakpoint=None, trimmed_df=None):
+    def __init__(self, days, timepoints, file_path, column_labels=None, breakpoint=None, num_replicates=None):
         self.days = int(days)
         self.timepoints = int(timepoints)
         self.file_path = file_path
@@ -14,8 +14,8 @@ class Spreadsheet:
         mini_df = self.df[:10]
         self.sample = mini_df.values.tolist()
         self.columns = self.df.columns.values.tolist()
-        self.trimmed_df = trimmed_df
-        self.num_replicates = None
+        self.trimmed_df = None
+        self.num_replicates = num_replicates
         self.data_columns = None
         self.column_labels = column_labels
         self.breakpoint = breakpoint
@@ -98,6 +98,9 @@ class Spreadsheet:
         self.df = self.df.sort_values(by="total_delta")
         self.trimmed_df = self.df[self.data_columns]
 
+    def reduce_dataframe(self, breakpoint):
+        index = self.df.index[self.df['id'] == breakpoint]
+        return self.trimmed_df[self.trimmed_df.index < index[0]]
 
     def validate(self, columns):
         ''' Check spreadhseet for consistency.
@@ -128,8 +131,8 @@ class Spreadsheet:
             "timepoints": self.timepoints,
             "file_path": self.file_path,
             "columns": self.columns,
-            "column_defaults": self.column_defaults,
             "column_labels": self.column_labels,
+            "num_replicates": self.num_replicates,
             "breakpoint": self.breakpoint,
         }
 
@@ -156,6 +159,6 @@ class Spreadsheet:
         timepoints = data['timepoints']
         file_path = data['file_path']
         column_labels = data['column_labels']
-        column_defaults = data['column_defaults']
+        num_replicates = data['num_replicates']
         breakpoint = data['breakpoint']
-        return cls(days, timepoints, file_path, column_labels, column_defaults, breakpoint)
+        return cls(days, timepoints, file_path, column_labels, breakpoint, num_replicates)
