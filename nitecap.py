@@ -68,6 +68,8 @@ def FDR(td, perm_td):
     q = numpy.zeros(N_GENES)
     expected_false_discoveries = numpy.zeros(N_GENES)
     working_array = numpy.zeros((N_PERMS, N_GENES))
+    last_rejections = 0
+    last_expected_false_discoveries = 0
     for i, gene in enumerate(sort_order):
         # We try rejecting the lowest (i+1) td-values and computing how many false rejections we expect
         # by assuming that any td-values we get after a random permutation must correspond to a null
@@ -85,10 +87,15 @@ def FDR(td, perm_td):
         # Weight each gene by it's original p-value and multiply by 2
         #expected_false_discoveries[gene] = 2*numpy.sum((perm_td <= tentative_cutoff) * ps) / N_PERMS
 
-        # Equivalent to the above, but much faster to compute
+        ## Equivalent to the above, but much faster to compute:
+        # Find which gene-permutation combinations result in statistics less than the cutoff
         num_below_cutoff = numpy.searchsorted(perm_td_sorted, tentative_cutoff)
-        # TODO: this could be sped up by summing only the ones that weren't already summed in the previous iteration
-        expected_false_discoveries[gene] = 2 * numpy.sum(ps_sorted[:num_below_cutoff]) / N_PERMS
+        # Sum the p-values of those gene-permutations above, by finding the new p-values that weren't
+        # already below the last cutoff
+        expected_false_discoveries[gene] = (last_expected_false_discoveries +
+                                                2 * numpy.sum(ps_sorted[last_rejections:num_below_cutoff]) / N_PERMS)
+        last_rejections = num_below_cutoff
+        last_expected_false_discoveries = expected_false_discoveries[gene]
 
         # Weight by any function of p and divide by it's integral from 0 to 1...
         #ps_okay = (ps > 0.25) & (ps < 0.75)
