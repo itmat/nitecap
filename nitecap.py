@@ -125,6 +125,9 @@ def total_delta(data, contains_nans = "check"):
     if contains_nans:
         util.zero_nans(med_diffs)
     max_delta = numpy.sum( med_diffs, axis=(0,1) )
+    # Given a normalization factor of 0, we'll get a warning below
+    # So replace it with 1 since the result will have total_delta = 0 anyway
+    max_delta[max_delta == 0.0] = 1.0
 
     statistic =  total_delta / max_delta
     if no_permutations:
