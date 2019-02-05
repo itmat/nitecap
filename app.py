@@ -67,7 +67,7 @@ def load_spreadsheet():
             filename = secure_filename(upload_file.filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             upload_file.save(file_path)
-            spreadsheet = Spreadsheet(days, timepoints, file_path)
+            spreadsheet = Spreadsheet(days, timepoints, uploaded_file_path = file_path)
             session['spreadsheet'] = spreadsheet.to_json()
 
         return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet)
@@ -91,10 +91,9 @@ def identify_spreadsheet_columns():
         spreadsheet.identify_columns(column_labels)
 
         spreadsheet.compute_ordering()
-        spreadsheet.trimmed_df.to_csv(f'{spreadsheet.file_path}.out', sep="\t")
         session['spreadsheet'] = spreadsheet.to_json()
         return render_template('spreadsheet_breakpoint_form.html',
-                                data=spreadsheet.trimmed_df.to_json(orient='values'),
+                                data=spreadsheet.get_raw_data().to_json(orient='values'),
                                 x_values=spreadsheet.x_labels,
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
@@ -104,12 +103,12 @@ def identify_spreadsheet_columns():
 @app.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
 def set_spreadsheet_breakpoint():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
-    trimmed_df = pd.read_csv(f'{spreadsheet.file_path}.out', sep="\t")
-    spreadsheet.trimmed_df = trimmed_df
     if request.method == 'POST':
-        row_id = request.form['row_id']
-        print(f'Row id: {row_id}')
-        data = spreadsheet.reduce_dataframe(row_id).to_json(orient='values')
+        row_index = int(request.form['row_index'])
+        print(f'Row id: {row_index}')
+        data, labels = spreadsheet.reduce_dataframe(row_index)
+        data = spreadsheet.normalize_data(data)
+        print(f"datashape {data.shape} label {len(labels)}")
         heatmap_x_values = []
         for day in range(spreadsheet.days):
             for timepoint in range(spreadsheet.timepoints):
@@ -118,15 +117,16 @@ def set_spreadsheet_breakpoint():
                     heatmap_x_values.append(f"Day{day+1} Timepoint{timepoint+1} Rep{rep+1}")
 
         return render_template('heatmap.html',
-                                data=data,
+                                data=data.to_json(orient='values'),
                                 x_values=spreadsheet.x_labels,
                                 heatmap_x_values = heatmap_x_values,
-                                ids=list(spreadsheet.df['id']),
+                                ids=labels,
                                 column_pairs=spreadsheet.column_pairs,
                                 timepoint_pairs = spreadsheet.timepoint_pairs)
 
+    data = spreadsheet.get_raw_data()
     return render_template('spreadsheet_breakpoint_form.html',
-                                data=spreadsheet.trimmed_df.to_json(orient='values'),
+                                data=data.to_json(orient='values'),
                                 x_values=spreadsheet.x_labels,
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,

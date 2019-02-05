@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy
 import re
 from collections import OrderedDict
 
@@ -6,12 +7,20 @@ import nitecap
 
 class Spreadsheet:
 
-    def __init__(self, days, timepoints, file_path, column_labels=None, breakpoint=None, num_replicates=None):
+    def __init__(self, days, timepoints, uploaded_file_path, file_path=None, column_labels=None, breakpoint=None, num_replicates=None):
         self.days = int(days)
         self.timepoints = int(timepoints)
         self.file_path = file_path
-        self.df = pd.read_csv(self.file_path, sep="\t")
-        self.trimmed_df = None
+        self.uploaded_file_path = uploaded_file_path
+        if file_path is None:
+            # Need to use our uploaded_file_path to create a new dataframe
+            uploaded_dataframe = pd.read_csv(self.uploaded_file_path, sep="\t")
+            self.file_path = uploaded_file_path + ".working.txt"
+            self.df = uploaded_dataframe
+            self.update_dataframe()
+        else:
+            self.df = pd.read_csv(self.file_path, sep="\t")
+
         self.num_replicates = num_replicates
         self.column_labels = column_labels
         self.breakpoint = breakpoint
@@ -54,7 +63,6 @@ class Spreadsheet:
         self.x_labels = list(OrderedDict({label:None for label in self.column_labels if re.search("Day(\d+) Timepoint(\d+)", label)}).keys())
 
         x_indices = [index for index, value in enumerate(self.column_labels) if value != 'Ignore']
-        self.trimmed_df = self.df.iloc[:, [j for j, _ in enumerate(self.df.columns) if j in x_indices]]
 
         columns_by_timepoint = dict()
         for column, x_value in enumerate(self.x_values):
@@ -77,6 +85,9 @@ class Spreadsheet:
             self.timepoint_pairs.extend( [[timepoint, next_timepoint]
                                         for _ in range(len(columns_by_timepoint[timepoint])
                                                         * len(columns_by_timepoint[next_timepoint]))] )
+    def get_raw_data(self):
+        data_columns = self.get_data_columns()
+        return self.df[data_columns]
 
     def get_data_columns(self):
         # Order the columns by their timepoint (not their days, so we collect across days)
@@ -87,23 +98,30 @@ class Spreadsheet:
     def compute_ordering(self):
         # Runs NITECAP on the data but just to order the features
 
-        data_columns = self.get_data_columns()
-        # TODO: right now this assumes all timepoints have the same number of replicates
-        data = self.df[].values
+        data = self.get_raw_data().values
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
 
         self.df["total_delta"] = td
         self.df = self.df.sort_values(by="total_delta")
-        self.trimmed_df = self.df[data_columns]
+        self.update_dataframe()
+
+    def update_dataframe(self):
+        self.df.to_csv(self.file_path, sep="\t", index=False)
 
     def reduce_dataframe(self, breakpoint):
-        index = self.df.index[self.df['id'] == breakpoint]
-        print(f'trimmed_df rows: {len(self.trimmed_df.index)}')
-        print(f'index[0] {index[0]}')
-        heatmap_df = self.trimmed_df[self.trimmed_df.index < index[0]]
-        print(f'heatmap_df rows: {len(heatmap_df.index)}')
-        return self.trimmed_df[self.trimmed_df.index < index[0]]
+        raw_data = self.get_raw_data()
+        heatmap_df = raw_data.iloc[:breakpoint+1]
+        labels = list(self.df.iloc[:breakpoint+1]["id"])
+        return heatmap_df, labels
+
+    @staticmethod
+    def normalize_data(raw_data):
+        #TODO: do we always want to log first?
+        raw_data = numpy.log(1 + raw_data)
+        means = raw_data.mean(axis=1)
+        stds = raw_data.std(axis=1)
+        return raw_data.sub(means, axis=0).div(stds, axis=0)
 
     def validate(self, column_labels):
         ''' Check spreadhseet for consistency.
@@ -138,6 +156,7 @@ class Spreadsheet:
         return {
             "days": self.days,
             "timepoints": self.timepoints,
+            "uploaded_file_path": self.uploaded_file_path,
             "file_path": self.file_path,
             "column_labels": self.column_labels,
             "num_replicates": self.num_replicates,
@@ -165,8 +184,9 @@ class Spreadsheet:
     def from_json(cls, data):
         days = data['days']
         timepoints = data['timepoints']
+        uploaded_file_path = data['uploaded_file_path']
         file_path = data['file_path']
         column_labels = data['column_labels']
         num_replicates = data['num_replicates']
         breakpoint = data['breakpoint']
-        return cls(days, timepoints, file_path, column_labels, breakpoint, num_replicates)
+        return cls(days, timepoints, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates)
