@@ -25,6 +25,8 @@ class Spreadsheet:
         self.selections = ['Ignore'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
                       for day in range(self.days) for timepoint in range(self.timepoints)]
 
+
+    def column_defaults(self):
         # Try to guess the columns by looking for CT/ZT labels
         default_selections = ['Ignore'] * len(self.df.columns)
         CT_columns = [column for column in self.df.columns if "CT" in column or "ct" in column]
@@ -44,7 +46,7 @@ class Spreadsheet:
             default_selections = ['Ignore' if column not in CT_columns else CT_selections[CT_columns.index(column)]
                                     for column in self.df.columns]
 
-        self.column_defaults = list(zip(self.columns, default_selections))
+        return list(zip(self.columns, default_selections))
 
 
     def identify_columns(self, column_labels):
