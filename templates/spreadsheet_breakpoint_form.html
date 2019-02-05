@@ -87,7 +87,7 @@
 
         $('#row_selector').change(function() {
             $("#coarse_slider").slider( "option", "value", this.value );
-            console.log("Selector changed: " + this.value)
+            console.log("Selector changed: " + labels[this.value]);
               raw_y_values = data[this.value];
               paired_y_values = column_pairs.flatMap( function(pair) {
                     // Nulls get skipped when drawing lines to disconnect our lines
@@ -95,7 +95,7 @@
               });
               console.log(labels[this.value]);
               $('input[name="row_id"]').val(labels[this.value]);
-              console.log("row: " + this.value + ",id: " + labels(this.value))
+              console.log("row: " + this.value + ",id: " + labels[this.value]);
               values = [{x: x_labels, y: paired_y_values,
                   mode: 'lines+markers',
                   marker: marker_settings,

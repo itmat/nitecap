@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, session, flash, redirect, url
 from werkzeug.utils import secure_filename
 import os
 from models.spreadsheet import Spreadsheet
+import pandas as pd
 
 import nitecap
 
@@ -91,6 +92,7 @@ def identify_spreadsheet_columns():
         spreadsheet.identify_columns(column_labels)
 
         spreadsheet.compute_ordering()
+        spreadsheet.trimmed_df.to_csv(f'{spreadsheet.file_path}.out', sep="\t")
         session['spreadsheet'] = spreadsheet.to_json()
         return render_template('spreadsheet_breakpoint_form.html',
                                 data=spreadsheet.trimmed_df.to_json(orient='values'),
@@ -103,8 +105,11 @@ def identify_spreadsheet_columns():
 @app.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
 def set_spreadsheet_breakpoint():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    trimmed_df = pd.read_csv(f'{spreadsheet.file_path}.out', sep="\t")
+    spreadsheet.trimmed_df = trimmed_df
     if request.method == 'POST':
         row_id = request.form['row_id']
+        print(f'Row id: {row_id}')
         data = spreadsheet.reduce_dataframe(row_id).to_json(orient='values')
         heatmap_x_values = []
         for count, x_value in zip(spreadsheet.num_replicates, spreadsheet.x_labels):

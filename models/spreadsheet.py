@@ -100,6 +100,10 @@ class Spreadsheet:
 
     def reduce_dataframe(self, breakpoint):
         index = self.df.index[self.df['id'] == breakpoint]
+        print(f'trimmed_df rows: {len(self.trimmed_df.index)}')
+        print(f'index[0] {index[0]}')
+        heatmap_df = self.trimmed_df[self.trimmed_df.index < index[0]]
+        print(f'heatmap_df rows: {len(heatmap_df.index)}')
         return self.trimmed_df[self.trimmed_df.index < index[0]]
 
     def validate(self, columns):
