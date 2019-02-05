@@ -128,20 +128,26 @@ class Spreadsheet:
 
         In particular, need the column identifies to match what NITECAP can support.
         Every timepoint must have the same number of columns and every day must have all of its timepoints'''
+
+        messages = []
+        error = False
+
         daytimes = [self.label_to_daytime(column_daytime) for column_daytime in column_labels]
         daytimes = [daytime for daytime in daytimes if daytime is not None]
         days = [daytime[0] for daytime in daytimes if daytime is not None]
         times_of_day = [daytime[1] for daytime in daytimes if daytime is not None]
 
         # Check that each day has all the timepoints
-        all_times = set(range(1,self.timepoints+1))
+        all_times = set(range(1, self.timepoints + 1))
         for i in range(self.days):
-            times_in_day = set([time for day, time in daytimes if day == i+1])
+            times_in_day = set([time for day, time in daytimes if day == i + 1])
             if times_in_day != all_times:
                 missing = all_times.difference(times_in_day)
-                return f"Day {i+1} does not have data for all timepoints. Missing timepoint {', '.join(str(time) for time in missing)}"
+                error = True
+                messages.append(f"Day {i + 1} does not have data for all timepoints."
+                                f" Missing timepoint {', '.join(str(time) for time in missing)}")
+        return (error, messages)
 
-        return "okay"
 
     def get_sample_dataframe(self):
         mini_df = self.df[:10]

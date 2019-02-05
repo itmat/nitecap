@@ -1,48 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
 
-  <div id="spreadsheet-display-page" class="container">
+<div id="spreadsheet-display-page" class="container">
     <h2>Identify Columns</h2>
     <p>
-        Shown are the first 10 rows of your data.  Please indicate those columns that represent timepoints.
-        Use the same label from the droplist for each replicate.  All columns not representing timepoints
+        Shown are the first 10 rows of your data. Please indicate those columns that represent timepoints.
+        Use the same label from the droplist for each replicate. All columns not representing timepoints
         should be set to 'Ignore'.
     </p>
-    <form id="spreadsheet-display-form" action="{{ url_for('.identify_spreadsheet_columns') }}" method="post">
-      <table>
-        <tr>
-            {% for heading in spreadsheet.columns %}
-              <th>{{ heading }}</th>
-            {% endfor %}
-        </tr>
-        <tr>
-            {% for heading, default_selection in spreadsheet.column_defaults() %}
-                <th>
-                  <select name="col{{ loop.index }}" id="col{{ loop.index }}">
-                      {% for selection in spreadsheet.get_selection_options() %}
-                          <option value="{{selection}}" {{'selected' if selection == default_selection else ''}} >{{selection}}</option>
-                      {% endfor %}
-                  </select>
-                </th>
-            {% endfor %}
-        </tr>
-        {% for record in spreadsheet.get_sample_dataframe() %}
-          <tr>
-              {% for value in record %}
-                <td>{{ value }}</td>
-              {% endfor %}
-          </tr>
+   {% if messages %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for message in messages %}
+        <div>{{message}}</div>
         {% endfor %}
+    </div>
+    {% endif %}
+    <form id="spreadsheet-display-form" action="{{ url_for('.identify_spreadsheet_columns') }}" method="post">
+        <table>
+            <tr>
+                {% for heading in spreadsheet.columns %}
+                <th>{{ heading }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% for heading, default_selection in spreadsheet.column_defaults() %}
+                <th>
+                    <select name="col{{ loop.index }}" id="col{{ loop.index }}">
+                        {% for selection in spreadsheet.get_selection_options() %}
+                        <option value="{{selection}}" {{
+                        'selected' if selection == default_selection else ''}} >{{selection}}</option>
+                        {% endfor %}
+                    </select>
+                </th>
+                {% endfor %}
+            </tr>
+            {% for record in spreadsheet.get_sample_dataframe() %}
+            <tr>
+                {% for value in record %}
+                <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
 
-      </table>
-      <button type="submit" class="btn btn-primary">Submit</button>
+        </table>
+        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 
-    {% if error %}
-        <p>
-            <div class="badge badge-danger">Error</div> {{ error }}
-        </p>
-    {% endif %}
-
-  </div>
+</div>
 {% endblock %}

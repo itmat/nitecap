@@ -23,7 +23,7 @@ def home():
     return redirect(url_for('.load_spreadsheet'))
 
 @app.route('/load_spreadsheet', methods=['POST','GET'])
-def load_spreadsheet(messages=None):
+def load_spreadsheet():
     if request.method == 'POST':
         # http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
         days = request.form['days']
@@ -61,7 +61,7 @@ def load_spreadsheet(messages=None):
 
         return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet)
 
-    return render_template('spreadsheet_upload_form.html', messages=messages)
+    return render_template('spreadsheet_upload_form.html', messages=[])
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -73,9 +73,9 @@ def identify_spreadsheet_columns():
     if request.method == 'POST':
         column_labels = list(request.form.values())
 
-        validation = spreadsheet.validate(column_labels)
-        if validation is not "okay":
-            return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet, error=validation)
+        error, messages = spreadsheet.validate(column_labels)
+        if error:
+            return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet, messages=messages)
 
         spreadsheet.identify_columns(column_labels)
 
@@ -87,7 +87,7 @@ def identify_spreadsheet_columns():
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 timepoint_pairs = spreadsheet.timepoint_pairs)
-    return render_template('spreadsheet_columns_form.html')
+    return render_template('spreadsheet_columns_form.html', messages=[])
 
 @app.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
 def set_spreadsheet_breakpoint():
