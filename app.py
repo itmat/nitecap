@@ -112,9 +112,11 @@ def set_spreadsheet_breakpoint():
         print(f'Row id: {row_id}')
         data = spreadsheet.reduce_dataframe(row_id).to_json(orient='values')
         heatmap_x_values = []
-        for count, x_value in zip(spreadsheet.num_replicates, spreadsheet.x_labels):
-            for item in range(count):
-                heatmap_x_values.append(f"{x_value} rep {item + 1}")
+        for day in range(spreadsheet.days):
+            for timepoint in range(spreadsheet.timepoints):
+                num_replicates = spreadsheet.num_replicates[timepoint]
+                for rep in range(num_replicates):
+                    heatmap_x_values.append(f"Day{day+1} Timepoint{timepoint+1} Rep{rep+1}")
 
         return render_template('heatmap.html',
                                 data=data,
