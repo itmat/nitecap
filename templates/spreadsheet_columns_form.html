@@ -16,17 +16,17 @@
             {% endfor %}
         </tr>
         <tr>
-            {% for heading, default_selection in spreadsheet.column_defaults %}
+            {% for heading, default_selection in spreadsheet.column_defaults() %}
                 <th>
                   <select name="col{{ loop.index }}" id="col{{ loop.index }}">
-                      {% for selection in spreadsheet.selections %}
+                      {% for selection in spreadsheet.get_selection_options() %}
                           <option value="{{selection}}" {{'selected' if selection == default_selection else ''}} >{{selection}}</option>
                       {% endfor %}
                   </select>
                 </th>
             {% endfor %}
         </tr>
-        {% for record in spreadsheet.sample %}
+        {% for record in spreadsheet.get_sample_dataframe() %}
           <tr>
               {% for value in record %}
                 <td>{{ value }}</td>

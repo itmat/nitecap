@@ -11,8 +11,6 @@ class Spreadsheet:
         self.timepoints = int(timepoints)
         self.file_path = file_path
         self.df = pd.read_csv(self.file_path, sep="\t")
-        mini_df = self.df[:10]
-        self.sample = mini_df.values.tolist()
         self.columns = self.df.columns.values.tolist()
         self.trimmed_df = None
         self.num_replicates = num_replicates
@@ -22,12 +20,11 @@ class Spreadsheet:
         if column_labels:
             self.identify_columns(column_labels)
 
-        self.selections = ['Ignore'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
-                      for day in range(self.days) for timepoint in range(self.timepoints)]
-
 
     def column_defaults(self):
         # Try to guess the columns by looking for CT/ZT labels
+        selections = self.get_selection_options()
+
         default_selections = ['Ignore'] * len(self.df.columns)
         CT_columns = [column for column in self.df.columns if "CT" in column or "ct" in column]
         ZT_columns = [column for column in self.df.columns if "ZT" in column or "zt" in column]
@@ -35,14 +32,14 @@ class Spreadsheet:
         if len(ZT_columns) > 0 and len(ZT_columns) % (self.days*self.timepoints) == 0:
             # Guess we are using ZT
             num_reps = len(ZT_columns) // (self.days*self.timepoints)
-            ZT_selections = [self.selections[1+i] for i in range(self.days*self.timepoints) for _ in range(num_reps)]
+            ZT_selections = [selections[1+i] for i in range(self.days*self.timepoints) for _ in range(num_reps)]
             default_selections = ['Ignore' if column not in ZT_columns else ZT_selections[ZT_columns.index(column)]
                                     for column in self.df.columns]
 
         if len(CT_columns) > 0 and len(CT_columns) % (self.days*self.timepoints) == 0 and len(CT_columns) > len(ZT_columns):
             # Guess we are using CT
             num_reps = len(CT_columns) // (self.days*self.timepoints)
-            CT_selections = [self.selections[1+i] for i in range(self.days*self.timepoints) for _ in range(num_reps)]
+            CT_selections = [selections[1+i] for i in range(self.days*self.timepoints) for _ in range(num_reps)]
             default_selections = ['Ignore' if column not in CT_columns else CT_selections[CT_columns.index(column)]
                                     for column in self.df.columns]
 
@@ -130,6 +127,15 @@ class Spreadsheet:
                 return f"Day {i+1} does not have data for all timepoints. Missing timepoint {', '.join(str(time) for time in missing)}"
 
         return "okay"
+
+    def get_sample_dataframe(self):
+        mini_df = self.df[:10]
+        return mini_df.values.tolist()
+
+    def get_selection_options(self):
+        return ['Ignore'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
+                      for day in range(self.days) for timepoint in range(self.timepoints)]
+
 
     def to_json(self):
         return {
