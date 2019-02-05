@@ -86,7 +86,6 @@ def identify_spreadsheet_columns():
 
         validation = spreadsheet.validate(column_labels)
         if validation is not "okay":
-            spreadsheet.column_defaults = list(zip(spreadsheet.columns, column_labels))
             return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet, error=validation)
 
         spreadsheet.identify_columns(column_labels)
