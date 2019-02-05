@@ -1,35 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
-    <script>
+<script>
 
-    $( document ).ready(function() {
+    $(document).ready(function () {
 
         labels = {{ ids | safe }};
-
         x_values = {{ x_values | safe }};
         data = {{ data | safe }};
-        column_pairs = {{ column_pairs | safe}}
-        timepoint_pairs = {{timepoint_pairs | safe }}.flatMap(function(pair) {
+        column_pairs = {{ column_pairs | safe }};
+        timepoint_pairs = {{ timepoint_pairs | safe }}.flatMap(function (pair) {
             // Nulls get skipped when drawing lines to disconnect our lines
             return [pair[0], pair[1], null];
         });
 
-
-        x_labels = timepoint_pairs.map(function(item) {
-            return(item != undefined ? x_values[item]: null);
+        x_labels = timepoint_pairs.map(function (item) {
+            return (item != undefined ? x_values[item] : null);
         });
 
         y_values = [];
         trace_name = 'Nothing selected';
-        marker_settings = { size: 12, symbol: 'circle-open', color: '#FF00FF'};
+        marker_settings = {size: 12, symbol: 'circle-open', color: '#FF00FF'};
 
         var scatter_plot = document.getElementById('scatter_plot');
 
         var layout = {
-            xaxis: {
-            },
-            yaxis: {
-            },
+            xaxis: {},
+            yaxis: {},
             legend: {
                 y: 0.5,
                 yref: 'paper',
@@ -38,18 +34,18 @@
                     size: 20,
                     color: 'grey'
                 }
-             },
-            title:'Plot Title Here'
+            },
+            title: 'Plot Title Here'
         };
 
         var values = [{
-	        x: x_values,
-	        y: y_values,
+            x: x_values,
+            y: y_values,
             name: trace_name,
             type: 'scatter',
             mode: 'lines+markers',
             marker: marker_settings
-	    }];
+        }];
 
         Plotly.newPlot(scatter_plot, values, layout);
 
@@ -59,74 +55,89 @@
             value: 0,
             step: 1,
             max: labels.length,
-          slide: function (event, ui) {
-              $("#row_selector").val(ui.value);
-              raw_y_values = data[ui.value];
-              paired_y_values = column_pairs.flatMap( function(pair) {
+            slide: function (event, ui) {
+                $("#row_selector").val(ui.value);
+                raw_y_values = data[ui.value];
+                paired_y_values = column_pairs.flatMap(function (pair) {
                     // Nulls get skipped when drawing lines to disconnect our lines
                     return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
-              });
-              $('input[name="row_index"]').val(ui.value);
-              values = [{x: x_labels, y: paired_y_values,
-                  mode: 'lines+markers',
-                  marker: marker_settings,
-                  name: labels[ui.value],
-                  type: 'scatter'}];
-              Plotly.react(scatter_plot, values);
-          }
+                });
+                $('input[name="row_index"]').val(ui.value);
+                values = [{
+                    x: x_labels, y: paired_y_values,
+                    mode: 'lines+markers',
+                    marker: marker_settings,
+                    name: labels[ui.value],
+                    type: 'scatter'
+                }];
+                Plotly.react(scatter_plot, values);
+            }
         });
 
         y_values = data[$("#course_slider").value];
 
-        values = [{x: x_values, y: y_values,
+        values = [{
+            x: x_values, y: y_values,
             type: 'scatter',
             name: trace_name,
             marker: marker_settings,
-            mode: 'lines+markers'}];
+            mode: 'lines+markers'
+        }];
         Plotly.react(scatter_plot, values);
 
-        $('#row_selector').change(function() {
-            $("#coarse_slider").slider( "option", "value", this.value );
+        $('#row_selector').change(function () {
+            $("#coarse_slider").slider("option", "value", this.value);
             console.log("Selector changed: " + labels[this.value]);
-              raw_y_values = data[this.value];
-              paired_y_values = column_pairs.flatMap( function(pair) {
-                    // Nulls get skipped when drawing lines to disconnect our lines
-                    return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
-              });
-              console.log(labels[this.value]);
-              $('input[name="row_index"]').val(this.value);
-              console.log("row: " + this.value + ",id: " + labels[this.value]);
-              values = [{x: x_labels, y: paired_y_values,
-                  mode: 'lines+markers',
-                  marker: marker_settings,
-                  name: labels[this.value],
-                  type: 'scatter'}];
-              Plotly.react(scatter_plot, values);
+            raw_y_values = data[this.value];
+            paired_y_values = column_pairs.flatMap(function (pair) {
+                // Nulls get skipped when drawing lines to disconnect our lines
+                return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
+            });
+            console.log(labels[this.value]);
+            $('input[name="row_index"]').val(this.value);
+            console.log("row: " + this.value + ",id: " + labels[this.value]);
+            values = [{
+                x: x_labels, y: paired_y_values,
+                mode: 'lines+markers',
+                marker: marker_settings,
+                name: labels[this.value],
+                type: 'scatter'
+            }];
+            Plotly.react(scatter_plot, values);
         });
 
         $.each(labels, function (i, label) {
             $('#row_selector').append($('<option>', {
                 value: i,
-                text : label
+                text: label
             }));
         });
 
     });
-    </script>
+</script>
 
-    <div id="spreadsheet-breakpoint-page" class="container">
-        <div id="coarse_slider" class="coarse-slider"></div>
-        <div>
-            <div style="display: inline-block">
-                <select size="20" name="row_selector" id="row_selector">
-                </select>
+<div id="heatmap-page" class="page-header">
+    <h1>Find Breakpoint <small>Data sorted by circadian behavior</small></h1>
+</div>
+<div id="spreadsheet-breakpoint-page" class="container">
+    <div id="coarse_slider" class="coarse-slider"></div>
+    <p style="margin:auto">Less Circadian <i class="fas fa-arrow-right"></i></p>
+    <div>
+        <div class='row'>
+            <div class='col-xs-1' style="position:relative">
+                <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Circadian</span>
             </div>
-            <div id="scatter_plot" style="width:600px;height:450px;display:inline-block"></div>
+            <div class='col-xs-11 ...'>
+                <div style="display:inline-block;">
+                    <select size="20" name="row_selector" id="row_selector">
+                    </select>
+                </div>
+                <div id="scatter_plot" style="width:600px;height:450px;display:inline-block"></div>
+            </div>
         </div>
         <div>
-
             <form method="post" action="{{ url_for('.set_spreadsheet_breakpoint') }}">
-                <input type="hidden" id="row_index" name="row_index" />
+                <input type="hidden" id="row_index" name="row_index"/>
                 <button type="submit" class="btn btn-primary">Set Breakpoint</button>
             </form>
         </div>

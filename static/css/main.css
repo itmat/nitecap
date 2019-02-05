@@ -27,3 +27,13 @@
 .server-errors > div {
     padding-left: 5px;
 }
+
+.selector-info {
+    padding: 0 1em;
+    top: 50px;
+    left: -20px;
+    position: absolute;
+    transform-origin: center right;
+    transform: translate(-100%,-50%) rotate(-90deg);
+    white-space:nowrap;
+}

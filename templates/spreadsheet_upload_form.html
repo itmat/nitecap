@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div id="spreadsheet-details-page" class="container">
-    <h1>Welcome to NITECAP</h1>
+<div class="page-header">
+    <h1>Load Spreadsheet <small>Expecting csv, txt or xlsx fomats</small></h1>
+</div>
+
+
     <p>We first need a few details about your spreadsheet along with the spreadsheet itself</p>
 
     {% if messages %}
@@ -29,5 +32,5 @@
         </div>
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
-</div>
+
 {% endblock %}
