@@ -11,7 +11,6 @@ class Spreadsheet:
         self.timepoints = int(timepoints)
         self.file_path = file_path
         self.df = pd.read_csv(self.file_path, sep="\t")
-        self.columns = self.df.columns.values.tolist()
         self.trimmed_df = None
         self.num_replicates = num_replicates
         self.data_columns = None
@@ -43,7 +42,7 @@ class Spreadsheet:
             default_selections = ['Ignore' if column not in CT_columns else CT_selections[CT_columns.index(column)]
                                     for column in self.df.columns]
 
-        return list(zip(self.columns, default_selections))
+        return list(zip(self.df.columns, default_selections))
 
 
     def identify_columns(self, column_labels):
@@ -105,15 +104,12 @@ class Spreadsheet:
         print(f'heatmap_df rows: {len(heatmap_df.index)}')
         return self.trimmed_df[self.trimmed_df.index < index[0]]
 
-    def validate(self, columns):
+    def validate(self, column_labels):
         ''' Check spreadhseet for consistency.
 
         In particular, need the column identifies to match what NITECAP can support.
         Every timepoint must have the same number of columns and every day must have all of its timepoints'''
-        if self.columns is None:
-            return "No columns selected"
-
-        daytimes = [self.label_to_daytime(column_daytime) for column_daytime in columns]
+        daytimes = [self.label_to_daytime(column_daytime) for column_daytime in column_labels]
         daytimes = [daytime for daytime in daytimes if daytime is not None]
         days = [daytime[0] for daytime in daytimes if daytime is not None]
         times_of_day = [daytime[1] for daytime in daytimes if daytime is not None]
@@ -142,7 +138,6 @@ class Spreadsheet:
             "days": self.days,
             "timepoints": self.timepoints,
             "file_path": self.file_path,
-            "columns": self.columns,
             "column_labels": self.column_labels,
             "num_replicates": self.num_replicates,
             "breakpoint": self.breakpoint,
