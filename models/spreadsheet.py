@@ -13,7 +13,6 @@ class Spreadsheet:
         self.df = pd.read_csv(self.file_path, sep="\t")
         self.trimmed_df = None
         self.num_replicates = num_replicates
-        self.data_columns = None
         self.column_labels = column_labels
         self.breakpoint = breakpoint
         if column_labels:
@@ -79,22 +78,24 @@ class Spreadsheet:
                                         for _ in range(len(columns_by_timepoint[timepoint])
                                                         * len(columns_by_timepoint[next_timepoint]))] )
 
+    def get_data_columns(self):
         # Order the columns by their timepoint (not their days, so we collect across days)
         filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels) if label != 'Ignore']
         ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1])[1] )
-        self.data_columns = [column for column, label in ordered_columns]
+        return [column for column, label in ordered_columns]
 
     def compute_ordering(self):
         # Runs NITECAP on the data but just to order the features
 
+        data_columns = self.get_data_columns()
         # TODO: right now this assumes all timepoints have the same number of replicates
-        data = self.df[self.data_columns].values
+        data = self.df[].values
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
 
         self.df["total_delta"] = td
         self.df = self.df.sort_values(by="total_delta")
-        self.trimmed_df = self.df[self.data_columns]
+        self.trimmed_df = self.df[data_columns]
 
     def reduce_dataframe(self, breakpoint):
         index = self.df.index[self.df['id'] == breakpoint]
