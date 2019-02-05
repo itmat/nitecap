@@ -17,3 +17,13 @@
 .coarse-slider:hover {
     opacity: 1;
 }
+
+
+.server-errors {
+    padding: 3px 0 5px 3px;
+    color: red;
+}
+
+.server-errors > div {
+    padding-left: 5px;
+}

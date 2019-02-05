@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 import os
 from models.spreadsheet import Spreadsheet
 import pandas as pd
+from util import check_number
 
 import nitecap
 
@@ -22,57 +23,45 @@ def home():
     return redirect(url_for('.load_spreadsheet'))
 
 @app.route('/load_spreadsheet', methods=['POST','GET'])
-def load_spreadsheet():
+def load_spreadsheet(messages=None):
     if request.method == 'POST':
         # http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
         days = request.form['days']
         timepoints = request.form['timepoints']
-        upload_file = request.files['upload_file']
+        upload_file = request.files['upload_file'] if 'upload_file' in request.files else None
 
         # Validate and give errors
         error = False
-        try:
-            if int(days) < 1:
-                flash("Number of days must be at least 1")
+        messages = []
+
+        if not check_number(days):
+            messages.append(f"The value for days is required and must be a positve integer.")
+            error = True
+        if not check_number(timepoints):
+            messages.append(f"The value for timepoints is required and must be a positve integer.")
+            error = True
+        if not upload_file:
+            messages.append(f'No spreadsheet file was provided.')
+            error = True
+        else:
+            if not len(upload_file.filename):
+                messages.append(f'No spreadsheet file was provided.')
                 error = True
-        except ValueError:
-            flash("Number of days must be an integer")
-            error = True
-
-        try:
-            if int(timepoints) < 1:
+            if not allowed_file(upload_file.filename):
+                messages.append(f"File must be one of the following types: {', '.join(ALLOWED_EXTENSIONS)}")
                 error = True
-                flash("Timepoints must be at least 1")
-        except ValueError:
-            flash("Timepoints must be an integer")
-            error = True
-
-        if 'upload_file' not in request.files:
-            flash('No file part')
-            error = True
-        # if user does not select file, browser also
-        # submit an empty part without filename
-        if upload_file.filename == '':
-            flash('No selected file')
-            error = True
-
-        if not allowed_file(upload_file.filename):
-            flash(f"File must be one of the following types: {', '.join(ALLOWED_EXTENSIONS)}")
-            error = True
-
         if error:
-            return load_spreadsheet()
+            return render_template('spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
 
-        if upload_file and allowed_file(upload_file.filename):
-            filename = secure_filename(upload_file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            upload_file.save(file_path)
-            spreadsheet = Spreadsheet(days, timepoints, file_path)
-            session['spreadsheet'] = spreadsheet.to_json()
+        filename = secure_filename(upload_file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        upload_file.save(file_path)
+        spreadsheet = Spreadsheet(days, timepoints, file_path)
+        session['spreadsheet'] = spreadsheet.to_json()
 
         return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet)
 
-    return render_template('spreadsheet_upload_form.html')
+    return render_template('spreadsheet_upload_form.html', messages=messages)
 
 def allowed_file(filename):
     return '.' in filename and \

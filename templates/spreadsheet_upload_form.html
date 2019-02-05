@@ -1,21 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
-    <div id="spreadsheet-details-page" class="container">
+
+<div id="spreadsheet-details-page" class="container">
     <h1>Welcome to NITECAP</h1>
-        <p>We first need a few details about your spreadsheet along with the spreadsheet itself</p>
-    <form id="spreadsheet-details-form"  action="{{ url_for('.load_spreadsheet') }}" method="post" enctype="multipart/form-data">
+    <p>We first need a few details about your spreadsheet along with the spreadsheet itself</p>
+
+    {% if messages %}
+    <div class="server-errors">
+        Errors:
+        {% for message in messages %}
+        <div>{{message}}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form id="spreadsheet-details-form" action="{{ url_for('.load_spreadsheet') }}" method="post"
+          enctype="multipart/form-data">
         <div class="form-group">
             <label for="days">Enter Number of Days of Data:</label>
-            <input type="number" id="days" name="days" class="form-control" />
+            <input type="number" id="days" name="days" class="form-control" value="{{days}}"/>
         </div>
         <div class="form-group">
             <label for="timepoints">Enter the Number of Timepoints Per Day:</label>
-            <input type="number" id="timepoints" name="timepoints" class="form-control" />
+            <input type="number" id="timepoints" name="timepoints" class="form-control" value="{{timepoints}}"/>
         </div>
         <div class="form-group">
             <input type="file" id="upload_file" name="upload_file">
         </div>
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
-    </div>
+</div>
 {% endblock %}
