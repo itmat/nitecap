@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy
 import re
+from util import check_number
 from collections import OrderedDict
 
 import nitecap
@@ -115,6 +116,20 @@ class Spreadsheet:
         labels = list(self.df.iloc[:breakpoint+1]["id"])
         return heatmap_df, labels
 
+    def check_breakpoint(self, breakpoint):
+        error = False
+        messages = []
+        if not check_number(breakpoint):
+            error = True
+            messages = f"The breakpoint must be a valid integer."
+        elif breakpoint > len(self.df.index):
+            error = True
+            messages = f"The breakpoin must point to a row inside the spreadsheet."
+        return error, messages
+
+
+
+
     @staticmethod
     def normalize_data(raw_data):
         #TODO: do we always want to log first?
@@ -175,7 +190,7 @@ class Spreadsheet:
             "file_path": self.file_path,
             "column_labels": self.column_labels,
             "num_replicates": self.num_replicates,
-            "breakpoint": self.breakpoint,
+            "breakpoint": self.breakpoint
         }
 
     def label_to_daytime(self, label):

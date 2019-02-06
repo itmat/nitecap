@@ -59,7 +59,7 @@ def load_spreadsheet():
         spreadsheet = Spreadsheet(days, timepoints, uploaded_file_path = file_path)
         session['spreadsheet'] = spreadsheet.to_json()
 
-        return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet)
+        return redirect(url_for('.identify_spreadsheet_columns'))
 
     return render_template('spreadsheet_upload_form.html', messages=[])
 
@@ -81,37 +81,17 @@ def identify_spreadsheet_columns():
 
         spreadsheet.compute_ordering()
         session['spreadsheet'] = spreadsheet.to_json()
-        return render_template('spreadsheet_breakpoint_form.html',
-                                data=spreadsheet.get_raw_data().to_json(orient='values'),
-                                x_values=spreadsheet.x_labels,
-                                ids=list(spreadsheet.df['id']),
-                                column_pairs=spreadsheet.column_pairs,
-                                timepoint_pairs = spreadsheet.timepoint_pairs)
-    return render_template('spreadsheet_columns_form.html', messages=[])
+        return redirect(url_for('.set_spreadsheet_breakpoint'))
+    return render_template('spreadsheet_columns_form.html', spreadsheet=spreadsheet, messages=[])
 
 @app.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
 def set_spreadsheet_breakpoint():
     spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
     if request.method == 'POST':
         row_index = int(request.form['row_index'])
-        print(f'Row id: {row_index}')
-        data, labels = spreadsheet.reduce_dataframe(row_index)
-        data = spreadsheet.normalize_data(data)
-        print(f"datashape {data.shape} label {len(labels)}")
-        heatmap_x_values = []
-        for day in range(spreadsheet.days):
-            for timepoint in range(spreadsheet.timepoints):
-                num_replicates = spreadsheet.num_replicates[timepoint]
-                for rep in range(num_replicates):
-                    heatmap_x_values.append(f"Day{day+1} Timepoint{timepoint+1} Rep{rep+1}")
-
-        return render_template('heatmap.html',
-                                data=data.to_json(orient='values'),
-                                x_values=spreadsheet.x_labels,
-                                heatmap_x_values = heatmap_x_values,
-                                ids=labels,
-                                column_pairs=spreadsheet.column_pairs,
-                                timepoint_pairs = spreadsheet.timepoint_pairs)
+        spreadsheet.breakpoint = row_index
+        session['spreadsheet'] = spreadsheet.to_json()
+        return redirect(url_for('.display_heatmap'))
 
     data = spreadsheet.get_raw_data()
     return render_template('spreadsheet_breakpoint_form.html',
@@ -120,6 +100,27 @@ def set_spreadsheet_breakpoint():
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 timepoint_pairs = spreadsheet.timepoint_pairs)
+
+
+@app.route('/heatmap', methods=['GET','POST'])
+def display_heatmap():
+    spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
+    data = spreadsheet.normalize_data(data)
+    heatmap_x_values = []
+    for day in range(spreadsheet.days):
+        for timepoint in range(spreadsheet.timepoints):
+            num_replicates = spreadsheet.num_replicates[timepoint]
+            for rep in range(num_replicates):
+                heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
+    return render_template('/heatmap.html',
+                           data=data.to_json(orient='values'),
+                           x_values=spreadsheet.x_labels,
+                           heatmap_x_values=heatmap_x_values,
+                           ids=labels,
+                           column_pairs=spreadsheet.column_pairs,
+                           timepoint_pairs=spreadsheet.timepoint_pairs)
+
 
 
 if __name__ == '__main__':
