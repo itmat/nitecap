@@ -133,8 +133,10 @@ class Spreadsheet:
         error = False
 
         retained_columns = [column for column, label in zip(self.df.columns, column_labels) if label != 'Ignore']
+        type_pattern = re.compile(r"^([a-zA-Z]+)\d*$")
         for retained_column in retained_columns:
-            if self.df[retained_column].dtype not in ['int64', 'float64']:
+            type_match = re.match(type_pattern, str(self.df[retained_column].dtype))
+            if not type_match or type_match.group(1) not in ['int', 'uint', 'float']:
                 error = True
                 messages.append(f"Column '{retained_column}' must contain only numerical data to be employed as a timepoint.")
 
