@@ -70,7 +70,10 @@
                     name: labels[ui.value],
                     type: 'scatter'
                 }];
-                Plotly.react(scatter_plot, values);
+                var layout = {
+                    title: labels[ui.value]
+                };
+                Plotly.react(scatter_plot, values, layout);
             }
         });
 
@@ -92,7 +95,10 @@
                 name: labels[this.value],
                 type: 'scatter'
             }];
-            Plotly.react(scatter_plot, values);
+            var layout = {
+                title: labels[this.value]
+            };
+            Plotly.react(scatter_plot, values, layout);
         });
 
         $.each(labels, function (i, label) {
