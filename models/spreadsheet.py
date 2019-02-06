@@ -132,6 +132,13 @@ class Spreadsheet:
         messages = []
         error = False
 
+        retained_columns = [column for column, label in zip(self.df.columns, column_labels) if label != 'Ignore']
+        for retained_column in retained_columns:
+            if self.df[retained_column].dtype not in ['int64', 'float64']:
+                error = True
+                messages.append(f"Column '{retained_column}' must contain only numerical data to be employed as a timepoint.")
+
+
         daytimes = [self.label_to_daytime(column_daytime) for column_daytime in column_labels]
         daytimes = [daytime for daytime in daytimes if daytime is not None]
         days = [daytime[0] for daytime in daytimes if daytime is not None]

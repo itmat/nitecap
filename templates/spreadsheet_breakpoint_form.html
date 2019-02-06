@@ -23,21 +23,6 @@
 
         var scatter_plot = document.getElementById('scatter_plot');
 
-        var layout = {
-            xaxis: {},
-            yaxis: {},
-            legend: {
-                y: 0.5,
-                yref: 'paper',
-                font: {
-                    family: 'Arial, sans-serif',
-                    size: 20,
-                    color: 'grey'
-                }
-            },
-            title: 'Plot Title Here'
-        };
-
         var values = [{
             x: x_values,
             y: Array(x_values.length).fill(0),
@@ -47,7 +32,9 @@
             marker: marker_settings
         }];
 
-        Plotly.newPlot(scatter_plot, values, layout);
+        // This empty plot should be quickly replaced since we trigger a select change event once everything is
+        // set up.
+        Plotly.newPlot(scatter_plot, values);
 
         $("#coarse_slider").slider({
             orientation: "horizontal",
