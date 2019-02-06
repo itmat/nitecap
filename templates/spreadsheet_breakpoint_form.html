@@ -40,7 +40,7 @@
 
         var values = [{
             x: x_values,
-            y: y_values,
+            y: Array(x_values.length).fill(0),
             name: trace_name,
             type: 'scatter',
             mode: 'lines+markers',
@@ -74,17 +74,6 @@
             }
         });
 
-        y_values = data[$("#course_slider").value];
-
-        values = [{
-            x: x_values, y: y_values,
-            type: 'scatter',
-            name: trace_name,
-            marker: marker_settings,
-            mode: 'lines+markers'
-        }];
-        Plotly.react(scatter_plot, values);
-
         $('#row_selector').change(function () {
             $("#coarse_slider").slider("option", "value", this.value);
             console.log("Selector changed: " + labels[this.value]);
@@ -93,7 +82,7 @@
                 // Nulls get skipped when drawing lines to disconnect our lines
                 return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
             });
-            console.log(labels[this.value]);
+            console.log(this.value, labels[this.value]);
             $('input[name="row_index"]').val(this.value);
             console.log("row: " + this.value + ",id: " + labels[this.value]);
             values = [{
@@ -112,6 +101,8 @@
                 text: label
             }));
         });
+
+        $('#row_selector').val(0).trigger("change");
 
     });
 </script>
