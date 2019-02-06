@@ -21,14 +21,14 @@
           enctype="multipart/form-data">
         <div class="form-group">
             <label for="days">Enter Number of Days of Data:</label>
-            <input type="number" id="days" name="days" class="form-control" value="{{days}}"/>
+            <input type="number" id="days" name="days" class="form-control" value="{{days}}" required />
         </div>
         <div class="form-group">
             <label for="timepoints">Enter the Number of Timepoints Per Day:</label>
-            <input type="number" id="timepoints" name="timepoints" class="form-control" value="{{timepoints}}"/>
+            <input type="number" id="timepoints" name="timepoints" class="form-control" value="{{timepoints}}" required />
         </div>
         <div class="form-group">
-            <input type="file" id="upload_file" name="upload_file">
+            <input type="file" id="upload_file" name="upload_file" required>
         </div>
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>

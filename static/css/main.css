@@ -37,3 +37,14 @@
     transform: translate(-100%,-50%) rotate(-90deg);
     white-space:nowrap;
 }
+
+.colIdTableScroll{
+    margin:auto;
+    width:1100px;
+    max-width:1100px;
+    overflow-x:scroll;
+}
+
+#colIdentityTable th, td {
+    white-space: nowrap;
+}
