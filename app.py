@@ -4,8 +4,9 @@ from flask import Flask, render_template, request, session, flash, redirect, url
 from werkzeug.utils import secure_filename
 import os
 from models.spreadsheet import Spreadsheet
-import pandas as pd
+from db import db
 from util import check_number
+from models.user import User
 
 import nitecap
 
@@ -14,9 +15,15 @@ ALLOWED_EXTENSIONS = set(['txt', 'csv', 'xlsx'])
 
 app = Flask(__name__)
 app.secret_key = 'cris'
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///nitecap.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.debug = True
 
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
 
 @app.route('/', methods=['GET'])
 def home():
@@ -122,6 +129,49 @@ def display_heatmap():
                            timepoint_pairs=spreadsheet.timepoint_pairs)
 
 
+@app.route('/register', methods=['GET','POST'])
+def register_user():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        user, error, messages = User.register_user(username, email, password)
+        if error:
+            return render_template('/registration_form.html', username=username, email=email, messages=messages)
+        if user:
+            return render_template('/registration_form.html', confirmation_sent=True, username=username, email=email)
+        return redirect(url_for(".load_spreadsheet"))
+    else:
+        return render_template('/registration_form.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login_user():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user, error, messages = User.login_user(username, password)
+        if error:
+            return render_template('/login_form.html', username=username, messages=messages)
+        if user:
+            session['email'] = user.email
+        return redirect(url_for(".load_spreadsheet"))
+    else:
+        return render_template('/login_form.html')
+
+@app.route('/logout', methods=['GET'])
+def logout_user():
+    session['email'] = None
+    return render_template('spreadsheet_upload_form.html')
+
+@app.route('/confirm_user/<int:_id>', methods=['GET'])
+def confirm_user(_id):
+    user = User.confirm_user(_id)
+    if user:
+        session['email'] = user.email
+        return render_template('/user_confirmed.html', username=user.username, email=user.email)
+    return "?"
+
 
 if __name__ == '__main__':
+    db.init_app(app)
     app.run()

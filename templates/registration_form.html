@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>
+        {% if confirmation_sent %}
+            User Confirmation Sent
+        {% else %}
+            User Registration
+        {% endif %}
+    </h1>
+</div>
+    {% if messages %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for message in messages %}
+        <div>{{message}}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if confirmation_sent %}
+        <div class="confirmation">
+            A confirmation message has emailed to you at <em>{{ email }}</em>.  Your login will be enabled once
+            you click on the link provided in that email.
+        </div>
+    {% else %}
+    <form id="registration-form" action="{{ url_for('.register_user') }}" method="post">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" class="form-control" value="{{username}}"
+                   maxlength="150"  aria-describedby="usernameHelp" />
+            <p id="usernameHelp">This is optional.  If not filled in, we will just make your email address your username.</p>
+        </div>
+        <div class="form-group">
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" class="form-control" value="{{email}}" maxlength="150" required />
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" class="form-control" maxlength="100" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Register</button>
+    </form>
+    {% endif %}
+
+{% endblock %}
