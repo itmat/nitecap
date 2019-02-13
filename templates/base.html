@@ -31,11 +31,11 @@
             </ul>
             <ul class="nav navbar-nav ml-auto">
                 {% if not session['email'] %}
-                    <li class="nav-item"><a class="nav-link" href="{{url_for('.register_user') }}">Register</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{url_for('.login_user') }}">Login</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('users.register_user') }}">Register</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('users.login_user') }}">Login</a></li>
                 {% else %}
                 <li class="nav-item"><a class="nav-link" href="#">Welcome {{ session['email'] }}</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{url_for('.logout_user') }}">Logout</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
                 {% endif %}
                 <li class="nav-item"><a class="nav-link" href="#"></a></li>
             </ul>

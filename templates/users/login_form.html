@@ -12,7 +12,7 @@
         {% endfor %}
     </div>
     {% endif %}
-    <form id="login-form" action="{{ url_for('.login_user') }}" method="post">
+    <form id="login-form" action="{{ url_for('users.login_user') }}" method="post">
         <div class="form-group">
             <label for="username">Username or Email Address:</label>
             <input type="username" id="username" name="username" class="form-control" value="{{username}}"

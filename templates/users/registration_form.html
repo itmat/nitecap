@@ -23,7 +23,7 @@
             you click on the link provided in that email.
         </div>
     {% else %}
-    <form id="registration-form" action="{{ url_for('.register_user') }}" method="post">
+    <form id="registration-form" action="{{ url_for('users.register_user') }}" method="post">
         <div class="form-group">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" class="form-control" value="{{username}}"

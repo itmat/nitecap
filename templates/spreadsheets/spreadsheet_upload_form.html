@@ -17,7 +17,7 @@
     </div>
     {% endif %}
 
-    <form id="spreadsheet-details-form" action="{{ url_for('.load_spreadsheet') }}" method="post"
+    <form id="spreadsheet-details-form" action="{{ url_for('spreadsheets.load_spreadsheet') }}" method="post"
           enctype="multipart/form-data">
         <div class="form-group">
             <label for="days">Enter Number of Days of Data:</label>

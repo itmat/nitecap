@@ -1,8 +1,9 @@
 import datetime
 import smtplib
-
+#from app import app
 from db import db
 from email.message import EmailMessage
+import constants
 
 
 class User(db.Model):
@@ -13,7 +14,6 @@ class User(db.Model):
     password = db.Column(db.String(100), nullable=False)
     activated = db.Column(db.Boolean, default=False)
     last_access = db.Column(db.DateTime)
-
 
     def __init__(self, username, email, password, activated = False, last_access=None):
         self.username = username
@@ -26,7 +26,7 @@ class User(db.Model):
         return f"<User id:{self.id}, username: {self.username}, email: {self.email} last acess: {self.last_access}>"
 
     @staticmethod
-    def register_user(username, email, password, sender, server):
+    def register_user(username, email, password):
         messages = []
         error = False
         user = User.find_by_email(email)
@@ -45,7 +45,7 @@ class User(db.Model):
             else:
                 user = User(username, email, password)
                 user.save_to_db()
-                user.send_confirmation_email(sender, server)
+                user.send_confirmation_email()
         return user, error, messages
 
     @staticmethod
@@ -74,12 +74,12 @@ class User(db.Model):
                     user = None
         return user, error, messages
 
-    def send_confirmation_email(self, sender, server):
+    def send_confirmation_email(self):
         email = EmailMessage()
         email['Subject'] = 'User registration confirmation for Nitecap access'
-        email['From'] = sender
+        email['From'] = constants.EMAIL_SENDER
         email['To'] = self.email
-        email.set_content(f'Please click on this link to confirm your registration. http://{server}/confirm_user/{self.id}')
+        email.set_content(f'Please click on this link to confirm your registration. http://{constants.SERVER}/users/confirm_user/{self.id}')
         s = smtplib.SMTP(host='127.0.0.1', port=25)
         #s.starttls()
         #s.login('you@gmail.com', 'password')
