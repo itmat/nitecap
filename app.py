@@ -8,17 +8,9 @@ from db import db
 from util import check_number
 from models.user import User
 
-import nitecap
-
-UPLOAD_FOLDER = '/tmp/uploads'
-ALLOWED_EXTENSIONS = set(['txt', 'csv', 'xlsx'])
-
 app = Flask(__name__)
-app.secret_key = 'cris'
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///nitecap.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.debug = True
+
+app.config.from_object('config')
 
 
 @app.before_first_request
@@ -72,7 +64,7 @@ def load_spreadsheet():
 
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 @app.route('/identify_spreadsheet_columns', methods=['GET','POST'])
 def identify_spreadsheet_columns():
@@ -135,7 +127,7 @@ def register_user():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        user, error, messages = User.register_user(username, email, password)
+        user, error, messages = User.register_user(username, email, password, app.config['EMAIL_SENDER'], app.config['SERVER'])
         if error:
             return render_template('/registration_form.html', username=username, email=email, messages=messages)
         if user:
