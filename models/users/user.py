@@ -1,6 +1,6 @@
 import datetime
 import smtplib
-#from app import app
+from security import check_encrypted_password, encrypt_password
 from db import db
 from email.message import EmailMessage
 import constants
@@ -43,9 +43,15 @@ class User(db.Model):
                 error = True
                 user = None
             else:
-                user = User(username, email, password)
-                user.save_to_db()
-                user.send_confirmation_email()
+                if not password:
+                    messages.append("You must supply a password.")
+                    error = True
+                    user = None
+                else:
+                    password = encrypt_password(password)
+                    user = User(username, email, password)
+                    user.save_to_db()
+                    user.send_confirmation_email()
         return user, error, messages
 
     @staticmethod
@@ -60,7 +66,7 @@ class User(db.Model):
                 error = True
                 user = None
         if user:
-            if user.password != password:
+            if not check_encrypted_password(password, user.password):
                 messages.append("Invalid credentials.  Try again.")
                 error = True
                 user = None
