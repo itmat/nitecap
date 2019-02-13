@@ -1,5 +1,7 @@
 from passlib.context import CryptContext
 
+# Simply followed this url:  http://blog.tecladocode.com/learn-python-encrypting-passwords-python-flask-and-passlib/
+
 pwd_context = CryptContext(
         schemes=["pbkdf2_sha256"],
         default="pbkdf2_sha256",
