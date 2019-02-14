@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 from db import db
+import os
 
 app = Flask(__name__)
 app.config.from_object('config')
@@ -19,4 +20,6 @@ app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 if __name__ == '__main__':
     db.init_app(app)
+    app.secret_key = os.environ.get("SECRET_KEY")
+    app.debug = bool(os.environ.get("DEBUG", 'False'))
     app.run()
