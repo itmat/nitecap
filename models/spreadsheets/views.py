@@ -3,6 +3,8 @@ from flask import Blueprint, request, session, url_for, redirect, render_templat
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
+from pathlib import Path
+import uuid
 import constants
 from util import check_number
 
@@ -46,15 +48,19 @@ def load_spreadsheet():
         if error:
             return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
 
+        # Not really necessary since we re-name the file.
         filename = secure_filename(upload_file.filename)
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), filename)
+
+        extension = Path(filename).suffix
+        new_filename = uuid.uuid4().hex + extension
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
         upload_file.save(file_path)
 
         # For any files masquerading as one of the acceptable file types by virtue of its file extension, it appears we
         # can only identify it when pandas fails to parse it while creating a spreadsheet object.  We throw the file
         # away and report the error.
         try:
-            spreadsheet = Spreadsheet(days, timepoints, uploaded_file_path = file_path)
+            spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path)
         except Exception as e:
             os.remove(file_path)
             messages.append(f"The file provided is not parseable.")

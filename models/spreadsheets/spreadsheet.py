@@ -8,9 +8,10 @@ import nitecap
 
 class Spreadsheet:
 
-    def __init__(self, days, timepoints, uploaded_file_path, file_path=None, column_labels=None, breakpoint=None, num_replicates=None):
+    def __init__(self, days, timepoints, original_filename, uploaded_file_path, file_path=None, column_labels=None, breakpoint=None, num_replicates=None):
         self.days = int(days)
         self.timepoints = int(timepoints)
+        self.original_filename = original_filename
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
         if file_path is None:
@@ -186,6 +187,7 @@ class Spreadsheet:
         return {
             "days": self.days,
             "timepoints": self.timepoints,
+            "original_filename": self.original_filename,
             "uploaded_file_path": self.uploaded_file_path,
             "file_path": self.file_path,
             "column_labels": self.column_labels,
@@ -214,9 +216,10 @@ class Spreadsheet:
     def from_json(cls, data):
         days = data['days']
         timepoints = data['timepoints']
+        original_filename = data['original_filename']
         uploaded_file_path = data['uploaded_file_path']
         file_path = data['file_path']
         column_labels = data['column_labels']
         num_replicates = data['num_replicates']
         breakpoint = data['breakpoint']
-        return cls(days, timepoints, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates)
+        return cls(days, timepoints, original_filename, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates)
