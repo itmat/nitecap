@@ -1,3 +1,4 @@
+import magic
 from flask import Blueprint, request, session, url_for, redirect, render_template
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
@@ -35,13 +36,29 @@ def load_spreadsheet():
             if not allowed_file(upload_file.filename):
                 messages.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
                 error = True
+
+            # This test appears to pass everything as text/plain
+            file_mime_type = magic.from_buffer(upload_file.filename, mime=True)
+            if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+                messages.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_MIME_TYPES)}")
+                error = True
+
         if error:
             return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
 
         filename = secure_filename(upload_file.filename)
         file_path = os.path.join(constants.UPLOAD_FOLDER, filename)
         upload_file.save(file_path)
-        spreadsheet = Spreadsheet(days, timepoints, uploaded_file_path = file_path)
+
+        # For any files masquerading as one of the acceptable file types by virtue of its file extension, it appears we
+        # can only identify it when pandas fails to parse it while creating a spreadsheet object.  We throw the file
+        # away and report the error.
+        try:
+            spreadsheet = Spreadsheet(days, timepoints, uploaded_file_path = file_path)
+        except Exception as e:
+            os.remove(file_path)
+            messages.append(f"The file provided is not parseable.")
+            return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
         session['spreadsheet'] = spreadsheet.to_json()
 
         return redirect(url_for('.identify_spreadsheet_columns'))
