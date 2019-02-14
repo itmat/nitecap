@@ -8,3 +8,4 @@ venv*
 data
 *.db
 .env
+nitecap.db
