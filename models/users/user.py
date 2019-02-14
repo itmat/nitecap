@@ -52,7 +52,7 @@ class User(db.Model):
                     password = encrypt_password(password)
                     user = User(username, email, password)
                     user.save_to_db()
-                    user.send_confirmation_email()
+                    error, messages = user.send_confirmation_email()
         return user, error, messages
 
     @staticmethod
@@ -82,16 +82,29 @@ class User(db.Model):
         return user, error, messages
 
     def send_confirmation_email(self):
+        error = False
+        messages = []
         email = EmailMessage()
         email['Subject'] = 'User registration confirmation for Nitecap access'
         email['From'] = os.environ.get('EMAIL_SENDER')
         email['To'] = self.email
         email.set_content(f'Please click on this link to confirm your registration. http://{os.environ.get("SERVER")}/users/confirm_user/{self.id}')
-        s = smtplib.SMTP(host='127.0.0.1', port=25)
-        #s.starttls()
-        #s.login('you@gmail.com', 'password')
-        s.send_message(email)
-        s.quit()
+
+        # If sendmail fails for any reason, we drop the user from the db so that the user may re-register.
+        try:
+            s = smtplib.SMTP(host='127.0.0.1', port=25)
+            #s.starttls()
+            #s.login('you@gmail.com', 'password')
+            s.send_message(email)
+            s.quit()
+        except:
+            print("Not successful")
+            self.delete_from_db()
+            error = True
+            messages.append("A confirmation email could not be sent at this time."
+                        "  Please attempt a registration later or notify us of the problem.")
+        return error, messages
+
 
     @classmethod
     def confirm_user(cls, _id):
@@ -115,6 +128,10 @@ class User(db.Model):
 
     def save_to_db(self):
         db.session.add(self)
+        db.session.commit()
+
+    def delete_from_db(self):
+        db.session.delete(self)
         db.session.commit()
 
 
