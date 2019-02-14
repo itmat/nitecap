@@ -13,6 +13,11 @@ def create_tables():
 def home():
     return redirect(url_for('spreadsheets.load_spreadsheet'))
 
+@app.errorhandler(413)
+def file_to_large(e):
+    messages = ["The file you are attempting to upload is too large for the site to accommodate."]
+    return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages), 413
+
 from models.users.views import user_blueprint
 from models.spreadsheets.views import spreadsheet_blueprint
 app.register_blueprint(user_blueprint, url_prefix='/users')
