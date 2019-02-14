@@ -47,7 +47,7 @@ def load_spreadsheet():
             return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
 
         filename = secure_filename(upload_file.filename)
-        file_path = os.path.join(constants.UPLOAD_FOLDER, filename)
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), filename)
         upload_file.save(file_path)
 
         # For any files masquerading as one of the acceptable file types by virtue of its file extension, it appears we

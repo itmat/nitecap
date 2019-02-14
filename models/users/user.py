@@ -2,6 +2,7 @@ import datetime
 import smtplib
 from security import check_encrypted_password, encrypt_password
 from db import db
+import os
 from email.message import EmailMessage
 import constants
 
@@ -83,9 +84,9 @@ class User(db.Model):
     def send_confirmation_email(self):
         email = EmailMessage()
         email['Subject'] = 'User registration confirmation for Nitecap access'
-        email['From'] = constants.EMAIL_SENDER
+        email['From'] = os.environ.get('EMAIL_SENDER')
         email['To'] = self.email
-        email.set_content(f'Please click on this link to confirm your registration. http://{constants.SERVER}/users/confirm_user/{self.id}')
+        email.set_content(f'Please click on this link to confirm your registration. http://{os.environ.get("SERVER")}/users/confirm_user/{self.id}')
         s = smtplib.SMTP(host='127.0.0.1', port=25)
         #s.starttls()
         #s.login('you@gmail.com', 'password')
