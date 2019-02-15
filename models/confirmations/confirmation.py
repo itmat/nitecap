@@ -2,7 +2,7 @@ from db import db
 import uuid
 from time import time
 
-CONFIRMATION_EXPIRATION_DELTA = 5 * 60
+CONFIRMATION_EXPIRATION_DELTA = 2 * 60
 
 class Confirmation(db.Model):
     __tablename__ = "confirmations"

@@ -4,10 +4,15 @@
     <h1>User Login</h1>
 </div>
 
-    {% if messages %}
-    <div class="badge badge-danger">Errors</div>
-    <div class="server-errors">
-        {% for message in messages %}
+{% if messages %}
+    {% if status == 'error' %}
+        <div class="badge badge-danger">Errors</div>
+        <div class="server-errors">
+        {% else %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+        {% endif %}
+            {% for message in messages %}
         <div>{{message}}</div>
         {% endfor %}
     </div>
@@ -16,13 +21,13 @@
         <div class="form-group">
             <label for="username">Username or Email Address:</label>
             <input type="username" id="username" name="username" class="form-control" value="{{username}}"
-                   placeholder="username or email address" required />
+                   placeholder="username or email address" required/>
         </div>
         <div class="form-group">
             <label for="password">Password:</label>
-            <input type="password" id="password" name="password" class="form-control" required />
+            <input type="password" id="password" name="password" class="form-control" required/>
         </div>
         <button type="submit" class="btn btn-primary">Login</button>
     </form>
 
-{% endblock %}
+    {% endblock %}

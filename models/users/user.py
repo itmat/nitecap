@@ -36,49 +36,49 @@ class User(db.Model):
     @staticmethod
     def register_user(username, email, password):
         messages = []
-        error = False
-        user = User.find_by_email(email)
-        if user:
-            messages.append("The e-mail you provided is already registered.")
-            error = True
-            user = None
-        else:
+        user = None
+        status = ''
+        if not email:
+            messages.append("You must supply an email address.")
+            status = 'error'
+        if not password:
+            messages.append("You must supply a password.")
+            status = 'error'
+        elif email and password:
+            user, status, message = User.check_existence(email, password)
+            messages.append(message)
+        if not user:
             if not username:
                 username = email
             user = User.find_by_username(username)
             if user:
                 messages.append("The username you provided is already registered.")
-                error = True
+                status = 'error'
                 user = None
             else:
-                if not password:
-                    messages.append("You must supply a password.")
-                    error = True
-                    user = None
-                else:
-                    password = encrypt_password(password)
-                    user = User(username, email, password)
-                    user.save_to_db()
-                    confirmation = Confirmation(user.id)
-                    confirmation.save_to_db()
-                    error, messages = user.send_confirmation_email()
-        return user, error, messages
+                password = encrypt_password(password)
+                user = User(username, email, password)
+                user.save_to_db()
+                confirmation = Confirmation(user.id)
+                confirmation.save_to_db()
+                status, messages = user.send_confirmation_email()
+        return user, status, messages
 
     @staticmethod
     def login_user(username, password):
         messages = []
-        error = False
+        status = ''
         user = User.find_by_username(username)
         if not user:
             user = User.find_by_email(username)
             if not user:
                 messages.append("No such user currently exists in the site.  Please register.")
-                error = True
+                status = 'error'
                 user = None
         if user:
             if not check_encrypted_password(password, user.password):
                 messages.append("Invalid credentials.  Try again.")
-                error = True
+                status = 'error'
                 user = None
             else:
                 confirmation = user.most_recent_confirmation
@@ -89,12 +89,12 @@ class User(db.Model):
                 else:
                     messages.append("You need to click on the confirmation link we emailed you before you can login.  "
                                     "Please check your spam folder.")
-                    error = True
-        return user, error, messages
+                    status = 'unconfirmed'
+        return user, status, messages
 
     def send_confirmation_email(self):
-        error = False
-        messages = []
+        status = ''
+        message = []
         email = EmailMessage()
         email['Subject'] = 'User registration confirmation for Nitecap access'
         email['From'] = os.environ.get('EMAIL_SENDER')
@@ -111,10 +111,10 @@ class User(db.Model):
             s.quit()
         except:
             self.delete_from_db()
-            error = True
-            messages.append("A confirmation email could not be sent at this time."
-                        "  Please attempt a registration later or notify us of the problem.")
-        return error, messages
+            status = 'error'
+            message = "A confirmation email could not be sent at this time.  " \
+                      "Please attempt a registration later or notify us of the problem."
+        return status, message
 
 
     @classmethod
@@ -144,6 +144,25 @@ class User(db.Model):
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
+
+    @staticmethod
+    def check_existence(email, password):
+        status = ''
+        message = ''
+        user = User.find_by_email(email)
+        if check_encrypted_password(password, user.password):
+            if not user.most_recent_confirmation.confirmed:
+                status = 'unconfirmed'
+                message = "You are already registered but have not activated " \
+                          "your account by clicking on the email confirmation link sent to you."
+            else:
+                status = 'confirmed'
+                message = "You are already registered and your account is activated.  Just log in."
+        else:
+            status = 'error'
+            message = 'The e-mail you provided is already registered.'
+            user = None
+        return user, status, message
 
 
 
