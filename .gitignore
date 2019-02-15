@@ -7,3 +7,4 @@ venv*
 .idea
 data
 *.db
+*.so

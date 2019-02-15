@@ -1,6 +1,8 @@
 import numpy
 import util
 
+import total_delta as total_delta_module
+
 # Number of permutations to take for permuted test statistics
 N_PERMS = 100
 
@@ -96,25 +98,42 @@ def total_delta(data, contains_nans = "check"):
     if contains_nans == "check":
         contains_nans = numpy.isnan(data).any()
 
+    data = data.astype("double")
+
     (N_PERMS, N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
     #  Find sum of distances traverse going from each replicate to its adjacent replicates
-    data_A = data.reshape((N_PERMS, N_TIMEPOINTS, N_REPS, 1, N_GENES))
-    data_B = data.reshape((N_PERMS, N_TIMEPOINTS, 1, N_REPS, N_GENES))
-    # cycle data_B one step over so that we'll compare time 1 in A to time 2 in B
-    data_B = numpy.concatenate( (data_B[:,1:], data_B[:,:1]), axis=1 )
+    ##data_A = data.reshape((N_PERMS, N_TIMEPOINTS, N_REPS, 1, N_GENES))
+    ##data_B = data.reshape((N_PERMS, N_TIMEPOINTS, 1, N_REPS, N_GENES))
+    ### cycle data_B one step over so that we'll compare time 1 in A to time 2 in B
+    ##data_B = numpy.concatenate( (data_B[:,1:], data_B[:,:1]), axis=1 )
 
-    # Sum all the differences across all rep-rep pairs across all timepoints
-    diffs = data_A - data_B
+    ### Sum all the differences across all rep-rep pairs across all timepoints
+    ##diffs = data_A - data_B
+
+    ##if contains_nans:
+    ##    possible_pairs = N_TIMEPOINTS * N_REPS * N_REPS
+    ##    num_pairs = numpy.sum(~numpy.isnan(diffs[0]), axis=(0,1,2))
+    ##    util.zero_nans(diffs)
+    ##    numpy.abs(diffs, out=diffs)
+    ##    total_delta = numpy.sum(diffs, axis=(1,2,3)) * possible_pairs / num_pairs
+    ##else:
+    ##    numpy.abs(diffs, out=diffs)
+    ##    total_delta = numpy.sum(diffs, axis=(1,2,3))
+
+    ### COMPUTE IN C:
+    total_delta = numpy.empty((N_PERMS, N_GENES), dtype="double")
+    total_delta_module.sum_abs_differences(data, total_delta)
     if contains_nans:
+        # total_delta above counts a pair with a NaN as 0 difference
+        # Need to renormalize by the number of pairings so that all genes are comparable
+        # even if there are different numbers of NaNs in each
         possible_pairs = N_TIMEPOINTS * N_REPS * N_REPS
-        num_pairs = numpy.sum(~numpy.isnan(diffs[0]), axis=(0,1,2))
-        util.zero_nans(diffs)
-        numpy.abs(diffs, out=diffs)
-        total_delta = numpy.sum(diffs, axis=(1,2,3)) * possible_pairs / num_pairs
-    else:
-        numpy.abs(diffs, out=diffs)
-        total_delta = numpy.sum(diffs, axis=(1,2,3))
+        non_nan_per_timepoint =  numpy.sum(~numpy.isnan(data[0]), axis=1)
+        num_pairs = numpy.sum(non_nan_per_timepoint * numpy.concatenate(non_nan_perm_timepoint[1:], [non_nan_perm_timepoint[0]]), axis=0)
+        total_delta *= possible_pairs / num_pairs
+        #TODO: this could give NaN outputs
+    ####
 
     # Now compute the normalization factor
     # NOTE: this computation assumes that all the permutations have the same median
