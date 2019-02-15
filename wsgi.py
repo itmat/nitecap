@@ -7,6 +7,6 @@ from db import db
 db.init_app(application)
 
 if __name__=="__main__":
-    application.secret_key = os.environ.get("SECRET_KEY")
-    application.debug = bool(os.environ.get("DEBUG", 'False'))
+    #application.secret_key = os.environ["SECRET_KEY"]
+    #application.debug = bool(os.environ.get("DEBUG", 'False'))
     application.run()

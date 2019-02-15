@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>User Confirmation Sent
+        <small>Check your email</small>
+    </h1>
+</div>
+
+<p class="jumbotron text-cdenter full-height">
+    A confirmation message has emailed to you at <em>{{ email }}</em>. Your login will be enabled once
+    you click on the link provided in that email. Make sure to look in your spam folder if you don't see
+    the message.
+</p>
+
+{% endblock %}

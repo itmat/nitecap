@@ -25,6 +25,11 @@ def login_user():
         password = request.form['password']
         user, error, messages = User.login_user(username, password)
         if error:
+            if user:
+                return render_template('confirmations/resend_confirmation_form.html',
+                                       messages = messages,
+                                       email = user.email,
+                                       confirmation_id = user.most_recent_confirmation.id)
             return render_template('users/login_form.html', username=username, messages=messages)
         if user:
             session['email'] = user.email
@@ -36,11 +41,3 @@ def login_user():
 def logout_user():
     session['email'] = None
     return render_template('spreadsheets/spreadsheet_upload_form.html')
-
-@user_blueprint.route('/confirm_user/<int:_id>', methods=['GET'])
-def confirm_user(_id):
-    user = User.confirm_user(_id)
-    if user:
-        session['email'] = user.email
-        return render_template('users/user_confirmed.html', username=user.username, email=user.email)
-    return "?"

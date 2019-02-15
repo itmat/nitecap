@@ -1,3 +1,4 @@
-SQLALCHEMY_DATABASE_URI = "sqlite:///nitecap.db"
-SQLALCHEMY_TRACK_MODIFICATIONS = False
-MAX_CONTENT_LENGTH = 40 * 1024 * 1024
+import os
+
+DEBUG = False
+ENV='production'

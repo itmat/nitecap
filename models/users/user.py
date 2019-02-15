@@ -1,10 +1,13 @@
 import datetime
 import smtplib
+
+from flask import url_for, request
+
+from models.confirmations.confirmation import Confirmation
 from security import check_encrypted_password, encrypt_password
 from db import db
 import os
 from email.message import EmailMessage
-import constants
 
 
 class User(db.Model):
@@ -13,14 +16,18 @@ class User(db.Model):
     username = db.Column(db.String(150), nullable=False, unique=True)
     email = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(100), nullable=False)
-    activated = db.Column(db.Boolean, default=False)
     last_access = db.Column(db.DateTime)
 
-    def __init__(self, username, email, password, activated = False, last_access=None):
+    confirmation = db.relationship("Confirmation", lazy="dynamic", cascade="all, delete-orphan")
+
+    @property
+    def most_recent_confirmation(self):
+        return self.confirmation.order_by(db.desc(Confirmation.expire_at)).first()
+
+    def __init__(self, username, email, password, last_access=None):
         self.username = username
         self.email = email
         self.password = password
-        self.activated = activated
         self.last_access = last_access if last_access else datetime.datetime.now()
 
     def __repr__(self):
@@ -52,6 +59,8 @@ class User(db.Model):
                     password = encrypt_password(password)
                     user = User(username, email, password)
                     user.save_to_db()
+                    confirmation = Confirmation(user.id)
+                    confirmation.save_to_db()
                     error, messages = user.send_confirmation_email()
         return user, error, messages
 
@@ -72,13 +81,15 @@ class User(db.Model):
                 error = True
                 user = None
             else:
-                if user.activated:
+                confirmation = user.most_recent_confirmation
+
+                if confirmation and confirmation.confirmed:
                     user.last_access = datetime.datetime.now()
                     user.save_to_db()
                 else:
-                    messages.append("You need to click on the confirmation link we emailed you before you can login.")
+                    messages.append("You need to click on the confirmation link we emailed you before you can login.  "
+                                    "Please check your spam folder.")
                     error = True
-                    user = None
         return user, error, messages
 
     def send_confirmation_email(self):
@@ -88,7 +99,8 @@ class User(db.Model):
         email['Subject'] = 'User registration confirmation for Nitecap access'
         email['From'] = os.environ.get('EMAIL_SENDER')
         email['To'] = self.email
-        email.set_content(f'Please click on this link to confirm your registration. http://{os.environ.get("SERVER")}/users/confirm_user/{self.id}')
+        link = request.url_root[:-1] + url_for("confirmations.confirm_user", confirmation_id=self.most_recent_confirmation.id)
+        email.set_content(f'Please click on this link to confirm your registration. {link}')
 
         # If sendmail fails for any reason, we drop the user from the db so that the user may re-register.
         try:
@@ -98,7 +110,6 @@ class User(db.Model):
             s.send_message(email)
             s.quit()
         except:
-            print("Not successful")
             self.delete_from_db()
             error = True
             messages.append("A confirmation email could not be sent at this time."
