@@ -30,6 +30,4 @@ app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 if __name__ == '__main__':
     db.init_app(app)
-    #app.secret_key = os.environ["SECRET_KEY"]
-    #app.debug = bool(os.environ.get("DEBUG", 'False'))
     app.run()

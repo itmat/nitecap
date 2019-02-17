@@ -8,6 +8,7 @@ from security import check_encrypted_password, encrypt_password
 from db import db
 import os
 from email.message import EmailMessage
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 
 class User(db.Model):
@@ -35,26 +36,13 @@ class User(db.Model):
 
     @staticmethod
     def register_user(username, email, password):
-        messages = []
-        user = None
-        status = ''
-        if not email:
-            messages.append("You must supply an email address.")
-            status = 'error'
-        if not password:
-            messages.append("You must supply a password.")
-            status = 'error'
-        elif email and password:
-            user, status, message = User.check_existence(email, password)
-            if message:
-                messages.append(message)
+        user, errors, status = User.check_existence(email, password)
         if not user:
             if not username:
                 username = email
             user = User.find_by_username(username)
             if user:
-                messages.append("The username you provided is already registered.")
-                status = 'error'
+                errors.append("The username you provided is already registered.")
                 user = None
             else:
                 password = encrypt_password(password)
@@ -62,24 +50,24 @@ class User(db.Model):
                 user.save_to_db()
                 confirmation = Confirmation(user.id)
                 confirmation.save_to_db()
-                status, messages = user.send_confirmation_email()
-        return user, status, messages
+                email_errors = user.send_confirmation_email()
+                if email_errors:
+                    errors.extend(email_errors)
+        return user, errors, status
 
     @staticmethod
     def login_user(username, password):
         messages = []
-        status = ''
+        errors = []
         user = User.find_by_username(username)
         if not user:
             user = User.find_by_email(username)
             if not user:
-                messages.append("No such user currently exists in the site.  Please register.")
-                status = 'error'
+                errors.append("No such user currently exists in the site.  Please register.")
                 user = None
         if user:
             if not check_encrypted_password(password, user.password):
-                messages.append("Invalid credentials.  Try again.")
-                status = 'error'
+                errors.append("Invalid credentials.  Try again.")
                 user = None
             else:
                 confirmation = user.most_recent_confirmation
@@ -90,33 +78,71 @@ class User(db.Model):
                 else:
                     messages.append("You need to click on the confirmation link we emailed you before you can login.  "
                                     "Please check your spam folder.")
-                    status = 'unconfirmed'
-        return user, status, messages
+        return user, errors, messages
 
     def send_confirmation_email(self):
-        status = ''
-        message = []
-        email = EmailMessage()
-        email['Subject'] = 'User registration confirmation for Nitecap access'
-        email['From'] = os.environ.get('EMAIL_SENDER')
-        email['To'] = self.email
+        errors = []
+        subject = 'User registration confirmation for Nitecap access'
+        sender = os.environ.get('EMAIL_SENDER')
         link = request.url_root[:-1] + url_for("confirmations.confirm_user", confirmation_id=self.most_recent_confirmation.id)
-        email.set_content(f'Please click on this link to confirm your registration. {link}')
+        content = f'Please click on this link to confirm your registration. {link}'
+        error = self.send_email(subject, sender, content)
+        if error:
+            errors.append("A confirmation email could not be sent at this time.  "
+                      "Please attempt a registration later or notify us of the problem.")
+        return errors
+
+    def send_reset_email(self):
+        token = self.get_reset_token()
+        status = None
+        messages = []
+        subject = 'User password reset for Nitecap access'
+        sender = os.environ.get('EMAIL_SENDER')
+        link = request.url_root[:-1] + url_for("users.reset_password", token=token)
+        content = f'Please click on this link to reset your password. {link}'
+        error = self.send_email(subject, sender, content)
+        if error:
+            status = 'error'
+            messages.append("A password reset email could not be sent at this time.  "
+                            "Please request a password reset later or notify us of the problem.")
+        return status, messages
+
+    def send_email(self, subject, sender, content):
+        error = False
+        email = EmailMessage()
+        email['Subject'] = subject
+        email['From'] = sender
+        email['To'] = self.email
+        email.set_content(content)
 
         # If sendmail fails for any reason, we drop the user from the db so that the user may re-register.
         try:
             s = smtplib.SMTP(host='127.0.0.1', port=25)
-            #s.starttls()
-            #s.login('you@gmail.com', 'password')
+            # s.starttls()
+            # s.login('you@gmail.com', 'password')
             s.send_message(email)
             s.quit()
         except:
             self.delete_from_db()
-            status = 'error'
-            message = "A confirmation email could not be sent at this time.  " \
-                      "Please attempt a registration later or notify us of the problem."
-        return status, message
+            error = True
+        return error
 
+    def get_reset_token(self, expires_sec = 1800):
+        s = Serializer(os.environ['SECRET_KEY'], expires_sec)
+        return s.dumps({'user_id': self.id}).decode('utf-8')
+
+    @staticmethod
+    def verify_reset_token(token):
+        s = Serializer(os.environ['SECRET_KEY'])
+        try:
+            user_id = s.loads(token)['user_id']
+        except:
+            return None
+        return User.find_by_id(user_id)
+
+    def reset_password(self, password):
+        self.password = encrypt_password(password)
+        self.save_to_db()
 
     @classmethod
     def confirm_user(cls, _id):
@@ -149,24 +175,18 @@ class User(db.Model):
     @staticmethod
     def check_existence(email, password):
         status = None
-        message = None
+        errors = []
         user = User.find_by_email(email)
         if user:
             if check_encrypted_password(password, user.password):
                 if not user.most_recent_confirmation.confirmed:
                     status = 'unconfirmed'
-                    message = "You are already registered but have not activated " \
-                          "your account by clicking on the email confirmation link sent to you."
                 else:
                     status = 'confirmed'
-                    message = "You are already registered and your account is activated.  Just log in."
             else:
-                status = 'error'
-                message = 'The e-mail you provided is already registered.'
+                errors.append('The e-mail you provided is already registered.')
                 user = None
-        return user, status, message
-
-
+        return user, errors, status
 
 
 

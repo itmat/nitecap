@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-header">
-    <h1>Resend User Confirmation <small>Missing or Expired Confirmation Email</small></h1>
+    <h1>Password Reset Request</h1>
 </div>
 
 {% with messages = get_flashed_messages() %}
@@ -24,11 +24,13 @@
     </div>
 {% endif %}
 
-<form method="post" id="resend-confirmation-form" action="{{ url_for('confirmations.resend_confirmation') }}">
-    <p>You may resend a confirmation email to the email address we have for you on file, <em>{{ email }}</em>,
-        by clicking on the button below.  Please note that any prior links we sent you will be expired.</p>
-    <input type="hidden" name="confirmation_id" id="confirmation_id"  value="{{ confirmation_id }}">
-    <button type="submit" class="btn btn-primary">Resend Confirmation</button>
+<form id="reset_request-form" action="{{ url_for('users.request_password_reset') }}" method="post">
+    <div class="form-group">
+        <label for="email">Email Address:</label>
+        <input type="email" id="email" name="email" class="form-control" value="{{email}}"
+               placeholder="email address" required/>
+    </div>
+    <button type="submit" class="btn btn-primary">Request Password Reset</button>
 </form>
 
 {% endblock %}

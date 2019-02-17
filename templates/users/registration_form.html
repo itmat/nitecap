@@ -3,14 +3,26 @@
 <div class="page-header">
     <h1>User Registration</h1>
 </div>
+
+{% with messages = get_flashed_messages() %}
     {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
     <div class="badge badge-danger">Errors</div>
     <div class="server-errors">
-        {% for message in messages %}
-        <div>{{message}}</div>
+        {% for error in errors %}
+            <div>{{error}}</div>
         {% endfor %}
     </div>
-    {% endif %}
+{% endif %}
 
     <form id="registration-form" action="{{ url_for('users.register_user') }}" method="post">
         <div class="form-group">
