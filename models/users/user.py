@@ -46,7 +46,8 @@ class User(db.Model):
             status = 'error'
         elif email and password:
             user, status, message = User.check_existence(email, password)
-            messages.append(message)
+            if message:
+                messages.append(message)
         if not user:
             if not username:
                 username = email
@@ -147,21 +148,22 @@ class User(db.Model):
 
     @staticmethod
     def check_existence(email, password):
-        status = ''
-        message = ''
+        status = None
+        message = None
         user = User.find_by_email(email)
-        if check_encrypted_password(password, user.password):
-            if not user.most_recent_confirmation.confirmed:
-                status = 'unconfirmed'
-                message = "You are already registered but have not activated " \
+        if user:
+            if check_encrypted_password(password, user.password):
+                if not user.most_recent_confirmation.confirmed:
+                    status = 'unconfirmed'
+                    message = "You are already registered but have not activated " \
                           "your account by clicking on the email confirmation link sent to you."
+                else:
+                    status = 'confirmed'
+                    message = "You are already registered and your account is activated.  Just log in."
             else:
-                status = 'confirmed'
-                message = "You are already registered and your account is activated.  Just log in."
-        else:
-            status = 'error'
-            message = 'The e-mail you provided is already registered.'
-            user = None
+                status = 'error'
+                message = 'The e-mail you provided is already registered.'
+                user = None
         return user, status, message
 
 
