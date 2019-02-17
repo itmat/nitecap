@@ -1,10 +1,10 @@
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 from db import db
 import os
 
 app = Flask(__name__)
-load_dotenv(".env", verbose=True)
+load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
 
