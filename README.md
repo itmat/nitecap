@@ -211,3 +211,8 @@ The `starttls()` statement is commented out since leaving it in place results in
 `STARTTLS extension not supported by server`.  I suppose this is because we are not currently running
 SSL but I don't know for sure.  The port we are using for mail (25) is not secure.  Another change to
 hardcoding above was the sender address.  A fake address did not work.
+
+To restart the server after a code change run
+```python
+sudo service apache2 restart
+```

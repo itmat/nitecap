@@ -152,7 +152,7 @@ def total_delta(data, contains_nans = "check"):
         # even if there are different numbers of NaNs in each
         possible_pairs = N_TIMEPOINTS * N_REPS * N_REPS
         non_nan_per_timepoint =  numpy.sum(~numpy.isnan(data[0]), axis=1)
-        num_pairs = numpy.sum(non_nan_per_timepoint * numpy.concatenate(non_nan_perm_timepoint[1:], [non_nan_perm_timepoint[0]]), axis=0)
+        num_pairs = numpy.sum(non_nan_per_timepoint * numpy.concatenate([non_nan_per_timepoint[1:], [non_nan_per_timepoint[0]]]), axis=0)
         total_delta *= possible_pairs / num_pairs
         #TODO: this could give NaN outputs
     ####
