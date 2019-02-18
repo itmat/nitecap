@@ -4,6 +4,8 @@ import pandas as pd
 import numpy
 import re
 
+from sqlalchemy import orm
+
 from db import db
 from models.users.user import User
 from collections import OrderedDict
@@ -18,25 +20,30 @@ class Spreadsheet(db.Model):
     timepoints = db.Column(db.Integer, nullable=False)
     original_filename = db.Column(db.String(250), nullable=False)
     breakpoint = db.Column(db.Integer)
-    num_replicates = db.Column(db.Integer)
     file_path = db.Column(db.String(250))
     uploaded_file_path = db.Column(db.String(250), nullable=False)
     date_uploaded = db.Column(db.DateTime, nullable=False)
+    num_replicates_str = db.Column(db.String(250))
+    column_labels_str = db.Column(db.String(2500))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
 
     def __init__(self, days, timepoints, original_filename,
-                 uploaded_file_path, file_path=None, column_labels=None,
-                 breakpoint=None, num_replicates=None, user_id=None):
+                 uploaded_file_path, file_path=None, column_labels_str=None,
+                 breakpoint=None, num_replicates_str=None, user_id=None,
+                 date_uploaded=None):
         self.days = int(days)
         self.timepoints = int(timepoints)
         self.original_filename = original_filename
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
+        self.date_uploaded = date_uploaded
+        self.num_replicates_str = num_replicates_str
+        self.column_labels_str = column_labels_str
+        self.breakpoint = breakpoint
         annonymous_user = User.find_by_username('annonymous')
         if not annonymous_user:
             annonymous_user = User.create_annonymous_user()
-        print(annonymous_user)
         self.user_id = user_id if user_id else annonymous_user.id
         if file_path is None:
             # Need to use our uploaded_file_path to create a new dataframe
@@ -49,12 +56,15 @@ class Spreadsheet(db.Model):
         else:
             self.df = pd.read_csv(self.file_path, sep="\t")
 
-        self.num_replicates = num_replicates
-        self.column_labels = column_labels
-        self.breakpoint = breakpoint
-        if column_labels:
-            self.identify_columns(column_labels)
-
+    @orm.reconstructor
+    def init_on_load(self):
+        if self.file_path:
+            self.df = pd.read_csv(self.file_path, sep="\t")
+        self.num_replicates = None if not self.num_replicates_str \
+            else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
+        self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
+        if self.column_labels_str:
+            self.identify_columns(self.column_labels)
 
     def column_defaults(self):
         # Try to guess the columns by looking for CT/ZT labels
@@ -82,6 +92,9 @@ class Spreadsheet(db.Model):
 
 
     def identify_columns(self, column_labels):
+
+        # column labels saved as comma delimited string in db
+        self.column_labels_str = ",".join(column_labels)
         self.column_labels = column_labels
 
         x_values = [self.label_to_timepoint(label) for label in self.column_labels]
@@ -101,6 +114,7 @@ class Spreadsheet(db.Model):
 
         # Count the number of replicates at each timepoint
         self.num_replicates = [len(columns_by_timepoint.get(i, [])) for i in range(self.timepoints * self.days)]
+        self.num_replicates_str = ",".join([str(num_replicate) for num_replicate in self.num_replicates])
 
         # Also compute all the ways that we can pair adjacent data points, for use in plotting
         # TODO: should this be moved elsewhere? only possible to do after getting column_labels
@@ -219,7 +233,8 @@ class Spreadsheet(db.Model):
             "column_labels": self.column_labels,
             "num_replicates": self.num_replicates,
             "breakpoint": self.breakpoint,
-            "user_id": self.user_id
+            "user_id": self.user_id,
+            "date_uploaded": self.date_uploaded
         }
 
     def label_to_daytime(self, label):
@@ -250,6 +265,7 @@ class Spreadsheet(db.Model):
         num_replicates = data['num_replicates']
         breakpoint = data['breakpoint']
         user_id = data['user_id']
+        date_uploaded = data['date_uploaded']
         return cls(days, timepoints, original_filename, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates, user_id)
 
     def save_to_db(self):
@@ -259,3 +275,7 @@ class Spreadsheet(db.Model):
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
+
+    @classmethod
+    def find_by_id(cls, _id):
+        return cls.query.filter_by(id=_id).first()

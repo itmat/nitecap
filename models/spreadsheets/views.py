@@ -63,8 +63,9 @@ def load_spreadsheet():
             os.remove(file_path)
             errors.append(f"The file provided is not parseable.")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
-        session['spreadsheet'] = spreadsheet.to_json()
+        #session['spreadsheet'] = spreadsheet.to_json()
         spreadsheet.save_to_db()
+        session['spreadsheet_id'] = spreadsheet.id
 
         return redirect(url_for('.identify_spreadsheet_columns'))
 
@@ -76,28 +77,41 @@ def allowed_file(filename):
 
 @spreadsheet_blueprint.route('spreadsheets/identify_spreadsheet_columns', methods=['GET','POST'])
 def identify_spreadsheet_columns():
-    spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    errors = []
+    #spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
+        errors.append("You may only work with your own spreadsheet.")
+        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
     if request.method == 'POST':
         column_labels = list(request.form.values())
 
         error, messages = spreadsheet.validate(column_labels)
+        errors.extend(messages)
         if error:
-            return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, messages=messages)
+            return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
         spreadsheet.identify_columns(column_labels)
 
         spreadsheet.compute_ordering()
-        session['spreadsheet'] = spreadsheet.to_json()
+        #session['spreadsheet'] = spreadsheet.to_json()
+        spreadsheet.save_to_db()
         return redirect(url_for('.set_spreadsheet_breakpoint'))
-    return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, messages=[])
+    return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
 
 @spreadsheet_blueprint.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
 def set_spreadsheet_breakpoint():
-    spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    errors = []
+    #spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
+        errors.append("You may only work with your own spreadsheet.")
+        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
     if request.method == 'POST':
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
+        spreadsheet.save_to_db()
         session['spreadsheet'] = spreadsheet.to_json()
         return redirect(url_for('.display_heatmap'))
 
@@ -110,9 +124,37 @@ def set_spreadsheet_breakpoint():
                                 timepoint_pairs = spreadsheet.timepoint_pairs)
 
 
+@spreadsheet_blueprint.route('/show_spreadsheet<int:spreadsheet_id>', methods=['GET','POST'])
+def show_spreadsheet(spreadsheet_id):
+    errors = []
+    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
+        errors.append("You may only work with your own spreadsheet.")
+        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+    if request.method == 'POST':
+        row_index = int(request.form['row_index'])
+        spreadsheet.breakpoint = row_index
+        spreadsheet.save_to_db()
+        session['spreadsheet'] = spreadsheet.to_json()
+        return redirect(url_for('.display_heatmap'))
+
+    data = spreadsheet.get_raw_data()
+    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
+                                data=data.to_json(orient='values'),
+                                x_values=spreadsheet.x_labels,
+                                ids=list(spreadsheet.df['id']),
+                                column_pairs=spreadsheet.column_pairs,
+                                breakpoint=spreadsheet.breakpoint,
+                                timepoint_pairs = spreadsheet.timepoint_pairs)
+
 @spreadsheet_blueprint.route('/heatmap', methods=['GET','POST'])
 def display_heatmap():
-    spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    errors = []
+    # spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    if 'spreadsheet_id' not in session or not session['spreadheet_id']:
+        errors.append("You may only work with your own spreadsheet.")
+        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
     data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
     data = spreadsheet.normalize_data(data)
     heatmap_x_values = []
@@ -137,7 +179,7 @@ def display_spreadsheets():
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
-@spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>')
+@spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>', methods=['GET'])
 def delete(spreadsheet_id):
     errors = []
     if 'email' not in session or not session['email']:
@@ -154,23 +196,23 @@ def delete(spreadsheet_id):
         os.remove(spreadsheet.uploaded_file_path)
     except Exception as e:
        errors.append("The spreadsheet data may not have been all successfully removed.")
-    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    if errors:
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    return redirect(url_for('spreadsheets.display_spreadsheets'))
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>')
 def download(spreadsheet_id):
     errors = []
     if 'email' not in session or not session['email']:
         flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('.load_spreadsheet'))
+        return redirect(url_for('spreadsheets.load_spreadsheet'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     try:
-        return send_file(spreadsheet.file_path, attachment_filename='processed_spreadsheet.txt')
+        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
-    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)

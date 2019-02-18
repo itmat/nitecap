@@ -57,7 +57,8 @@
                         <i class="fas fa-eye" data-toggle="tooltip" data-placement="top" title="View graphs"></i>
                     </a>
                     &nbsp;&nbsp;
-                    <a href="{{ url_for('spreadsheets.download', spreadsheet_id = spreadsheet.id) }}">
+                    <a href="{{ url_for('spreadsheets.download', spreadsheet_id = spreadsheet.id) }}"
+                       download="processed_file_{{spreadsheet.id}}.txt">
                         <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
                     </a>
                 </td>
