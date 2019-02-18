@@ -1,7 +1,6 @@
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 from db import db
-import os
 
 app = Flask(__name__)
 load_dotenv(find_dotenv(usecwd=True))

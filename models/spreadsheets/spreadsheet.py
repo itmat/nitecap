@@ -1,22 +1,48 @@
+import datetime
+
 import pandas as pd
 import numpy
 import re
-from util import check_number
+
+from db import db
+from models.users.user import User
 from collections import OrderedDict
 
 import nitecap
 
-class Spreadsheet:
 
-    def __init__(self, days, timepoints, original_filename, uploaded_file_path, file_path=None, column_labels=None, breakpoint=None, num_replicates=None):
+class Spreadsheet(db.Model):
+    __tablename__ = "spreadsheets"
+    id = db.Column(db.Integer, primary_key=True)
+    days = db.Column(db.Integer, nullable=False)
+    timepoints = db.Column(db.Integer, nullable=False)
+    original_filename = db.Column(db.String(250), nullable=False)
+    breakpoint = db.Column(db.Integer)
+    num_replicates = db.Column(db.Integer)
+    file_path = db.Column(db.String(250))
+    uploaded_file_path = db.Column(db.String(250), nullable=False)
+    date_uploaded = db.Column(db.DateTime, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user = db.relationship("User")
+
+    def __init__(self, days, timepoints, original_filename,
+                 uploaded_file_path, file_path=None, column_labels=None,
+                 breakpoint=None, num_replicates=None, user_id=None):
         self.days = int(days)
         self.timepoints = int(timepoints)
         self.original_filename = original_filename
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
+        annonymous_user = User.find_by_username('annonymous')
+        if not annonymous_user:
+            annonymous_user = User.create_annonymous_user()
+        print(annonymous_user)
+        self.user_id = user_id if user_id else annonymous_user.id
         if file_path is None:
             # Need to use our uploaded_file_path to create a new dataframe
+            print("Uploaded " + self.uploaded_file_path)
             uploaded_dataframe = pd.read_csv(self.uploaded_file_path, sep="\t")
+            self.date_uploaded = datetime.datetime.now()
             self.file_path = uploaded_file_path + ".working.txt"
             self.df = uploaded_dataframe
             self.update_dataframe()
@@ -120,7 +146,7 @@ class Spreadsheet:
     def check_breakpoint(self, breakpoint):
         error = False
         messages = []
-        if not check_number(breakpoint):
+        if not breakpoint.isdigit():
             error = True
             messages = f"The breakpoint must be a valid integer."
         elif breakpoint > len(self.df.index):
@@ -192,7 +218,8 @@ class Spreadsheet:
             "file_path": self.file_path,
             "column_labels": self.column_labels,
             "num_replicates": self.num_replicates,
-            "breakpoint": self.breakpoint
+            "breakpoint": self.breakpoint,
+            "user_id": self.user_id
         }
 
     def label_to_daytime(self, label):
@@ -222,4 +249,13 @@ class Spreadsheet:
         column_labels = data['column_labels']
         num_replicates = data['num_replicates']
         breakpoint = data['breakpoint']
-        return cls(days, timepoints, original_filename, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates)
+        user_id = data['user_id']
+        return cls(days, timepoints, original_filename, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates, user_id)
+
+    def save_to_db(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def delete_from_db(self):
+        db.session.delete(self)
+        db.session.commit()

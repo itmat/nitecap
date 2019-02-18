@@ -27,7 +27,9 @@
         <div id="navbarNav" class="navbar-collapse collapse">
             <ul class="nav navbar-nav mr-auto">
                 <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.load_spreadsheet')}}">Load Spreadsheet</a></li>
-                <li class="nav-item"><a class="nav-link" href="#"></a></li>
+                {% if 'email' in session and session['email'] %}
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.display_spreadsheets')}}">Display Spreadsheets</a></li>
+                {% endif %}
             </ul>
             <ul class="nav navbar-nav ml-auto">
                 {% if not session['email'] %}

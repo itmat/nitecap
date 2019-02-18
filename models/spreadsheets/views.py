@@ -1,12 +1,12 @@
 import magic
-from flask import Blueprint, request, session, url_for, redirect, render_template
+from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
 from pathlib import Path
 import uuid
 import constants
-from util import check_number
+from models.users.user import User
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
@@ -21,9 +21,9 @@ def load_spreadsheet():
         # Validate and give errors
         errors = []
 
-        if not check_number(days):
+        if not days.isdigit():
             errors.append(f"The value for days is required and must be a positve integer.")
-        if not check_number(timepoints):
+        if not timepoints.isdigit():
             errors.append(f"The value for timepoints is required and must be a positve integer.")
         if not upload_file:
             errors.append(f'No spreadsheet file was provided.')
@@ -52,13 +52,19 @@ def load_spreadsheet():
         # For any files masquerading as one of the acceptable file types by virtue of its file extension, it appears we
         # can only identify it when pandas fails to parse it while creating a spreadsheet object.  We throw the file
         # away and report the error.
+        user_id = None
+        if 'email' in session and session['email']:
+            user = User.find_by_email(session['email'])
+            if user:
+                user_id = user.id
         try:
-            spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path)
+            spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path, user_id=user_id)
         except Exception as e:
             os.remove(file_path)
             errors.append(f"The file provided is not parseable.")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
         session['spreadsheet'] = spreadsheet.to_json()
+        spreadsheet.save_to_db()
 
         return redirect(url_for('.identify_spreadsheet_columns'))
 
@@ -122,3 +128,49 @@ def display_heatmap():
                            ids=labels,
                            column_pairs=spreadsheet.column_pairs,
                            timepoint_pairs=spreadsheet.timepoint_pairs)
+
+@spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
+def display_spreadsheets():
+    if 'email' not in session or not session['email']:
+        flash('You must be logged in to see your saved spreadsheets.')
+        return redirect(url_for('.load_spreadsheet'))
+    user = User.find_by_email(session['email'])
+    return render_template('spreadsheets/user_spreadsheets.html', user=user)
+
+@spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>')
+def delete(spreadsheet_id):
+    errors = []
+    if 'email' not in session or not session['email']:
+        flash('You must be logged in to manage your saved spreadsheets.')
+        return redirect(url_for('.load_spreadsheet'))
+    user = User.find_by_email(session['email'])
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('You may only manage your own spreadsheets.')
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    try:
+        spreadsheet.delete_from_db()
+        os.remove(spreadsheet.file_path)
+        os.remove(spreadsheet.uploaded_file_path)
+    except Exception as e:
+       errors.append("The spreadsheet data may not have been all successfully removed.")
+    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+@spreadsheet_blueprint.route('/download/<int:spreadsheet_id>')
+def download(spreadsheet_id):
+    errors = []
+    if 'email' not in session or not session['email']:
+        flash('You must be logged in to manage your saved spreadsheets.')
+        return redirect(url_for('.load_spreadsheet'))
+    user = User.find_by_email(session['email'])
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('You may only manage your own spreadsheets.')
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    try:
+        return send_file(spreadsheet.file_path, attachment_filename='processed_spreadsheet.txt')
+    except Exception as e:
+        errors.append("The processed spreadsheet data could not be downloaded.")
+    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+

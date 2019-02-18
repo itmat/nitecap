@@ -20,10 +20,15 @@ class User(db.Model):
     last_access = db.Column(db.DateTime)
 
     confirmation = db.relationship("Confirmation", lazy="dynamic", cascade="all, delete-orphan")
+    spreadsheet = db.relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan")
 
     @property
     def most_recent_confirmation(self):
         return self.confirmation.order_by(db.desc(Confirmation.expire_at)).first()
+
+    @property
+    def spreadsheets(self):
+        return self.spreadsheet
 
     def __init__(self, username, email, password, last_access=None):
         self.username = username
@@ -171,6 +176,9 @@ class User(db.Model):
     def find_by_id(cls, _id):
         return cls.query.filter_by(id=_id).first()
 
+    def find_user_spreadsheet_by_id(self, spreadsheet_id):
+        return self.spreadsheet.filter_by(id=spreadsheet_id).first()
+
     def save_to_db(self):
         db.session.add(self)
         db.session.commit()
@@ -194,6 +202,13 @@ class User(db.Model):
                 errors.append('The e-mail you provided is already registered.')
                 user = None
         return user, errors, status
+
+    @classmethod
+    def create_annonymous_user(cls):
+        password = encrypt_password(os.environ['ANNONYMOUS_PWD'])
+        user = cls('annonymous', os.environ['ANNONYMOUS_EMAIL'], password)
+        user.save_to_db()
+        return user
 
 
 
