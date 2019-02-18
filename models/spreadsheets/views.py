@@ -29,7 +29,7 @@ def load_spreadsheet():
             errors.append(f'No spreadsheet file was provided.')
         else:
             if not len(upload_file.filename):
-                errors.append(f'No spreadsheet file was provided.')
+                errors.append('No spreadsheet file was provided.')
             if not allowed_file(upload_file.filename):
                 errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
 

@@ -1,4 +1,4 @@
-from flask import Blueprint, session, render_template, redirect, url_for, request
+from flask import Blueprint, session, render_template, redirect, url_for, request, flash
 
 from models.confirmations.confirmation import Confirmation
 from models.users.user import User
@@ -33,22 +33,22 @@ def confirm_user(confirmation_id):
 
     # Confirmation request redundant - user already activated.
     if confirmation.confirmed:
-        messages.append("You are already activated.  If you are still unable to log in, please communicate with us.")
-        return render_template('users/login_form.html', messages = messages, status = None)
+        flash("You are already activated.  If you are still unable to log in, please communicate with us.")
+        return redirect(url_for('users.login_user'))
 
     # Confirmation email expired - offer to resend.
     if confirmation.expired:
-        messages.append("Sorry.  Your confirmation email has expired.")
+        flash("Sorry.  Your confirmation email has expired.")
         return render_template('confirmations/resend_confirmation_form.html',
-                               confirmation_id = confirmation.id, email = confirmation.user.email,
-                               messages = messages )
+                               confirmation_id = confirmation.id, email = confirmation.user.email)
 
     # Confirmation email accepted - activate and log in user.
     confirmation.confirmed = True
     confirmation.save_to_db()
     user = confirmation.user
     session['email'] = user.email
-    return render_template('confirmations/user_confirmed.html', username=user.username, email=user.email)
+    flash(f"Your registration as '{user.username}' has been confirmed through your email { user.email }.")
+    return redirect(url_for('spreadsheets.load_spreadsheet'))
 
 @confirmation_blueprint.route('/resend_confirmation', methods=['POST'])
 def resend_confirmation():
@@ -57,15 +57,15 @@ def resend_confirmation():
     """
 
     messages = []
+    errors = []
     status = None
     confirmation_id = request.form['confirmation_id']
     confirmation = Confirmation.find_by_id(confirmation_id)
 
     # Bogus request - possibly a hacker exploring
     if not confirmation or not confirmation.user:
-        messages.append("No such account was found.  Please register.")
-        return render_template('users/registration_form.html',
-                               messages = messages, status = 'error')
+        errors.append("No such account was found.  Please register.")
+        return render_template('users/registration_form.html', errors = errors)
 
     # Using any user confirmation (past or present) to find the most current confirmation
     confirmation = confirmation.user.most_recent_confirmation
@@ -77,19 +77,20 @@ def resend_confirmation():
         # Redundant confirmation request - user may have gotten to resend page and then found and clicked the email
         # link before making this request.
         if confirmation.confirmed:
-            messages.append("Your account is already activated.  Please communicate with us if you still unable to log in.")
-            return render_template('users/login_form.html', messages = messages, status = 'confirmed')
+            flash("Your account is already activated.  Please communicate with us if you still unable to log in.")
+            return render_template('users/login_form.html')
 
         # Expire the most recent confirmation before issuing a new one.
         confirmation.force_to_expire()
 
     new_confirmation = Confirmation(user.id)
     new_confirmation.save_to_db()
-    status, messages = user.send_confirmation_email()
 
     # Unable to send an email.  User invited to register at a later date.
-    if status == 'error':
-        return render_template('users/registration_form.html', messages = messages, status = 'error')
+    errors = user.send_confirmation_email()
+    if errors:
+        return render_template('users/registration_form.html', errors = errors)
 
     # Confirmation sent
-    return render_template('confirmations/confirmation_sent.html', email=user.email)
+    flash(f"Your confirmation email has been sent.  Click on the link it contains to activate your account.")
+    return redirect(url_for('spreadsheets.load_spreadsheet'))

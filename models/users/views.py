@@ -48,7 +48,7 @@ def register_user():
 
         # User successfully registered and email sent.
         flash("A confirmation email has been sent.")
-        return redirect(url_for('users.login_user'))
+        return redirect(url_for('spreadsheets.load_spreadsheet'))
 
     else:
 
@@ -144,8 +144,13 @@ def request_password_reset():
             errors.append("There is no account with that email.  Please register.")
             return render_template('users/registration_form.html', email=email, errors=errors)
 
+        # If email delivery was not successful take the user to the spreadsheet load page with
+        # an error
+        errors = user.send_reset_email()
+        if errors:
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
         # Notify user the an email has been sent.
-        user.send_reset_email()
         flash("An email has been sent with instructions for reseting your password")
         return redirect(url_for('users.login_user'))
 

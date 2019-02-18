@@ -103,18 +103,16 @@ class User(db.Model):
 
     def send_reset_email(self):
         token = self.get_reset_token()
-        status = None
-        messages = []
+        errors = []
         subject = 'User password reset for Nitecap access'
         sender = os.environ.get('EMAIL_SENDER')
         link = request.url_root[:-1] + url_for("users.reset_password", token=token)
         content = f'Please click on this link to reset your password. {link}'
         error = self.send_email(subject, sender, content)
         if error:
-            status = 'error'
-            messages.append("A password reset email could not be sent at this time.  "
-                            "Please request a password reset later or notify us of the problem.")
-        return status, messages
+            errors.append("A password reset email could not be sent at this time.  "
+                          "Please request a password reset later or notify us of the problem.")
+        return errors
 
     def send_email(self, subject, sender, content):
         error = False
