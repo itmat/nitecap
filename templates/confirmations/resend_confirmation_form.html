@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Resend User Confirmation <small>Missing or Expired Confirmation Email</small></h1>
+</div>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" id="resend-confirmation-form" action="{{ url_for('confirmations.resend_confirmation') }}">
+    <p>You may resend a confirmation email to the email address we have for you on file, <em>{{ email }}</em>,
+        by clicking on the button below.  Please note that any prior links we sent you will be expired.</p>
+    <input type="hidden" name="confirmation_id" id="confirmation_id"  value="{{ confirmation_id }}">
+    <button type="submit" class="btn btn-primary">Resend Confirmation</button>
+</form>
+
+{% endblock %}

@@ -26,7 +26,7 @@
         </button>
         <div id="navbarNav" class="navbar-collapse collapse">
             <ul class="nav navbar-nav mr-auto">
-                <li class="nav-item"><a class="nav-link" href="#"></a></li>
+                <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.load_spreadsheet')}}">Load Spreadsheet</a></li>
                 <li class="nav-item"><a class="nav-link" href="#"></a></li>
             </ul>
             <ul class="nav navbar-nav ml-auto">
@@ -34,7 +34,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.register_user') }}">Register</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.login_user') }}">Login</a></li>
                 {% else %}
-                <li class="nav-item"><a class="nav-link" href="#">Welcome {{ session['email'] }}</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('users.update_profile') }}">Profile for {{ session['email'] }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
                 {% endif %}
                 <li class="nav-item"><a class="nav-link" href="#"></a></li>

@@ -1,8 +1,12 @@
+from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 from db import db
+import os
 
 app = Flask(__name__)
-app.config.from_object('config')
+load_dotenv(find_dotenv(usecwd=True))
+app.config.from_object('config_default')
+app.config.from_envvar('APPLICATION_SETTINGS')
 
 @app.before_first_request
 def create_tables():
@@ -12,9 +16,16 @@ def create_tables():
 def home():
     return redirect(url_for('spreadsheets.load_spreadsheet'))
 
+@app.errorhandler(413)
+def file_to_large(e):
+    messages = ["The file you are attempting to upload is too large for the site to accommodate."]
+    return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages), 413
+
 from models.users.views import user_blueprint
+from models.confirmations.views import confirmation_blueprint
 from models.spreadsheets.views import spreadsheet_blueprint
 app.register_blueprint(user_blueprint, url_prefix='/users')
+app.register_blueprint(confirmation_blueprint, url_prefix='/confirmations')
 app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 if __name__ == '__main__':

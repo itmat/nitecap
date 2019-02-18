@@ -3,6 +3,8 @@ from flask import Blueprint, request, session, url_for, redirect, render_templat
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
+from pathlib import Path
+import uuid
 import constants
 from util import check_number
 
@@ -17,53 +19,50 @@ def load_spreadsheet():
         upload_file = request.files['upload_file'] if 'upload_file' in request.files else None
 
         # Validate and give errors
-        error = False
-        messages = []
+        errors = []
 
         if not check_number(days):
-            messages.append(f"The value for days is required and must be a positve integer.")
-            error = True
+            errors.append(f"The value for days is required and must be a positve integer.")
         if not check_number(timepoints):
-            messages.append(f"The value for timepoints is required and must be a positve integer.")
-            error = True
+            errors.append(f"The value for timepoints is required and must be a positve integer.")
         if not upload_file:
-            messages.append(f'No spreadsheet file was provided.')
-            error = True
+            errors.append(f'No spreadsheet file was provided.')
         else:
             if not len(upload_file.filename):
-                messages.append(f'No spreadsheet file was provided.')
-                error = True
+                errors.append('No spreadsheet file was provided.')
             if not allowed_file(upload_file.filename):
-                messages.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
-                error = True
+                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
 
             # This test appears to pass everything as text/plain
             file_mime_type = magic.from_buffer(upload_file.filename, mime=True)
             if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-                messages.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_MIME_TYPES)}")
-                error = True
+                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_MIME_TYPES)}")
 
-        if error:
-            return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
+        if errors:
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
 
+        # Not really necessary since we re-name the file.
         filename = secure_filename(upload_file.filename)
-        file_path = os.path.join(constants.UPLOAD_FOLDER, filename)
+
+        extension = Path(filename).suffix
+        new_filename = uuid.uuid4().hex + extension
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
         upload_file.save(file_path)
 
         # For any files masquerading as one of the acceptable file types by virtue of its file extension, it appears we
         # can only identify it when pandas fails to parse it while creating a spreadsheet object.  We throw the file
         # away and report the error.
         try:
-            spreadsheet = Spreadsheet(days, timepoints, uploaded_file_path = file_path)
+            spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path)
         except Exception as e:
             os.remove(file_path)
-            messages.append(f"The file provided is not parseable.")
-            return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
+            errors.append(f"The file provided is not parseable.")
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
         session['spreadsheet'] = spreadsheet.to_json()
 
         return redirect(url_for('.identify_spreadsheet_columns'))
 
-    return render_template('spreadsheets/spreadsheet_upload_form.html', messages=[])
+    return render_template('spreadsheets/spreadsheet_upload_form.html')
 
 def allowed_file(filename):
     return '.' in filename and \

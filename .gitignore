@@ -8,3 +8,8 @@ venv*
 data
 *.db
 *.so
+*.pem
+*.egg-info
+build/
+.env
+nitecap.db
