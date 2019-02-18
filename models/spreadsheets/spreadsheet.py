@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy
 import re
-from util import check_number
 from collections import OrderedDict
 
 import nitecap
@@ -101,10 +100,12 @@ class Spreadsheet:
         # Runs NITECAP on the data but just to order the features
 
         data = self.get_raw_data().values
-        data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
-        td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
+        #data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
+        #td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
+        q, td = nitecap.main(data, self.timepoints, self.num_replicates, self.days)
 
         self.df["total_delta"] = td
+        self.df["q"] = q
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 
@@ -223,3 +224,6 @@ class Spreadsheet:
         num_replicates = data['num_replicates']
         breakpoint = data['breakpoint']
         return cls(days, timepoints, original_filename, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates)
+
+def check_number(value):
+    return value.isdigit()

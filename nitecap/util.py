@@ -49,8 +49,3 @@ def zero_nans(array):
 
     nans = numpy.isnan(array)
     array[nans] = 0
-
-
-
-def check_number(value):
-    return value.isdigit()

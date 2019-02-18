@@ -1,12 +1,11 @@
 import magic
 from flask import Blueprint, request, session, url_for, redirect, render_template
-from models.spreadsheets.spreadsheet import Spreadsheet
+from models.spreadsheets.spreadsheet import Spreadsheet, check_number
 from werkzeug.utils import secure_filename
 import os
 from pathlib import Path
 import uuid
 import constants
-from util import check_number
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
