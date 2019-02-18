@@ -6,18 +6,29 @@
 </div>
 
 
-    <p>We first need a few details about your spreadsheet along with the spreadsheet itself</p>
+<p>We first need a few details about your spreadsheet along with the spreadsheet itself</p>
 
+{% with messages = get_flashed_messages() %}
     {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
     <div class="badge badge-danger">Errors</div>
     <div class="server-errors">
-        {% for message in messages %}
-        <div>{{message}}</div>
+        {% for error in errors %}
+            <div>{{error}}</div>
         {% endfor %}
     </div>
-    {% endif %}
+{% endif %}
 
-    <form id="spreadsheet-details-form" action="{{ url_for('spreadsheets.load_spreadsheet') }}" method="post"
+<form id="spreadsheet-details-form" action="{{ url_for('spreadsheets.load_spreadsheet') }}" method="post"
           enctype="multipart/form-data">
         <div class="form-group">
             <label for="days">Enter Number of Days of Data:</label>
@@ -31,6 +42,6 @@
             <input type="file" id="upload_file" name="upload_file" required>
         </div>
         <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
+</form>
 
 {% endblock %}

@@ -80,6 +80,15 @@ class User(db.Model):
                                     "Please check your spam folder.")
         return user, errors, messages
 
+    def update_user_profile(self, username, email, password):
+        if username:
+            self.username = username
+        if email:
+            self.email = email
+        if password:
+            self.password = encrypt_password(password)
+        self.save_to_db()
+
     def send_confirmation_email(self):
         errors = []
         subject = 'User registration confirmation for Nitecap access'

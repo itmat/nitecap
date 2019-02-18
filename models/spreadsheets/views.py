@@ -19,34 +19,27 @@ def load_spreadsheet():
         upload_file = request.files['upload_file'] if 'upload_file' in request.files else None
 
         # Validate and give errors
-        error = False
-        messages = []
+        errors = []
 
         if not check_number(days):
-            messages.append(f"The value for days is required and must be a positve integer.")
-            error = True
+            errors.append(f"The value for days is required and must be a positve integer.")
         if not check_number(timepoints):
-            messages.append(f"The value for timepoints is required and must be a positve integer.")
-            error = True
+            errors.append(f"The value for timepoints is required and must be a positve integer.")
         if not upload_file:
-            messages.append(f'No spreadsheet file was provided.')
-            error = True
+            errors.append(f'No spreadsheet file was provided.')
         else:
             if not len(upload_file.filename):
-                messages.append(f'No spreadsheet file was provided.')
-                error = True
+                errors.append(f'No spreadsheet file was provided.')
             if not allowed_file(upload_file.filename):
-                messages.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
-                error = True
+                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
 
             # This test appears to pass everything as text/plain
             file_mime_type = magic.from_buffer(upload_file.filename, mime=True)
             if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-                messages.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_MIME_TYPES)}")
-                error = True
+                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_MIME_TYPES)}")
 
-        if error:
-            return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
+        if errors:
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
 
         # Not really necessary since we re-name the file.
         filename = secure_filename(upload_file.filename)
@@ -63,13 +56,13 @@ def load_spreadsheet():
             spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path)
         except Exception as e:
             os.remove(file_path)
-            messages.append(f"The file provided is not parseable.")
-            return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages, days=days, timepoints=timepoints)
+            errors.append(f"The file provided is not parseable.")
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
         session['spreadsheet'] = spreadsheet.to_json()
 
         return redirect(url_for('.identify_spreadsheet_columns'))
 
-    return render_template('spreadsheets/spreadsheet_upload_form.html', messages=[])
+    return render_template('spreadsheets/spreadsheet_upload_form.html')
 
 def allowed_file(filename):
     return '.' in filename and \

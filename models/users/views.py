@@ -70,6 +70,7 @@ def login_user():
         password = request.form['password']
         user = None
         errors = []
+        messages = []
 
         # User must populate the username and password fields.
         if not username:
@@ -153,6 +154,15 @@ def request_password_reset():
 
 @user_blueprint.route('/reset_password/<string:token>', methods=['GET','POST'])
 def reset_password(token):
+    """
+    Handles the password reset itself.  The link to this URL is provided in the password reset request
+    email send to the user.  The GET requests the password reset form.  The user must be logged out to
+    use this facility.  A successful POST will reset the user's password to the one provided in the
+    form and redirect the user to the login page.  An unsuccessful POST will return the user to the
+    password reset form and note the errors made so the user may correct them.
+    :param token: short during token used to identify user - contains user id encrypted
+    """
+
     errors = []
 
     # Should be no need for a password reset if the user is already logged in.
@@ -188,3 +198,32 @@ def reset_password(token):
 
     # User requests password reset form.
     return render_template('users/reset_password_form.html', token=token)
+
+@user_blueprint.route('/update_profile', methods=['GET','POST'])
+def update_profile():
+    errors = []
+
+    if 'email' not in session or not session['email']:
+        flash("You must be logged in to edit your profile")
+        return render_template('users/login_form.html')
+
+    user = User.find_by_email(session['email'])
+
+    if request.method == 'POST':
+
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        user.update_user_profile(username, email, password)
+        if email:
+            session['email'] = email
+
+        flash("Your user profile has been updated.")
+        return render_template("spreadsheets/spreadsheet_upload_form.html")
+
+    return render_template('users/profile_form.html', username=user.username, email=user.email)
+
+
+
+
+
