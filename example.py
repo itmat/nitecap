@@ -46,10 +46,10 @@ start = time.time()
 
 ##### Run nitecap
 # Use the following for most use-cases:
-#q, td = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
+#q, td = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
 
 # We use this instead for plotting results
-q, td, perm_td  = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")
+q, td, perm_td  = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")
 ##### End nitecap
 
 # Finish timing

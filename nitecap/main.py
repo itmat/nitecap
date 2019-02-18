@@ -1,13 +1,35 @@
 import numpy
-import util
+from . import util
 
-import total_delta as total_delta_module
+try:
+    from .total_delta import sum_abs_differences as _sum_abs_differences
+    def sum_abs_differences(data, out, contains_nans=True):
+        # C implementation always handles NaNs correctly by zeroing them out
+        # So we discard the contains_nans param
+        _sum_abs_differences(data, out)
+except ImportError as e:
+    def sum_abs_differences(data, out, contains_nans=True):
+        (N_PERMS, N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+        data_A = data.reshape((N_PERMS, N_TIMEPOINTS, N_REPS, 1, N_GENES))
+        data_B = data.reshape((N_PERMS, N_TIMEPOINTS, 1, N_REPS, N_GENES))
+        # cycle data_B one step over so that we'll compare time 1 in A to time 2 in B
+        data_B = numpy.concatenate( (data_B[:,1:], data_B[:,:1]), axis=1 )
+
+        # Sum all the differences across all rep-rep pairs across all timepoints
+        diffs = data_A - data_B
+        numpy.abs(diffs, out=diffs)
+
+        # Need to manually zero out the nans we get
+        if contains_nans:
+            util.zero_nans(diffs)
+
+        numpy.sum(diffs, axis=(1,2,3), out=out)
 
 # Number of permutations to take for permuted test statistics
 N_PERMS = 100
 
 ### the main function of nitecap which encapsulates all the work
-def nitecap(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PERMS, output="minimal"):
+def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PERMS, output="minimal"):
     '''Identify circadian behavior in `data`
 
     `data` is an numpy array with the following format:
@@ -123,7 +145,7 @@ def total_delta(data, contains_nans = "check"):
 
     ### COMPUTE IN C:
     total_delta = numpy.empty((N_PERMS, N_GENES), dtype="double")
-    total_delta_module.sum_abs_differences(data, total_delta)
+    sum_abs_differences(data, total_delta)
     if contains_nans:
         # total_delta above counts a pair with a NaN as 0 difference
         # Need to renormalize by the number of pairings so that all genes are comparable
