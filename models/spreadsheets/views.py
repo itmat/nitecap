@@ -1,5 +1,5 @@
 import magic
-from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file
+from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file, jsonify
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
@@ -60,8 +60,8 @@ def load_spreadsheet():
                 user_id = user.id
         try:
             spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path, user_id=user_id)
-        except Exception as e:
-            print(e)
+        except UnicodeDecodeError as e:
+            print(type(e), e)
             os.remove(file_path)
             errors.append(f"The file provided is not parseable.")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
@@ -152,29 +152,51 @@ def show_spreadsheet(spreadsheet_id):
                                 timepoint_pairs = spreadsheet.timepoint_pairs)
 
 
-@spreadsheet_blueprint.route('/heatmap', methods=['GET','POST'])
+@spreadsheet_blueprint.route('/heatmap', methods=['POST'])
 def display_heatmap():
+    # errors = []
+    # # spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+    # if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
+    #     errors.append("You may only work with your own spreadsheet.")
+    #     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    # spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+    # data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
+    # data = spreadsheet.normalize_data(data)
+    # heatmap_x_values = []
+    # for day in range(spreadsheet.days):
+    #     for timepoint in range(spreadsheet.timepoints):
+    #         num_replicates = spreadsheet.num_replicates[timepoint]
+    #         for rep in range(num_replicates):
+    #             heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
+    # return render_template('spreadsheets/heatmap.html',
+    #                        data=data.to_json(orient='values'),
+    #                        x_values=spreadsheet.x_labels,
+    #                        heatmap_x_values=heatmap_x_values,
+    #                        ids=labels,
+    #                        column_pairs=spreadsheet.column_pairs,
+    #                        timepoint_pairs=spreadsheet.timepoint_pairs)
     errors = []
-    # spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
-    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
-        errors.append("You may only work with your own spreadsheet.")
-        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    json_data = request.get_json()
+    row_index = json_data.get('row_index',0)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+    spreadsheet.breakpoint = row_index
+    spreadsheet.save_to_db()
     data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
     data = spreadsheet.normalize_data(data)
     heatmap_x_values = []
     for day in range(spreadsheet.days):
         for timepoint in range(spreadsheet.timepoints):
-            num_replicates = spreadsheet.num_replicates[timepoint]
-            for rep in range(num_replicates):
-                heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
-    return render_template('spreadsheets/heatmap.html',
-                           data=data.to_json(orient='values'),
-                           x_values=spreadsheet.x_labels,
-                           heatmap_x_values=heatmap_x_values,
-                           ids=labels,
-                           column_pairs=spreadsheet.column_pairs,
-                           timepoint_pairs=spreadsheet.timepoint_pairs)
+             num_replicates = spreadsheet.num_replicates[timepoint]
+             for rep in range(num_replicates):
+                 heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
+    return jsonify(
+                        {
+                            "heatmap_labels": labels,
+                            "heatmap_data": data.values.tolist(),
+                            "heatmap_x_values": heatmap_x_values
+                        }
+                    )
+
 
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
