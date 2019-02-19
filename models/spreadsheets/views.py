@@ -4,6 +4,7 @@ from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
 from pathlib import Path
+import pandas as pd
 import uuid
 import constants
 from models.users.user import User
@@ -189,10 +190,11 @@ def display_heatmap():
              num_replicates = spreadsheet.num_replicates[timepoint]
              for rep in range(num_replicates):
                  heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
+    heatmap_data = data.where((pd.notnull(data)), None).values.tolist()
     return jsonify(
                         {
                             "heatmap_labels": labels,
-                            "heatmap_data": data.values.tolist(),
+                            "heatmap_data": heatmap_data,
                             "heatmap_x_values": heatmap_x_values
                         }
                     )
