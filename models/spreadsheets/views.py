@@ -12,6 +12,7 @@ spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET','POST'])
 def load_spreadsheet():
+    print("Loading spreadsheet")
     if request.method == 'POST':
         # http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
         days = request.form['days']
@@ -60,6 +61,7 @@ def load_spreadsheet():
         try:
             spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path, user_id=user_id)
         except Exception as e:
+            print(e)
             os.remove(file_path)
             errors.append(f"The file provided is not parseable.")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
@@ -151,7 +153,7 @@ def show_spreadsheet(spreadsheet_id):
 def display_heatmap():
     errors = []
     # spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
-    if 'spreadsheet_id' not in session or not session['spreadheet_id']:
+    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
