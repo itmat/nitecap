@@ -19,7 +19,7 @@ class Spreadsheet(db.Model):
     days = db.Column(db.Integer, nullable=False)
     timepoints = db.Column(db.Integer, nullable=False)
     original_filename = db.Column(db.String(250), nullable=False)
-    breakpoint = db.Column(db.Integer)
+    breakpoint = db.Column(db.Integer, default=0)
     file_path = db.Column(db.String(250))
     uploaded_file_path = db.Column(db.String(250), nullable=False)
     date_uploaded = db.Column(db.DateTime, nullable=False)
