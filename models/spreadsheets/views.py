@@ -123,7 +123,9 @@ def set_spreadsheet_breakpoint():
                                 x_values=spreadsheet.x_labels,
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
-                                timepoint_pairs = spreadsheet.timepoint_pairs)
+                                timepoint_pairs = spreadsheet.timepoint_pairs,
+                                breakpoint = spreadsheet.breakpoint)
+
 
 
 @spreadsheet_blueprint.route('/show_spreadsheet<int:spreadsheet_id>', methods=['GET','POST'])
@@ -132,7 +134,7 @@ def show_spreadsheet(spreadsheet_id):
     if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+    spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
     if request.method == 'POST':
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
@@ -148,6 +150,7 @@ def show_spreadsheet(spreadsheet_id):
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint=spreadsheet.breakpoint,
                                 timepoint_pairs = spreadsheet.timepoint_pairs)
+
 
 @spreadsheet_blueprint.route('/heatmap', methods=['GET','POST'])
 def display_heatmap():
@@ -173,6 +176,7 @@ def display_heatmap():
                            column_pairs=spreadsheet.column_pairs,
                            timepoint_pairs=spreadsheet.timepoint_pairs)
 
+
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
 def display_spreadsheets():
     if 'email' not in session or not session['email']:
@@ -180,6 +184,7 @@ def display_spreadsheets():
         return redirect(url_for('.load_spreadsheet'))
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
+
 
 @spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>', methods=['GET'])
 def delete(spreadsheet_id):
@@ -200,14 +205,15 @@ def delete(spreadsheet_id):
        errors.append("The spreadsheet data may not have been all successfully removed.")
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-    return redirect(url_for('spreadsheets.display_spreadsheets'))
+    return redirect(url_for('.display_spreadsheets'))
 
-@spreadsheet_blueprint.route('/download/<int:spreadsheet_id>')
+
+@spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
 def download(spreadsheet_id):
     errors = []
     if 'email' not in session or not session['email']:
         flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('spreadsheets.load_spreadsheet'))
+        return redirect(url_for('users.login_user'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -218,3 +224,59 @@ def download(spreadsheet_id):
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+
+@spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET','POST'])
+def edit_details(spreadsheet_id):
+    errors = []
+    if 'email' not in session or not session['email']:
+        flash('You must be logged in to manage your saved spreadsheets.')
+        return redirect(url_for('users.login_user'))
+    user = User.find_by_email(session['email'])
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('You may only manage your own spreadsheets.')
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    session['spreadsheet_id'] = spreadsheet_id
+    if request.method == "POST":
+        days = request.form['days']
+        timepoints = request.form['timepoints']
+        if not days.isdigit():
+            errors.append(f"The value for days is required and must be a positve integer.")
+        if not timepoints.isdigit():
+            errors.append(f"The value for timepoints is required and must be a positve integer.")
+        if errors:
+            return render_template('spreadsheets/edit_form.html', errors=errors, days=days,
+                                   timepoints=timepoints)
+        spreadsheet.days = days
+        spreadsheet.timepoints = timepoints
+        spreadsheet.save_to_db()
+        return redirect(url_for('.edit_columns'))
+    return render_template('spreadsheets/edit_form.html', spreadsheet_id=spreadsheet_id,
+                           days=spreadsheet.days, timepoints=spreadsheet.timepoints)
+
+
+@spreadsheet_blueprint.route('/edit', methods=['GET', 'POST'])
+def edit_columns():
+    errors = []
+    if 'email' not in session or not session['email']:
+        flash('You must be logged in to manage your saved spreadsheets.')
+        return redirect(url_for('users.login_user'))
+    user = User.find_by_email(session['email'])
+    spreadsheet = user.find_user_spreadsheet_by_id(session['spreadsheet_id'])
+    if not spreadsheet:
+        errors.append('You may only manage your own spreadsheets.')
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    if request.method == 'POST':
+        column_labels = list(request.form.values())
+        error, messages = spreadsheet.validate(column_labels)
+        errors.extend(messages)
+        if error:
+            return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet, errors=errors)
+        spreadsheet.identify_columns(column_labels)
+        spreadsheet.compute_ordering()
+        spreadsheet.save_to_db()
+        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+    return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet)
+
+

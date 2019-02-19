@@ -8,6 +8,7 @@
         x_values = {{ x_values | safe }};
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
+        breakpoint = {{ breakpoint | safe }};
         timepoint_pairs = {{ timepoint_pairs | safe }}.flatMap(function (pair) {
             // Nulls get skipped when drawing lines to disconnect our lines
             return [pair[0], pair[1], null];
@@ -16,6 +17,8 @@
         x_labels = timepoint_pairs.map(function (item) {
             return (item != undefined ? x_values[item] : null);
         });
+
+        breakpoint = breakpoint ? breakpoint : 0;
 
         y_values = [];
         trace_name = 'Nothing selected';
@@ -39,7 +42,7 @@
         $("#coarse_slider").slider({
             orientation: "horizontal",
             min: 0,
-            value: 0,
+            value: breakpoint,
             step: 1,
             max: labels.length,
             slide: function (event, ui) {
@@ -95,7 +98,7 @@
             }));
         });
 
-        $('#row_selector').val(0).trigger("change");
+        $('#row_selector').val(breakpoint).trigger("change");
 
     });
 </script>
