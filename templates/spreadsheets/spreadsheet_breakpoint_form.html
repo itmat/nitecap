@@ -47,8 +47,9 @@
             step: 1,
             max: labels.length,
             slide: function (event, ui) {
-                $("#row_selector").val(ui.value);
+                //$("#row_selector").val(ui.value);
                 $('#significant_items').html(ui.value+1);
+                $('#row_selector').val(ui.value).trigger("focus");
                 raw_y_values = data[ui.value];
                 paired_y_values = column_pairs.flatMap(function (pair) {
                     // Nulls get skipped when drawing lines to disconnect our lines
