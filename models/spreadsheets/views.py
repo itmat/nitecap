@@ -129,7 +129,7 @@ def set_spreadsheet_breakpoint():
 
 
 
-@spreadsheet_blueprint.route('/show_spreadsheet<int:spreadsheet_id>', methods=['GET','POST'])
+@spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET','POST'])
 def show_spreadsheet(spreadsheet_id):
     errors = []
     if 'spreadsheet_id' not in session or not session['spreadsheet_id']:

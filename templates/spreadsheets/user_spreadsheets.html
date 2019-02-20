@@ -59,7 +59,7 @@
                 <td>{{spreadsheet.timepoints}}</td>
                 <td>{{spreadsheet.breakpoint}}</td>
                 <td>
-                    <a href="{{ url_for('spreadsheets.set_spreadsheet_breakpoint', spreadsheet_id = spreadsheet.id) }}">
+                    <a href="{{ url_for('spreadsheets.show_spreadsheet', spreadsheet_id = spreadsheet.id) }}">
                         <i class="fas fa-eye" data-toggle="tooltip" data-placement="top" title="View graphs"></i>
                     </a>
                     &nbsp;&nbsp;
