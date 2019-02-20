@@ -6,17 +6,11 @@
 
         labels = {{ ids | safe }};
         x_values = {{ x_values | safe }};
+        x_labels = {{ x_labels | safe }};
+        x_label_values = {{ x_label_values | safe }};
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
         breakpoint = {{ breakpoint | safe }};
-        timepoint_pairs = {{ timepoint_pairs | safe }}.flatMap(function (pair) {
-            // Nulls get skipped when drawing lines to disconnect our lines
-            return [pair[0], pair[1], null];
-        });
-
-        x_labels = timepoint_pairs.map(function (item) {
-            return (item != undefined ? x_values[item] : null);
-        });
 
         y_values = [];
         trace_name = 'Nothing selected';
@@ -45,22 +39,30 @@
             max: labels.length,
             slide: function (event, ui) {
                 $("#row_selector").val(ui.value);
-                $('#significant_items').html(ui.value);
+                $('#significant_items').html(ui.value+1);
                 raw_y_values = data[ui.value];
                 paired_y_values = column_pairs.flatMap(function (pair) {
                     // Nulls get skipped when drawing lines to disconnect our lines
                     return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
                 });
+                paired_x_values = column_pairs.flatMap(function (pair) {
+                    // Nulls get skipped
+                    return [x_values[pair[0]], x_values[pair[1]], null];
+                });
                 $('input[name="row_index"]').val(ui.value);
                 values = [{
-                    x: x_labels, y: paired_y_values,
+                    x: paired_x_values, y: paired_y_values,
                     mode: 'lines+markers',
                     marker: marker_settings,
                     name: labels[ui.value],
                     type: 'scatter'
                 }];
                 var layout = {
-                    title: labels[ui.value]
+                    title: labels[ui.value],
+                    xaxis: {
+                        ticktext: x_labels,
+                        tickvals: x_label_values
+                    }
                 };
                 Plotly.react(scatter_plot, values, layout);
             }
@@ -74,19 +76,27 @@
                 // Nulls get skipped when drawing lines to disconnect our lines
                 return [raw_y_values[pair[0]], raw_y_values[pair[1]], null];
             });
+            paired_x_values = column_pairs.flatMap(function (pair) {
+                // Nulls get skipped
+                return [x_values[pair[0]], x_values[pair[1]], null];
+            });
             console.log(this.value, labels[this.value]);
             $('input[name="row_index"]').val(this.value);
-            $('#significant_items').html(this.value);
+            $('#significant_items').html(parseInt(this.value) + 1);
             console.log("row: " + this.value + ",id: " + labels[this.value]);
             values = [{
-                x: x_labels, y: paired_y_values,
+                x: paired_x_values, y: paired_y_values,
                 mode: 'lines+markers',
                 marker: marker_settings,
                 name: labels[this.value],
                 type: 'scatter'
             }];
             var layout = {
-                title: labels[this.value]
+                title: labels[this.value],
+                xaxis: {
+                    ticktext: x_labels,
+                    tickvals: x_label_values
+                }
             };
             Plotly.react(scatter_plot, values, layout);
         });

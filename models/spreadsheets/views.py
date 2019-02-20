@@ -121,10 +121,11 @@ def set_spreadsheet_breakpoint():
     data = spreadsheet.get_raw_data()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
-                                x_values=spreadsheet.x_labels,
+                                x_values=spreadsheet.x_values,
+                                x_labels=spreadsheet.x_labels,
+                                x_label_values=spreadsheet.x_label_values,
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
-                                timepoint_pairs = spreadsheet.timepoint_pairs,
                                 breakpoint = spreadsheet.breakpoint)
 
 
@@ -146,11 +147,12 @@ def show_spreadsheet(spreadsheet_id):
     data = spreadsheet.get_raw_data()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
-                                x_values=spreadsheet.x_labels,
+                                x_values=spreadsheet.x_values,
+                                x_labels=spreadsheet.x_labels,
+                                x_label_values=spreadsheet.x_label_values,
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
-                                breakpoint=spreadsheet.breakpoint,
-                                timepoint_pairs = spreadsheet.timepoint_pairs)
+                                breakpoint=spreadsheet.breakpoint)
 
 
 @spreadsheet_blueprint.route('/heatmap', methods=['POST'])
