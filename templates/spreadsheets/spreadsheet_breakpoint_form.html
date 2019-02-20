@@ -39,7 +39,7 @@
             max: labels.length,
             slide: function (event, ui) {
                 $("#row_selector").val(ui.value);
-                $('#significant_items').html(ui.value);
+                $('#significant_items').html(ui.value+1);
                 raw_y_values = data[ui.value];
                 paired_y_values = column_pairs.flatMap(function (pair) {
                     // Nulls get skipped when drawing lines to disconnect our lines
@@ -82,7 +82,7 @@
             });
             console.log(this.value, labels[this.value]);
             $('input[name="row_index"]').val(this.value);
-            $('#significant_items').html(this.value);
+            $('#significant_items').html(parseInt(this.value) + 1);
             console.log("row: " + this.value + ",id: " + labels[this.value]);
             values = [{
                 x: paired_x_values, y: paired_y_values,
