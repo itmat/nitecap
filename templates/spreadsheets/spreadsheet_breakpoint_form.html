@@ -122,8 +122,10 @@
         $('#row_selector').val(breakpoint).trigger("change");
 
         $('#set_breakpoint').click(function() {
-            $('#heatmap').hide();
+            $('#heatmap_block').hide();
             row_index = $('#row_index').val();
+            console.log("Row index is " + row_index)
+            $('#cutoff').html(row_index);
             $.ajax({
                 url: "{{url_for('spreadsheets.display_heatmap')}}",
                 data: JSON.stringify({'row_index': row_index}),
@@ -148,8 +150,6 @@
                     var heatmap_labels = response['heatmap_labels'];
                     var heatmap_data = response['heatmap_data'];
 
-                    console.log(heatmap_data)
-
                     var heatmap_values = [{
                         x: heatmap_x_values,
                         y: heatmap_labels,
@@ -158,7 +158,7 @@
                     }];
 
                     Plotly.newPlot('heatmap', heatmap_values, heatmap_layout);
-                    $('#heatmap').show();
+                    $('#heatmap_block').show();
                 },
                 error: function(error) {
                     console.log(error);
@@ -198,6 +198,9 @@
             <input type="hidden" id="row_index" name="row_index"/>
             <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
         </div>
-        <div id="heatmap"></div>
+        <div id="heatmap_block" style="display:none">
+            <div>Number of items in heatmap: <span id="cutoff"></span></div>
+            <div id="heatmap"></div>
+        </div>
     </div>
 {% endblock %}

@@ -18,6 +18,11 @@
     opacity: 1;
 }
 
+#heatmap_block {
+    text-align: center;
+    width: 1000px;
+}
+
 
 .server-errors {
     padding: 3px 0 10px 3px;
