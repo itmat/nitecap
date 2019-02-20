@@ -144,6 +144,11 @@ class Spreadsheet(db.Model):
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
 
+        peak_time = nitecap.peak_time(data_formatted, hours_per_timepoint=1)
+        trough_time = nitecap.trough_time(data_formatted, hours_per_timepoint=1)
+
+        self.df["peak_time"] = peak_time
+        self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
@@ -152,10 +157,11 @@ class Spreadsheet(db.Model):
         self.df.to_csv(self.file_path, sep="\t", index=False)
 
     def reduce_dataframe(self, breakpoint):
-        raw_data = self.get_raw_data()
-        heatmap_df = raw_data.iloc[:breakpoint+1]
+        above_breakpoint = self.df.iloc[:breakpoint+1]
+        sorted_by_peak_time = above_breakpoint.sort_values(by="peak_time")
+        raw_data = sorted_by_peak_time[self.get_data_columns()]
         labels = list(self.df.iloc[:breakpoint+1]["id"])
-        return heatmap_df, labels
+        return raw_data, labels
 
     def check_breakpoint(self, breakpoint):
         error = False
