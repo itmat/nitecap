@@ -27,9 +27,18 @@
             marker: marker_settings
         }];
 
+        var layout = {
+            xaxis: {
+                title: labels[breakpoint],
+                ticktext: x_labels,
+                tickvals: x_label_values,
+                automargin: true
+            }
+        };
+
         // This empty plot should be quickly replaced since we trigger a select change event once everything is
         // set up.
-        Plotly.newPlot(scatter_plot, values);
+        Plotly.newPlot(scatter_plot, values, layout);
 
         $("#coarse_slider").slider({
             orientation: "horizontal",
@@ -61,7 +70,8 @@
                     title: labels[ui.value],
                     xaxis: {
                         ticktext: x_labels,
-                        tickvals: x_label_values
+                        tickvals: x_label_values,
+                        automargin: true
                     }
                 };
                 Plotly.react(scatter_plot, values, layout);
@@ -95,7 +105,8 @@
                 title: labels[this.value],
                 xaxis: {
                     ticktext: x_labels,
-                    tickvals: x_label_values
+                    tickvals: x_label_values,
+                    automargin: true
                 }
             };
             Plotly.react(scatter_plot, values, layout);
