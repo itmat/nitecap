@@ -8,10 +8,6 @@
         heatmap_x_values = {{ heatmap_x_values | safe }}
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe}}
-        timepoint_pairs = {{timepoint_pairs | safe }}.flatMap(function(pair) {
-            // Nulls get skipped when drawing lines to disconnect our lines
-            return [pair[0], pair[1], null];
-        });
 
         console.log(data);
         var heatmap_layout = {

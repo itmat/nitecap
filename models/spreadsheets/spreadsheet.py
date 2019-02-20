@@ -100,33 +100,34 @@ class Spreadsheet(db.Model):
         x_values = [self.label_to_timepoint(label) for label in self.column_labels]
         self.x_values = [value for value in x_values if value is not None]
 
-        # Essentially the x coordinate for the basketweave plots.
-        self.x_labels = list(OrderedDict({label:None for label in self.column_labels if re.search("Day(\d+) Timepoint(\d+)", label)}).keys())
-
         x_indices = [index for index, value in enumerate(self.column_labels) if value != 'Ignore']
 
-        columns_by_timepoint = dict()
-        for column, x_value in enumerate(self.x_values):
-            if x_value in columns_by_timepoint:
-                columns_by_timepoint[x_value].append(column)
-            else:
-                columns_by_timepoint[x_value] = [column]
+        # Essentially the x coordinate for the basketweave plots.
+        #self.x_labels = list(OrderedDict({label:None for label in self.column_labels if re.search("Day(\d+) Timepoint(\d+)", label)}).keys())
+        #self.x_labels = [column for timepoint in range(self.timepoints * self.days)
+        #                        for column in columns_by_timepoint[timepoint]]
 
         # Count the number of replicates at each timepoint
-        self.num_replicates = [len(columns_by_timepoint.get(i, [])) for i in range(self.timepoints * self.days)]
+        self.num_replicates = [len([1 for x in self.x_values if x == i])
+                                    for i in range(self.timepoints * self.days)]
         self.num_replicates_str = ",".join([str(num_replicate) for num_replicate in self.num_replicates])
+
+
+        self.x_values = [i for i,num_reps in enumerate(self.num_replicates)
+                            for j in range(num_reps)]
+        self.x_labels = [f"Day{i+1} Timepoint{j+1}" for i in range(self.days) for j in range(self.timepoints)]
+        self.x_label_values = [i*self.timepoints + j for i in range(self.days) for j in range(self.timepoints)]
+
 
         # Also compute all the ways that we can pair adjacent data points, for use in plotting
         # TODO: should this be moved elsewhere? only possible to do after getting column_labels
         self.column_pairs =  []
-        self.timepoint_pairs = []
-        for timepoint in range(max(columns_by_timepoint.keys())):
-            next_timepoint = timepoint + 1
-            self.column_pairs.extend( [[a,b] for a in columns_by_timepoint[timepoint]
-                                            for b in columns_by_timepoint[next_timepoint]] )
-            self.timepoint_pairs.extend( [[timepoint, next_timepoint]
-                                        for _ in range(len(columns_by_timepoint[timepoint])
-                                                        * len(columns_by_timepoint[next_timepoint]))] )
+        first_col_in_timepoint = 0
+        for timepoint, num_reps in enumerate(self.num_replicates[:-1]):
+            next_num_reps = self.num_replicates[timepoint+1]
+            self.column_pairs.extend( [[first_col_in_timepoint + a, first_col_in_timepoint + num_reps + b] for a in range(num_reps)
+                                             for b in range(next_num_reps)] )
+            first_col_in_timepoint += num_reps
     def get_raw_data(self):
         data_columns = self.get_data_columns()
         return self.df[data_columns]
@@ -160,7 +161,7 @@ class Spreadsheet(db.Model):
         above_breakpoint = self.df.iloc[:breakpoint+1]
         sorted_by_peak_time = above_breakpoint.sort_values(by="peak_time")
         raw_data = sorted_by_peak_time[self.get_data_columns()]
-        labels = list(self.df.iloc[:breakpoint+1]["id"])
+        labels = list(sorted_by_peak_time["id"])
         return raw_data, labels
 
     def check_breakpoint(self, breakpoint):
