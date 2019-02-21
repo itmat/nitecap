@@ -119,14 +119,13 @@
             Plotly.react(scatter_plot, values, layout);
         });
 
+        // Add options to a "document fragment"
+        // then to the selector, for speed
+        var option_fragment = document.createDocumentFragment()
         $.each(labels, function (i, label) {
-            $('#row_selector').append($('<option>', {
-                value: i,
-                text: label
-            }));
-        });
-
-        $('#row_selector').val(breakpoint).trigger("change");
+            option_fragment.appendChild(new Option(label + " Q: " + qs[i].toFixed(2), i));
+        } );
+        $('#row_selector')[0].appendChild(option_fragment);
 
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
@@ -172,6 +171,8 @@
                 }
             });
         });
+
+        $('#row_selector').val(breakpoint).trigger("change");
 
 });
 
