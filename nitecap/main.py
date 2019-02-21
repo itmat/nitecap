@@ -94,10 +94,10 @@ def FDR(td, perm_td):
     num_below_cutoff = numpy.searchsorted(perm_td_sorted, td[sort_order], side="right")
 
     # Estimate the number of nulls among those below the cutoff by summing their p values and multiplying by 2
-    expected_false_discoveries = ps_sorted_cumsum[num_below_cutoff] * (2 / N_PERMS)
+    expected_false_discoveries = ps_sorted_cumsum[num_below_cutoff] * (2 / (N_PERMS + 1))
 
     # Compute q values by dividing by the number of rejected genes at each td
-    q = expected_false_discoveries / numpy.arange(1, 1+N_GENES)
+    q = (expected_false_discoveries+1) / numpy.arange(1, 1+N_GENES)
 
     # Make q's monotone increasing (step-up)
     # i.e. if a later gene (with worse td) has a better q, then we use it's q
