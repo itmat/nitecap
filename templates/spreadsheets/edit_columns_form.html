@@ -30,7 +30,7 @@
         <div class="colIdTableScroll">
         <table id="colIdentityTable" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
             <tr>
-                {% for heading in spreadsheet.columns %}
+                {% for heading in spreadsheet.df.columns %}
                 <th>{{ heading }}</th>
                 {% endfor %}
             </tr>
