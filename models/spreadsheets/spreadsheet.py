@@ -133,9 +133,9 @@ class Spreadsheet(db.Model):
         return self.df[data_columns]
 
     def get_data_columns(self):
-        # Order the columns by their timepoint (not their days, so we collect across days)
+        # Order the columns by chronological order
         filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels) if label != 'Ignore']
-        ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1])[1] )
+        ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
         return [column for column, label in ordered_columns]
 
     def compute_ordering(self):
