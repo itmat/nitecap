@@ -133,10 +133,14 @@ def set_spreadsheet_breakpoint():
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET','POST'])
 def show_spreadsheet(spreadsheet_id):
     errors = []
-    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
-        errors.append("You may only work with your own spreadsheet.")
-        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-    spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+    if 'email' not in session or not session['email']:
+        flash('You must be logged in to manage your saved spreadsheets.')
+        return redirect(url_for('.load_spreadsheet'))
+    user = User.find_by_email(session['email'])
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('You may only manage your own spreadsheets.')
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     if request.method == 'POST':
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
@@ -208,6 +212,7 @@ def display_spreadsheets():
     if 'email' not in session or not session['email']:
         flash('You must be logged in to see your saved spreadsheets.')
         return redirect(url_for('.load_spreadsheet'))
+    print("Display spreadsheets {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
