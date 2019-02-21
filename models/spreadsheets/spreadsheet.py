@@ -12,7 +12,6 @@ from collections import OrderedDict
 
 import nitecap
 
-
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id = db.Column(db.Integer, primary_key=True)
@@ -68,27 +67,8 @@ class Spreadsheet(db.Model):
 
     def column_defaults(self):
         # Try to guess the columns by looking for CT/ZT labels
-        selections = self.get_selection_options()
-
-        default_selections = ['Ignore'] * len(self.df.columns)
-        CT_columns = [column for column in self.df.columns if "CT" in column or "ct" in column]
-        ZT_columns = [column for column in self.df.columns if "ZT" in column or "zt" in column]
-
-        if len(ZT_columns) > 0 and len(ZT_columns) % (self.days*self.timepoints) == 0:
-            # Guess we are using ZT
-            num_reps = len(ZT_columns) // (self.days*self.timepoints)
-            ZT_selections = [selections[1+i] for i in range(self.days*self.timepoints) for _ in range(num_reps)]
-            default_selections = ['Ignore' if column not in ZT_columns else ZT_selections[ZT_columns.index(column)]
-                                    for column in self.df.columns]
-
-        if len(CT_columns) > 0 and len(CT_columns) % (self.days*self.timepoints) == 0 and len(CT_columns) > len(ZT_columns):
-            # Guess we are using CT
-            num_reps = len(CT_columns) // (self.days*self.timepoints)
-            CT_selections = [selections[1+i] for i in range(self.days*self.timepoints) for _ in range(num_reps)]
-            default_selections = ['Ignore' if column not in CT_columns else CT_selections[CT_columns.index(column)]
-                                    for column in self.df.columns]
-
-        return list(zip(self.df.columns, default_selections))
+        selections = guess_column_labels(self.df.columns, self.timepoints, self.days)
+        return list(zip(self.df.columns, selections))
 
 
     def identify_columns(self, column_labels):
@@ -288,3 +268,57 @@ class Spreadsheet(db.Model):
     @classmethod
     def find_by_id(cls, _id):
         return cls.query.filter_by(id=_id).first()
+
+column_label_formats = [re.compile("CT(\d+)"), re.compile("ct(\d)"),
+                        re.compile("(\d+)CT"), re.compile("(\d)ct"),
+                        re.compile("ZT(\d+)"), re.compile("zt(\d+)"),
+                        re.compile("(\d+)ZT"), re.compile("(\d+)zt")]
+
+def guess_column_labels(columns, timepoints, days):
+    best_num_matches = 0
+    best_matches = []
+    for fmt in column_label_formats:
+        matches = [fmt.search(label) for label in columns]
+        num_matches = len([match for match in matches if match])
+        if num_matches > best_num_matches:
+            best_num_matches = num_matches
+            best_matches = matches
+
+    if best_num_matches > 0:
+        times = [int(match.groups()[0]) if match else None
+                     for match in best_matches]
+        selected_columns = [column if match else None
+                                 for column, match in zip(columns, best_matches)]
+        min_time = min(time for time in times if time is not None)
+        max_time = max(time for time in times if time is not None)
+        total_time_delta = max_time - min_time
+        time_per_timepoint = total_time_delta / (timepoints * days - 1)
+        time_point_counts = [(time - min_time)/ time_per_timepoint if match else None
+                                for time,match in zip(times,best_matches)]
+        if all(int(time_point_count) == time_point_count for time_point_count in time_point_counts if time_point_count is not None):
+
+            selections = [f"Day{int(time_point_count // timepoints)} Timepoint{int(time_point_count % timepoints)}" if time_point_count is not None else "Ignore"
+                            for time_point_count in time_point_counts]
+            return selections
+        
+        # Okay, so the timepoitns aren't evenly distributed
+        # But let's check there might be the right number of them
+        # assuming that there are constant number of reps per day
+        # and that they are in the right order
+        if best_num_matches % (timepoints*days) == 0:
+            num_reps = int(best_num_matches // timepoints*days)
+
+            selections = []
+            selected_below = 0
+            for i,column in enumerate(columns):
+                if best_matches[i]:
+                    day = int(selected_below // timepoints)
+                    time = int(selected_below % timepoints)
+                    selections.append(f"Day{day} Timepoint{time}")
+                    selected_below += 1
+                else:
+                    selections.append("Ignore")
+            return selections
+        return ["Ignore"]*len(columns) # No selections, we have uneven timepoints
+    else:
+        return ["Ignore"]*len(columns)
