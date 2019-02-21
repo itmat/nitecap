@@ -124,6 +124,7 @@ def set_spreadsheet_breakpoint():
                                 x_values=spreadsheet.x_values,
                                 x_labels=spreadsheet.x_labels,
                                 x_label_values=spreadsheet.x_label_values,
+                                qs=list(spreadsheet.df.nitecap_q.values),
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint)
@@ -154,6 +155,7 @@ def show_spreadsheet(spreadsheet_id):
                                 x_values=spreadsheet.x_values,
                                 x_labels=spreadsheet.x_labels,
                                 x_label_values=spreadsheet.x_label_values,
+                                qs=list(spreadsheet.df.nitecap_q.values),
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint=spreadsheet.breakpoint)

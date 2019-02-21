@@ -144,6 +144,7 @@ class Spreadsheet(db.Model):
         data = self.get_raw_data().values
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
+        q = nitecap.FDR(td, perm_td)
 
         peak_time = nitecap.peak_time(data_formatted, hours_per_timepoint=1)
         trough_time = nitecap.trough_time(data_formatted, hours_per_timepoint=1)
@@ -151,6 +152,7 @@ class Spreadsheet(db.Model):
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
+        self.df["nitecap_q"] = q
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 

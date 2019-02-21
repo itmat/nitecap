@@ -11,6 +11,7 @@
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
         breakpoint = {{ breakpoint | safe }};
+        qs = {{ qs | safe }};
 
         y_values = [];
         trace_name = 'Nothing selected';
@@ -49,6 +50,7 @@
             slide: function (event, ui) {
                 //$("#row_selector").val(ui.value);
                 $('#significant_items').html(ui.value+1);
+                $('#q_value').html(qs[ui.value].toFixed(3));
                 $('#row_selector').val(ui.value).trigger("focus");
                 raw_y_values = data[ui.value];
                 paired_y_values = [];
@@ -97,6 +99,7 @@
             console.log(this.value, labels[this.value]);
             $('input[name="row_index"]').val(this.value);
             $('#significant_items').html(parseInt(this.value) + 1);
+            $('#q_value').html(qs[this.value].toFixed(3));
             console.log("row: " + this.value + ",id: " + labels[this.value]);
             values = [{
                 x: paired_x_values, y: paired_y_values,
@@ -179,8 +182,13 @@
     <h1>Results <small>Data sorted by significance</small></h1>
 </div>
 <div>
-    Number of items equal to or more significant than currently selected:
-    <span id="significant_items"></span>
+    <span>
+        Number of items equal to or more significant than currently selected:
+        <span id="significant_items"></span>
+    </span>
+    <span style="float:right">
+        Q &le; <span id="q_value"></span>
+    </span>
 </div>
 <div id="spreadsheet-breakpoint-page" class="container">
     <div id="coarse_slider" class="coarse-slider"></div>
