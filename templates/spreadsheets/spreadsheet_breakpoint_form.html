@@ -21,7 +21,7 @@
 
         var values = [{
             x: x_values,
-            y: Array(x_values.length).fill(0),
+            y: x_values.map(function(x) {return 0;}),
             name: trace_name,
             type: 'scatter',
             mode: 'lines+markers',
@@ -123,7 +123,7 @@
         // then to the selector, for speed
         var option_fragment = document.createDocumentFragment()
         $.each(labels, function (i, label) {
-            option_fragment.appendChild(new Option(label + " Q: " + qs[i].toFixed(2), i));
+            option_fragment.appendChild(new Option(" Q: " + qs[i].toFixed(2) + " " + label, i));
         } );
         $('#row_selector')[0].appendChild(option_fragment);
 
@@ -216,4 +216,5 @@
             <div id="heatmap"></div>
         </div>
     </div>
+</div>
 {% endblock %}
