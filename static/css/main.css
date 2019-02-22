@@ -58,3 +58,7 @@
 #colIdentityTable th, td {
     white-space: nowrap;
 }
+
+#row_selector {
+    font-family: monospace;
+}
