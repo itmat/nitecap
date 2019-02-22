@@ -50,3 +50,34 @@ def zero_nans(array):
     nans = numpy.isnan(array)
     array[nans] = 0
 
+
+def loess(xs, ys, degree = 2, frac = 2/3.):
+    ''' Computes loess smoothing of the given data
+
+    xs is 1-dimensional array
+    ys is 1-dimensional or 2-dimensional, with first axis matching xs in size
+    '''
+
+
+    # Convert ys to always be 2-dimensional
+    if ys.ndim == 1:
+        ys.shape = (-1,*ys.shape)
+
+    sorting = numpy.argsort(xs)
+    xs = xs[sorting]
+    ys = ys[sorting]
+
+    # Take 'frac' fraction of all points, rounded to nearest integer
+    num_points = int(frac*len(xs) + 0.5)
+
+    # Predictor variables are 1, x, x^2, ... x^degree
+    predictors = numpy.concat( [xs ** j for j in range(0,degree+1)] )
+
+    max_separation =  numpy.max(xs) - numpy.min(xs)
+    for x in xs:
+        d = (xs - x) /  max_separation
+
+        # Tri-cube weighting of the closest points
+        weights = (1- numpy.abs(d)**3)**3
+        
+        fit = numpy.linalg.lstsq(weights*predictors, weights*ys)
