@@ -49,7 +49,7 @@ def load_spreadsheet():
 
         # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
         # to be one of the accepted file mime types.
-        disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are aceepted.  They may be gzipped."
+        disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  They may be gzipped."
         x = magic.Magic(mime=True)
         z = magic.Magic(mime=True, uncompress=True)
         file_mime_type = x.from_file(file_path)
