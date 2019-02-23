@@ -1,5 +1,7 @@
 import magic
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file, jsonify
+from pandas.errors import ParserError
+
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
@@ -34,12 +36,6 @@ def load_spreadsheet():
                 errors.append('No spreadsheet file was provided.')
             if not allowed_file(upload_file.filename):
                 errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
-
-            # This test appears to pass everything as text/plain
-            file_mime_type = magic.from_buffer(upload_file.filename, mime=True)
-            if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_MIME_TYPES)}")
-
         if errors:
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
 
@@ -51,9 +47,28 @@ def load_spreadsheet():
         file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
         upload_file.save(file_path)
 
-        # For any files masquerading as one of the acceptable file types by virtue of its file extension, it appears we
-        # can only identify it when pandas fails to parse it while creating a spreadsheet object.  We throw the file
-        # away and report the error.
+        # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
+        # to be one of the accepted file mime types.
+        disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  They may be gzipped."
+        x = magic.Magic(mime=True)
+        z = magic.Magic(mime=True, uncompress=True)
+        file_mime_type = x.from_file(file_path)
+        print(file_mime_type)
+        if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+            errors.append(disallowed_mime_type)
+        elif file_mime_type in constants.COMPRESSED_MIME_TYPES:
+            file_mime_type = z.from_file(file_path)
+            print(file_mime_type)
+            if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+                errors.append(disallowed_mime_type)
+        if errors:
+            os.remove(file_path)
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days,
+                                   timepoints=timepoints)
+
+        # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
+        # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
+        # We throw the file away and report the error.
         user_id = None
         if 'email' in session and session['email']:
             user = User.find_by_email(session['email'])
@@ -61,12 +76,11 @@ def load_spreadsheet():
                 user_id = user.id
         try:
             spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path, user_id=user_id)
-        except UnicodeDecodeError as e:
+        except (UnicodeDecodeError, ParserError) as e:
             print(type(e), e)
             os.remove(file_path)
             errors.append(f"The file provided is not parseable.")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
-        #session['spreadsheet'] = spreadsheet.to_json()
         spreadsheet.save_to_db()
         session['spreadsheet_id'] = spreadsheet.id
 
