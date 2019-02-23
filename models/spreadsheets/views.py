@@ -163,6 +163,8 @@ def show_spreadsheet(spreadsheet_id):
         session['spreadsheet'] = spreadsheet.to_json()
         return redirect(url_for('.display_heatmap'))
 
+    session["spreadsheet_id"] = spreadsheet.id
+
     data = spreadsheet.get_raw_data()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
