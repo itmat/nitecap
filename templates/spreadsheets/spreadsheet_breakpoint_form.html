@@ -130,7 +130,7 @@
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
-            row_index = $('#row_index').val();
+            row_index = parseInt($('#row_index').val()) + 1;
             $('#cutoff').html(row_index);
             $.ajax({
                 url: "{{url_for('spreadsheets.display_heatmap')}}",
@@ -204,7 +204,7 @@
 
         $('#download_heatmap').click(function() {
             var gd = document.getElementById('heatmap');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (row_index + 1)});
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + row_index});
         });
 
 });
