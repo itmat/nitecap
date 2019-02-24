@@ -151,7 +151,7 @@
                             t: 20
                         },
                         pad: 4
-                    }
+                    };
 
                     var heatmap_options = {
                         modeBarButtonsToRemove: ['toImage', 'sendDataToCloud'],
@@ -168,11 +168,28 @@
                     var heatmap_labels = response['heatmap_labels'];
                     var heatmap_data = response['heatmap_data'];
 
+                    var maxRow = heatmap_data.map(function(row){ return Math.max.apply(Math, row); });
+                    var minRow = heatmap_data.map(function(row){ return Math.min.apply(Math, row); });
+
+                    var max = Math.max.apply(null, maxRow);
+                    var min = Math.min.apply(null, minRow);
+                    var limit = Math.max(Math.abs(min), max);
+
+
+
+                    console.log(min,max, limit);
+
                     var heatmap_values = [{
                         x: heatmap_x_values,
                         y: heatmap_labels,
                         z: heatmap_data,
-                        type: 'heatmap'
+                        type: 'heatmap',
+                        zmin: -1 * limit,
+                        zmax: limit,
+                        colorbar: {
+                            title: 'Z Scale',
+                            titleside: 'right'
+                        }
                     }];
 
                     heatmap_plot = Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
