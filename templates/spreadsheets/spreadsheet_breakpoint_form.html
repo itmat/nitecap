@@ -131,7 +131,6 @@
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
             row_index = $('#row_index').val();
-            console.log("Row index is " + row_index)
             $('#cutoff').html(row_index);
             $.ajax({
                 url: "{{url_for('spreadsheets.display_heatmap')}}",
@@ -154,9 +153,8 @@
                     };
 
                     var heatmap_options = {
-                        modeBarButtonsToRemove: ['toImage', 'sendDataToCloud'],
                         modeBarButtonsToAdd: [{
-                            name: 'toSVG',
+                            name: 'download in SVG format',
                             icon: Plotly.Icons.camera,
                             click: function (gd) {
                                 Plotly.downloadImage(gd, {format: 'svg'})
@@ -192,9 +190,9 @@
                         }
                     }];
 
-                    heatmap_plot = Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
+                    Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
                     $('#heatmap_block').show();
-                    //$('#download_heatmap').show();
+                    $('#download_heatmap').show();
                 },
                 error: function(error) {
                     console.log(error);
@@ -205,7 +203,8 @@
         $('#row_selector').val(breakpoint).trigger("change");
 
         $('#download_heatmap').click(function() {
-            Plotly.downloadImage(heatmap_plot, {format: 'svg'});
+            var gd = document.getElementById('heatmap');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (row_index + 1)});
         });
 
 });
