@@ -185,7 +185,11 @@
                         z: heatmap_data,
                         type: 'heatmap',
                         zmin: -1 * limit,
-                        zmax: limit
+                        zmax: limit,
+                        colorbar: {
+                            title: 'Z Scale',
+                            titleside: 'right'
+                        }
                     }];
 
                     heatmap_plot = Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
