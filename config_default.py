@@ -2,7 +2,8 @@ import os
 
 DEBUG = True
 ENV='development'
-SQLALCHEMY_DATABASE_URI = "sqlite:///nitecap.db"
+DATABASE = 'nitecap.db'
+SQLALCHEMY_DATABASE_URI = "sqlite:///" + DATABASE
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 JSONIFY_PRETTYPRINT_REGULAR = False
 PROPAGATE_EXCEPTIONS = True

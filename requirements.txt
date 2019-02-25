@@ -1,3 +1,4 @@
+APScheduler==3.5.3
 certifi==2018.11.29
 chardet==3.0.4
 Click==7.0
@@ -21,17 +22,18 @@ msgpack==0.6.1
 nbformat==4.4.0
 numpy==1.15.4
 pandas==0.23.4
+passlib==1.7.1
 plotly==3.5.0
 python-dateutil==2.7.5
+python-dotenv==0.10.1
+python-magic==0.4.15
 pytz==2018.9
 requests==2.21.0
 retrying==1.3.3
+sh==1.12.14
 six==1.12.0
 SQLAlchemy==1.2.17
 traitlets==4.3.2
+tzlocal==1.5.1
 urllib3==1.24.1
 Werkzeug==0.14.1
-passlib==1.7.1
-python-magic==0.4.15
-python-dotenv==0.10.1
-

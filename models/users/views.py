@@ -1,5 +1,6 @@
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash
 from models.users.user import User
+from models.users.decorators import requires_login
 
 user_blueprint = Blueprint('users', __name__)
 
@@ -205,12 +206,9 @@ def reset_password(token):
     return render_template('users/reset_password_form.html', token=token)
 
 @user_blueprint.route('/update_profile', methods=['GET','POST'])
+@requires_login
 def update_profile():
     errors = []
-
-    if 'email' not in session or not session['email']:
-        flash("You must be logged in to edit your profile")
-        return render_template('users/login_form.html')
 
     user = User.find_by_email(session['email'])
 
