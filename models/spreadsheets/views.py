@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import uuid
 import constants
+from models.users.decorators import requires_login
 from models.users.user import User
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
@@ -146,11 +147,9 @@ def set_spreadsheet_breakpoint():
 
 
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET','POST'])
+@requires_login
 def show_spreadsheet(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('.load_spreadsheet'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -179,27 +178,6 @@ def show_spreadsheet(spreadsheet_id):
 
 @spreadsheet_blueprint.route('/heatmap', methods=['POST'])
 def display_heatmap():
-    # errors = []
-    # # spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
-    # if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
-    #     errors.append("You may only work with your own spreadsheet.")
-    #     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-    # spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-    # data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
-    # data = spreadsheet.normalize_data(data)
-    # heatmap_x_values = []
-    # for day in range(spreadsheet.days):
-    #     for timepoint in range(spreadsheet.timepoints):
-    #         num_replicates = spreadsheet.num_replicates[timepoint]
-    #         for rep in range(num_replicates):
-    #             heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
-    # return render_template('spreadsheets/heatmap.html',
-    #                        data=data.to_json(orient='values'),
-    #                        x_values=spreadsheet.x_labels,
-    #                        heatmap_x_values=heatmap_x_values,
-    #                        ids=labels,
-    #                        column_pairs=spreadsheet.column_pairs,
-    #                        timepoint_pairs=spreadsheet.timepoint_pairs)
     errors = []
     json_data = request.get_json()
     row_index = json_data.get('row_index',0)
@@ -226,21 +204,17 @@ def display_heatmap():
 
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
+@requires_login
 def display_spreadsheets():
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to see your saved spreadsheets.')
-        return redirect(url_for('.load_spreadsheet'))
     print("Display spreadsheets {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
 
 @spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>', methods=['GET'])
+@requires_login
 def delete(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('.load_spreadsheet'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -258,11 +232,9 @@ def delete(spreadsheet_id):
 
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
+@requires_login
 def download(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('users.login_user'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -276,11 +248,9 @@ def download(spreadsheet_id):
 
 
 @spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET','POST'])
+@requires_login
 def edit_details(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('users.login_user'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -306,11 +276,9 @@ def edit_details(spreadsheet_id):
 
 
 @spreadsheet_blueprint.route('/edit', methods=['GET', 'POST'])
+@requires_login
 def edit_columns():
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('users.login_user'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(session['spreadsheet_id'])
     if not spreadsheet:
