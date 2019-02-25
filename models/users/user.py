@@ -211,4 +211,8 @@ class User(db.Model):
         return user
 
 
+    def is_annoymous_user(self):
+        return self.username == 'annonymous'
+
+
 
