@@ -269,6 +269,10 @@ class Spreadsheet(db.Model):
     def find_by_id(cls, _id):
         return cls.query.filter_by(id=_id).first()
 
+    def update_user(self, user_id):
+        self.user_id = user_id
+        self.save_to_db()
+
 column_label_formats = [re.compile("CT(\d+)"), re.compile("ct(\d)"),
                         re.compile("(\d+)CT"), re.compile("(\d)ct"),
                         re.compile("ZT(\d+)"), re.compile("zt(\d+)"),

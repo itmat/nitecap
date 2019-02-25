@@ -159,7 +159,7 @@ def show_spreadsheet(spreadsheet_id):
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
         spreadsheet.save_to_db()
-        session['spreadsheet'] = spreadsheet.to_json()
+        #session['spreadsheet'] = spreadsheet.to_json()
         return redirect(url_for('.display_heatmap'))
 
     session["spreadsheet_id"] = spreadsheet.id
