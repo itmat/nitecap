@@ -48,11 +48,14 @@
     white-space:nowrap;
 }
 
-.colIdTableScroll{
-    margin:auto;
-    width:1100px;
-    max-width:1100px;
-    overflow-x:scroll;
+.topScroll, .topScroll > div{
+    height: 25px;
+}
+
+.bottomScroll, .topScroll {
+    width: 100%;
+    overflow-x: scroll;
+    overflow-y: hidden;
 }
 
 #colIdentityTable th, td {
