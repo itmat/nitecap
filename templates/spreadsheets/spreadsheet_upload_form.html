@@ -31,12 +31,29 @@
 <form id="spreadsheet-details-form" action="{{ url_for('spreadsheets.load_spreadsheet') }}" method="post"
           enctype="multipart/form-data">
         <div class="form-group">
+            <label for="descriptive_name">Enter Descriptive Name for the Spreadsheet Data:</label>
+            <input type="text" id="descriptive_name" name="descriptive_name" class="form-control" value="{{descriptive_name}}" maxlength="250" />
+        </div>
+        <div class="form-group">
             <label for="days">Enter Number of Days of Data:</label>
             <input type="number" id="days" name="days" class="form-control" value="{{days}}" required />
         </div>
         <div class="form-group">
             <label for="timepoints">Enter the Number of Timepoints Per Day:</label>
             <input type="number" id="timepoints" name="timepoints" class="form-control" value="{{timepoints}}" required />
+        </div>
+        <div class="form-group">
+            Repeated Measures?
+            <label class="radio-inline">
+                <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y">Yes
+            </label>
+            <label class="radio-inline">
+                <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" checked>No
+            </label>
+        </div>
+        <div class="form-group">
+            <label for="header_row">Enter the Number of the Spreadsheet Row Containing the Header:</label>
+            <input type="number" id="header_row" name="header_row" class="form-control" value="{{header_row or 1}}" required />
         </div>
         <div class="form-group">
             <input type="file" id="upload_file" name="upload_file" required>

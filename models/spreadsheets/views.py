@@ -19,17 +19,25 @@ def load_spreadsheet():
     print("Loading spreadsheet")
     if request.method == 'POST':
         # http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
+        descriptive_name = request.form['descriptive_name']
         days = request.form['days']
         timepoints = request.form['timepoints']
+        repeated_measures = request.form['repeated_measures']
+        repeated_measures = True if repeated_measures == 'y' else False
+        header_row = request.form['header_row']
         upload_file = request.files['upload_file'] if 'upload_file' in request.files else None
 
         # Validate and give errors
         errors = []
 
-        if not days.isdigit():
+        if not descriptive_name or len(descriptive_name) > 250:
+            errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
+        if not days or not days.isdigit():
             errors.append(f"The value for days is required and must be a positve integer.")
-        if not timepoints.isdigit():
+        if not timepoints or not timepoints.isdigit():
             errors.append(f"The value for timepoints is required and must be a positve integer.")
+        if not header_row or not header_row.isdigit():
+            errors.append(f"The value of the header row is required and must be a positive integer.")
         if not upload_file:
             errors.append(f'No spreadsheet file was provided.')
         else:
@@ -38,7 +46,9 @@ def load_spreadsheet():
             if not allowed_file(upload_file.filename):
                 errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
         if errors:
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
+                                   descriptive_name=descriptive_name, days=days,
+                                   timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
         # Not really necessary since we re-name the file.
         filename = secure_filename(upload_file.filename)
@@ -64,8 +74,9 @@ def load_spreadsheet():
                 errors.append(disallowed_mime_type)
         if errors:
             os.remove(file_path)
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days,
-                                   timepoints=timepoints)
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
+                                   descriptive_name=descriptive_name, days=days,
+                                   timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
@@ -76,7 +87,15 @@ def load_spreadsheet():
             if user:
                 user_id = user.id
         try:
-            spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path, user_id=user_id)
+            spreadsheet = Spreadsheet(descriptive_name=descriptive_name,
+                                      days = days,
+                                      timepoints = timepoints,
+                                      repeated_measures = repeated_measures,
+                                      header_row = header_row,
+                                      original_filename = filename,
+                                      file_mime_type = file_mime_type,
+                                      uploaded_file_path = file_path,
+                                      user_id = user_id)
         except (UnicodeDecodeError, ParserError) as e:
             print(type(e), e)
             os.remove(file_path)
@@ -96,7 +115,7 @@ def allowed_file(filename):
 @spreadsheet_blueprint.route('spreadsheets/identify_spreadsheet_columns', methods=['GET','POST'])
 def identify_spreadsheet_columns():
     errors = []
-    #spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
+
     if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
@@ -112,7 +131,6 @@ def identify_spreadsheet_columns():
         spreadsheet.identify_columns(column_labels)
 
         spreadsheet.compute_nitecap()
-        #session['spreadsheet'] = spreadsheet.to_json()
         spreadsheet.save_to_db()
         return redirect(url_for('.set_spreadsheet_breakpoint'))
     return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)

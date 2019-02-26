@@ -17,31 +17,43 @@ NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "t
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id = db.Column(db.Integer, primary_key=True)
+    descriptive_name = db.Column(db.String(250), nullable=False)
     days = db.Column(db.Integer, nullable=False)
     timepoints = db.Column(db.Integer, nullable=False)
+    repeated_measures = db.Column(db.Boolean, nullable=False, default=False)
+    header_row = db.Column(db.Integer, nullable=False, default=1)
     original_filename = db.Column(db.String(250), nullable=False)
+    file_mime_type = db.Column(db.String(250), nullable=False)
     breakpoint = db.Column(db.Integer, default=0)
     file_path = db.Column(db.String(250))
     uploaded_file_path = db.Column(db.String(250), nullable=False)
     date_uploaded = db.Column(db.DateTime, nullable=False)
     num_replicates_str = db.Column(db.String(250))
     column_labels_str = db.Column(db.String(2500))
+    max_value_filter = db.Column(db.FLOAT)
+    last_access = db.Column(db.DateTime, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
 
-    def __init__(self, days, timepoints, original_filename,
-                 uploaded_file_path, file_path=None, column_labels_str=None,
-                 breakpoint=None, num_replicates_str=None, user_id=None,
+    def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
+                 file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
+                 breakpoint=None, num_replicates_str=None, max_value_filter=None, last_access=None, user_id=None,
                  date_uploaded=None):
+        self.descriptive_name = descriptive_name
         self.days = int(days)
         self.timepoints = int(timepoints)
+        self.repeated_measures = repeated_measures
+        self.header_row = int(header_row)
         self.original_filename = original_filename
+        self.file_mime_type = file_mime_type
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
         self.date_uploaded = date_uploaded
         self.num_replicates_str = num_replicates_str
         self.column_labels_str = column_labels_str
+        self.max_value_filter = max_value_filter
         self.breakpoint = breakpoint
+        self.last_access = last_access if last_access else datetime.datetime.now()
         annonymous_user = User.find_by_username('annonymous')
         if not annonymous_user:
             annonymous_user = User.create_annonymous_user()
@@ -267,6 +279,7 @@ class Spreadsheet(db.Model):
         return cls(days, timepoints, original_filename, uploaded_file_path, file_path, column_labels, breakpoint, num_replicates, user_id)
 
     def save_to_db(self):
+        self.last_access = datetime.datetime.now()
         db.session.add(self)
         db.session.commit()
 
