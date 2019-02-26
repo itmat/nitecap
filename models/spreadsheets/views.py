@@ -11,6 +11,7 @@ import uuid
 import constants
 from models.users.decorators import requires_login
 from models.users.user import User
+import json
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
@@ -139,7 +140,10 @@ def set_spreadsheet_breakpoint():
                                 x_values=spreadsheet.x_values,
                                 x_labels=spreadsheet.x_labels,
                                 x_label_values=spreadsheet.x_label_values,
-                                qs=list(spreadsheet.df.nitecap_q.values),
+                                qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
+                                ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
+                                amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
+                                peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint)
@@ -170,7 +174,10 @@ def show_spreadsheet(spreadsheet_id):
                                 x_values=spreadsheet.x_values,
                                 x_labels=spreadsheet.x_labels,
                                 x_label_values=spreadsheet.x_label_values,
-                                qs=list(spreadsheet.df.nitecap_q.values),
+                                qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
+                                ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
+                                amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
+                                peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint=spreadsheet.breakpoint)
@@ -295,5 +302,3 @@ def edit_columns():
         spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet)
-
-

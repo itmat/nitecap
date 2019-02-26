@@ -12,6 +12,9 @@
         column_pairs = {{ column_pairs | safe }};
         breakpoint = {{ breakpoint | safe }};
         qs = {{ qs | safe }};
+        ps = {{ ps | safe }};
+        amplitudes = {{ amplitudes | safe }};
+        peak_times = {{ peak_times | safe }};
 
         y_values = [];
         trace_name = 'Nothing selected';
@@ -51,6 +54,9 @@
                 //$("#row_selector").val(ui.value);
                 $('#significant_items').html(ui.value+1);
                 $('#q_value').html(qs[ui.value].toFixed(3));
+                $('#p_value').html(ps[ui.value].toFixed(3));
+                $('#amplitude').html(amplitudes[ui.value].toFixed(3));
+                $('#peak_time').html(peak_times[ui.value].toFixed(3));
                 $('#row_selector').val(ui.value).trigger("focus");
                 raw_y_values = data[ui.value];
                 paired_y_values = [];
@@ -100,6 +106,9 @@
             $('input[name="row_index"]').val(this.value);
             $('#significant_items').html(parseInt(this.value) + 1);
             $('#q_value').html(qs[this.value].toFixed(3));
+            $('#p_value').html(ps[this.value].toFixed(3));
+            $('#amplitude').html(amplitudes[this.value].toFixed(3));
+            $('#peak_time').html(peak_times[this.value].toFixed(3));
             console.log("row: " + this.value + ",id: " + labels[this.value]);
             values = [{
                 x: paired_x_values, y: paired_y_values,
@@ -223,9 +232,6 @@
             Number of items equal to or more significant than currently selected:
             <span id="significant_items"></span>
         </span>
-        <span class="col-lg-3" style="text-align: right">
-            Q &le; <span id="q_value"></span>
-        </span>
     </div>
 
     <div class="row">
@@ -252,7 +258,7 @@
             <div class="card-body">
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item">Q: <span id="q_value"></span></li>
-                    <li class="list-group-item">p-value: <span id="p-value"></span></li>
+                    <li class="list-group-item">p-value: <span id="p_value"></span></li>
                     <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
                     <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
                 </ul>
