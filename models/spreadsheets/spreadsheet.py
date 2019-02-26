@@ -132,7 +132,7 @@ class Spreadsheet(db.Model):
         data = self.get_raw_data().values
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
-        q = nitecap.FDR(td, perm_td)
+        q, p = nitecap.FDR(td, perm_td)
 
         # TODO: should users be able to character their cycle length?
         amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, cycle_length=24)

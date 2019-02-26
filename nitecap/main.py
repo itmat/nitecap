@@ -63,16 +63,17 @@ def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PER
     data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
     td, perm_td, perm_data = nitecap_statistics(data_formatted, N_PERMS)
-    q = FDR(td, perm_td)
+    q, p = FDR(td, perm_td)
     if output == "full":
         return q, td, perm_td
-    return q, td
+    return q, td, p
 
 def FDR(td, perm_td):
     '''Control the False Discovery Rate (FDR)
 
     Given any test statistic td and the same statistic computed on permuted data `perm_td`,
     compute the associated q values of rejecting all null hypotheses with td less than a cutoff
+    Also returns the p-values of each hypothesis
     '''
     (N_PERMS, N_GENES) = perm_td.shape
     sort_order = numpy.argsort(td)
@@ -110,7 +111,7 @@ def FDR(td, perm_td):
 
     # Return the q's in the order they came in, not in the order of increasing td (i.e. sort_order)
     unsort_order = numpy.argsort(sort_order)
-    return q[unsort_order]
+    return q[unsort_order], ps
 
 def total_delta(data, contains_nans = "check"):
     # Data without permutations is expected to be 3 dimensional (timepoints, reps, genes)
