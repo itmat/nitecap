@@ -101,19 +101,22 @@ def loess(xs, ys, frac, degree=2, period=None, regression_x_values = None):
         distances = numpy.abs(xs - x)
         sort_order = numpy.argsort(distances)
 
-        local_distances = distances[sort_order[:num_points]]
-        max_distance = numpy.max(local_distances)
-
-        tricube_distance = (1 - (local_distances / max_distance)**3)**3
-        weights = tricube_distance.reshape((-1,1))
-
         # just the points we'll use
         local_xs = xs[sort_order[:num_points]]
         local_ys = ys[sort_order[:num_points]]
 
+        local_distances = distances[sort_order[:num_points]]
+        epsilon = 0
+        max_distance = numpy.max(local_distances)*(1 + epsilon)
+        #max_distance = period #TODO: revert this!!
+
+        tricube_distance = (1 - (local_distances / max_distance)**3)**3
+        weights = tricube_distance.reshape((-1,1))
+        #weights = numpy.ones(local_xs.shape).reshape((-1,1))
+
         # Matrix of values 1, x, x^2, x^3...
-        predictors = numpy.concatenate( [(local_xs ** j).reshape((-1,1)) for j in range(degree+1)], axis=1 )
-        
+        predictors = local_xs.reshape((-1,1)) ** numpy.arange(degree+1).reshape((1,-1))
+
         # TODO: if frac is small enough and many points have the same x-value
         #       then it is entirely possible that the below matrix is singular!
         #       Should we increase frac in that case? Unclear
@@ -125,6 +128,82 @@ def loess(xs, ys, frac, degree=2, period=None, regression_x_values = None):
 
         local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
         regression_value =  numpy.dot(local_predictor, coeffs)
+
+        plt_x  = numpy.linspace(x-0.3,x+0.3,21)
+        plt_y = [numpy.dot(numpy.array([x_**j for j in range(degree+1)]).reshape((1,-1)), coeffs ).reshape((-1,)) for x_ in plt_x]
+
+        regression_values[i] = regression_value
+    return regression_values
+
+def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values = None):
+    '''
+    Compute moving regression, smoothing the data
+
+    `xs` is a 1-D array of x-values
+    `ys` is a 1-D or 2-D array of y-values, with the first axis matching the length of `xs`
+    `frac` is the fraction of the total x-range (or period, if not None) to use in each regression
+    `degree` is the degree of the regression
+    `period` = None if the data is not assumed to be periodic, otherwise period must be
+            must be the desired period of the regression
+    `regression_x_values` is an array of x-values that the regressions will be evaluated at
+            if None, then `xs` is used (default)
+
+    returns:
+    `regression_values` an array of the y-values of the regressions for each point
+            of `regression_x_values`. If `ys` is  2-dimensional, then regression_values is too
+            and has second axis equal to the second axis of `ys`
+    '''
+
+    assert xs.ndim == 1
+    assert ys.ndim <= 2
+    assert ys.shape[0] == xs.shape[0]
+
+    # Convert 1-dim to 2-dim ys
+    if ys.ndim == 1:
+        ys.shape = (*ys.shape, 1)
+
+    if regression_x_values is None:
+        regression_x_values = xs.copy()
+    regression_values = numpy.empty((regression_x_values.shape[0], ys.shape[1]))
+
+    if period is not None:
+        # Duplicate ys to cover a range of at least two extra periods on either end
+        # assumign that the data is actually periodic
+
+        # First, force all x-values to be within the interval [0,period)
+        xs = xs % period
+        regression_x_values = regression_x_values % period
+
+        # Now duplicate this period below and above
+        xs = numpy.concatenate( (xs - period, xs, xs + period), axis=0)
+        ys = numpy.concatenate( (ys, ys, ys), axis = 0)
+        diameter = period
+    else:
+        diameter = numpy.max(xs) - numpy.min(xs)
+
+    weight_radius = diameter * frac /2
+
+    # Matrix of values 1, x, x^2, x^3...
+    predictors = xs.reshape((-1,1)) ** numpy.arange(degree+1).reshape((1,-1))
+
+    # Sort points
+    for i,x in enumerate(regression_x_values):
+        distances = numpy.abs(xs - x)
+
+        tricube_distance = (1 - (distances / weight_radius )**3)**3
+        tricube_distance[distances > weight_radius] = 0
+        weights = tricube_distance.reshape((-1,1))
+
+        # Perform weighted-least-squares regression
+        weighted_ys = weights * ys
+        weighted_predictors = weights * predictors
+        coeffs, residuals, rank, singular_values = numpy.linalg.lstsq( weighted_predictors, weighted_ys, rcond=None)
+
+        local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
+        regression_value =  numpy.dot(local_predictor, coeffs)
+
+        plt_x  = numpy.linspace(x-0.2*weight_radius,x+0.2*weight_radius,21)
+        plt_y = [numpy.dot(numpy.array([x_**j for j in range(degree+1)]).reshape((1,-1)), coeffs ).reshape((-1,)) for x_ in plt_x]
 
         regression_values[i] = regression_value
     return regression_values
