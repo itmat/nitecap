@@ -12,7 +12,7 @@ from collections import OrderedDict
 
 import nitecap
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time"]
+NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p"]
 
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
@@ -128,6 +128,7 @@ class Spreadsheet(db.Model):
             self.column_pairs.extend( [[first_col_in_timepoint + a, first_col_in_timepoint + num_reps + b] for a in range(num_reps)
                                              for b in range(next_num_reps)] )
             first_col_in_timepoint += num_reps
+
     def get_raw_data(self):
         data_columns = self.get_data_columns()
         return self.df[data_columns]
@@ -144,16 +145,17 @@ class Spreadsheet(db.Model):
         data = self.get_raw_data().values
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
-        q = nitecap.FDR(td, perm_td)
+        q, p = nitecap.FDR(td, perm_td)
 
-        # TODO: should users be able to character their cycle length?
-        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, cycle_length=24)
+        # TODO: should users be able to choose their cycle length?
+        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, cycle_length=self.timepoints)
 
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
         self.df["nitecap_q"] = q
+        self.df["nitecap_p"] = p
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 
