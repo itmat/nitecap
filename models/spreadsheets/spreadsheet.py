@@ -278,6 +278,10 @@ class Spreadsheet(db.Model):
     def find_by_id(cls, _id):
         return cls.query.filter_by(id=_id).first()
 
+    def update_user(self, user_id):
+        self.user_id = user_id
+        self.save_to_db()
+
 column_label_formats = [re.compile("CT(\d+)"), re.compile("ct(\d)"),
                         re.compile("(\d+)CT"), re.compile("(\d)ct"),
                         re.compile("ZT(\d+)"), re.compile("zt(\d+)"),
@@ -306,7 +310,7 @@ def guess_column_labels(columns, timepoints, days):
                                 for time,match in zip(times,best_matches)]
         if all(int(time_point_count) == time_point_count for time_point_count in time_point_counts if time_point_count is not None):
 
-            selections = [f"Day{int(time_point_count // timepoints)} Timepoint{int(time_point_count % timepoints)}" if time_point_count is not None else "Ignore"
+            selections = [f"Day{int(time_point_count // timepoints)+1} Timepoint{int(time_point_count % timepoints)+1}" if time_point_count is not None else "Ignore"
                             for time_point_count in time_point_counts]
             return selections
         
@@ -323,7 +327,7 @@ def guess_column_labels(columns, timepoints, days):
                 if best_matches[i]:
                     day = int(selected_below // timepoints)
                     time = int(selected_below % timepoints)
-                    selections.append(f"Day{day} Timepoint{time}")
+                    selections.append(f"Day{day+1} Timepoint{time+1}")
                     selected_below += 1
                 else:
                     selections.append("Ignore")

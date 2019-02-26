@@ -1,5 +1,7 @@
 import magic
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file, jsonify
+from pandas.errors import ParserError
+
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
@@ -7,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import uuid
 import constants
+from models.users.decorators import requires_login
 from models.users.user import User
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
@@ -34,12 +37,6 @@ def load_spreadsheet():
                 errors.append('No spreadsheet file was provided.')
             if not allowed_file(upload_file.filename):
                 errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
-
-            # This test appears to pass everything as text/plain
-            file_mime_type = magic.from_buffer(upload_file.filename, mime=True)
-            if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_MIME_TYPES)}")
-
         if errors:
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
 
@@ -51,9 +48,28 @@ def load_spreadsheet():
         file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
         upload_file.save(file_path)
 
-        # For any files masquerading as one of the acceptable file types by virtue of its file extension, it appears we
-        # can only identify it when pandas fails to parse it while creating a spreadsheet object.  We throw the file
-        # away and report the error.
+        # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
+        # to be one of the accepted file mime types.
+        disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  They may be gzipped."
+        x = magic.Magic(mime=True)
+        z = magic.Magic(mime=True, uncompress=True)
+        file_mime_type = x.from_file(file_path)
+        print(file_mime_type)
+        if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+            errors.append(disallowed_mime_type)
+        elif file_mime_type in constants.COMPRESSED_MIME_TYPES:
+            file_mime_type = z.from_file(file_path)
+            print(file_mime_type)
+            if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+                errors.append(disallowed_mime_type)
+        if errors:
+            os.remove(file_path)
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days,
+                                   timepoints=timepoints)
+
+        # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
+        # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
+        # We throw the file away and report the error.
         user_id = None
         if 'email' in session and session['email']:
             user = User.find_by_email(session['email'])
@@ -61,12 +77,11 @@ def load_spreadsheet():
                 user_id = user.id
         try:
             spreadsheet = Spreadsheet(days, timepoints, filename, uploaded_file_path = file_path, user_id=user_id)
-        except UnicodeDecodeError as e:
+        except (UnicodeDecodeError, ParserError) as e:
             print(type(e), e)
             os.remove(file_path)
             errors.append(f"The file provided is not parseable.")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
-        #session['spreadsheet'] = spreadsheet.to_json()
         spreadsheet.save_to_db()
         session['spreadsheet_id'] = spreadsheet.id
 
@@ -132,11 +147,9 @@ def set_spreadsheet_breakpoint():
 
 
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET','POST'])
+@requires_login
 def show_spreadsheet(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('.load_spreadsheet'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -146,8 +159,10 @@ def show_spreadsheet(spreadsheet_id):
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
         spreadsheet.save_to_db()
-        session['spreadsheet'] = spreadsheet.to_json()
+        #session['spreadsheet'] = spreadsheet.to_json()
         return redirect(url_for('.display_heatmap'))
+
+    session["spreadsheet_id"] = spreadsheet.id
 
     data = spreadsheet.get_raw_data()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
@@ -163,27 +178,6 @@ def show_spreadsheet(spreadsheet_id):
 
 @spreadsheet_blueprint.route('/heatmap', methods=['POST'])
 def display_heatmap():
-    # errors = []
-    # # spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
-    # if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
-    #     errors.append("You may only work with your own spreadsheet.")
-    #     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-    # spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-    # data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
-    # data = spreadsheet.normalize_data(data)
-    # heatmap_x_values = []
-    # for day in range(spreadsheet.days):
-    #     for timepoint in range(spreadsheet.timepoints):
-    #         num_replicates = spreadsheet.num_replicates[timepoint]
-    #         for rep in range(num_replicates):
-    #             heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
-    # return render_template('spreadsheets/heatmap.html',
-    #                        data=data.to_json(orient='values'),
-    #                        x_values=spreadsheet.x_labels,
-    #                        heatmap_x_values=heatmap_x_values,
-    #                        ids=labels,
-    #                        column_pairs=spreadsheet.column_pairs,
-    #                        timepoint_pairs=spreadsheet.timepoint_pairs)
     errors = []
     json_data = request.get_json()
     row_index = json_data.get('row_index',0)
@@ -210,21 +204,17 @@ def display_heatmap():
 
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
+@requires_login
 def display_spreadsheets():
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to see your saved spreadsheets.')
-        return redirect(url_for('.load_spreadsheet'))
     print("Display spreadsheets {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
 
 @spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>', methods=['GET'])
+@requires_login
 def delete(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('.load_spreadsheet'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -242,11 +232,9 @@ def delete(spreadsheet_id):
 
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
+@requires_login
 def download(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('users.login_user'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -260,11 +248,9 @@ def download(spreadsheet_id):
 
 
 @spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET','POST'])
+@requires_login
 def edit_details(spreadsheet_id):
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('users.login_user'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
@@ -290,11 +276,9 @@ def edit_details(spreadsheet_id):
 
 
 @spreadsheet_blueprint.route('/edit', methods=['GET', 'POST'])
+@requires_login
 def edit_columns():
     errors = []
-    if 'email' not in session or not session['email']:
-        flash('You must be logged in to manage your saved spreadsheets.')
-        return redirect(url_for('users.login_user'))
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(session['spreadsheet_id'])
     if not spreadsheet:

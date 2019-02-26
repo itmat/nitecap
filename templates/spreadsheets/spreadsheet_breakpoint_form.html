@@ -21,7 +21,7 @@
 
         var values = [{
             x: x_values,
-            y: Array(x_values.length).fill(0),
+            y: x_values.map(function(x) {return 0;}),
             name: trace_name,
             type: 'scatter',
             mode: 'lines+markers',
@@ -123,14 +123,14 @@
         // then to the selector, for speed
         var option_fragment = document.createDocumentFragment()
         $.each(labels, function (i, label) {
-            option_fragment.appendChild(new Option(label + " Q: " + qs[i].toFixed(2), i));
+            option_fragment.appendChild(new Option(" Q: " + qs[i].toFixed(2) + " " + label, i));
         } );
         $('#row_selector')[0].appendChild(option_fragment);
 
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
-            row_index = $('#row_index').val();
-            console.log("Row index is " + row_index)
+            $('#download_heatmap').hide();
+            row_index = parseInt($('#row_index').val()) + 1;
             $('#cutoff').html(row_index);
             $.ajax({
                 url: "{{url_for('spreadsheets.display_heatmap')}}",
@@ -152,19 +152,47 @@
                         pad: 4
                     };
 
+                    var heatmap_options = {
+                        modeBarButtonsToAdd: [{
+                            name: 'download in SVG format',
+                            icon: Plotly.Icons.camera,
+                            click: function (gd) {
+                                Plotly.downloadImage(gd, {format: 'svg'})
+                            }
+                        }]
+                    };
+
                     var heatmap_x_values = response['heatmap_x_values'];
                     var heatmap_labels = response['heatmap_labels'];
                     var heatmap_data = response['heatmap_data'];
+
+                    var maxRow = heatmap_data.map(function(row){ return Math.max.apply(Math, row); });
+                    var minRow = heatmap_data.map(function(row){ return Math.min.apply(Math, row); });
+
+                    var max = Math.max.apply(null, maxRow);
+                    var min = Math.min.apply(null, minRow);
+                    var limit = Math.max(Math.abs(min), max);
+
+
+
+                    console.log(min,max, limit);
 
                     var heatmap_values = [{
                         x: heatmap_x_values,
                         y: heatmap_labels,
                         z: heatmap_data,
-                        type: 'heatmap'
+                        type: 'heatmap',
+                        zmin: -1 * limit,
+                        zmax: limit,
+                        colorbar: {
+                            title: 'Z Scale',
+                            titleside: 'right'
+                        }
                     }];
 
-                    Plotly.newPlot('heatmap', heatmap_values, heatmap_layout);
+                    Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
                     $('#heatmap_block').show();
+                    $('#download_heatmap').show();
                 },
                 error: function(error) {
                     console.log(error);
@@ -174,6 +202,11 @@
 
         $('#row_selector').val(breakpoint).trigger("change");
 
+        $('#download_heatmap').click(function() {
+            var gd = document.getElementById('heatmap');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + row_index});
+        });
+
 });
 
 
@@ -182,38 +215,52 @@
 <div id="graph-page" class="page-header">
     <h1>Results <small>Data sorted by significance</small></h1>
 </div>
-<div>
-    <span>
-        Number of items equal to or more significant than currently selected:
-        <span id="significant_items"></span>
-    </span>
-    <span style="float:right">
-        Q &le; <span id="q_value"></span>
-    </span>
-</div>
-<div id="spreadsheet-breakpoint-page" class="container">
-    <div id="coarse_slider" class="coarse-slider"></div>
-    <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
-    <div>
-        <div class='row'>
-            <div class='col-xs-1' style="position:relative">
-                <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
-            </div>
-            <div class='col-xs-11 ...'>
-                <div style="display:inline-block;">
-                    <select size="20" name="row_selector" id="row_selector">
-                    </select>
-                </div>
-                <div id="scatter_plot" style="width:700px;height:450px;display:inline-block"></div>
-            </div>
-        </div>
-        <div>
+
+<div id="spreadsheet-breakpoint-page">
+
+    <div class="row">
+        <span class="col-lg-9">
+            Number of items equal to or more significant than currently selected:
+            <span id="significant_items"></span>
+        </span>
+        <span class="col-lg-3" style="text-align: right">
+            Q &le; <span id="q_value"></span>
+        </span>
+    </div>
+
+    <div class="row">
+        <div id="coarse_slider" class="col-lg-12 coarse-slider"></div>
+    </div>
+
+    <div class="row">
+        <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
+    </div>
+
+    <div class='row'>
+        <span class='col-xs-1' style="position:relative">
+            <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
+        </span>
+        <span class='col-xs-3 ...'>
+            <select size="20" name="row_selector" id="row_selector"></select>
+        </span>
+        <span class="'col-xs-8" id="scatter_plot" style="width:700px;height:450px;vertical-align: top"></span>
+    </div>
+
+    <div class="row">
+        <span class="col-lg-10">
             <input type="hidden" id="row_index" name="row_index"/>
             <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
-        </div>
-        <div id="heatmap_block" style="display:none">
-            <div>Number of items in heatmap: <span id="cutoff"></span></div>
-            <div id="heatmap"></div>
-        </div>
+        </span>
+        <span class='col-lg-2'>
+            <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
+        </span>
     </div>
+    <div id="heatmap_block" style="display:none">
+        <div class="row">
+            <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
+        </div>
+        <div class="row" id="heatmap"></div>
+    </div>
+
+</div>
 {% endblock %}

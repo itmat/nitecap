@@ -1,5 +1,8 @@
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash
+
+from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
+from models.users.decorators import requires_login
 
 user_blueprint = Blueprint('users', __name__)
 
@@ -65,6 +68,8 @@ def login_user():
     where the user may resend a confirmation email.
     """
 
+    next = request.args.get('next')
+    print(next)
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -98,10 +103,20 @@ def login_user():
         # Log in user and redirect to the spreadsheet loading form.
         if user:
             session['email'] = user.email
+            if 'spreadsheet_id' in session and session['spreadsheet_id']:
+                spreadsheet_id = session['spreadsheet_id']
+                spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+                if spreadsheet.user.is_annoymous_user():
+                    spreadsheet.update_user(user.id)
+
+        # If the user logged in from a different page on this website, return to that page.
+        if next and next != '/users/logout':
+            return redirect(next)
+
         return redirect(url_for("spreadsheets.load_spreadsheet"))
 
     # User requests login form.
-    return render_template('users/login_form.html')
+    return render_template('users/login_form.html', next=next)
 
 @user_blueprint.route('/logout', methods=['GET'])
 def logout_user():
@@ -205,12 +220,9 @@ def reset_password(token):
     return render_template('users/reset_password_form.html', token=token)
 
 @user_blueprint.route('/update_profile', methods=['GET','POST'])
+@requires_login
 def update_profile():
     errors = []
-
-    if 'email' not in session or not session['email']:
-        flash("You must be logged in to edit your profile")
-        return render_template('users/login_form.html')
 
     user = User.find_by_email(session['email'])
 
