@@ -12,6 +12,8 @@ from collections import OrderedDict
 
 import nitecap
 
+NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time"]
+
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id = db.Column(db.Integer, primary_key=True)
@@ -64,6 +66,12 @@ class Spreadsheet(db.Model):
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
         if self.column_labels_str:
             self.identify_columns(self.column_labels)
+
+            if any(column not in self.df.columns for column in NITECAP_DATA_COLUMNS):
+                # Run our statistics if we have selected the column labels and are
+                # missing any output (eg: if we added more outputs, this will update spreadsheets,
+                # or if somehow a spreadsheet was never computed)
+                self.compute_nitecap()
 
     def column_defaults(self):
         # Try to guess the columns by looking for CT/ZT labels
@@ -118,7 +126,7 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
         return [column for column, label in ordered_columns]
 
-    def compute_ordering(self):
+    def compute_nitecap(self):
         # Runs NITECAP on the data but just to order the features
 
         data = self.get_raw_data().values
