@@ -126,9 +126,10 @@ class Spreadsheet(db.Model):
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
         q = nitecap.FDR(td, perm_td)
 
-        peak_time = nitecap.peak_time(data_formatted, hours_per_timepoint=1)
-        trough_time = nitecap.trough_time(data_formatted, hours_per_timepoint=1)
+        # TODO: should users be able to character their cycle length?
+        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, cycle_length=24)
 
+        self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
