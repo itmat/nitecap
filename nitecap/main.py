@@ -1,3 +1,5 @@
+import collections
+
 import numpy
 from . import util
 
@@ -27,6 +29,8 @@ except ImportError as e:
 
 # Number of permutations to take for permuted test statistics
 N_PERMS = 100
+
+descriptive_stats = collections.namedtuple("DescriptiveStats", ["amplitude", "peak_time", "trough_time"])
 
 ### the main function of nitecap which encapsulates all the work
 def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PERMS, output="minimal"):
@@ -264,57 +268,25 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
                                             for i in range(num_cycles)], axis=1 )
     return data_formatted
 
-def peak_time(data, hours_per_timepoint):
-    ''' Given data of shape (N_TIMEPOINTS, N_REPS, N_GENES) compute the time of day when each gene is highest.
+def descriptive_statistics(data, cycle_length=24):
+    ''' Given data of shape (N_TIMEPOINTS, N_REPS, N_GENES) compute the amplitude, peak time, and trough time of the data
 
-    Handles NaNs in data so long as no gene has a timepoint with ALL NaNs
-    (i.e. every timepoint must have at least one datapoint). Inclusion of Nans
-    increases variance of peak time estimate.
+    Estimates the underlying curve by a moving regression and takes peak and trough to estimate the amplitude
     '''
-
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
-    data = data.copy()
+    N_POINTS = 25
 
-    # For each replicate at each timepoint, compare all other replicates (within a gene)
-    A = data.reshape((N_TIMEPOINTS * N_REPS, 1, N_GENES))
-    B = data.reshape((1, N_TIMEPOINTS * N_REPS, N_GENES))
-    strict_comparisons = (A > B).reshape((N_TIMEPOINTS, N_REPS, N_TIMEPOINTS, N_REPS, N_GENES))
-    equalities = (A == B).reshape((N_TIMEPOINTS, N_REPS, N_TIMEPOINTS, N_REPS, N_GENES))
-    # and then count the number smaller than it in each timepoint
-    num_smaller_in_timepoint = strict_comparisons.sum(axis=3)
-    num_equal_in_timepoint = equalities.sum(axis=3)
-    # Break ties as if there were a 50-50 shot of either being higher
-    num_smaller_or_equal_in_timepoint = num_smaller_in_timepoint + num_equal_in_timepoint/2
+    ys = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) )
+    xs = numpy.repeat(numpy.arange(N_TIMEPOINTS), N_REPS)
+    ts = numpy.linspace(0, N_TIMEPOINTS, N_POINTS)  # Evaluate the moving average at evenly spaced points
+    regression = util.moving_regression(xs, ys,  frac = 0.7, degree=2, period = N_TIMEPOINTS,  regression_x_values = ts)
 
-    # Number of non-nans replicates in each timepoint in each gene
-    num_reps = numpy.isfinite(data).sum(axis=1).reshape((N_TIMEPOINTS, 1, N_GENES))
+    peak_time = numpy.argmax(regression, axis=0)
+    trough_time = numpy.argmin(regression, axis=0)
+    peak = regression[peak_time,range(N_GENES)]
+    trough = regression[trough_time,range(N_GENES)]
 
-    # Remove from consideration the timepoint of the replicate at hand
-    i = numpy.arange(N_TIMEPOINTS)
-    num_smaller_or_equal_in_timepoint[i,:,i,:] = num_reps
+    amplitude = peak - trough
 
-    # Compute the probability that this is larger than all the other reps (i.e. is the peak)
-    # by computing the probability that it's larger than a randomly chosen entry in each timepoint (indpendent of others)
-    prob_largest = numpy.prod(num_smaller_or_equal_in_timepoint / num_reps.reshape((1,1,N_TIMEPOINTS,N_GENES)), axis = 2)
-
-    # We now weight each timepoint by the probability that (a randomly chosen rep in that timepoint) is the highest
-    weights = numpy.sum(prob_largest, axis=1)
-
-    # Compute a cyclic average of the timepoints with the above weights
-    c = numpy.cos(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape((-1,1))
-    s = numpy.sin(numpy.arange(N_TIMEPOINTS) * 2 * numpy.pi / N_TIMEPOINTS).reshape((-1,1))
-    phase = numpy.arctan2(numpy.sum(s*weights, axis=0), numpy.sum(c*weights, axis=0))
-
-    peak_time = phase * hours_per_timepoint * N_TIMEPOINTS / (2 * numpy.pi)
-    return peak_time
-
-def trough_time(data, hours_per_timepoint):
-    ''' Given data of shape (N_TIMEPOINTS, N_REPS, N_GENES) compute the time of day when each gene is lowest.
-
-    Handles NaNs in data so long as no gene has a timepoint with ALL NaNs
-    (i.e. every timepoint must have at least one datapoint). Inclusion of Nans
-    increases variance of trough time estimate.
-    '''
-
-    return peak_time(-data, hours_per_timepoint)
+    return descriptive_stats(amplitude, peak_time * cycle_length / (N_POINTS - 1), trough_time * cycle_length  / (N_POINTS - 1))

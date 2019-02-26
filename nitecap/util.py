@@ -50,34 +50,75 @@ def zero_nans(array):
     nans = numpy.isnan(array)
     array[nans] = 0
 
+def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values = None):
+    '''
+    Compute moving regression, smoothing the data
 
-def loess(xs, ys, degree = 2, frac = 2/3.):
-    ''' Computes loess smoothing of the given data
+    `xs` is a 1-D array of x-values
+    `ys` is a 1-D or 2-D array of y-values, with the first axis matching the length of `xs`
+    `frac` is the fraction of the total x-range (or period, if not None) to use in each regression
+    `degree` is the degree of the regression
+    `period` = None if the data is not assumed to be periodic, otherwise period must be
+            must be the desired period of the regression
+    `regression_x_values` is an array of x-values that the regressions will be evaluated at
+            if None, then `xs` is used (default)
 
-    xs is 1-dimensional array
-    ys is 1-dimensional or 2-dimensional, with first axis matching xs in size
+    returns:
+    `regression_values` an array of the y-values of the regressions for each point
+            of `regression_x_values`. If `ys` is  2-dimensional, then regression_values is too
+            and has second axis equal to the second axis of `ys`
     '''
 
+    assert xs.ndim == 1
+    assert ys.ndim <= 2
+    assert ys.shape[0] == xs.shape[0]
 
-    # Convert ys to always be 2-dimensional
+    # Convert 1-dim to 2-dim ys
     if ys.ndim == 1:
-        ys.shape = (-1,*ys.shape)
+        ys.shape = (*ys.shape, 1)
 
-    sorting = numpy.argsort(xs)
-    xs = xs[sorting]
-    ys = ys[sorting]
+    if regression_x_values is None:
+        regression_x_values = xs.copy()
+    regression_values = numpy.empty((regression_x_values.shape[0], ys.shape[1]))
 
-    # Take 'frac' fraction of all points, rounded to nearest integer
-    num_points = int(frac*len(xs) + 0.5)
+    if period is not None:
+        # Duplicate ys to cover a range of at least two extra periods on either end
+        # assumign that the data is actually periodic
 
-    # Predictor variables are 1, x, x^2, ... x^degree
-    predictors = numpy.concat( [xs ** j for j in range(0,degree+1)] )
+        # First, force all x-values to be within the interval [0,period)
+        xs = xs % period
+        regression_x_values = regression_x_values % period
 
-    max_separation =  numpy.max(xs) - numpy.min(xs)
-    for x in xs:
-        d = (xs - x) /  max_separation
+        # Now duplicate this period below and above
+        xs = numpy.concatenate( (xs - period, xs, xs + period), axis=0)
+        ys = numpy.concatenate( (ys, ys, ys), axis = 0)
+        diameter = period
+    else:
+        diameter = numpy.max(xs) - numpy.min(xs)
 
-        # Tri-cube weighting of the closest points
-        weights = (1- numpy.abs(d)**3)**3
-        
-        fit = numpy.linalg.lstsq(weights*predictors, weights*ys)
+    weight_radius = diameter * frac /2
+
+    # Matrix of values 1, x, x^2, x^3...
+    predictors = xs.reshape((-1,1)) ** numpy.arange(degree+1).reshape((1,-1))
+
+    # Sort points
+    for i,x in enumerate(regression_x_values):
+        distances = numpy.abs(xs - x)
+
+        tricube_distance = (1 - (distances / weight_radius )**3)**3
+        tricube_distance[distances > weight_radius] = 0
+        weights = tricube_distance.reshape((-1,1))
+
+        # Perform weighted-least-squares regression
+        weighted_ys = weights * ys
+        weighted_predictors = weights * predictors
+        coeffs, residuals, rank, singular_values = numpy.linalg.lstsq( weighted_predictors, weighted_ys, rcond=None)
+
+        local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
+        regression_value =  numpy.dot(local_predictor, coeffs)
+
+        plt_x  = numpy.linspace(x-0.2*weight_radius,x+0.2*weight_radius,21)
+        plt_y = [numpy.dot(numpy.array([x_**j for j in range(degree+1)]).reshape((1,-1)), coeffs ).reshape((-1,)) for x_ in plt_x]
+
+        regression_values[i] = regression_value
+    return regression_values

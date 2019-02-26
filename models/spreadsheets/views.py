@@ -111,7 +111,7 @@ def identify_spreadsheet_columns():
 
         spreadsheet.identify_columns(column_labels)
 
-        spreadsheet.compute_ordering()
+        spreadsheet.compute_nitecap()
         #session['spreadsheet'] = spreadsheet.to_json()
         spreadsheet.save_to_db()
         return redirect(url_for('.set_spreadsheet_breakpoint'))
@@ -291,7 +291,7 @@ def edit_columns():
         if error:
             return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet, errors=errors)
         spreadsheet.identify_columns(column_labels)
-        spreadsheet.compute_ordering()
+        spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet)
