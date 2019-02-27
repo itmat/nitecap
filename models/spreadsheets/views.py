@@ -153,6 +153,7 @@ def set_spreadsheet_breakpoint():
         return redirect(url_for('.display_heatmap'))
 
     data = spreadsheet.get_raw_data()
+    max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
                                 x_values=spreadsheet.x_values,
@@ -166,7 +167,7 @@ def set_spreadsheet_breakpoint():
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint,
                                 descriptive_name = spreadsheet.descriptive_name,
-                                max_value_filter = spreadsheet.max_value_filter)
+                                max_value_filter = max_value_filter)
 
 
 
