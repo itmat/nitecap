@@ -249,18 +249,20 @@
 
             ctr = 0;
             set_significant_items = false;
+            var options = $('#row_selector option');
+            var significant_items = $('#significant_items');
             $.each(data, function(index, row) {
                 var filter_out = row.some(function(item) {
                     return item < max_value_filter;
                 });
                 if(filter_out) {
-                    $('#row_selector option').eq(index).attr('disabled', 'disabled');
+                    options.eq(index).attr('disabled', 'disabled');
                 }
                 else {
                     ctr++;
                 }
                 if(index >= row_index && !set_significant_items) {
-                    $('#significant_items').html(ctr);
+                    significant_items.html(ctr);
                     set_significant_items = true;
                 }
             });
