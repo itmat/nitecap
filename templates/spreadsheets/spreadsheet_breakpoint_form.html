@@ -24,6 +24,9 @@
         peak_times = {{ peak_times | safe }};
         saved_max_value_filter = {{ max_value_filter | safe }};
 
+        // List of whether each feature has been filtered out or not, starting with no filtering
+        filtered = labels.map(function(x) {return false;});
+
         y_values = [];
         trace_name = 'Nothing selected';
         marker_settings = {size: 12, symbol: 'circle-open', color: '#FF00FF'};
@@ -252,15 +255,25 @@
             var options = $('#row_selector option');
             var significant_items = $('#significant_items');
             $.each(data, function(index, row) {
+                var old_filter_out = filtered[index];
                 var filter_out = row.some(function(item) {
                     return item < max_value_filter;
                 });
+                filtered[index] = filter_out;
+
+                // Toggle enable/disable status if filtering has change
                 if(filter_out) {
-                    options.eq(index).attr('disabled', 'disabled');
+                    if (!old_filter_out) {
+                        options.eq(index).attr('disabled', 'disabled');
+                    }
+                } else {
+                    if(old_filter_out) {
+                        options.eq(index).removeAttr('disabled');
+                    }
+                    ctr++; // Count how many are un-filtered for display
                 }
-                else {
-                    ctr++;
-                }
+
+                // Update number of significant items
                 if(index >= row_index && !set_significant_items) {
                     significant_items.html(ctr);
                     set_significant_items = true;
