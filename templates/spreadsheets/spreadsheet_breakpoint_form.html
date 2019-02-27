@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <script>
+    var toFixed = function(num, i) {
+        // Call num.toFixed unless num is undefined (eg: null)
+        if (typeof num === 'number') {
+            return num.toFixed(i);
+        }
+        return num;
+    };
 
     $(document).ready(function () {
 
@@ -53,10 +60,10 @@
             slide: function (event, ui) {
                 //$("#row_selector").val(ui.value);
                 $('#significant_items').html(ui.value+1);
-                $('#q_value').html(qs[ui.value].toFixed(3));
-                $('#p_value').html(ps[ui.value].toFixed(3));
-                $('#amplitude').html(amplitudes[ui.value].toFixed(3));
-                $('#peak_time').html(peak_times[ui.value].toFixed(3));
+                $('#q_value').html(toFixed(qs[ui.value], 3));
+                $('#p_value').html(toFixed(ps[ui.value], 3));
+                $('#amplitude').html(toFixed(amplitudes[ui.value], 3));
+                $('#peak_time').html(toFixed(peak_times[ui.value], 3));
                 $('#row_selector').val(ui.value).trigger("focus");
                 raw_y_values = data[ui.value];
                 paired_y_values = [];
@@ -105,10 +112,10 @@
             console.log(this.value, labels[this.value]);
             $('input[name="row_index"]').val(this.value);
             $('#significant_items').html(parseInt(this.value) + 1);
-            $('#q_value').html(qs[this.value].toFixed(3));
-            $('#p_value').html(ps[this.value].toFixed(3));
-            $('#amplitude').html(amplitudes[this.value].toFixed(3));
-            $('#peak_time').html(peak_times[this.value].toFixed(3));
+            $('#q_value').html(toFixed(qs[this.value], 3));
+            $('#p_value').html(toFixed(ps[this.value], 3));
+            $('#amplitude').html(toFixed(amplitudes[this.value], 3));
+            $('#peak_time').html(toFixed(peak_times[this.value], 3));
             console.log("row: " + this.value + ",id: " + labels[this.value]);
             values = [{
                 x: paired_x_values, y: paired_y_values,
@@ -134,7 +141,7 @@
         var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
         var nonbreakingspace = "\u00A0"
         $.each(labels, function (i, label) {
-            option_fragment.appendChild(new Option(label.padEnd(max_label_length, nonbreakingspace) + " Q: " + qs[i].toFixed(2), i));
+            option_fragment.appendChild(new Option(label.padEnd(max_label_length, nonbreakingspace) + " Q: " + toFixed(qs[i], 2), i));
         } );
         $('#row_selector')[0].appendChild(option_fragment);
 
