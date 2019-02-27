@@ -39,10 +39,12 @@
         <tr>
             <td>Uploaded File</td>
             <td>Date Uploaded</td>
+            <td>Name</td>
             <td>Days</td>
             <td>Timepoints</td>
             <td>Breakpoint</td>
             <td>Processed File</td>
+            <td>Last Update</td>
             <td> </td>
         </tr>
         {% for spreadsheet in user.spreadsheets %}
@@ -55,6 +57,7 @@
                     </a>
                 </td>
                 <td>{{spreadsheet.date_uploaded.strftime("%d%b%Y, %H:%M") }}</td>
+                <td>{{spreadsheet.descriptive_name}}</td>
                 <td>{{spreadsheet.days}}</td>
                 <td>{{spreadsheet.timepoints}}</td>
                 <td>{{spreadsheet.breakpoint}}</td>
@@ -68,6 +71,7 @@
                         <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
                     </a>
                 </td>
+                <td>{{spreadsheet.last_access.strftime("%d%b%Y, %H:%M") }}</td>
                 <td><a href="{{ url_for('spreadsheets.delete', spreadsheet_id = spreadsheet.id) }}">
                     <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                 </a></td>

@@ -164,7 +164,8 @@ def set_spreadsheet_breakpoint():
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
-                                breakpoint = spreadsheet.breakpoint)
+                                breakpoint = spreadsheet.breakpoint,
+                                descriptive_name = spreadsheet.descriptive_name)
 
 
 
@@ -181,7 +182,6 @@ def show_spreadsheet(spreadsheet_id):
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
         spreadsheet.save_to_db()
-        #session['spreadsheet'] = spreadsheet.to_json()
         return redirect(url_for('.display_heatmap'))
 
     session["spreadsheet_id"] = spreadsheet.id
@@ -198,7 +198,8 @@ def show_spreadsheet(spreadsheet_id):
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
-                                breakpoint=spreadsheet.breakpoint)
+                                breakpoint=spreadsheet.breakpoint,
+                                descriptive_name=spreadsheet.descriptive_name)
 
 
 @spreadsheet_blueprint.route('/heatmap', methods=['POST'])
@@ -283,21 +284,41 @@ def edit_details(spreadsheet_id):
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     session['spreadsheet_id'] = spreadsheet_id
     if request.method == "POST":
+        descriptive_name = request.form['descriptive_name']
         days = request.form['days']
         timepoints = request.form['timepoints']
+        repeated_measures = request.form['repeated_measures']
+        repeated_measures = True if repeated_measures == 'y' else False
+        header_row = request.form['header_row']
+
+        if not descriptive_name or len(descriptive_name) > 250:
+            errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
         if not days.isdigit():
             errors.append(f"The value for days is required and must be a positve integer.")
         if not timepoints.isdigit():
             errors.append(f"The value for timepoints is required and must be a positve integer.")
+        if not header_row or not header_row.isdigit():
+            errors.append(f"The value of the header row is required and must be a positive integer.")
         if errors:
-            return render_template('spreadsheets/edit_form.html', errors=errors, days=days,
-                                   timepoints=timepoints)
+            return render_template('spreadsheets/edit_form.html', errors=errors,
+                                   descriptive_name=descriptive_name,
+                                   days=days,
+                                   timepoints=timepoints,
+                                   repeated_measures=repeated_measures,
+                                   header_row=header_row)
+        spreadsheet.descriptive_name = descriptive_name
         spreadsheet.days = days
         spreadsheet.timepoints = timepoints
+        spreadsheet.repeated_measures = repeated_measures
+        spreadsheet.header_row = header_row
         spreadsheet.save_to_db()
         return redirect(url_for('.edit_columns'))
     return render_template('spreadsheets/edit_form.html', spreadsheet_id=spreadsheet_id,
-                           days=spreadsheet.days, timepoints=spreadsheet.timepoints)
+                           descriptive_name=spreadsheet.descriptive_name,
+                           days=spreadsheet.days,
+                           timepoints=spreadsheet.timepoints,
+                           repeated_measures=spreadsheet.repeated_measures,
+                           header_row=spreadsheet.header_row)
 
 
 @spreadsheet_blueprint.route('/edit', methods=['GET', 'POST'])
