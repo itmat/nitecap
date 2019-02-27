@@ -165,7 +165,8 @@ def set_spreadsheet_breakpoint():
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint,
-                                descriptive_name = spreadsheet.descriptive_name)
+                                descriptive_name = spreadsheet.descriptive_name,
+                                max_value_filter = spreadsheet.max_value_filter)
 
 
 
@@ -187,6 +188,7 @@ def show_spreadsheet(spreadsheet_id):
     session["spreadsheet_id"] = spreadsheet.id
 
     data = spreadsheet.get_raw_data()
+    max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
                                 x_values=spreadsheet.x_values,
@@ -199,7 +201,8 @@ def show_spreadsheet(spreadsheet_id):
                                 ids=list(spreadsheet.df['id']),
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint=spreadsheet.breakpoint,
-                                descriptive_name=spreadsheet.descriptive_name)
+                                descriptive_name=spreadsheet.descriptive_name,
+                                max_value_filter = max_value_filter)
 
 
 @spreadsheet_blueprint.route('/heatmap', methods=['POST'])

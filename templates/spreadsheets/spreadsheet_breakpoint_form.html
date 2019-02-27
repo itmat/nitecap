@@ -15,6 +15,7 @@
         ps = {{ ps | safe }};
         amplitudes = {{ amplitudes | safe }};
         peak_times = {{ peak_times | safe }};
+        saved_max_value_filter = {{ max_value_filter | safe }};
 
         y_values = [];
         trace_name = 'Nothing selected';
@@ -130,9 +131,9 @@
 
         // Add options to a "document fragment"
         // then to the selector, for speed
-        var option_fragment = document.createDocumentFragment()
+        var option_fragment = document.createDocumentFragment();
         var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
-        var nonbreakingspace = "\u00A0"
+        var nonbreakingspace = "\u00A0";
         $.each(labels, function (i, label) {
             option_fragment.appendChild(new Option(label.padEnd(max_label_length, nonbreakingspace) + " Q: " + qs[i].toFixed(2), i));
         } );
@@ -218,6 +219,44 @@
             Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + row_index});
         });
 
+        // Setup of filters card on page load
+        if(saved_max_value_filter) {
+            $('#max_value_filter').val(saved_max_value_filter)
+        }
+        else {
+            $('#EmptyFiltersList').css({"visibility":"visible"});
+        }
+
+        $('#applyFilters').click(function() {
+            row_index = $('input[name="row_index"]').val();
+            $('#row_selector option').removeAttr('disabled');
+            if($('#max_value_filter').val().length == 0) {
+                $('#EmptyFiltersList').css({"visibility":"visible"});
+                $('#significant_items').html(row_index);
+                return
+            }
+            var max_value_filter = parseInt($('#max_value_filter').val());
+            $('#EmptyFiltersList').css({"visibility":"hidden"});
+
+            ctr = 0;
+            set_significant_items = false;
+            $.each(data, function(index, row) {
+                var filter_out = row.some(function(item) {
+                    return item > max_value_filter;
+                });
+                if(filter_out) {
+                    $('#row_selector').find('option[value='+ index +']').attr('disabled', 'disabled');
+                }
+                else {
+                    ctr++;
+                }
+                if(index >= row_index && !set_significant_items) {
+                    $('#significant_items').html(ctr);
+                    set_significant_items = true;
+                }
+            });
+        });
+
 });
 
 
@@ -253,9 +292,9 @@
         <span class='col-xs-3 ...'>
             <select size="20" name="row_selector" id="row_selector"></select>
         </span>
-        <span class="'col-xs-8" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
+        <span class="'col-xs-6" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
 
-        <div class="card" style="width: 15rem;">
+        <div class="card col-xs-1" style="width: 15rem;">
             <div class="card-header">
                 Statistics
             </div>
@@ -266,6 +305,19 @@
                     <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
                     <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
                 </ul>
+            </div>
+        </div>
+        <div id="FiltersCard" class="card col-xs-1" style="width: 20rem;">
+            <div class="card-header">
+                Filters
+            </div>
+            <div class="card-body">
+                <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
+                <div class="form-group form-inline">
+                    <label class="col-form-label" for="max_value_filter" style="margin-right: 10px">Max Value:</label>
+                    <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
+                </div>
+                <button id="applyFilters" type="button" class="btn btn-primary" data-dismiss="modal">Apply filters</button>
             </div>
         </div>
     </div>
@@ -286,5 +338,4 @@
         <div class="row" id="heatmap"></div>
     </div>
 
-</div>
 {% endblock %}
