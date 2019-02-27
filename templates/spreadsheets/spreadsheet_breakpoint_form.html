@@ -252,7 +252,7 @@
                     return item > max_value_filter;
                 });
                 if(filter_out) {
-                    $('#row_selector').find('option[value='+ index +']').attr('disabled', 'disabled');
+                    $('#row_selector option[index]').attr('disabled', 'disabled');
                 }
                 else {
                     ctr++;
