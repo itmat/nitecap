@@ -157,6 +157,9 @@ def anova(data):
     Return value is of shape (N_GENES), with the p-value of each gene (or feature) in the array.
     '''
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+
+    if N_REPS == 1:
+        raise ValueError("Cannot perform ANOVA on datasets without any replicates")
     
     anova_p = numpy.empty(N_GENES)
 

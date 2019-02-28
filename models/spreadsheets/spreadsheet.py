@@ -12,7 +12,7 @@ from collections import OrderedDict
 
 import nitecap
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p"]
+NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p"]
 
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
@@ -144,18 +144,26 @@ class Spreadsheet(db.Model):
 
         data = self.get_raw_data().values
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
+
+        # Main nitecap computation
         td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
         q, p = nitecap.FDR(td, perm_td)
 
+        # Other statistics
         # TODO: should users be able to choose their cycle length?
         amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, cycle_length=self.timepoints)
+        try:
+            anova_p = nitecap.util.anova(data_formatted)
+        except ValueError:
+            anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
 
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
-        self.df["nitecap_q"] = q
+        self.df["anova_p"] = p
         self.df["nitecap_p"] = p
+        self.df["nitecap_q"] = q
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 
