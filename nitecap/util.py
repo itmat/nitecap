@@ -173,7 +173,7 @@ def anova(data):
 
         if contains_nans:
             # Remove non-nans
-            row = [row[j,:,i][finite_mask[j,:,i]]
+            row = [row[j,:][finite_mask[j,:,i]]
                     for j in range(N_TIMEPOINTS)]
 
         p = scipy.stats.f_oneway(*row)[1]
