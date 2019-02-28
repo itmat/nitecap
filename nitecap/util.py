@@ -145,5 +145,5 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
         local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
         regression_value =  numpy.dot(local_predictor, coeffs)
 
-        regression_values[i] = regression_value
+        regression_values[i] = regression_value.flatten()
     return regression_values
