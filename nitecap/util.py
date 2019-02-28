@@ -101,6 +101,10 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
     # Matrix of values 1, x, x^2, x^3...
     predictors = xs.reshape((-1,1)) ** numpy.arange(degree+1).reshape((1,-1))
 
+    # We need to handle nan's if present (also masks out infinities - maybe not desirable)
+    finite_mask = numpy.isfinite(ys)
+    contains_nans = not numpy.all(finite_mask)
+
     # Sort points
     for i,x in enumerate(regression_x_values):
         distances = numpy.abs(xs - x)
@@ -112,13 +116,34 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
         # Perform weighted-least-squares regression
         weighted_ys = weights * ys
         weighted_predictors = weights * predictors
-        coeffs, residuals, rank, singular_values = numpy.linalg.lstsq( weighted_predictors, weighted_ys, rcond=None)
+
+        # Linear regression
+        if not contains_nans:
+            # Without NaN's, linear regression is easy
+            coeffs, residuals, rank, singular_values = numpy.linalg.lstsq( weighted_predictors, weighted_ys, rcond=None)
+        else:
+            # With NaNs, we have to be careful
+            # Unfortunately this procedure is less numerically stable since it
+            # computes the Gramian A^T A and so squares the condition number
+            # Idea is that we just need to mask out any nan values, but need to do it on both
+            # sides of the equation AX = B
+            # Solving by A^T A X = A^T B but with the mask becomes A^T M A X = A^T M B
+            # Based on http://alexhwilliams.info/itsneuronalblog/2018/02/26/censored-lstsq/
+            A = weighted_predictors[numpy.newaxis,:,:]
+            A_T = A.swapaxes(1,2)
+            M = (finite_mask.T)[:,:,numpy.newaxis]
+            B = (weighted_ys.T)[:,:,numpy.newaxis]
+            B[~M] = 0 # Replace nan's with zeros in B
+            # so B is now M * B, but can't just multiply since 0 * nan = nan not 0
+
+            # TODO: these can be rewritten as an einsum and will probably speed up
+            #       though surprisingly it's comparable to linalg.lstsq in speed already
+            gramian = A_T @ (M * A)
+            right_hand_side = A_T @ B
+            coeffs = numpy.linalg.solve(gramian, right_hand_side)
 
         local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
         regression_value =  numpy.dot(local_predictor, coeffs)
-
-        plt_x  = numpy.linspace(x-0.2*weight_radius,x+0.2*weight_radius,21)
-        plt_y = [numpy.dot(numpy.array([x_**j for j in range(degree+1)]).reshape((1,-1)), coeffs ).reshape((-1,)) for x_ in plt_x]
 
         regression_values[i] = regression_value
     return regression_values
