@@ -1,4 +1,5 @@
 import numpy
+import scipy.stats
 
 def BH_FDR(ps):
     ''' Benjamini-Hochberg FDR control
@@ -147,3 +148,31 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
 
         regression_values[i] = regression_value.flatten()
     return regression_values
+
+def anova(data):
+    '''
+    Preform one-way ANOVA on the given data
+
+    data is assumed to be an array of shape (N_TIMEPOINTS, N_REPS, N_GENES), see nitecap.reformat_data.
+    Return value is of shape (N_GENES), with the p-value of each gene (or feature) in the array.
+    '''
+    (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+    
+    anova_p = numpy.empty(N_GENES)
+
+    # Check for nans
+    finite_mask = numpy.isfinite(data)
+    contains_nans = not numpy.all(finite_mask)
+    
+    # Unfortunately, no built-in better way to do ANOVA on repeated experiments in Scipy
+    for i in range(N_GENES):
+        row = data[:,:,i]
+
+        if contains_nans:
+            # Remove non-nans
+            row = [row[j,:,i][finite_mask[j,:,i]]
+                    for j in range(N_TIMEPOINTS)]
+
+        p = scipy.stats.f_oneway(*row)[1]
+        anova_p[i] = p
+    return anova_p
