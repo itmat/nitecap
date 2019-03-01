@@ -161,7 +161,7 @@ class Spreadsheet(db.Model):
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
-        self.df["anova_p"] = p
+        self.df["anova_p"] = anova_p
         self.df["nitecap_p"] = p
         self.df["nitecap_q"] = q
         self.df = self.df.sort_values(by="total_delta")
