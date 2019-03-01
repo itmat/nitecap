@@ -174,7 +174,7 @@ class Spreadsheet(db.Model):
         above_breakpoint = self.df.iloc[:breakpoint+1]
         sorted_by_peak_time = above_breakpoint.sort_values(by="peak_time")
         raw_data = sorted_by_peak_time[self.get_data_columns()]
-        labels = list(sorted_by_peak_time["id"])
+        labels = list(sorted_by_peak_time.iloc[:,0])
         return raw_data, labels
 
     def check_breakpoint(self, breakpoint):
