@@ -29,6 +29,8 @@ except ImportError as e:
 
 # Number of permutations to take for permuted test statistics
 N_PERMS = 100
+# Number of permutations to compute at one go, reduce this number to reduce memory useage
+N_PERMS_PER_RUN = 20
 
 descriptive_stats = collections.namedtuple("DescriptiveStats", ["amplitude", "peak_time", "trough_time"])
 
@@ -62,7 +64,7 @@ def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PER
     data = numpy.array(data)
     data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
-    td, perm_td, perm_data = nitecap_statistics(data_formatted, N_PERMS)
+    td, perm_td = nitecap_statistics(data_formatted, N_PERMS)
     q, p = FDR(td, perm_td)
     if output == "full":
         return q, td, perm_td
@@ -184,6 +186,8 @@ def total_delta(data, contains_nans = "check"):
 def nitecap_statistics(data, N_PERMS = N_PERMS):
     ''' Compute total_delta statistic and permutation versions of this statistic '''
 
+    (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+
     contains_nans = numpy.isnan(data).any()
     if contains_nans:
         # Need to prep the data by moving all NaNs to the "back"
@@ -191,16 +195,27 @@ def nitecap_statistics(data, N_PERMS = N_PERMS):
         # Sorting (or rearranging) the reps doesn't make a difference and sorting puts NaNs at the end
         data = numpy.sort(data, axis=1)
 
-    perm_data = permute_timepoints(data, N_PERMS)
-
     td = total_delta(data, contains_nans)
-    perm_td = total_delta(perm_data, contains_nans)
+
+    # Run N_PERMS_PER_RUN permutations repeatedly until we get a total of N_PERMS
+    num_perms_done = 0
+    perm_td = numpy.empty((N_PERMS, N_GENES))
+    while True:
+        if num_perms_done >= N_PERMS:
+            break
+
+        num_perms = min(N_PERMS - num_perms_done, N_PERMS_PER_RUN)
+        perm_data = permute_timepoints(data, num_perms)
+
+        perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(perm_data, contains_nans)
+
+        num_perms_done += num_perms
 
     # Center the statistics for each feature
     meds = numpy.nanmedian(perm_td, axis=0)
     td = td - meds
     perm_td = perm_td - meds
-    return td, perm_td, perm_data
+    return td, perm_td
 
 def permute_timepoints(data, N_PERMS = None):
     # Take data with shape (N_timespoints, N_reps)

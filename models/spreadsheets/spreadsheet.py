@@ -146,7 +146,7 @@ class Spreadsheet(db.Model):
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
 
         # Main nitecap computation
-        td, perm_td, perm_data = nitecap.nitecap_statistics(data_formatted)
+        td, perm_td = nitecap.nitecap_statistics(data_formatted)
         q, p = nitecap.FDR(td, perm_td)
 
         # Other statistics
