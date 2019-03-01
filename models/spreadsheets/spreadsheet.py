@@ -100,13 +100,6 @@ class Spreadsheet(db.Model):
         x_values = [self.label_to_timepoint(label) for label in self.column_labels]
         self.x_values = [value for value in x_values if value is not None]
 
-        x_indices = [index for index, value in enumerate(self.column_labels) if value != 'Ignore']
-
-        # Essentially the x coordinate for the basketweave plots.
-        #self.x_labels = list(OrderedDict({label:None for label in self.column_labels if re.search("Day(\d+) Timepoint(\d+)", label)}).keys())
-        #self.x_labels = [column for timepoint in range(self.timepoints * self.days)
-        #                        for column in columns_by_timepoint[timepoint]]
-
         # Count the number of replicates at each timepoint
         self.num_replicates = [len([1 for x in self.x_values if x == i])
                                     for i in range(self.timepoints * self.days)]
