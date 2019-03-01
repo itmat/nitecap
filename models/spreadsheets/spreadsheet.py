@@ -61,7 +61,7 @@ class Spreadsheet(db.Model):
         if file_path is None:
             # Need to use our uploaded_file_path to create a new dataframe
             print("Uploaded " + self.uploaded_file_path)
-            uploaded_dataframe = pd.read_csv(self.uploaded_file_path, sep="\t", header=self.header_row, index_col=False)
+            uploaded_dataframe = pd.read_csv(self.uploaded_file_path, sep="\t", header=self.header_row - 1, index_col=False)
             self.date_uploaded = datetime.datetime.now()
             self.file_path = uploaded_file_path + ".working.txt"
             self.df = uploaded_dataframe
