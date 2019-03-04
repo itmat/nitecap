@@ -1,0 +1,2 @@
+class NitecapException(Exception):
+    pass

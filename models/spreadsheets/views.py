@@ -2,6 +2,7 @@ import magic
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file, jsonify
 from pandas.errors import ParserError
 
+from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
 from werkzeug.utils import secure_filename
 import os
@@ -97,10 +98,9 @@ def load_spreadsheet():
                                       file_mime_type = file_mime_type,
                                       uploaded_file_path = file_path,
                                       user_id = user_id)
-        except (UnicodeDecodeError, ParserError) as e:
-            print(type(e), e)
+        except NitecapException as ne:
             os.remove(file_path)
-            errors.append(f"The file provided is not parseable.")
+            errors.append(ne.message)
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
         spreadsheet.save_to_db()
         session['spreadsheet_id'] = spreadsheet.id

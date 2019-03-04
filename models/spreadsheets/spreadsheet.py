@@ -1,4 +1,6 @@
 import datetime
+from parser import ParserError
+from pathlib import Path
 
 import pandas as pd
 import numpy
@@ -8,6 +10,7 @@ import constants
 from sqlalchemy import orm
 
 from db import db
+from exceptions import NitecapException
 from models.users.user import User
 from collections import OrderedDict
 
@@ -62,19 +65,12 @@ class Spreadsheet(db.Model):
 
         # This is a new spreadsheet.
         if file_path is None:
-            uploaded_dataframe = None
-
-            # Spreadsheet is an Excel file (initial sheet only is used)
-            if self.file_mime_type in constants.EXCEL_MIME_TYPES:
-                uploaded_dataframe = pd.read_excel(self.uploaded_file_path, header=self.header_row - 1, index_col=False)
-            else:
-                # Need to use our uploaded_file_path to create a new dataframe
-                print("Uploaded " + self.uploaded_file_path)
-                uploaded_dataframe = pd.read_csv(self.uploaded_file_path, sep="\t", header=self.header_row - 1, index_col=False)
+            self.set_df()
             self.date_uploaded = datetime.datetime.now()
             self.file_path = uploaded_file_path + ".working.txt"
-            self.df = uploaded_dataframe
             self.update_dataframe()
+
+        # Do we ever get here?
         else:
             self.df = pd.read_csv(self.file_path, sep="\t")
 
@@ -88,14 +84,8 @@ class Spreadsheet(db.Model):
             # The parser failed...we may be able to recover.
             print(e)
             self.df = None
-            # Spreadsheet is an Excel file (initial sheet only is used)
-
             try:
-                if self.file_mime_type in constants.EXCEL_MIME_TYPES:
-                    self.df = pd.read_excel(self.uploaded_file_path, header=self.header_row - 1, index_col=False)
-                else:
-                    self.df = pd.read_csv(self.uploaded_file_path, sep="\t", header=self.header_row - 1,
-                                                 index_col=False)
+                self.set_df()
 
             # If parsing the original fails, we are stuck
             except Exception as e:
@@ -113,6 +103,33 @@ class Spreadsheet(db.Model):
                 # missing any output (eg: if we added more outputs, this will update spreadsheets,
                 # or if somehow a spreadsheet was never computed)
                 self.compute_nitecap()
+
+
+    def set_df(self):
+        """
+        Use the uploaded file's mimetype to determine whether the file in an Excel spreadsheet or the file's
+        extension to determine whether the plain text file in comma or tab delimiated and load the dataframe
+        appropriately
+        """
+
+        try:
+            # Spreadsheet is an Excel file (initial sheet only is used)
+            if self.file_mime_type in constants.EXCEL_MIME_TYPES:
+                self.df = pd.read_excel(self.uploaded_file_path,
+                                        header=self.header_row - 1,
+                                        index_col=False)
+            else:
+                extension = Path(self.original_filename).suffix
+                sep="\t"
+                if extension in constants.COMMA_DELIMITED_EXTENSIONS:
+                    sep=","
+                self.df = pd.read_csv(self.uploaded_file_path,
+                                      sep=sep,
+                                      header=self.header_row - 1,
+                                      index_col=False)
+        except (UnicodeDecodeError, ParserError) as e:
+            print(e)
+            raise NitecapException("The file provided could not be parsed.")
 
 
 
