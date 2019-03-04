@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import numpy
 import re
+import constants
 
 from sqlalchemy import orm
 
@@ -58,10 +59,18 @@ class Spreadsheet(db.Model):
         if not annonymous_user:
             annonymous_user = User.create_annonymous_user()
         self.user_id = user_id if user_id else annonymous_user.id
+
+        # This is a new spreadsheet.
         if file_path is None:
-            # Need to use our uploaded_file_path to create a new dataframe
-            print("Uploaded " + self.uploaded_file_path)
-            uploaded_dataframe = pd.read_csv(self.uploaded_file_path, sep="\t", header=self.header_row - 1, index_col=False)
+            uploaded_dataframe = None
+
+            # Spreadsheet is an Excel file (initial sheet only is used)
+            if self.file_mime_type in constants.EXCEL_MIME_TYPES:
+                uploaded_dataframe = pd.read_excel(self.uploaded_file_path, header=self.header_row - 1, index_col=False)
+            else:
+                # Need to use our uploaded_file_path to create a new dataframe
+                print("Uploaded " + self.uploaded_file_path)
+                uploaded_dataframe = pd.read_csv(self.uploaded_file_path, sep="\t", header=self.header_row - 1, index_col=False)
             self.date_uploaded = datetime.datetime.now()
             self.file_path = uploaded_file_path + ".working.txt"
             self.df = uploaded_dataframe
