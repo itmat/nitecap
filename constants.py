@@ -5,3 +5,4 @@ ALLOWED_MIME_TYPES = frozenset(['text/plain', 'text/csv', 'application/vnd.ms-ex
 COMPRESSED_MIME_TYPES = frozenset(['application/x-gzip', 'application/gzip'])
 EXCEL_MIME_TYPES = frozenset(['application/vnd.ms-excel',
                               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
+COMMA_DELIMITED_EXTENSIONS = frozenset(['csv'])
