@@ -18,7 +18,7 @@ def create_tables():
 
 @app.route('/', methods=['GET'])
 def home():
-    return redirect(url_for('spreadsheets.load_spreadsheet'))
+    return render_template("home.html")
 
 @app.errorhandler(413)
 def file_to_large(e):

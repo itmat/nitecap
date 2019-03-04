@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Welcome NITECAP</h1>
+</div>
+
+<div class="jumbotron">
+    <h2>Introduction</h2>
+    <p>
+        You may use the site's functionality without registering.  But if you'd like to have your data
+        saved on the site, you will need to register and then log in.
+    </p>
+    <p>
+        Clemens, gratis zetas diligenter gratia de varius, audax stella.
+        Cum zelus studere, omnes heureteses locus regius, ferox decores.
+        Nobilis, emeritis hilotaes saepe imitari de fatalis, fidelis boreas.
+        Superbus, bi-color dominas grauiter anhelare de teres, salvus rumor.
+        Flavum, altus galataes aliquando perdere de raptus, brevis vigil.
+        Gratis, noster parmas vix talem de germanus, neuter accola.
+        Cum rumor ortum, omnes nixuses tractare talis, audax sectames.
+        Superbus, altus finiss tandem carpseris de salvus, grandis genetrix.
+    </p>
+    <div class="alert alert-warning" role="alert">
+        <h2>Please Note:</h2>
+        <p>
+            While we endeavor to protect the data uploaded to this site, we make no guarantees as to its
+            security.
+        </p>
+    </div>
+</div>
+
+<div class="row">
+     <a href="{{url_for('spreadsheets.load_spreadsheet')}}">
+        <button class="btn btn-primary">
+            Proceed to Load My Spreadsheet
+        </button>
+     </a>
+</div>
+
+{% endblock %}
