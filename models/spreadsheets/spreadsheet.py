@@ -81,10 +81,7 @@ class Spreadsheet(db.Model):
     @orm.reconstructor
     def init_on_load(self):
         if self.file_path:
-            if self.file_mime_type in constants.EXCEL_MIME_TYPES:
-                self.df = pd.read_excel(self.uploaded_file_path, header=self.header_row - 1, index_col=False)
-            else:
-                self.df = pd.read_csv(self.file_path, sep="\t")
+            self.df = pd.read_csv(self.file_path, sep="\t")
         self.num_replicates = None if not self.num_replicates_str \
             else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
