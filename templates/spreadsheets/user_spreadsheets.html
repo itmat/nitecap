@@ -55,7 +55,11 @@
         </thead>
         <tbody>
         {% for spreadsheet in user.spreadsheets %}
-            <tr>
+            {% if spreadsheet.error %}
+                <tr class="alert alert-danger" role="alert">
+                    {% else %}
+                <tr>
+            {% endif %}
                 <td>
                     {{spreadsheet.original_filename}}
                     &nbsp;&nbsp;

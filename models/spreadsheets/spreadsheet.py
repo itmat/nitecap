@@ -80,8 +80,28 @@ class Spreadsheet(db.Model):
 
     @orm.reconstructor
     def init_on_load(self):
-        if self.file_path:
-            self.df = pd.read_csv(self.file_path, sep="\t")
+        self.error = False
+        try:
+            if self.file_path:
+                self.df = pd.read_csv(self.file_path, sep="\t")
+        except Exception as e:
+            # The parser failed...we may be able to recover.
+            print(e)
+            self.df = None
+            # Spreadsheet is an Excel file (initial sheet only is used)
+
+            try:
+                if self.file_mime_type in constants.EXCEL_MIME_TYPES:
+                    self.df = pd.read_excel(self.uploaded_file_path, header=self.header_row - 1, index_col=False)
+                else:
+                    self.df = pd.read_csv(self.uploaded_file_path, sep="\t", header=self.header_row - 1,
+                                                 index_col=False)
+
+            # If parsing the original fails, we are stuck
+            except Exception as e:
+                print(e)
+                self.error = True
+
         self.num_replicates = None if not self.num_replicates_str \
             else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
@@ -93,6 +113,8 @@ class Spreadsheet(db.Model):
                 # missing any output (eg: if we added more outputs, this will update spreadsheets,
                 # or if somehow a spreadsheet was never computed)
                 self.compute_nitecap()
+
+
 
     def column_defaults(self):
         # Try to guess the columns by looking for CT/ZT labels
