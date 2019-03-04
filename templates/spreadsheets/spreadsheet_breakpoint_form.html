@@ -225,7 +225,7 @@
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
             row_index = parseInt($('#row_index').val()) + 1;
-            $('#cutoff').html(row_index);
+            $('#cutoff').html(num_significant_below[row_index-1]);
             $.ajax({
                 url: "{{url_for('spreadsheets.display_heatmap')}}",
                 data: JSON.stringify({'row_index': row_index}),
