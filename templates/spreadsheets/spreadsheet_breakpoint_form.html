@@ -323,8 +323,7 @@
             var options = $('#row_selector option');
             var significant_items = $('#significant_items');
             $.each(data, function(index, row) {
-                var old_filter_out = filtered[index];
-                var filter_out = row.some(function(item) {
+                var filter_out = row.every(function(item) {
                     return item < max_value_filter;
                 });
                 filtered[index] = filter_out;
@@ -333,18 +332,6 @@
                 } else {
                     options.eq(index).removeAttr('disabled', 'disabled');
                 }
-
-                //// Toggle enable/disable status if filtering has change
-                //if(filter_out) {
-                //    if (!old_filter_out) {
-                //        options.eq(index).attr('disabled', 'disabled');
-                //    }
-                //} else {
-                //    if(old_filter_out) {
-                //        options.eq(index).removeAttr('disabled');
-                //    }
-                //    ctr++; // Count how many are un-filtered for display
-                //}
 
                 // Update number of significant items
                 if(index >= row_index && !set_significant_items) {
@@ -387,7 +374,7 @@
             <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
         </span>
         <span class='col-xs-3 ...'>
-            <select size="20" name="row_selector" id="row_selector" class="clusterize-content clusterize-scroll"></select>
+            <select size="50" name="row_selector" id="row_selector" class="clusterize-content clusterize-scroll"></select>
         </span>
         <span class="'col-xs-6" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
 
