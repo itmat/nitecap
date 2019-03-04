@@ -148,7 +148,7 @@
         var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
         var nonbreakingspace = "\u00A0";
         $.each(labels, function (i, label) {
-            option_fragment.appendChild(new Option(label.padEnd(max_label_length, nonbreakingspace) + " Q: " + toFixed(qs[i], 2), i));
+            option_fragment.appendChild(new Option(String(label).padEnd(max_label_length, nonbreakingspace) + " Q: " + toFixed(qs[i], 2), i));
         } );
         $('#row_selector')[0].appendChild(option_fragment);
 

@@ -17,6 +17,8 @@ Jinja2==2.10
 jsonschema==2.6.0
 jupyter-core==4.4.0
 MarkupSafe==1.1.0
+mkl-fft==1.0.10
+mkl-random==1.0.2
 mod-wsgi==4.6.5
 msgpack==0.6.1
 nbformat==4.4.0
@@ -30,6 +32,7 @@ python-magic==0.4.15
 pytz==2018.9
 requests==2.21.0
 retrying==1.3.3
+scipy==1.1.0
 sh==1.12.14
 six==1.12.0
 SQLAlchemy==1.2.17
@@ -37,4 +40,4 @@ traitlets==4.3.2
 tzlocal==1.5.1
 urllib3==1.24.1
 Werkzeug==0.14.1
-scipy==1.1.0
+xlrd==1.2.0
