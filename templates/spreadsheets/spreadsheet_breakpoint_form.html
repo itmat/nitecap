@@ -28,6 +28,9 @@
         // List of whether each feature has been filtered out or not, starting with no filtering
         filtered = labels.map(function(x) {return false;});
 
+        // Currently selected row from slider
+        selected_row = breakpoint;
+
         y_values = [];
         trace_name = 'Nothing selected';
         marker_settings = {size: 12, symbol: 'circle-open', color: '#FF00FF'};
@@ -61,8 +64,11 @@
             min: 0,
             value: breakpoint,
             step: 1,
-            max: labels.length,
+            max: labels.length - 1,
             slide: function (event, ui) {
+                console.log("Sliding to " + ui.value);
+                selected_row = ui.value;
+
                 //$("#row_selector").val(ui.value);
                 $('#significant_items').html(ui.value+1);
                 $('#q_value').html(toFixed(qs[ui.value], 3));
@@ -70,7 +76,10 @@
                 $('#amplitude').html(toFixed(amplitudes[ui.value], 3));
                 $('#anova').html(toFixed(anovas[ui.value], 3));
                 $('#peak_time').html(toFixed(peak_times[ui.value], 3));
-                $('#row_selector').val(ui.value).trigger("focus");
+
+                var row_selector = $('#row_selector')[0];
+                selectRowAndScroll(ui.value);
+
                 raw_y_values = data[ui.value];
                 paired_y_values = [];
                 paired_y_values = [];
@@ -103,7 +112,7 @@
 
         $('#row_selector').change(function () {
             $("#coarse_slider").slider("option", "value", this.value);
-            console.log("Selector changed: " + labels[this.value]);
+            console.log("Selector changed: " + labels[this.value] + " Value:" + this.value + " .");
             raw_y_values = data[this.value];
 
             paired_y_values = [];
@@ -142,15 +151,71 @@
             Plotly.react(scatter_plot, values, layout);
         });
 
-        // Add options to a "document fragment"
-        // then to the selector, for speed
-        var option_fragment = document.createDocumentFragment();
+
+        // Use "clusterize.js" to add these options without slowing everything down too much
+        // only the options that are visible are kept as DOM objects versus having tens of thousands of DOM objects
+        // which makes everything slow down
+        // First make the list of our option elements
         var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
         var nonbreakingspace = "\u00A0";
-        $.each(labels, function (i, label) {
-            option_fragment.appendChild(new Option(String(label).padEnd(max_label_length, nonbreakingspace) + " Q: " + toFixed(qs[i], 2), i));
+        var option_rows = labels.map( function(label, i) {
+            return '<option value="'+i+'">' + String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2) +  '</option>';
         } );
-        $('#row_selector')[0].appendChild(option_fragment);
+
+        var recluster = function(progress) {
+            // Whenever the cluster of rows kept active changes, we need to update the selection
+            // since we might have previously been trying to select something that wasn't in the current cluster
+            // but now is in the cluster
+            var row_selector = $('#row_selector')[0];
+
+            var target_row = $('#row_selector option[value="' + selected_row + '"]');
+            if (target_row.length > 0) {
+                row_selector.scrollTop = target_row[0].offsetTop - row_selector.offsetTop - row_selector.clientHeight/2;
+            } else {
+                console.log("Target row could not be found.");
+            }
+
+            $('#row_selector').val(selected_row).trigger('focus');
+
+            // Now filter out options, since the new options will need filter
+            $('#row_selector option').each( function () {
+                if (filtered[this.value]) {
+                    this.setAttribute('disabled', 'disabled');
+                } else {
+                    this.removeAttribute('disabled');
+                }
+            } );
+        };
+
+        // Create the actual clusterization object
+        clusterized_rows = new Clusterize({
+            rows: option_rows,
+            scrollId: "row_selector",
+            contentId: "row_selector",
+            callbacks: {
+                "clusterChanged" : recluster,
+            }
+        });
+
+        var selectRowAndScroll = function(row) {
+            // Sets #row_selector to the desired row, taking into account the clusterization
+            selected_row = row;
+
+            // First check if the desired row is already in the cluster
+            var target_row = $('#row_selector option[value="' + row + '"]');
+                console.log("Estimating row height as " + option_height);
+            var row_selector = $('#row_selector')[0];
+            if (target_row.length > 0) {
+                // If the target row is already in our cluster, then we can immediately scroll to the correct spot
+                $('#row_selector').val(row).trigger("focus");
+                row_selector.scrollTop = target_row[0].offsetTop - row_selector.offsetTop - row_selector.clientHeight/2;
+            } else {
+                // If the target row is not in our current cluster, then we have to scroll to the approximate location
+                // and then the clusterChanged handler recluster() will later give the exact scroll position
+                var option_height = row_selector.scrollHeight / clusterized_rows.getRowsAmount();
+                row_selector.scrollTop = row * option_height - row_selector.offsetTop  - row_selector.clientHeight/2;
+            }
+        };
 
         $('#row_selector option[0]').attr('disable','disable');
 
@@ -263,18 +328,23 @@
                     return item < max_value_filter;
                 });
                 filtered[index] = filter_out;
-
-                // Toggle enable/disable status if filtering has change
-                if(filter_out) {
-                    if (!old_filter_out) {
-                        options.eq(index).attr('disabled', 'disabled');
-                    }
+                if (filter_out) {
+                    options.eq(index).attr('disabled', 'disabled');
                 } else {
-                    if(old_filter_out) {
-                        options.eq(index).removeAttr('disabled');
-                    }
-                    ctr++; // Count how many are un-filtered for display
+                    options.eq(index).removeAttr('disabled', 'disabled');
                 }
+
+                //// Toggle enable/disable status if filtering has change
+                //if(filter_out) {
+                //    if (!old_filter_out) {
+                //        options.eq(index).attr('disabled', 'disabled');
+                //    }
+                //} else {
+                //    if(old_filter_out) {
+                //        options.eq(index).removeAttr('disabled');
+                //    }
+                //    ctr++; // Count how many are un-filtered for display
+                //}
 
                 // Update number of significant items
                 if(index >= row_index && !set_significant_items) {
@@ -317,7 +387,7 @@
             <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
         </span>
         <span class='col-xs-3 ...'>
-            <select size="20" name="row_selector" id="row_selector"></select>
+            <select size="20" name="row_selector" id="row_selector" class="clusterize-content clusterize-scroll"></select>
         </span>
         <span class="'col-xs-6" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
 
