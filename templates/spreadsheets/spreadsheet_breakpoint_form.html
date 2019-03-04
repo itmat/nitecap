@@ -162,7 +162,7 @@
             return '<option value="'+i+'">' + String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2) +  '</option>';
         } );
 
-        var update_selection_on_recluster = function(progress) {
+        var recluster = function(progress) {
             // Whenever the cluster of rows kept active changes, we need to update the selection
             // since we might have previously been trying to select something that wasn't in the current cluster
             // but now is in the cluster
@@ -176,6 +176,15 @@
             }
 
             $('#row_selector').val(selected_row).trigger('focus');
+
+            // Now filter out options, since the new options will need filter
+            $('#row_selector option').each( function () {
+                if (filtered[this.value]) {
+                    this.setAttribute('disabled', 'disabled');
+                } else {
+                    this.removeAttribute('disabled');
+                }
+            } );
         };
 
         // Create the actual clusterization object
@@ -184,7 +193,7 @@
             scrollId: "row_selector",
             contentId: "row_selector",
             callbacks: {
-                "clusterChanged" : update_selection_on_recluster,
+                "clusterChanged" : recluster,
             }
         });
 
@@ -202,7 +211,7 @@
                 row_selector.scrollTop = target_row[0].offsetTop - row_selector.offsetTop - row_selector.clientHeight/2;
             } else {
                 // If the target row is not in our current cluster, then we have to scroll to the approximate location
-                // and then the clusterChanged handler update_selection_on_recluster will later give the exact scroll position
+                // and then the clusterChanged handler recluster() will later give the exact scroll position
                 var option_height = row_selector.scrollHeight / clusterized_rows.getRowsAmount();
                 row_selector.scrollTop = row * option_height - row_selector.offsetTop  - row_selector.clientHeight/2;
             }
@@ -319,18 +328,23 @@
                     return item < max_value_filter;
                 });
                 filtered[index] = filter_out;
-
-                // Toggle enable/disable status if filtering has change
-                if(filter_out) {
-                    if (!old_filter_out) {
-                        options.eq(index).attr('disabled', 'disabled');
-                    }
+                if (filter_out) {
+                    options.eq(index).attr('disabled', 'disabled');
                 } else {
-                    if(old_filter_out) {
-                        options.eq(index).removeAttr('disabled');
-                    }
-                    ctr++; // Count how many are un-filtered for display
+                    options.eq(index).removeAttr('disabled', 'disabled');
                 }
+
+                //// Toggle enable/disable status if filtering has change
+                //if(filter_out) {
+                //    if (!old_filter_out) {
+                //        options.eq(index).attr('disabled', 'disabled');
+                //    }
+                //} else {
+                //    if(old_filter_out) {
+                //        options.eq(index).removeAttr('disabled');
+                //    }
+                //    ctr++; // Count how many are un-filtered for display
+                //}
 
                 // Update number of significant items
                 if(index >= row_index && !set_significant_items) {
