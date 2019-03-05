@@ -69,7 +69,6 @@ def login_user():
     """
 
     next = request.args.get('next')
-    print(next)
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -100,7 +99,7 @@ def login_user():
                                     email = user.email,
                                     confirmation_id = user.most_recent_confirmation.id)
 
-        # Log in user and redirect to the spreadsheet loading form.
+        # Log in user and redirect to the user spreadsheets form.
         if user:
             session['email'] = user.email
             if 'spreadsheet_id' in session and session['spreadsheet_id']:
@@ -109,11 +108,12 @@ def login_user():
                 if spreadsheet.user.is_annoymous_user():
                     spreadsheet.update_user(user.id)
 
-        # If the user logged in from a different page on this website, return to that page.
-        if next and next != '/users/logout':
+        # If the user logged in from a different page on this website, return to that page with the exception of
+        # the logout route or the home page.
+        if next and next != '/users/logout' and next != '/':
             return redirect(next)
 
-        return redirect(url_for("spreadsheets.load_spreadsheet"))
+        return redirect(url_for("spreadsheets.display_spreadsheets"))
 
     # User requests login form.
     return render_template('users/login_form.html', next=next)
