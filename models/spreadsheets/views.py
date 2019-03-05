@@ -395,3 +395,10 @@ def save_filters():
     spreadsheet.save_to_db()
     return jsonify({})
 
+@spreadsheet_blueprint.route('/combine_replicates', methods=['POST'])
+def combine_replicates():
+    json_data = request.get_json()
+    combine_replicates = json_data.get('combine_replicates', False)
+    print(combine_replicates)
+    return jsonify({})
+
