@@ -3,6 +3,7 @@ from flask import Blueprint, request, session, url_for, redirect, render_templat
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
 from models.users.decorators import requires_login
+from flask import current_app
 
 user_blueprint = Blueprint('users', __name__)
 
@@ -50,6 +51,7 @@ def register_user():
             return render_template('users/login_form.html', username = user.username)
 
         # User successfully registered and email sent.
+        current_app.logger.info(f"user {username - email} just registered.")
         flash("A confirmation email has been sent.")
         return redirect(url_for('spreadsheets.load_spreadsheet'))
 
