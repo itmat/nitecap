@@ -186,6 +186,11 @@ class Spreadsheet(db.Model):
         return [column for column, label in ordered_columns]
 
     def get_ids(self):
+        """
+        Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
+        of those columns into a numpy series
+        :return: a numpy series containing the complete id for each data row.
+        """
         id_indices = [index
                       for index, column_label in enumerate(self.column_labels)
                       if column_label == Spreadsheet.ID_COLUMN]

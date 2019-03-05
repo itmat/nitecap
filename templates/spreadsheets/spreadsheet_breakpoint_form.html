@@ -232,6 +232,7 @@
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
+            $('#toggle_replicates').hide();
             row_index = parseInt($('#row_index').val()) + 1;
             $('#cutoff').html(num_significant_below[row_index-1]);
             $.ajax({
@@ -293,6 +294,7 @@
                     Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
                     $('#heatmap_block').show();
                     $('#download_heatmap').show();
+                    $('#toggle_replicates').show();
                 },
                 error: function(error) {
                     console.log(error);
@@ -363,6 +365,21 @@
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({'max_value_filter': max_value_filter}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function(response) {
+                    // Nothing to see here.
+                }
+            });
+        });
+
+        $('#combine_replicates').change(function() {
+            var combine_replicates = $(this).is(':checked');
+            console.log('combine_replicates is' + combine_replicates);
+            $.ajax({
+                url: "{{url_for('spreadsheets.combine_replicates')}}",
+                data: JSON.stringify({'combine_replicates: ': combine_replicates}),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
@@ -445,10 +462,17 @@
         </div>
     </div>
 
-    <div class="row">
-        <span class="col-lg-10">
+    <div class="row" style="padding-top:2rem;padding-bottom:2rem">
+        <span class="col-lg-5">
             <input type="hidden" id="row_index" name="row_index"/>
             <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
+        </span>
+        <span id="toggle_replicates" class="col-lg-5" style="display:none">
+            <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
+            <label class="switch">
+                <input id="combine_replicates" name="combine_replicates" type="checkbox" >
+                <span class="slider"></span>
+            </label>
         </span>
         <span class='col-lg-2'>
             <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
