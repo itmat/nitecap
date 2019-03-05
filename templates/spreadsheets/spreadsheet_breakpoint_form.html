@@ -116,8 +116,9 @@
         });
 
         $('#row_selector').change(function () {
-            row = parseInt(this.getAttribute('value'));
+            row = this.value;
             console.log("Selector changed: " + labels[row] + " Value:" + this.value + " : " + row + " .");
+            console.log("Cluster: top: " + clusterized_rows.scroll_elem.scrollTop + " clusternum: " + clusterized_rows.getClusterNum() );
 
             $("#coarse_slider").slider("option", "value", row);
 
@@ -176,16 +177,17 @@
             // since we might have previously been trying to select something that wasn't in the current cluster
             // but now is in the cluster
             var row_selector = $('#row_selector')[0];
+            console.log("Reclustering to " + selected_row);
 
             var target_row = $('#row_selector option[value="' + selected_row + '"]');
             if (target_row.length > 0) {
                 row_selector.scrollTop = target_row[0].offsetTop - row_selector.offsetTop - row_selector.clientHeight/2;
             } else {
-                console.log("Target row could not be found.");
+                // Selected row not currently in view
                 return;
             }
 
-            $('#row_selector').val(selected_row).trigger('focus');
+            $('#row_selector').val(selected_row).trigger('change');
 
             // Now filter out options, since the new options will need filter
             $('#row_selector option').each( function () {
@@ -300,7 +302,6 @@
         });
 
         selectRowAndScroll(breakpoint);
-        $('#row_selector')[0].setAttribute('value', String(breakpoint));
         $('#row_selector').trigger("change");
 
         $('#download_heatmap').click(function() {
