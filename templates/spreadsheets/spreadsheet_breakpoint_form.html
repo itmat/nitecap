@@ -118,7 +118,6 @@
         $('#row_selector').change(function () {
             row = this.value;
             console.log("Selector changed: " + labels[row] + " Value:" + this.value + " : " + row + " .");
-            console.log("Cluster: top: " + clusterized_rows.scroll_elem.scrollTop + " clusternum: " + clusterized_rows.getClusterNum() );
 
             $("#coarse_slider").slider("option", "value", row);
 
