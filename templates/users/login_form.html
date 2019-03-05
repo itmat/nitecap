@@ -28,12 +28,12 @@
     <div class="form-group">
         <label for="username">Username or Email Address:</label>
         <input type="username" id="username" name="username" class="form-control" value="{{username}}"
-               placeholder="username or email address" required />
+               placeholder="username or email address" style="width:25rem" maxlength="150" required />
     </div>
     <div class="form-group">
         <label for="password">Password:</label>
-        <input type="password" id="password" name="password" class="form-control" required
-               aria-describedby="passwordHelp"/>
+        <input type="password" id="password" name="password" class="form-control" style="width:25rem" required
+               maxlength="100" aria-describedby="passwordHelp"/>
         <div id="passwordHelp">If you've forgotten your password, click
             <a href="{{url_for('users.request_password_reset') }}">here</a>
         </div>

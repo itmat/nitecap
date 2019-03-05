@@ -28,16 +28,18 @@
         <div class="form-group">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" class="form-control" value="{{username}}"
-                   maxlength="150"  aria-describedby="usernameHelp" />
+                   maxlength="150"  style="width:25rem" aria-describedby="usernameHelp" />
             <p id="usernameHelp">This is optional.  If not filled in, we will just make your email address your username.</p>
         </div>
         <div class="form-group">
             <label for="email">Email Address:</label>
-            <input type="email" id="email" name="email" class="form-control" value="{{email}}" maxlength="150" required />
+            <input type="email" id="email" name="email" class="form-control" value="{{email}}" style="width:25rem"
+                   maxlength="150" required />
         </div>
         <div class="form-group">
             <label for="password">Password:</label>
-            <input type="password" id="password" name="password" class="form-control" maxlength="100" required />
+            <input type="password" id="password" name="password" class="form-control" maxlength="100"
+                   style="width:25rem" required />
         </div>
         <button type="submit" class="btn btn-primary">Register</button>
     </form>
