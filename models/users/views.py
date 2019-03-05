@@ -126,6 +126,7 @@ def logout_user():
     """
 
     session['email'] = None
+    session['spreadsheet_id'] = None
     return render_template('spreadsheets/spreadsheet_upload_form.html')
 
 @user_blueprint.route('/reset_password', methods=['GET','POST'])

@@ -178,6 +178,7 @@ def show_spreadsheet(spreadsheet_id):
     errors = []
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
@@ -263,6 +264,31 @@ def delete(spreadsheet_id):
     return redirect(url_for('.display_spreadsheets'))
 
 
+@spreadsheet_blueprint.route('/download', methods=['GET'])
+def download_spreadsheet():
+    errors = []
+    spreadsheet_id = session['spreadsheet_id']
+    user = User.find_by_email(session['email'])
+    spreadsheet = None
+    if user:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            errors.append('You may only manage your own spreadsheets.')
+            return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    else:
+        spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+        if not spreadsheet:
+            errors.append('The requested spreadsheet could not be found')
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+        if spreadsheet.owned():
+            errors.append('You may only manage your own spreadsheets.')
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    try:
+        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+    except Exception as e:
+        errors.append("The processed spreadsheet data could not be downloaded.")
+        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
 def download(spreadsheet_id):
@@ -347,3 +373,13 @@ def edit_columns():
         spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet)
+
+@spreadsheet_blueprint.route('/save_filters', methods=['POST'])
+def save_filters():
+    json_data = request.get_json()
+    max_value_filter = json_data.get('max_value_filter', None)
+    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+    spreadsheet.max_value_filter = max_value_filter
+    spreadsheet.save_to_db()
+    return jsonify({})
+

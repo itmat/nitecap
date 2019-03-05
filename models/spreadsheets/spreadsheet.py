@@ -132,7 +132,6 @@ class Spreadsheet(db.Model):
             raise NitecapException("The file provided could not be parsed.")
 
 
-
     def column_defaults(self):
         # Try to guess the columns by looking for CT/ZT labels
         selections = guess_column_labels(self.df.columns, self.timepoints, self.days)
@@ -345,6 +344,9 @@ class Spreadsheet(db.Model):
     def update_user(self, user_id):
         self.user_id = user_id
         self.save_to_db()
+
+    def owned(self):
+        return not self.user.is_annoymous_user()
 
 column_label_formats = [re.compile("CT(\d+)"), re.compile("ct(\d)"),
                         re.compile("(\d+)CT"), re.compile("(\d)ct"),
