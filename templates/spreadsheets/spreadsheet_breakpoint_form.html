@@ -68,7 +68,6 @@
             step: 1,
             max: labels.length - 1,
             slide: function (event, ui) {
-                console.log("Sliding to " + ui.value);
                 selected_row = ui.value;
 
                 //$("#row_selector").val(ui.value);
@@ -113,9 +112,16 @@
         });
 
         $('#row_selector').change(function () {
-            $("#coarse_slider").slider("option", "value", this.value);
-            console.log("Selector changed: " + labels[this.value] + " Value:" + this.value + " .");
-            raw_y_values = data[this.value];
+            row = parseInt(this.getAttribute('value'));
+            console.log("Selector changed: " + labels[row] + " Value:" + this.value + " : " + row + " .");
+
+            $("#coarse_slider").slider("option", "value", row);
+
+            raw_y_values = data[row];
+            if (raw_y_values === undefined) {
+                console.log("Could not find the y-values for row " + row);
+                return;
+            }
 
             paired_y_values = [];
             for( var i in column_pairs ) {
@@ -126,24 +132,22 @@
                 paired_x_values.push( x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null );
             }
 
-            console.log(this.value, labels[this.value]);
-            $('input[name="row_index"]').val(this.value);
-            $('#significant_items').html(num_significant_below[parseInt(this.value)]);
-            $('#q_value').html(toFixed(qs[this.value], 3));
-            $('#p_value').html(toFixed(ps[this.value], 3));
-            $('#amplitude').html(toFixed(amplitudes[this.value], 3));
-            $('#anova').html(toFixed(anovas[this.value], 3));
-            $('#peak_time').html(toFixed(peak_times[this.value], 3));
-            console.log("row: " + this.value + ",id: " + labels[this.value]);
+            $('input[name="row_index"]').val(row);
+            $('#significant_items').html(num_significant_below[row]);
+            $('#q_value').html(toFixed(qs[row], 3));
+            $('#p_value').html(toFixed(ps[row], 3));
+            $('#amplitude').html(toFixed(amplitudes[row], 3));
+            $('#anova').html(toFixed(anovas[row], 3));
+            $('#peak_time').html(toFixed(peak_times[row], 3));
             values = [{
                 x: paired_x_values, y: paired_y_values,
                 mode: 'lines+markers',
                 marker: marker_settings,
-                name: labels[this.value],
+                name: labels[row],
                 type: 'scatter'
             }];
             var layout = {
-                title: labels[this.value],
+                title: labels[row],
                 xaxis: {
                     ticktext: x_labels,
                     tickvals: x_label_values,
@@ -152,7 +156,6 @@
             };
             Plotly.react(scatter_plot, values, layout);
         });
-
 
         // Use "clusterize.js" to add these options without slowing everything down too much
         // only the options that are visible are kept as DOM objects versus having tens of thousands of DOM objects
@@ -175,6 +178,7 @@
                 row_selector.scrollTop = target_row[0].offsetTop - row_selector.offsetTop - row_selector.clientHeight/2;
             } else {
                 console.log("Target row could not be found.");
+                return;
             }
 
             $('#row_selector').val(selected_row).trigger('focus');
@@ -205,7 +209,6 @@
 
             // First check if the desired row is already in the cluster
             var target_row = $('#row_selector option[value="' + row + '"]');
-                console.log("Estimating row height as " + option_height);
             var row_selector = $('#row_selector')[0];
             if (target_row.length > 0) {
                 // If the target row is already in our cluster, then we can immediately scroll to the correct spot
@@ -269,8 +272,6 @@
 
 
 
-                    console.log(min,max, limit);
-
                     var heatmap_values = [{
                         x: heatmap_x_values,
                         y: heatmap_labels,
@@ -294,7 +295,9 @@
             });
         });
 
-        $('#row_selector').val(breakpoint).trigger("change");
+        selectRowAndScroll(breakpoint);
+        $('#row_selector')[0].setAttribute('value', String(breakpoint));
+        $('#row_selector').trigger("change");
 
         $('#download_heatmap').click(function() {
             var gd = document.getElementById('heatmap');
@@ -329,9 +332,9 @@
                     return item < max_value_filter;
                 });
                 if (filter_out) {
-                    options.eq(index).attr('disabled', 'disabled');
+                    //options.eq(index).attr('disabled', 'disabled');
                 } else {
-                    options.eq(index).removeAttr('disabled', 'disabled');
+                    //options.eq(index).removeAttr('disabled', 'disabled');
                     ctr++;
                 }
 
@@ -344,6 +347,14 @@
                     set_significant_items = true;
                 }
             });
+
+            $('#row_selector option').each( function () {
+                if (filtered[this.value]) {
+                    this.setAttribute('disabled', 'disabled');
+                } else {
+                    this.removeAttribute('disabled');
+                }
+            } );
         });
 
 });
