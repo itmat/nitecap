@@ -140,7 +140,6 @@ def identify_spreadsheet_columns():
 @spreadsheet_blueprint.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
 def set_spreadsheet_breakpoint():
     errors = []
-    #spreadsheet = Spreadsheet.from_json(session['spreadsheet'])
     if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
@@ -154,6 +153,7 @@ def set_spreadsheet_breakpoint():
 
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
+    ids = list(spreadsheet.get_ids())
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
                                 x_values=spreadsheet.x_values,
@@ -164,7 +164,8 @@ def set_spreadsheet_breakpoint():
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
-                                ids=list(spreadsheet.df.iloc[:,0]),
+                                #ids=list(spreadsheet.df.iloc[:,0]),
+                                ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint,
                                 descriptive_name = spreadsheet.descriptive_name,
@@ -192,6 +193,7 @@ def show_spreadsheet(spreadsheet_id):
 
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
+    ids = list(spreadsheet.get_ids())
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
                                 x_values=spreadsheet.x_values,
@@ -202,7 +204,8 @@ def show_spreadsheet(spreadsheet_id):
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
-                                ids=list(spreadsheet.df.iloc[:,0]),
+                                #ids=list(spreadsheet.df.iloc[:,0]),
+                                ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint=spreadsheet.breakpoint,
                                 descriptive_name=spreadsheet.descriptive_name,
@@ -247,6 +250,15 @@ def display_spreadsheets():
 @spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
 def delete(spreadsheet_id):
+    """
+    The spreadsheet deletion is intended only for logged in users and is activated via a trashcan
+    icon alongside each spreadsheet in the user's spreadsheet list.  That the spreadsheet to be
+    deleted belongs to the user making the request is verified.  If so verified, the spreadsheet is
+    deleted first from the database and then the originally uploaded spreadsheet file and the
+    processed spreadsheet file are removed from the file system.  The user is notified in the event
+    on an incomplete removal.
+    :param spreadsheet_id: the spreadsheet id to be removed
+    """
     errors = []
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)

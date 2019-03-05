@@ -18,6 +18,7 @@ import nitecap
 
 NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p"]
 
+
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id = db.Column(db.Integer, primary_key=True)
@@ -38,6 +39,10 @@ class Spreadsheet(db.Model):
     last_access = db.Column(db.DateTime, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
+
+    ID_COLUMN = "ID"
+    IGNORE_COLUMN = "Ignore"
+    NON_DATA_COLUMNS = [ID_COLUMN, IGNORE_COLUMN]
 
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
@@ -175,9 +180,16 @@ class Spreadsheet(db.Model):
 
     def get_data_columns(self):
         # Order the columns by chronological order
-        filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels) if label != 'Ignore']
+        filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
+                            if label not in Spreadsheet.NON_DATA_COLUMNS]
         ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
         return [column for column, label in ordered_columns]
+
+    def get_ids(self):
+        id_indices = [index
+                      for index, column_label in enumerate(self.column_labels)
+                      if column_label == Spreadsheet.ID_COLUMN]
+        return self.df.iloc[:,id_indices].apply(lambda col: ' | '.join(col), axis=1)
 
     def compute_nitecap(self):
         # Runs NITECAP on the data but just to order the features
@@ -248,11 +260,15 @@ class Spreadsheet(db.Model):
         messages = []
         error = False
 
+        if Spreadsheet.ID_COLUMN not in column_labels:
+            messages.append(f"There should be at least one ID column.")
+            error = True
+
         retained_columns = [column for column, label in zip(self.df.columns, column_labels) if label != 'Ignore']
         type_pattern = re.compile(r"^([a-zA-Z]+)\d*$")
         for retained_column in retained_columns:
             type_match = re.match(type_pattern, str(self.df[retained_column].dtype))
-            if not type_match or type_match.group(1) not in ['int', 'uint', 'float']:
+            if not Spreadsheet.ID_COLUMN and (not type_match or type_match.group(1) not in ['int', 'uint', 'float']):
                 error = True
                 messages.append(f"Column '{retained_column}' must contain only numerical data to be employed as a timepoint.")
 
@@ -279,7 +295,7 @@ class Spreadsheet(db.Model):
         return mini_df.values.tolist()
 
     def get_selection_options(self):
-        return ['Ignore'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
+        return ['Ignore'] + ['ID'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
                       for day in range(self.days) for timepoint in range(self.timepoints)]
 
 
