@@ -345,6 +345,9 @@ class Spreadsheet(db.Model):
         self.user_id = user_id
         self.save_to_db()
 
+    def owned(self):
+        return not self.user.is_annoymous_user()
+
 column_label_formats = [re.compile("CT(\d+)"), re.compile("ct(\d)"),
                         re.compile("(\d+)CT"), re.compile("(\d)ct"),
                         re.compile("ZT(\d+)"), re.compile("zt(\d+)"),
