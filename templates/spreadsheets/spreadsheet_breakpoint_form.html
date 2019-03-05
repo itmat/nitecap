@@ -352,6 +352,17 @@
                     set_significant_items = true;
                 }
             });
+
+            $.ajax({
+                url: "{{url_for('spreadsheets.save_filters')}}",
+                data: JSON.stringify({'max_value_filter': max_value_filter}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function(response) {
+                    // Nothing to see here.
+                }
+            });
         });
 
 });

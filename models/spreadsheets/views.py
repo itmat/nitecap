@@ -347,3 +347,13 @@ def edit_columns():
         spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet)
+
+@spreadsheet_blueprint.route('/save_filters', methods=['POST'])
+def save_filters():
+    json_data = request.get_json()
+    max_value_filter = json_data.get('max_value_filter', None)
+    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+    spreadsheet.max_value_filter = max_value_filter
+    spreadsheet.save_to_db()
+    return jsonify({})
+
