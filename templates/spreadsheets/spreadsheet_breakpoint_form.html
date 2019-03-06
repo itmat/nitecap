@@ -13,6 +13,8 @@
         $('[data-toggle="tooltip"]').tooltip()
     });
 
+    var clusterized_rows = undefined;
+
     $(document).ready(function () {
 
         labels = {{ ids | safe }};
@@ -72,6 +74,7 @@
             step: 1,
             max: labels.length - 1,
             slide: function (event, ui) {
+                console.log("Slider is sliding to " + ui.value);
                 selected_row = ui.value;
 
                 //$("#row_selector").val(ui.value);
@@ -117,7 +120,13 @@
 
         $('#row_selector').change(function () {
             row = this.value;
-            console.log("Selector changed: " + labels[row] + " Value:" + this.value + " : " + row + " .");
+            console.log("Selector changed: " + labels[row] + " Value:" + this.value + " Row " + row + " scrollTop:" + this.scrollTop + " .");
+            if (row === "") {
+                // Trying to change to a row that doesn't exist (eg: because of clusterization, it's not currently loaded)
+                // so don't do anything!
+                console.log("\tRow does not exist. No plot updates.");
+                return;
+            }
 
             $("#coarse_slider").slider("option", "value", row);
 
@@ -176,7 +185,12 @@
             // since we might have previously been trying to select something that wasn't in the current cluster
             // but now is in the cluster
             var row_selector = $('#row_selector')[0];
-            console.log("Reclustering to " + selected_row);
+            if (clusterized_rows) {
+                console.log("Reclustering to " + clusterized_rows.getClusterNum() + " row:" + selected_row);
+                console.log("\tScroll top:" + clusterized_rows.scroll_elem.scrollTop);
+                console.log("\tFirst option:" + $('#row_selector option')[1].value);
+                console.log("\tSecond option:" + $('#row_selector option')[2].value);
+            }
 
             var target_row = $('#row_selector option[value="' + selected_row + '"]');
             if (target_row.length > 0) {
@@ -210,6 +224,7 @@
 
         var selectRowAndScroll = function(row) {
             // Sets #row_selector to the desired row, taking into account the clusterization
+            console.log("selectRowAndScroll to row " + row);
             selected_row = row;
 
             // First check if the desired row is already in the cluster
