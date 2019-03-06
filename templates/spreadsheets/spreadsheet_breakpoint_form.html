@@ -322,7 +322,12 @@
 
         $('#download_heatmap').click(function() {
             var gd = document.getElementById('heatmap');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + row_index});
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (selected_row+1)});
+        });
+
+        $('#download_plot').click(function() {
+            var gd = document.getElementById('scatter_plot');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (selected_row+1)});
         });
 
         // Setup of filters card on page load
@@ -493,6 +498,9 @@
             </div>
             <div class='row'>
                 <select size="50" name="row_selector" id="row_selector" class="clusterize-content clusterize-scroll"></select>
+            </div>
+            <div class='row p-3'>
+                <button id="download_plot" class="btn btn-primary">Download Plot</button>
             </div>
         </span>
         <span class="'col-xs-6" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
