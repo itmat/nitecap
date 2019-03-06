@@ -406,6 +406,47 @@
 
         $('#applyFilters').click();
 
+        var searchRows = function() {
+            var search_value = $('#row_search_box').val();
+            console.log("Searching for row containing " + search_value);
+
+            // Pull out row indexes matching our search_value
+            var matching_rows = labels.map( function(label, index) {
+                if (label.indexOf(search_value) !== -1) {
+                    return index;
+                }
+            }).filter(isFinite);
+            console.log(matching_rows);
+
+
+            if (matching_rows.length === 0) {
+                console.log("Unfortunately no matching row found.");
+                // TODO: display something to the user
+                return;
+            }
+
+            // First look for matches that are *after* our selected_row
+            // so that multiple button presses will cycle the selection through all matches
+            var matches_after = matching_rows.filter( function (i) {
+                return i > selected_row;
+            } );
+            if (matches_after.length > 0) {
+                var row = matches_after[0];
+            } else {
+                // If that fails, grab the first matching row
+                var row = matching_rows[0];
+            }
+
+            selectRowAndScroll(row);
+            $('#row_selector').trigger("change");
+        };
+        $('#search_button').click( searchRows);
+        $('#row_search_box').on("keydown", function (evt) {
+            if (evt.keyCode === 13) { // On Enter key press
+                searchRows();
+            }
+        });
+
 });
 
 
@@ -444,7 +485,15 @@
             <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
         </span>
         <span class='col-xs-3 ...'>
-            <select size="50" name="row_selector" id="row_selector" class="clusterize-content clusterize-scroll"></select>
+            <div class='row'>
+                <div class="form-group form-inline">
+                    <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
+                </div>
+                <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
+            </div>
+            <div class='row'>
+                <select size="50" name="row_selector" id="row_selector" class="clusterize-content clusterize-scroll"></select>
+            </div>
         </span>
         <span class="'col-xs-6" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
 
