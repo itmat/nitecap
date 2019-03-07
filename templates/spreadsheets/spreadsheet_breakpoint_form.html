@@ -192,6 +192,16 @@
                 console.log("\tSecond option:" + $('#row_selector option')[2].value);
             }
 
+
+            // Now filter out options, since the new options will need filter
+            $('#row_selector option').each( function () {
+                if (filtered[parseInt(this.value)]) {
+                    this.setAttribute('disabled', 'disabled');
+                } else {
+                    this.removeAttribute('disabled');
+                }
+            } );
+
             var target_row = $('#row_selector option[value="' + selected_row + '"]');
             if (target_row.length > 0) {
                 row_selector.scrollTop = target_row[0].offsetTop - row_selector.offsetTop - row_selector.clientHeight/2;
@@ -201,15 +211,6 @@
             }
 
             $('#row_selector').val(selected_row).trigger('change');
-
-            // Now filter out options, since the new options will need filter
-            $('#row_selector option').each( function () {
-                if (filtered[this.value]) {
-                    this.setAttribute('disabled', 'disabled');
-                } else {
-                    this.removeAttribute('disabled');
-                }
-            } );
         };
 
         // Create the actual clusterization object
