@@ -235,7 +235,7 @@ class Spreadsheet(db.Model):
         id_indices = [index
                       for index, column_label in enumerate(self.column_labels)
                       if column_label == Spreadsheet.ID_COLUMN]
-        return self.df.iloc[:,id_indices].apply(lambda col: ' | '.join(col), axis=1)
+        return self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1)
 
     def compute_nitecap(self):
         # Runs NITECAP on the data but just to order the features
