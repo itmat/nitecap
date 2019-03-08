@@ -51,7 +51,7 @@ def register_user():
             return render_template('users/login_form.html', username = user.username)
 
         # User successfully registered and email sent.
-        current_app.logger.info(f"user {username - email} just registered.")
+        current_app.logger.info(f"user {username} - {email} just registered.")
         flash("A confirmation email has been sent.")
         return redirect(url_for('spreadsheets.load_spreadsheet'))
 
