@@ -168,7 +168,7 @@ class Spreadsheet(db.Model):
             else:
                 extension = Path(self.original_filename).suffix
                 sep = "\t"
-                if extension in constants.COMMA_DELIMITED_EXTENSIONS:
+                if extension.lower() in constants.COMMA_DELIMITED_EXTENSIONS:
                     sep = ","
                 self.df = pd.read_csv(self.uploaded_file_path,
                                       sep=sep,
