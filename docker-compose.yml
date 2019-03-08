@@ -1,0 +1,21 @@
+version: '3.7'
+
+services:
+  nitecap:
+    image: nitecap_img
+    ports:
+      - 5000:5000
+    volumes:
+      - nitecap_data:/var/nitecap_data
+      - nitecap_db:/var/nitecap_db
+  smtp:
+    image: namshi/smtp
+    environment:
+      - DISABLE_IPV6=1
+      - GMAIL_USER=youraccounthere
+      - GMAIL_PASSWORD=yourpasswordhere
+    ports:
+      - 25:25
+volumes:
+  nitecap_data:
+  nitecap_db:
