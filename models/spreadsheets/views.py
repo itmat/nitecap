@@ -113,8 +113,8 @@ def load_spreadsheet():
     return render_template('spreadsheets/spreadsheet_upload_form.html')
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in constants.ALLOWED_EXTENSIONS
+    extension = Path(filename).suffix
+    return extension.lower() in constants.ALLOWED_EXTENSIONS
 
 @spreadsheet_blueprint.route('spreadsheets/identify_spreadsheet_columns', methods=['GET','POST'])
 def identify_spreadsheet_columns():
