@@ -13,12 +13,14 @@ import constants
 from models.users.decorators import requires_login
 from models.users.user import User
 import json
+from flask import current_app
+
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET','POST'])
 def load_spreadsheet():
-    print("Loading spreadsheet")
+    current_app.logger.info('Loading spreadsheet')
     if request.method == 'POST':
         # http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
         descriptive_name = request.form['descriptive_name']
@@ -99,6 +101,7 @@ def load_spreadsheet():
                                       uploaded_file_path = file_path,
                                       user_id = user_id)
         except NitecapException as ne:
+            current_app.logger.error(f"NitecapException {ne}")
             os.remove(file_path)
             errors.append(ne.message)
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)

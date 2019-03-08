@@ -9,6 +9,7 @@ from db import db
 import os
 from email.message import EmailMessage
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from flask import current_app
 
 
 class User(db.Model):
@@ -213,7 +214,8 @@ class User(db.Model):
             # s.login('you@gmail.com', 'password')
             s.send_message(email)
             s.quit()
-        except:
+        except Exception as e:
+            current_app.logger.error(f"Email delivery failed: {e}")
             self.delete_from_db()
             error = True
         return error
