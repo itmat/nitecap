@@ -2,6 +2,9 @@ version: '3.7'
 
 services:
   nitecap:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: nitecap_img
     ports:
       - 5000:5000
