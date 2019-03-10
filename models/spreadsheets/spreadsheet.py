@@ -12,6 +12,7 @@ from sqlalchemy import orm
 from db import db
 from exceptions import NitecapException
 from models.users.user import User
+from flask import current_app
 
 import nitecap
 
@@ -74,6 +75,7 @@ class Spreadsheet(db.Model):
         user.
         :param date_uploaded:  The timestamp at which the original spreadsheet was uploaded.
         """
+        current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
         self.days = int(days)
         self.timepoints = int(timepoints)

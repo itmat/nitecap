@@ -209,7 +209,7 @@ class User(db.Model):
 
         # If sendmail fails for any reason, we drop the user from the db so that the user may re-register.
         try:
-            s = smtplib.SMTP(host='127.0.0.1', port=25)
+            s = smtplib.SMTP(host=os.environ.get('SMTP_SERVER_HOST'), port=25)
             # s.starttls()
             # s.login('you@gmail.com', 'password')
             s.send_message(email)

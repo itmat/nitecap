@@ -6,6 +6,11 @@ from flask import Flask, render_template, request, session, flash, redirect, url
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
 import backup
+import logging
+import os
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger("")
 
 app = Flask(__name__)
 load_dotenv(find_dotenv(usecwd=True))
@@ -15,9 +20,16 @@ app.config.from_envvar('APPLICATION_SETTINGS')
 @app.before_first_request
 def create_tables():
     db.create_all()
+    handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
+    handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
+    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(message)s')
+    handler.setFormatter(formatter)
+    logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
+    logger.addHandler(handler)
 
 @app.route('/', methods=['GET'])
 def home():
+    logger.info("Accessing home")
     return render_template("home.html")
 
 @app.errorhandler(413)
