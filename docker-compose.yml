@@ -8,15 +8,26 @@ services:
     image: nitecap_img
     ports:
       - 5000:5000
+    environment:
+      - DATABASE=${DATABASE}
+      - SECRET_KEY=${SECRET_KEY}
+      - APPLICATION_SETTINGS=${APPLICATION_SETTINGS}
+      - UPLOAD_FOLDER=${UPLOAD_FOLDER}
+      - DB_BACKUP_FOLDER=${DB_BACKUP_FOLDER}
+      - DB_BACKUP_LIMIT=${DB_BACKUP_LIMIT}
+      - ANNONYMOUS_EMAIL=${ANNONYMOUS_EMAIL}
+      - ANNONYMOUS_PWD=${ANNONYMOUS_PWD}
+      - SMTP_SERVER_HOST=${SMTP_SERVER_HOST}
+      - EMAIL_SENDER=${EMAIL_SENDER}
     volumes:
-      - nitecap_data:/var/nitecap_data
+      - nitecap_data:${UPLOAD_FOLDER}
       - nitecap_db:/var/nitecap_db
   smtp:
     image: namshi/smtp
     environment:
       - DISABLE_IPV6=1
-      - GMAIL_USER=youraccounthere
-      - GMAIL_PASSWORD=yourpasswordhere
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_PASSWORD=${GMAIL_PASSWORD}
     ports:
       - 25:25
 volumes:
