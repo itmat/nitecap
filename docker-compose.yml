@@ -20,6 +20,8 @@ services:
       - ANNONYMOUS_PWD=${ANNONYMOUS_PWD}
       - SMTP_SERVER_HOST=${SMTP_SERVER_HOST}
       - EMAIL_SENDER=${EMAIL_SENDER}
+      - LOG_FILE=${LOG_FILE}
+      - LOG_LEVEL=${LOG_LEVEL}
     volumes:
       - nitecap_data:${UPLOAD_FOLDER}
       - nitecap_db:${DATABASE_FOLDER}
