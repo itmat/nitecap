@@ -9,7 +9,8 @@ services:
     ports:
       - 5000:5000
     environment:
-      - DATABASE=${DATABASE}
+      - DATABASE_FILE=${DATABASE_FILE}
+      - DATABASE_FOLDER=${DATABASE_FOLDER}
       - SECRET_KEY=${SECRET_KEY}
       - APPLICATION_SETTINGS=${APPLICATION_SETTINGS}
       - UPLOAD_FOLDER=${UPLOAD_FOLDER}
@@ -21,7 +22,7 @@ services:
       - EMAIL_SENDER=${EMAIL_SENDER}
     volumes:
       - nitecap_data:${UPLOAD_FOLDER}
-      - nitecap_db:/var/nitecap_db
+      - nitecap_db:${DATABASE_FOLDER}
   smtp:
     image: namshi/smtp
     environment:
