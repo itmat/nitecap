@@ -106,7 +106,6 @@
             row_option.addEventListener('click', function (event) {
                 let row = row_selector_top + my_index;
                 selectRow(row);
-                $("#coarse_slider").slider("option", "value", row);
             } );
             row_selector_options.push(row_option);
             row_selector.appendChild(row_option);
@@ -170,8 +169,7 @@
             updateRowSelector();
 
             // Update the coarse slider
-            // TODO: should we be doing this or not?
-            // $("#coarse_slider").slider("option", "value", row);
+            $("#coarse_slider").slider("option", "value", selected_row);
 
             // Update the Plotly plot of the feature profile
             raw_y_values = data[row_index];
@@ -259,7 +257,6 @@
                     return;
             }
 
-            $("#coarse_slider").slider("option", "value", selected_row);
             event.preventDefault();
             return;
         });
