@@ -308,6 +308,12 @@
                     var heatmap_labels = response['heatmap_labels'];
                     var heatmap_data = response['heatmap_data'];
 
+                    // Remove any rows that have been filtered
+                    var filter_out = function (x,i) { return !filtered[i]; }
+                    heatmap_lablels = heatmap_labels.filter(filter_out);
+                    heatmap_data = heatmap_data.filter(filter_out);
+
+                    // Find max/min values so that we can center the colormap with 0=middle
                     var maxRow = heatmap_data.map(function(row){ return Math.max.apply(Math, row); });
                     var minRow = heatmap_data.map(function(row){ return Math.min.apply(Math, row); });
 
