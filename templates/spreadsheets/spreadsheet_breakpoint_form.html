@@ -281,33 +281,10 @@
                 contentType: "application/json",
                 type: 'POST',
                 success: function(response) {
-
-                    var heatmap_layout = {
-                        height: 700,
-                        width: 900,
-                        margin: {
-                            l: 200,
-                            r: 5,
-                            b: 175,
-                            t: 20
-                        },
-                        pad: 4
-                    };
-
-                    var heatmap_options = {
-                        modeBarButtonsToAdd: [{
-                            name: 'download in SVG format',
-                            icon: Plotly.Icons.camera,
-                            click: function (gd) {
-                                Plotly.downloadImage(gd, {format: 'svg'})
-                            }
-                        }]
-                    };
-
-                    var heatmap_x_values = response['heatmap_x_values'];
-                    var heatmap_labels = response['heatmap_labels'];
-                    var heatmap_data = response['heatmap_data'];
-                    var heatmap_combined_data = response['heatmap_combined_data'];
+                    heatmap_x_values = response['heatmap_x_values'];
+                    heatmap_labels = response['heatmap_labels'];
+                    heatmap_data = response['heatmap_data'];
+                    heatmap_combined_data = response['heatmap_combined_data'];
 
                     // Remove any rows that have been filtered
                     var filter_out = function (x,i) { return !filtered[i]; }
@@ -315,47 +292,75 @@
                     heatmap_data = heatmap_data.filter(filter_out);
                     heatmap_combined_data = heatmap_combined_data.filter(filter_out);
 
-                    // Find max/min values so that we can center the colormap with 0=middle
-                    var maxRow = heatmap_data.map(function(row){ return Math.max.apply(Math, row); });
-                    var minRow = heatmap_data.map(function(row){ return Math.min.apply(Math, row); });
-
-                    var max = Math.max.apply(null, maxRow);
-                    var min = Math.min.apply(null, minRow);
-                    var limit = Math.max(Math.abs(min), max);
-
-                    // TODO: we'll need to re-run all this when combine_replicates is hit
-                    // but for now, we only check it's value when first drawing the plot
-                    var combine_replicates = $('#combine_replicates').is(':checked');
-
-
-                    if (combine_replicates) {
-                        heatmap_x_values = x_labels;
-                        heatmap_data = heatmap_combined_data;
-                    }
-
-                    var heatmap_values = [{
-                        x: heatmap_x_values,
-                        y: heatmap_labels,
-                        z: heatmap_data,
-                        type: 'heatmap',
-                        zmin: -1 * limit,
-                        zmax: limit,
-                        colorbar: {
-                            title: 'Z Scale',
-                            titleside: 'right'
-                        }
-                    }];
-
-                    Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
-                    $('#heatmap_block').show();
-                    $('#download_heatmap').show();
-                    $('#toggle_replicates').show();
+                    updateHeatmap();
                 },
                 error: function(error) {
                     console.log(error);
                 }
             });
         });
+
+        var updateHeatmap = function () {
+            var heatmap_layout = {
+                height: 700,
+                width: 900,
+                margin: {
+                    l: 200,
+                    r: 5,
+                    b: 175,
+                    t: 20
+                },
+                pad: 4
+            };
+
+            var heatmap_options = {
+                modeBarButtonsToAdd: [{
+                    name: 'download in SVG format',
+                    icon: Plotly.Icons.camera,
+                    click: function (gd) {
+                        Plotly.downloadImage(gd, {format: 'svg'})
+                    }
+                }]
+            };
+
+
+            var x_values;
+            var data;
+            var combine_replicates = $('#combine_replicates').is(':checked');
+            if (combine_replicates) {
+                x_values = x_labels;
+                data = heatmap_combined_data;
+            } else {
+                x_values = heatmap_x_values;
+                data = heatmap_data;
+            }
+
+            // Find max/min values so that we can center the colormap with 0=middle
+            var maxRow = data.map(function(row){ return Math.max.apply(Math, row); });
+            var minRow = data.map(function(row){ return Math.min.apply(Math, row); });
+
+            var max = Math.max.apply(null, maxRow);
+            var min = Math.min.apply(null, minRow);
+            var limit = Math.max(Math.abs(min), max);
+
+            var heatmap_values = [{
+                x: x_values,
+                y: heatmap_labels,
+                z: data,
+                type: 'heatmap',
+                zmin: -1 * limit,
+                zmax: limit,
+                colorbar: {
+                    title: 'Z Scale',
+                    titleside: 'right'
+                }
+            }];
+
+            Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
+            $('#heatmap_block').show();
+            $('#download_heatmap').show();
+            $('#toggle_replicates').show();
+        };
 
         selectRow(breakpoint);
 
@@ -423,17 +428,7 @@
         });
 
         $('#combine_replicates').change(function() {
-            var combine_replicates = $(this).is(':checked');
-            $.ajax({
-                url: "{{url_for('spreadsheets.combine_replicates')}}",
-                data: JSON.stringify({'combine_replicates: ': combine_replicates}),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function(response) {
-                    // Nothing to see here.
-                }
-            });
+            updateHeatmap()
         });
 
         $('#applyFilters').click();
