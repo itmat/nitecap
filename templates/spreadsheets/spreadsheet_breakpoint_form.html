@@ -221,11 +221,35 @@
             switch (event.key) {
                 case "Down": // IE/Edge specific value
                 case "ArrowDown":
-                    selectRow(selected_row+1);
+                    // Find the next row down that is unfiltered
+                    var i = selected_row+1;
+                    while (true) {
+                        if (i >= filtered.length) {
+                            // End of the table, do nothing;
+                            break;
+                        }
+                        if (!filtered[i]) {
+                            selectRow(i);
+                            break;
+                        }
+                        i++;
+                    }
                     break;
                 case "Up": // IE/Edge specific value
                 case "ArrowUp":
-                    selectRow(selected_row-1);
+                    // Find the next row up that is unfiltered
+                    var i = selected_row-1;
+                    while (true) {
+                        if (i < 0) {
+                            // Top of the table, do nothing;
+                            break;
+                        }
+                        if (!filtered[i]) {
+                            selectRow(i);
+                            break;
+                        }
+                        i--;
+                    }
                     break;
                 default:
                     return;
