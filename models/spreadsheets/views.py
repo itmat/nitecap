@@ -225,6 +225,7 @@ def display_heatmap():
     spreadsheet.save_to_db()
     data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
     data = spreadsheet.normalize_data(data)
+    combined_data = spreadsheet.average_replicates(data)
     heatmap_x_values = []
     for day in range(spreadsheet.days):
         for timepoint in range(spreadsheet.timepoints):
@@ -232,10 +233,12 @@ def display_heatmap():
              for rep in range(num_replicates):
                  heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
     heatmap_data = data.where((pd.notnull(data)), None).values.tolist()
+    heatmap_combined_data = combined_data.where((pd.notnull(combined_data)), None).values.tolist()
     return jsonify(
                         {
                             "heatmap_labels": labels,
                             "heatmap_data": heatmap_data,
+                            "heatmap_combined_data": heatmap_combined_data,
                             "heatmap_x_values": heatmap_x_values
                         }
                     )

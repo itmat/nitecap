@@ -298,6 +298,14 @@ class Spreadsheet(db.Model):
         stds = raw_data.std(axis=1)
         return raw_data.sub(means, axis=0).div(stds, axis=0)
 
+    def average_replicates(self, data):
+        avg = numpy.empty((data.shape[0], self.days*self.timepoints))
+        x_values = numpy.array(self.x_values)
+        for i in range(self.days*self.timepoints):
+            avg[:,i] = numpy.sum(data.values[:, x_values == i], axis=1)
+            avg[:,i] /= numpy.sum(x_values == i)
+        return pd.DataFrame(avg)
+
     def validate(self, column_labels):
         """ Check spreadhseet for consistency.
 
