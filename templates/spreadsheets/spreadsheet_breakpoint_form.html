@@ -129,21 +129,7 @@
                 }
             }
         };
-        var selectRow = function (row_index) {
-            selected_row = row_index;
-
-            if (row_index >= row_selector_top) {
-                if (row_index < row_selector_top + num_row_selections) {
-                    // Do nothing, already can see the right row
-                } else {
-                    // Moving down, put it at the bottom
-                    row_selector_top = row_index - num_row_selections + 1;
-                }
-            } else {
-                // Moving up, put it at the top
-                row_selector_top = row_index;
-            }
-
+        var updateRowSelector = function () {
             // Update the selector rows
             for(var i = 0; i < num_row_selections; i++) {
                 var current_index = row_selector_top + i;
@@ -164,6 +150,24 @@
 
             // Visually disable filtered options
             disableFilteredRows();
+
+        };
+        var selectRow = function (row_index) {
+            selected_row = row_index;
+
+            if (row_index >= row_selector_top) {
+                if (row_index < row_selector_top + num_row_selections) {
+                    // Do nothing, already can see the right row
+                } else {
+                    // Moving down, put it at the bottom
+                    row_selector_top = row_index - num_row_selections + 1;
+                }
+            } else {
+                // Moving up, put it at the top
+                row_selector_top = row_index;
+            }
+
+            updateRowSelector();
 
             // Update the coarse slider
             // TODO: should we be doing this or not?
@@ -257,7 +261,16 @@
 
             event.preventDefault();
             return;
-        }, true);
+        });
+
+        row_selector.addEventListener('wheel', function (event) {
+            if (event.deltaY > 0) {
+                row_selector_top++;
+            } else if (event.deltaY < 0) {
+                row_selector_top--;
+            }
+            updateRowSelector();
+        });
 
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
