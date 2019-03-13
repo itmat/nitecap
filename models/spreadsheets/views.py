@@ -170,7 +170,7 @@ def set_spreadsheet_breakpoint():
                                 #ids=list(spreadsheet.df.iloc[:,0]),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
-                                breakpoint = spreadsheet.breakpoint,
+                                breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                                 descriptive_name = spreadsheet.descriptive_name,
                                 max_value_filter = max_value_filter)
 
@@ -210,7 +210,7 @@ def show_spreadsheet(spreadsheet_id):
                                 #ids=list(spreadsheet.df.iloc[:,0]),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
-                                breakpoint=spreadsheet.breakpoint,
+                                breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                                 descriptive_name=spreadsheet.descriptive_name,
                                 max_value_filter = max_value_filter)
 

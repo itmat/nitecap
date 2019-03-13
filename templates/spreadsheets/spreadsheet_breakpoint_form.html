@@ -273,11 +273,10 @@
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
             $('#toggle_replicates').hide();
-            row_index = parseInt($('#row_index').val()) + 1;
-            $('#cutoff').html(num_significant_below[row_index-1]);
+            $('#cutoff').html(num_significant_below[selected_row]);
             $.ajax({
                 url: "{{url_for('spreadsheets.display_heatmap')}}",
-                data: JSON.stringify({'row_index': row_index}),
+                data: JSON.stringify({'row_index': selected_row}),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
