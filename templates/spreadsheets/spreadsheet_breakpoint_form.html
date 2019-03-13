@@ -119,6 +119,16 @@
             return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2);
         } );
 
+        var disableFilteredRows = function () {
+            for(var i = 0; i < num_row_selections; i++) {
+                var current_index = row_selector_top + i;
+                if (filtered[current_index]) {
+                    row_selector_options[i].classList.add("disabled");
+                } else {
+                    row_selector_options[i].classList.remove("disabled");
+                }
+            }
+        };
         var selectRow = function (row_index) {
             selected_row = row_index;
 
@@ -151,6 +161,9 @@
                     row_selector_options[i].classList.remove("active");
                 }
             }
+
+            // Visually disable filtered options
+            disableFilteredRows();
 
             // Update the coarse slider
             // TODO: should we be doing this or not?
@@ -316,9 +329,7 @@
         }
 
         $('#applyFilters').click(function() {
-            /*
             row_index = $('input[name="row_index"]').val();
-            $('#row_selector option').removeAttr('disabled');
             if($('#max_value_filter').val().length == 0) {
                 $('#EmptyFiltersList').css({"visibility":"visible"});
                 $('#significant_items').html(row_index);
@@ -327,18 +338,15 @@
             var max_value_filter = parseInt($('#max_value_filter').val());
             $('#EmptyFiltersList').css({"visibility":"hidden"});
 
-            ctr = 0;
-            set_significant_items = false;
+            var ctr = 0;
+            var set_significant_items = false;
             var options = $('#row_selector option');
             var significant_items = $('#significant_items');
             $.each(data, function(index, row) {
                 var filter_out = row.every(function(item) {
                     return item < max_value_filter;
                 });
-                if (filter_out) {
-                    //options.eq(index).attr('disabled', 'disabled');
-                } else {
-                    //options.eq(index).removeAttr('disabled', 'disabled');
+                if (!filter_out) {
                     ctr++;
                 }
 
@@ -350,9 +358,8 @@
                     significant_items.html(ctr);
                     set_significant_items = true;
                 }
+                disableFilteredRows();
             });
-            */
-            // TODO: filters!
 
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",

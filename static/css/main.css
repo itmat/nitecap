@@ -131,3 +131,8 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+/* Row selector for breakpoint page */
+#row_selector div.disabled {
+    background-color: #CCCCCC;
+}
