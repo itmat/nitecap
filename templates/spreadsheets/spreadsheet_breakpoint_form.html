@@ -285,9 +285,10 @@
                     heatmap_labels = response['heatmap_labels'];
                     heatmap_data = response['heatmap_data'];
                     heatmap_combined_data = response['heatmap_combined_data'];
+                    original_indexes = response['heatmap_indexes'];
 
                     // Remove any rows that have been filtered
-                    var filter_out = function (x,i) { return !filtered[i]; }
+                    var filter_out = function (x,i) { return !filtered[original_indexes[i]]; }
                     heatmap_labels = heatmap_labels.filter(filter_out);
                     heatmap_data = heatmap_data.filter(filter_out);
                     heatmap_combined_data = heatmap_combined_data.filter(filter_out);

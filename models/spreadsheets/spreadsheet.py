@@ -276,8 +276,12 @@ class Spreadsheet(db.Model):
         raw_data = sorted_by_peak_time[self.get_data_columns()]
         id_indices = [index for index, column_label in enumerate(self.column_labels)
                                 if column_label == Spreadsheet.ID_COLUMN]
-        labels = list(self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1))
-        return raw_data, labels
+        labels = list(sorted_by_peak_time.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1))
+
+        sort_order = numpy.argsort(above_breakpoint.peak_time)
+        original_indexes = numpy.argsort(sort_order)
+
+        return raw_data, labels, original_indexes
 
     def check_breakpoint(self, breakpoint):
         error = False
