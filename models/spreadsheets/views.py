@@ -223,7 +223,7 @@ def display_heatmap():
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
     spreadsheet.breakpoint = row_index
     spreadsheet.save_to_db()
-    data, labels = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
+    data, labels, original_indexes = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
     data = spreadsheet.normalize_data(data)
     combined_data = spreadsheet.average_replicates(data)
     heatmap_x_values = []
@@ -239,7 +239,8 @@ def display_heatmap():
                             "heatmap_labels": labels,
                             "heatmap_data": heatmap_data,
                             "heatmap_combined_data": heatmap_combined_data,
-                            "heatmap_x_values": heatmap_x_values
+                            "heatmap_x_values": heatmap_x_values,
+                            "heatmap_indexes": list(original_indexes)
                         }
                     )
 
