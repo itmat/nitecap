@@ -278,8 +278,7 @@ class Spreadsheet(db.Model):
                                 if column_label == Spreadsheet.ID_COLUMN]
         labels = list(sorted_by_peak_time.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1))
 
-        sort_order = numpy.argsort(above_breakpoint.peak_time)
-        original_indexes = numpy.argsort(sort_order)
+        original_indexes = numpy.argsort(above_breakpoint.peak_time)
 
         return raw_data, labels, original_indexes
 
