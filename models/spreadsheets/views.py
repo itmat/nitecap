@@ -167,7 +167,7 @@ def set_spreadsheet_breakpoint():
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
-                                #ids=list(spreadsheet.df.iloc[:,0]),
+                                filtered=json.dumps(spreadsheet.df.filtered.tolist()),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -207,7 +207,7 @@ def show_spreadsheet(spreadsheet_id):
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
-                                #ids=list(spreadsheet.df.iloc[:,0]),
+                                filtered=json.dumps(spreadsheet.df.filtered.tolist()),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -399,8 +399,12 @@ def save_filters():
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
     spreadsheet.max_value_filter = max_value_filter
+    spreadsheet.apply_filters()
     spreadsheet.save_to_db()
-    return jsonify({})
+    response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
+                        'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
+                    'filtered': spreadsheet.df.filtered.values.tolist()})
+    return response
 
 @spreadsheet_blueprint.route('/combine_replicates', methods=['POST'])
 def combine_replicates():

@@ -142,6 +142,11 @@ class Spreadsheet(db.Model):
                 print(e)
                 self.error = True
 
+
+        if "filtered_out" not in self.df.columns:
+            # Everything defaults to unfiltered
+            self.df["filtered_out"] = 0
+
         self.num_replicates = None if not self.num_replicates_str \
             else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
@@ -243,11 +248,26 @@ class Spreadsheet(db.Model):
         # Runs NITECAP on the data but just to order the features
 
         data = self.get_raw_data().values
+        filtered_out = self.df.filtered_out
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
+
+        # Seed the computation so that results are reproducible
+        numpy.random.seed(1)
 
         # Main nitecap computation
         td, perm_td = nitecap.nitecap_statistics(data_formatted)
-        q, p = nitecap.FDR(td, perm_td)
+
+        # Apply q-value computation but just for the features surviving filtering
+        good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
+        good_q, good_p = nitecap.FDR(good_td, good_perm_td)
+
+        q = numpy.empty(td.shape)
+        q[~filtered_out] = good_q
+        q[filtered_out] = float("NaN")
+
+        p = numpy.empty(td.shape)
+        p[~filtered_out] = good_p
+        p[filtered_out] = float("NaN")
 
         # Other statistics
         # TODO: should users be able to choose their cycle length?
@@ -255,6 +275,7 @@ class Spreadsheet(db.Model):
         try:
             anova_p = nitecap.util.anova(data_formatted)
         except ValueError:
+            # Can't run anova (eg: no replicates)
             anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
 
         self.df["amplitude"] = amplitude
@@ -415,12 +436,24 @@ class Spreadsheet(db.Model):
         """
         return not self.user.is_annoymous_user()
 
+    def apply_filters(self):
+        self.df["filtered_out"] = False
+
+        if self.max_value_filter is not None:
+            maxes = self.get_raw_data().max(axis=1)
+            self.df["filtered_out"] = numpy.logical_or(self.df["filtered_out"],  maxes <= self.max_value_filter)
+
+        # Must recalculate q-values on the filtered part
+        # TODO: ideally we wouldn't have to recompute all of this
+        #       only really want to recompute the q-values but then
+        #       we need the permutation values too and we don't store that
+        self.compute_nitecap()
+
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
                         re.compile(r"ZT(\d+)"), re.compile(r"zt(\d+)"),
                         re.compile(r"(\d+)ZT"), re.compile(r"(\d+)zt")]
-
 
 def guess_column_labels(columns, timepoints, days):
     best_num_matches = 0
