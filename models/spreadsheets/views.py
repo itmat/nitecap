@@ -167,7 +167,7 @@ def set_spreadsheet_breakpoint():
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
-                                filtered=json.dumps(spreadsheet.df.filtered.tolist()),
+                                filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -207,7 +207,7 @@ def show_spreadsheet(spreadsheet_id):
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
                                 anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
-                                filtered=json.dumps(spreadsheet.df.filtered.tolist()),
+                                filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
                                 breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -403,7 +403,7 @@ def save_filters():
     spreadsheet.save_to_db()
     response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
                         'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
-                    'filtered': spreadsheet.df.filtered.values.tolist()})
+                    'filtered': spreadsheet.df.filtered_out.values.tolist()})
     return response
 
 @spreadsheet_blueprint.route('/combine_replicates', methods=['POST'])
