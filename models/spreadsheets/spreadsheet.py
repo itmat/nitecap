@@ -269,6 +269,9 @@ class Spreadsheet(db.Model):
         p[~filtered_out] = good_p
         p[filtered_out] = float("NaN")
 
+        self.df["nitecap_p"] = p
+        self.df["nitecap_q"] = q
+
         # Other statistics
         # TODO: should users be able to choose their cycle length?
         amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, cycle_length=self.timepoints)
@@ -283,8 +286,6 @@ class Spreadsheet(db.Model):
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
         self.df["anova_p"] = anova_p
-        self.df["nitecap_p"] = p
-        self.df["nitecap_q"] = q
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 
@@ -447,7 +448,33 @@ class Spreadsheet(db.Model):
         # TODO: ideally we wouldn't have to recompute all of this
         #       only really want to recompute the q-values but then
         #       we need the permutation values too and we don't store that
-        self.compute_nitecap()
+        # TODO: this code is copy-and-pasted from compute_nitecap(), shouldn't be duplicated
+        data = self.get_raw_data().values
+        filtered_out = self.df.filtered_out
+        data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
+
+        # Seed the computation so that results are reproducible
+        numpy.random.seed(1)
+
+        # Main nitecap computation
+        td, perm_td = nitecap.nitecap_statistics(data_formatted)
+
+        # Apply q-value computation but just for the features surviving filtering
+        good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
+        good_q, good_p = nitecap.FDR(good_td, good_perm_td)
+
+        q = numpy.empty(td.shape)
+        q[~filtered_out] = good_q
+        q[filtered_out] = float("NaN")
+
+        p = numpy.empty(td.shape)
+        p[~filtered_out] = good_p
+        p[filtered_out] = float("NaN")
+
+        self.df["nitecap_p"] = p
+        self.df["nitecap_q"] = q
+
+        self.update_dataframe()
 
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
