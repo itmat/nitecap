@@ -27,12 +27,11 @@
         anovas = {{ anovas | safe }};
         peak_times = {{ peak_times | safe }};
         saved_max_value_filter = {{ max_value_filter | safe }};
+        filtered = {{ filtered | safe }};
 
         // Number of rows to show in the row selecotr
         num_row_selections = 21;
 
-        // List of whether each feature has been filtered out or not, starting with no filtering
-        filtered = labels.map(function(x) {return false;});
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
 
@@ -396,37 +395,44 @@
             var max_value_filter = parseInt($('#max_value_filter').val());
             $('#EmptyFiltersList').css({"visibility":"hidden"});
 
-            var ctr = 0;
-            var set_significant_items = false;
-            var options = $('#row_selector option');
-            var significant_items = $('#significant_items');
-            $.each(data, function(index, row) {
-                var filter_out = row.every(function(item) {
-                    return item < max_value_filter;
-                });
-                if (!filter_out) {
-                    ctr++;
-                }
-
-                filtered[index] = filter_out;
-                num_significant_below[index] = ctr;
-
-                // Update number of significant items
-                if(index >= row_index && !set_significant_items) {
-                    significant_items.html(ctr);
-                    set_significant_items = true;
-                }
-                disableFilteredRows();
-            });
-
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
-                data: JSON.stringify({'max_value_filter': max_value_filter}),
+                data: JSON.stringify({'max_value_filter': max_value_filter,
+                                      'filtered': filtered}),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
                 success: function(response) {
-                    // Nothing to see here.
+                    qs = response["qs"];
+                    ps = response["ps"];
+                    filtered = response["filtered"];
+
+                    var ctr = 0;
+                    var set_significant_items = false;
+                    var significant_items = $('#significant_items');
+                    $.each(data, function(index, row) {
+                        if (!filtered[index]) {
+                            ctr++;
+                        }
+
+                        num_significant_below[index] = ctr;
+
+                        // Update number of significant items
+                        if(index >= row_index && !set_significant_items) {
+                            significant_items.html(ctr);
+                            set_significant_items = true;
+                        }
+                    });
+
+                    // Update row labels with new q-values
+                    labels_with_qs = labels.map( function(label, i) {
+                        return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2);
+                    } );
+
+                    updateRowSelector();
+                },
+                error: function(response, status, error) {
+                    console.log(response, status, error);
                 }
             });
         });
@@ -435,7 +441,8 @@
             updateHeatmap()
         });
 
-        $('#applyFilters').click();
+        // Prep the initial row display
+        disableFilteredRows();
 
         var searchRows = function() {
             var search_value = $('#row_search_box').val().toLowerCase();
