@@ -143,7 +143,7 @@ class Spreadsheet(db.Model):
                 self.error = True
 
 
-        if "filtered_out" not in self.df.columns:
+        if self.df is not None and ("filtered_out" not in self.df.columns):
             # Everything defaults to unfiltered
             self.df["filtered_out"] = False
 
