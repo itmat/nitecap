@@ -145,7 +145,7 @@ class Spreadsheet(db.Model):
 
         if "filtered_out" not in self.df.columns:
             # Everything defaults to unfiltered
-            self.df["filtered_out"] = 0
+            self.df["filtered_out"] = False
 
         self.num_replicates = None if not self.num_replicates_str \
             else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
@@ -248,7 +248,7 @@ class Spreadsheet(db.Model):
         # Runs NITECAP on the data but just to order the features
 
         data = self.get_raw_data().values
-        filtered_out = self.df.filtered_out
+        filtered_out = self.df.filtered_out.values.astype("bool") # Ensure bool and not 0,1, should be unnecessary
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
 
         # Seed the computation so that results are reproducible
@@ -450,7 +450,7 @@ class Spreadsheet(db.Model):
         #       we need the permutation values too and we don't store that
         # TODO: this code is copy-and-pasted from compute_nitecap(), shouldn't be duplicated
         data = self.get_raw_data().values
-        filtered_out = self.df.filtered_out
+        filtered_out = self.df.filtered_out.values.astype("bool") #Ensure bool and not 0,1, should be unnecessary
         data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
 
         # Seed the computation so that results are reproducible
