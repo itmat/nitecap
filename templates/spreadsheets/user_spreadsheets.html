@@ -13,7 +13,8 @@
         $('#spreadsheetTable').DataTable({
             "aoColumnDefs": [
                 { 'bSortable': false, 'aTargets': [ 7 ] }
-            ]
+            ],
+            "order": [[ 1, 'desc' ]]
         });
 
         $('.share_spreadsheet').click(function(event) {
