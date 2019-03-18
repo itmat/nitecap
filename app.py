@@ -36,6 +36,10 @@ def home():
 def faqs():
     return render_template("faqs.html")
 
+@app.route('/people', methods=['GET'])
+def people():
+    return render_template("people.html")
+
 @app.errorhandler(413)
 def file_to_large(e):
     messages = ["The file you are attempting to upload is too large for the site to accommodate."]
