@@ -310,11 +310,24 @@ class User(db.Model):
         return self.username == 'annonymous'
 
     def get_share_token(self, spreadsheet_id):
+        """
+        Uses a serializer and the website secret key to encrypt the id of the spreadsheet to be shared and the id of
+        the users doing the sharing into a token.  The token has no expiration.  So the user with whom the token is
+        shared may use it repeatedly.
+        :param spreadsheet_id: the id of the spreadsheet to share
+        :return: token to pass along to the receiving user
+        """
         s = Serializer(os.environ['SECRET_KEY'])
         return s.dumps({'user_id': self.id, 'spreadsheet_id': spreadsheet_id}).decode('utf-8')
 
     @staticmethod
     def verify_share_token(token):
+        """
+        Determines the validity of a share token.  The token is decrypted and the user id verified as a user having
+        a site login.  The sharing user object and the spreadsheet id are returned
+        :param token: The share token to be validated
+        :return: A tuple containing the sharing user object and the id of the spreadsheet to be shared.
+        """
         s = Serializer(os.environ['SECRET_KEY'])
         try:
             user_id = s.loads(token)['user_id']

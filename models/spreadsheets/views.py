@@ -376,6 +376,13 @@ def edit_details(spreadsheet_id):
 @spreadsheet_blueprint.route('/edit', methods=['GET', 'POST'])
 @requires_login
 def edit_columns():
+    """
+    Allows a logged in user to edit the columns of an existing spreadsheet.  The spreadsheet in the session is
+    verified first as belonging to the user making this request.  The column labels selected by the user are
+    validated.  The user is returned to the column edit form with error messages should validation fail.  Otherwise,
+    nitecap calculations are re-done in accordance with the modified column labels and the user is redirected to the
+    show spreadsheet method.
+    """
     errors = []
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(session['spreadsheet_id'])
@@ -407,16 +414,15 @@ def save_filters():
                     'filtered': spreadsheet.df.filtered_out.values.tolist()})
     return response
 
-@spreadsheet_blueprint.route('/combine_replicates', methods=['POST'])
-def combine_replicates():
-    json_data = request.get_json()
-    combine_replicates = json_data.get('combine_replicates', False)
-    print(combine_replicates)
-    return jsonify({})
-
 @spreadsheet_blueprint.route('/share', methods=['POST'])
 @requires_login
 def share():
+    """
+    Response to ajax request by logged in user to share one of the user's spreadsheets.  Incoming json specifies the
+    spreadsheet to share.  Confirm that it indeed belongs to the user and if so, returns a token which encrypts the
+    spreadsheet id.
+    :return: json {'share': <token>}
+    """
     errors = []
     user = User.find_by_email(session['email'])
     json_data = request.get_json()
@@ -429,10 +435,23 @@ def share():
 
 @spreadsheet_blueprint.route('/share/<string:token>', methods=['GET'])
 def consume_share(token):
+    """
+    Response to a standard get request to obtain a shared spreadsheet.  The token is verified and the spreadsheet is
+    checked against the sharing user's inventory to be sure that the spreadsheet still exists and is in fact, owned
+    by the sharing user.  If either the sharing user does not exist or the spreadsheet to be sharing does not exist in
+    the sharing user's inventory, the receiving user is directed to the upload spreadsheet page and informed that the
+    token was not comprehensible.  Otherwise a copy of all facets of the spreadsheet is made and assigned to the
+    receiving user (if logged in) or to the annonymous user.  The logged in receiving user is taken to the show
+    spreadsheet method while the non-logged in user is taken to the set spreadsheet breakpoint method since logged
+    in users and visitors are handled differently.  If a visitor chooses to login before abandoning the spreadsheet, the
+    spreadsheet will be added to that receiving user's inventory.  The sharing user has no control over further
+    dissemination.
+    :param token: the share token given to the receiving user
+    """
     errors = []
     sharing_user, spreadsheet_id = User.verify_share_token(token)
     spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
-    if not spreadsheet:
+    if not spreadsheet or not sharing_user:
         errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
                       "another share")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
