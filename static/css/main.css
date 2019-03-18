@@ -137,10 +137,14 @@ input:checked + .slider:before {
     background-color: #CCCCCC;
 }
 
+/* Puts spacing around action icons */
+
 td.actions a {
     padding-left: 1rem;
     padding-right: 1rem;
 }
+
+/* CSS below intended for sticky footer placement */
 
 html {
   position: relative;
