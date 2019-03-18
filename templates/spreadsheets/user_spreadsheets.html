@@ -82,13 +82,7 @@
                     {% else %}
                 <tr>
             {% endif %}
-                <td>
-                    {{spreadsheet.original_filename}}
-                    &nbsp;&nbsp;
-                    <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet.id) }}">
-                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
-                    </a>
-                </td>
+                <td>{{spreadsheet.original_filename}}</td>
                 <td data-sort="{{spreadsheet.date_uploaded}}">{{spreadsheet.date_uploaded.strftime("%d%b%Y, %H:%M") }}</td>
                 <td>{{spreadsheet.descriptive_name}}</td>
                 <td>{{spreadsheet.days}}</td>
@@ -96,6 +90,9 @@
                 <td>{{spreadsheet.breakpoint}}</td>
                 <td data-sort="{{spreadsheet.last_access}}">{{spreadsheet.last_access.strftime("%d%b%Y, %H:%M") }}</td>
                 <td class="actions">
+                     <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet.id) }}">
+                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+                    </a>
                     <a href="{{ url_for('spreadsheets.show_spreadsheet', spreadsheet_id = spreadsheet.id) }}">
                         <i class="fas fa-eye" data-toggle="tooltip" data-placement="top" title="View graphs"></i>
                     </a>
