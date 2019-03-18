@@ -20,10 +20,17 @@
             <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#faq_list">
                 <div class="card-body">
                     <p>
-                        Typical q-values are calculated by a p-value correction, such as Benjamini-Hochberg, and so p-values and q-values are always int he same order.
+                        Typical q-values are calculated by a p-value correction, such as Benjamini-Hochberg, and so p-values and q-values are always in the same order.
                         Instead, Nitecap orders all hypotheses by a statistic, "total delta," and q-values are in the same order as this statistic.
-                        The Nitecap p-value of a hypothesis is not used in this ordering and so it is typical, though unconventional, to see p-values out of order.
+                        The Nitecap p-value of a hypothesis is not used in this ordering and so it is typical to see p-values in a different order.
                         The q-values should be treated as the more meaningful value when analyzing datasets with Nitecap.
+                    </p>
+
+                    <p>
+                        Nitecap avoids Benjamini-Hochberg correction since it is a permutation-based method that has limited ability to produce extremely low p-values.
+                        For example, a dataset with 6 timepoints over one cycle has a minimum p-value of about 0.008.
+                        With a dataset containing tens of thousands of measurements, Benjamini-Hochberg correction usually leaves little at a significant q-value.
+                        The q-values produced by Nitecap are able to be more significant by considering the exact test statistic rather than merely the p-value.
                     </p>
                 </div>
             </div>
@@ -63,7 +70,7 @@
                         Nitecap accepts most spreadsheets as is and supports Excel xls, xlsx spreadsheets (with your data in the first sheet in the file, if multiple sheets) as well as tab-separated and comma-separated files.
                         The data should be formatted with one column per sample and one row per one feature (e.g. gene, protein or other value measured).
                         Which column corresponds to which timepoint is set by the user after uploading the spreadsheet and no specific column headers are required.
-                        For convenience, if sample columns are labelled as ZT## or CT## then the number values will be used to infer timepoints when possible.
+                        For convenience, if sample columns are labelled as ZT## or CT##  (e.g. CT0, CT4, CT8, CT12, ...) then the number values will be used to infer timepoints when possible.
                         Additional columns are no problem and can be used to label the values by selecting ID and multiple columns may be used as ID columns.
                     </p>
                 </div>
