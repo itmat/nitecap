@@ -8,7 +8,11 @@
     });
 
     $(document).ready(function() {
-        $('#spreadsheetTable').DataTable();
+        $('#spreadsheetTable').DataTable({
+            "aoColumnDefs": [
+                { 'bSortable': false, 'aTargets': [ 7 ] }
+            ]
+        });
 
         $('.share_spreadsheet').click(function(event) {
             spreadsheet_id = $(event.target).parent().attr('id').split("_")[2];
