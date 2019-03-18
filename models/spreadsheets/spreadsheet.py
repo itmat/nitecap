@@ -496,7 +496,7 @@ class Spreadsheet(db.Model):
                                   original_filename=share_filename,
                                   file_mime_type=spreadsheet.file_mime_type,
                                   uploaded_file_path=share_file_path,
-                                  date_uploaded=spreadsheet.date_uploaded,
+                                  date_uploaded=datetime.datetime.utcnow(),
                                   file_path=share_processed_file_path,
                                   column_labels_str=spreadsheet.column_labels_str,
                                   breakpoint=spreadsheet.breakpoint,
