@@ -439,7 +439,7 @@ def consume_share(token):
     user = None
     if 'email' in session:
         user = User.find_by_email(session['email'])
-    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
+    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id if user else None)
     session['spreadsheet_id'] = shared_spreadsheet.id
     if user and shared_spreadsheet:
         return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id = shared_spreadsheet.id))
