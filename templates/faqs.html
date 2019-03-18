@@ -13,15 +13,24 @@
                 <h5 class="mb-0">
                     <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne"
                             aria-expanded="true" aria-controls="collapseOne">
-                        What is a Snark?
+                    Why aren't p-values from Nitecap in the same order as q-values?
                     </button>
                 </h5>
             </div>
             <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#faq_list">
                 <div class="card-body">
                     <p>
-                        A Snark is an imaginary creature that is difficult to find as evidenced in
-                        Lewis Carroll's novel <em>The Hunting of the Snark</em>
+                        Typical q-values are calculated by a p-value correction, such as Benjamini-Hochberg, and so p-values and q-values are always in the same order.
+                        Instead, Nitecap orders all hypotheses by a statistic, "total delta," and q-values are in the same order as this statistic.
+                        The Nitecap p-value of a hypothesis is not used in this ordering and so it is typical to see p-values in a different order.
+                        The q-values should be treated as the more meaningful value when analyzing datasets with Nitecap.
+                    </p>
+
+                    <p>
+                        Nitecap avoids Benjamini-Hochberg correction since it is a permutation-based method that has limited ability to produce extremely low p-values.
+                        For example, a dataset with 6 timepoints over one cycle has a minimum p-value of about 0.008.
+                        With a dataset containing tens of thousands of measurements, Benjamini-Hochberg correction usually leaves little at a significant q-value.
+                        The q-values produced by Nitecap are able to be more significant by considering the exact test statistic rather than merely the p-value.
                     </p>
                 </div>
             </div>
@@ -32,20 +41,41 @@
                 <h5 class="mb-0">
                     <button class="btn btn-link" data-toggle="collapse" data-target="#collapseTwo"
                              aria-expanded="true" aria-controls="collapseTwo">
-                        What is a Boojum?
+                        Why are my ANOVA p-values blank?
                     </button>
                 </h5>
             </div>
             <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#faq_list">
                 <div class="card-body">
                     <p>
-                        A Boojum is a subspecies of a Snark, also described in Lewis Carroll's novel. But a Boojum is
-                        particularly dangerous because anyone who encounters one, disappears.
+                        ANOVA p-values are computed as a one-way ANOVA where the values are grouped by timepoint.
+                        If your dataset does not contain any multiple replicates for any timepoint, or multiple cycles worth of data, then ANOVA has zero degrees of freedom and cannot be run.
                     </p>
                 </div>
             </div>
         </div>
 
+        <div class="card">
+            <div class="card-header" id="headingThree">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseThree"
+                             aria-expanded="true" aria-controls="collapseThree">
+                        What format should my spreadsheet be in?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseThree" class="collapse" aria-labelledby="headingThree" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap accepts most spreadsheets as is and supports Excel xls, xlsx spreadsheets (with your data in the first sheet in the file, if multiple sheets) as well as tab-separated and comma-separated files.
+                        The data should be formatted with one column per sample and one row per one feature (e.g. gene, protein or other value measured).
+                        Which column corresponds to which timepoint is set by the user after uploading the spreadsheet and no specific column headers are required.
+                        For convenience, if sample columns are labelled as ZT## or CT##  (e.g. CT0, CT4, CT8, CT12, ...) then the number values will be used to infer timepoints when possible.
+                        Additional columns are no problem and can be used to label the values by selecting ID and multiple columns may be used as ID columns.
+                    </p>
+                </div>
+            </div>
+        </div>
 </div>
 
 
