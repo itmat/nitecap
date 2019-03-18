@@ -8,7 +8,8 @@ from security import check_encrypted_password, encrypt_password
 from db import db
 import os
 from email.message import EmailMessage
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from itsdangerous import TimedJSONWebSignatureSerializer as TimedSerializer
+from itsdangerous import JSONWebSignatureSerializer as Serializer
 from flask import current_app
 
 
@@ -226,12 +227,12 @@ class User(db.Model):
         password reset request is made.  The user is recognized by the token's contents and allowed then to update his/
         her password.  Note that by default, the token expires in 30 min.
         """
-        s = Serializer(os.environ['SECRET_KEY'], expires_sec)
+        s = TimedSerializer(os.environ['SECRET_KEY'], expires_sec)
         return s.dumps({'user_id': self.id}).decode('utf-8')
 
     @staticmethod
     def verify_reset_token(token):
-        s = Serializer(os.environ['SECRET_KEY'])
+        s = TimedSerializer(os.environ['SECRET_KEY'])
         try:
             user_id = s.loads(token)['user_id']
         except:
@@ -305,9 +306,24 @@ class User(db.Model):
         user.save_to_db()
         return user
 
-
     def is_annoymous_user(self):
         return self.username == 'annonymous'
+
+    def get_share_token(self, spreadsheet_id):
+        s = Serializer(os.environ['SECRET_KEY'])
+        return s.dumps({'user_id': self.id, 'spreadsheet_id': spreadsheet_id}).decode('utf-8')
+
+    @staticmethod
+    def verify_share_token(token):
+        s = Serializer(os.environ['SECRET_KEY'])
+        try:
+            user_id = s.loads(token)['user_id']
+            user = User.find_by_id(user_id)
+            if(not user):
+                return None
+            return user, s.loads(token)['spreadsheet_id']
+        except:
+            return None
 
 
 
