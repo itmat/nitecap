@@ -136,3 +136,8 @@ input:checked + .slider:before {
 #row_selector div.disabled {
     background-color: #CCCCCC;
 }
+
+td.actions a {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}

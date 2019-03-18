@@ -1,4 +1,6 @@
 import datetime
+import os
+import uuid
 from parser import ParserError
 from pathlib import Path
 
@@ -13,6 +15,8 @@ from db import db
 from exceptions import NitecapException
 from models.users.user import User
 from flask import current_app
+from shutil import copyfile
+import copy
 
 import nitecap
 
@@ -476,6 +480,33 @@ class Spreadsheet(db.Model):
 
         self.update_dataframe()
 
+    @staticmethod
+    def make_share_copy(spreadsheet, user_id):
+        extension = Path(spreadsheet.original_filename).suffix
+        share_filename = uuid.uuid4().hex + extension
+        share_file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), share_filename)
+        copyfile(spreadsheet.uploaded_file_path, share_file_path)
+        share_processed_file_path = share_file_path + ".working.txt"
+        copyfile(spreadsheet.file_path, share_processed_file_path)
+        spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
+                                  days=spreadsheet.days,
+                                  timepoints=spreadsheet.timepoints,
+                                  repeated_measures=spreadsheet.repeated_measures,
+                                  header_row=spreadsheet.header_row,
+                                  original_filename=share_filename,
+                                  file_mime_type=spreadsheet.file_mime_type,
+                                  uploaded_file_path=share_file_path,
+                                  date_uploaded=spreadsheet.date_uploaded,
+                                  file_path=share_processed_file_path,
+                                  column_labels_str=spreadsheet.column_labels_str,
+                                  breakpoint=spreadsheet.breakpoint,
+                                  num_replicates_str=spreadsheet.num_replicates_str,
+                                  max_value_filter=spreadsheet.max_value_filter,
+                                  last_access=None,
+                                  user_id=user_id)
+        spreadsheet_share.save_to_db()
+        return spreadsheet_share
+
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
@@ -531,3 +562,4 @@ def guess_column_labels(columns, timepoints, days):
         return ["Ignore"]*len(columns)  # No selections, we have uneven timepoints
     else:
         return ["Ignore"]*len(columns)
+

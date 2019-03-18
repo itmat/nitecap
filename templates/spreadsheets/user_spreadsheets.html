@@ -8,7 +8,30 @@
     });
 
     $(document).ready(function() {
-        $('#spreadsheetTable').DataTable();
+        $('#spreadsheetTable').DataTable({
+            "aoColumnDefs": [
+                { 'bSortable': false, 'aTargets': [ 7 ] }
+            ]
+        });
+
+        $('.share_spreadsheet').click(function(event) {
+            spreadsheet_id = $(event.target).parent().attr('id').split("_")[2];
+            $.ajax({
+                url: "{{url_for('spreadsheets.share')}}",
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_id}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function (response) {
+                    url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
+                    $("#share_url").val(url);
+                    $('#share_popup').modal()
+                },
+                error: function (response) {
+                    alert(response['errors'])
+                }
+            });
+        });
     });
 
 </script>
@@ -48,9 +71,8 @@
                 <th>Days</th>
                 <th>Timepoints</th>
                 <th>Breakpoint</th>
-                <th>Processed File</th>
                 <th>Last Update</th>
-                <th> </th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -60,32 +82,31 @@
                     {% else %}
                 <tr>
             {% endif %}
-                <td>
-                    {{spreadsheet.original_filename}}
-                    &nbsp;&nbsp;
-                    <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet.id) }}">
-                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
-                    </a>
-                </td>
-                <td>{{spreadsheet.date_uploaded.strftime("%d%b%Y, %H:%M") }}</td>
+                <td>{{spreadsheet.original_filename}}</td>
+                <td data-sort="{{spreadsheet.date_uploaded}}">{{spreadsheet.date_uploaded.strftime("%d%b%Y, %H:%M") }}</td>
                 <td>{{spreadsheet.descriptive_name}}</td>
                 <td>{{spreadsheet.days}}</td>
                 <td>{{spreadsheet.timepoints}}</td>
                 <td>{{spreadsheet.breakpoint}}</td>
-                <td>
+                <td data-sort="{{spreadsheet.last_access}}">{{spreadsheet.last_access.strftime("%d%b%Y, %H:%M") }}</td>
+                <td class="actions">
+                     <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet.id) }}">
+                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+                    </a>
                     <a href="{{ url_for('spreadsheets.show_spreadsheet', spreadsheet_id = spreadsheet.id) }}">
                         <i class="fas fa-eye" data-toggle="tooltip" data-placement="top" title="View graphs"></i>
                     </a>
-                    &nbsp;&nbsp;
                     <a href="{{ url_for('spreadsheets.download', spreadsheet_id = spreadsheet.id) }}"
                        download="processed_file_{{spreadsheet.id}}.txt">
                         <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
                     </a>
+                    <a id='share_spreadsheet_{{spreadsheet.id}}' class="share_spreadsheet" href="#">
+                       <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+                    </a>
+                    <a href="{{ url_for('spreadsheets.delete', spreadsheet_id = spreadsheet.id) }}">
+                        <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                    </a>
                 </td>
-                <td>{{spreadsheet.last_access.strftime("%d%b%Y, %H:%M") }}</td>
-                <td><a href="{{ url_for('spreadsheets.delete', spreadsheet_id = spreadsheet.id) }}">
-                    <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
-                </a></td>
             </tr>
         {% endfor %}
         </tbody>
@@ -106,5 +127,28 @@
         -->
     </table>
 {% endif %}
+
+<div id="share_popup" class="modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">URL to share this spreadsheet</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="share_url">Copy this URL and offer it to anyone with whom you'd like to share your
+                    spreadsheet data:</label>
+                <textarea id="share_url" class="form-control" rows="5"></textarea>
+            </div>
+        </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

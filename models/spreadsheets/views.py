@@ -306,6 +306,7 @@ def download_spreadsheet():
         return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
+        current_app.logger.error("The processed spreadsheet data could not be downloaded.", e)
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
@@ -412,4 +413,45 @@ def combine_replicates():
     combine_replicates = json_data.get('combine_replicates', False)
     print(combine_replicates)
     return jsonify({})
+
+@spreadsheet_blueprint.route('/share', methods=['POST'])
+@requires_login
+def share():
+    errors = []
+    user = User.find_by_email(session['email'])
+    json_data = request.get_json()
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+    print(f"Spreadsheet {spreadsheet_id}")
+    if not user.find_user_spreadsheet_by_id(spreadsheet_id):
+        errors.append('You may only manage your own spreadsheets.')
+        return jsonify({"errors": errors}, 401)
+    return jsonify({'share': user.get_share_token(spreadsheet_id)})
+
+@spreadsheet_blueprint.route('/share/<string:token>', methods=['GET'])
+def consume_share(token):
+    errors = []
+    sharing_user, spreadsheet_id = User.verify_share_token(token)
+    spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
+                      "another share")
+        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    user = None
+    if 'email' in session:
+        user = User.find_by_email(session['email'])
+    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
+    session['spreadsheet_id'] = shared_spreadsheet.id
+    if user and shared_spreadsheet:
+        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id = shared_spreadsheet.id))
+    if not user and shared_spreadsheet:
+        return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint'))
+    errors.append("The spreadsheets could not be shared.")
+    return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
+
+
+
+
+
+
 
