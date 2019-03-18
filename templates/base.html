@@ -38,6 +38,7 @@
                 {% if 'email' in session and session['email'] %}
                     <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.display_spreadsheets')}}">Display Spreadsheets</a></li>
                 {% endif %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('faqs') }}">FAQs</a></li>
             </ul>
             <ul class="nav navbar-nav ml-auto">
                 {% if not session['email'] %}

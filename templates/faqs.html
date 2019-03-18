@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Frequently Asked Questions</h1>
+</div>
+
+<div id="faq_list" class="accordion">
+
+
+        <div class="card">
+            <div class="card-header" id="headingOne">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne"
+                            aria-expanded="true" aria-controls="collapseOne">
+                        What is a Snark?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        A Snark is an imaginary creature that is difficult to find as evidenced in
+                        Lewis Carroll's novel <em>The Hunting of the Snark</em>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingTwo">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseTwo"
+                             aria-expanded="true" aria-controls="collapseTwo">
+                        What is a Boojum?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        A Boojum is a subspecies of a Snark, also described in Lewis Carroll's novel. But a Boojum is
+                        particularly dangerous because anyone who encounters one, disappears.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+</div>
+
+
+{% endblock %}
