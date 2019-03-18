@@ -32,6 +32,10 @@
                 }
             });
         });
+        $('.delete_spreadsheet').click(function(event) {
+            $("#confirm_delete .btn-danger").attr('href', $(this).attr('data-href'));
+            $("#confirm_delete").modal();
+        });
     });
 
 </script>
@@ -103,7 +107,7 @@
                     <a id='share_spreadsheet_{{spreadsheet.id}}' class="share_spreadsheet" href="#">
                        <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
                     </a>
-                    <a href="{{ url_for('spreadsheets.delete', spreadsheet_id = spreadsheet.id) }}">
+                    <a data-href="{{ url_for('spreadsheets.delete', spreadsheet_id = spreadsheet.id) }}" class="delete_spreadsheet" href="#">
                         <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                     </a>
                 </td>
@@ -119,9 +123,8 @@
                 <td>Days</td>
                 <td>Timepoints</td>
                 <td>Breakpoint</td>
-                <td>Processed File</td>
                 <td>Last Update</td>
-                <td> </td>
+                <td>Actions</td>
             </tr>
         </tfoot>
         -->
@@ -144,11 +147,33 @@
                 <textarea id="share_url" class="form-control" rows="5"></textarea>
             </div>
         </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-      </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
     </div>
   </div>
+</div>
+
+<div class="modal fade" id="confirm_delete" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="model-title">Delete Confirmation</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Please confirm deletion...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">Cancel</span>
+                </button>
+                <a class="btn btn-danger" href="#">Delete</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}
