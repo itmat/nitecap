@@ -47,7 +47,7 @@ class User(db.Model):
         self.username = username
         self.email = email
         self.password = password
-        self.last_access = last_access if last_access else datetime.datetime.now()
+        self.last_access = last_access if last_access else datetime.datetime.utcnow()
 
     def __repr__(self):
         """
@@ -130,7 +130,7 @@ class User(db.Model):
                 confirmation = user.most_recent_confirmation
 
                 if confirmation and confirmation.confirmed:
-                    user.last_access = datetime.datetime.now()
+                    user.last_access = datetime.datetime.utcnow()
                     user.save_to_db()
                 else:
                     messages.append("You need to click on the confirmation link we emailed you before you can login.  "

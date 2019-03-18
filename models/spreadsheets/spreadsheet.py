@@ -94,7 +94,7 @@ class Spreadsheet(db.Model):
         self.column_labels_str = column_labels_str
         self.max_value_filter = max_value_filter
         self.breakpoint = breakpoint
-        self.last_access = last_access if last_access else datetime.datetime.now()
+        self.last_access = last_access if last_access else datetime.datetime.utcnow()
 
         # The user id of the owner of the spreadsheet is part of the spreadsheet record.  But since visitors can upload
         # spreadsheets, we need to supply a generic user id in that case.  The generic user (the anonymous user) is
@@ -107,7 +107,7 @@ class Spreadsheet(db.Model):
         # TODO This is a new spreadsheet.  I think the file_path will always be None.
         if file_path is None:
             self.set_df()
-            self.date_uploaded = datetime.datetime.now()
+            self.date_uploaded = datetime.datetime.utcnow()
             self.file_path = uploaded_file_path + ".working.txt"
             self.update_dataframe()
 
@@ -403,7 +403,7 @@ class Spreadsheet(db.Model):
         Save the spreadsheet to the database and note the current time as the last modified time in the
         database.
         """
-        self.last_access = datetime.datetime.now()
+        self.last_access = datetime.datetime.utcnow()
         db.session.add(self)
         db.session.commit()
 

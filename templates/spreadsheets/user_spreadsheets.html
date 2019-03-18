@@ -3,6 +3,8 @@
 
 <script>
 
+
+
     $(function () {
         $('[data-toggle="tooltip"]').tooltip()
     });
@@ -87,12 +89,16 @@
                 <tr>
             {% endif %}
                 <td>{{spreadsheet.original_filename}}</td>
-                <td data-sort="{{spreadsheet.date_uploaded}}">{{spreadsheet.date_uploaded.strftime("%d%b%Y, %H:%M") }}</td>
+                <td data-sort="{{spreadsheet.date_uploaded}}">
+                    {{ momentjs(spreadsheet.date_uploaded).format('LLL') }}
+                </td>
                 <td>{{spreadsheet.descriptive_name}}</td>
                 <td>{{spreadsheet.days}}</td>
                 <td>{{spreadsheet.timepoints}}</td>
                 <td>{{spreadsheet.breakpoint}}</td>
-                <td data-sort="{{spreadsheet.last_access}}">{{spreadsheet.last_access.strftime("%d%b%Y, %H:%M") }}</td>
+                <td data-sort="{{spreadsheet.last_access}}">
+                    {{ momentjs(spreadsheet.last_access).format('LLL') }}
+                </td>
                 <td class="actions">
                      <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet.id) }}">
                         <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>

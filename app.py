@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import backup
 import logging
 import os
+from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
 
 logger = logging.getLogger("")
@@ -16,6 +17,7 @@ app = Flask(__name__)
 load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
+app.jinja_env.globals['momentjs'] = momentjs
 
 @app.before_first_request
 def create_tables():
