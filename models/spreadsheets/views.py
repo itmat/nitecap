@@ -328,6 +328,12 @@ def download(spreadsheet_id):
 @spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET','POST'])
 @requires_login
 def edit_details(spreadsheet_id):
+    """
+    Allows a logged in user to edit the details of an existing spreadsheet (e.g., name, # days, # timepoints, etc).  A
+    check is made to insure that the spreadsheet id sent in the url identified a spreadsheet in the logged in user's
+    inventory.
+    :param spreadsheet_id:  id to the spreadsheet whose details the logged in user wishes to edit.
+    """
     errors = []
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
@@ -403,6 +409,11 @@ def edit_columns():
 
 @spreadsheet_blueprint.route('/save_filters', methods=['POST'])
 def save_filters():
+    """
+    Response to ajax request to apply filters set on the graphs page.  Those filter values are also saved to the
+    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annoymous user).
+    :return: A json string containing filtered values along with associated q values and p values.
+    """
     json_data = request.get_json()
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
