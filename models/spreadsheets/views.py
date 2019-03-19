@@ -9,12 +9,11 @@ import os
 from pathlib import Path
 import pandas as pd
 import uuid
-import constants
 from models.users.decorators import requires_login
 from models.users.user import User
 import json
 from flask import current_app
-
+import constants
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
@@ -271,6 +270,7 @@ def delete(spreadsheet_id):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
+        current_app.logger.warn(f"User {user.id} attempted to delete spreadsheet {spreadsheet_id}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     try:
         spreadsheet.delete_from_db()
@@ -278,6 +278,8 @@ def delete(spreadsheet_id):
         os.remove(spreadsheet.uploaded_file_path)
     except Exception as e:
        errors.append("The spreadsheet data may not have been all successfully removed.")
+       current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
+                                f"expunged.", e)
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     return redirect(url_for('.display_spreadsheets'))
@@ -285,6 +287,13 @@ def delete(spreadsheet_id):
 
 @spreadsheet_blueprint.route('/download', methods=['GET'])
 def download_spreadsheet():
+    """
+    Response to a request from the graphs page to download the spreadsheet whose id is in the session.  In this case,
+    the user need not be logged in.  Nevertheless, the requested spreadsheet must be in the user's inventory.  In the
+    case of a visitor, the spreadsheet must not be in the inventory of any logged in user.  If the user is authorized
+    to download the spreadsheet and the file is available, the file representing the fully processed version of the
+    spreadsheet is delivered as an attachment.
+    """
     errors = []
     spreadsheet_id = session['spreadsheet_id']
     user = User.find_by_email(session['email'])
@@ -293,6 +302,7 @@ def download_spreadsheet():
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
             errors.append('You may only manage your own spreadsheets.')
+            current_app.logger.warn(f"User {user.id} attempted to download spreadsheet {spreadsheet_id}")
             return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     else:
         spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
@@ -301,21 +311,25 @@ def download_spreadsheet():
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
         if spreadsheet.owned():
             errors.append('You may only manage your own spreadsheets.')
+            current_app.logger.warn(f"Visitor attempted to download spreadsheet {spreadsheet_id}")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
     try:
         return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
-        current_app.logger.error("The processed spreadsheet data could not be downloaded.", e)
+        current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
+                                 f"downloaded.", e)
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
 def download(spreadsheet_id):
     """
-    Response to a request to download the spreadsheet whose id is given in the url.  The user must be logged in.
-    Additionally, the requested spreadsheet must be in the logged in user's inventory.  If it is and the file is
-    available, the file representing the fully processed version of the spreadsheet is delivered as an attachment.
+    Response to a request from the spreadsheet listing page to download the spreadsheet whose id is given in the url.
+    The user must be logged in.  Additionally, the requested spreadsheet must be in the logged in user's inventory.  If
+    it is and the file is available, the file representing the fully processed version of the spreadsheet is delivered
+    as an attachment.
     :param spreadsheet_id: the id of the spreadsheet to download
     """
     errors = []
@@ -323,15 +337,18 @@ def download(spreadsheet_id):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
+        current_app.logger.warn(f"User {user.id} attempted to download spreadsheet {spreadsheet_id}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     try:
         return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
+        current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
+                                 f"downloaded.", e)
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
 
-@spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET','POST'])
+@spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET', 'POST'])
 @requires_login
 def edit_details(spreadsheet_id):
     """
@@ -345,6 +362,7 @@ def edit_details(spreadsheet_id):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
+        current_app.logger.warn(f"User {user.id} attempted to edit details for spreadsheet {spreadsheet_id}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     session['spreadsheet_id'] = spreadsheet_id
     if request.method == "POST":
@@ -400,6 +418,8 @@ def edit_columns():
     spreadsheet = user.find_user_spreadsheet_by_id(session['spreadsheet_id'])
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
+        current_app.logger.warn(f"User {user.id} attempted to edit the column labels of spreadsheet "
+                                f"{session['spreadsheet_id']}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     if request.method == 'POST':
         column_labels = list(request.form.values())
@@ -412,6 +432,7 @@ def edit_columns():
         spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet)
+
 
 @spreadsheet_blueprint.route('/save_filters', methods=['POST'])
 def save_filters():
@@ -428,8 +449,9 @@ def save_filters():
     spreadsheet.save_to_db()
     response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
                         'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
-                    'filtered': spreadsheet.df.filtered_out.values.tolist()})
+                        'filtered': spreadsheet.df.filtered_out.values.tolist()})
     return response
+
 
 @spreadsheet_blueprint.route('/share', methods=['POST'])
 @requires_login
@@ -449,6 +471,7 @@ def share():
         errors.append('You may only manage your own spreadsheets.')
         return jsonify({"errors": errors}, 401)
     return jsonify({'share': user.get_share_token(spreadsheet_id)})
+
 
 @spreadsheet_blueprint.route('/share/<string:token>', methods=['GET'])
 def consume_share(token):
@@ -478,16 +501,8 @@ def consume_share(token):
     shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id if user else None)
     session['spreadsheet_id'] = shared_spreadsheet.id
     if user and shared_spreadsheet:
-        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id = shared_spreadsheet.id))
+        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=shared_spreadsheet.id))
     if not user and shared_spreadsheet:
         return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint'))
     errors.append("The spreadsheets could not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-
-
-
-
-
-
-
-
