@@ -10,11 +10,22 @@
     });
 
     $(document).ready(function() {
-        $('#spreadsheetTable').DataTable({
-            "aoColumnDefs": [
-                { 'bSortable': false, 'aTargets': [ 7 ] }
-            ],
-            "order": [[ 1, 'desc' ]]
+        var table = $('#spreadsheetTable').DataTable({
+                        aoColumnDefs: [
+                            { 'bSortable': false, 'aTargets': [ 7 ] },
+                            { 'visible': false, 'aTargets': [8] }
+                        ],
+                        order: [[ 1, 'desc' ]],
+                        select: {
+                            style: 'multi'
+                        }
+                    });
+
+        table.on('user-select', function(e, dt, type, cell, originalEvent) {
+            var tr = $(originalEvent.target).parent();
+            if(!tr.hasClass('text-dark')) {
+                e.preventDefault();
+            }
         });
 
         $('.share_spreadsheet').click(function(event) {
@@ -39,6 +50,18 @@
             $("#confirm_delete .btn-danger").attr('href', $(this).attr('data-href'));
             $("#confirm_delete").modal();
         });
+
+        $('#compare').click(function(event) {
+            var row_data = table.rows( { selected: true } ).data();
+            var spreadsheet_list = [];
+            $.each($(row_data), function(key, value) {
+                spreadsheet_list.push(value[8])
+            });
+            if(!spreadsheet_list || spreadsheet_list.length != 2) {
+                alert("Sorry - presently a comparison can be made against only 2 spreadsheets.")
+            }
+            console.log(spreadsheet_list)
+        })
     });
 
 </script>
@@ -80,15 +103,19 @@
                 <th>Breakpoint</th>
                 <th>Last Update</th>
                 <th>Actions</th>
+                <th>IDs</th>
             </tr>
         </thead>
         <tbody>
         {% for spreadsheet in user.spreadsheets %}
             {% if spreadsheet.error %}
-                <tr class="alert alert-danger" role="alert">
-                    {% else %}
-                <tr>
+                {% set class="alert alert_danger" %}
+            {% elif not spreadsheet.ids_unique %}
+                {% set class="text-muted" %}
+            {% else %}
+                {% set class="text-dark" %}
             {% endif %}
+            <tr class={{class}}>
                 <td>{{spreadsheet.original_filename}}</td>
                 <td data-sort="{{spreadsheet.date_uploaded}}">
                     {{ momentjs(spreadsheet.date_uploaded).format('LLL') }}
@@ -118,6 +145,7 @@
                         <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                     </a>
                 </td>
+                <td>{{spreadsheet.id}}</td>
             </tr>
         {% endfor %}
         </tbody>
@@ -132,11 +160,15 @@
                 <td>Breakpoint</td>
                 <td>Last Update</td>
                 <td>Actions</td>
+                <td>IDS</td>
             </tr>
         </tfoot>
         -->
     </table>
+
+    <button type="button" class="btn btn-primary" id="compare">Compare</button>
 {% endif %}
+
 
 <div id="share_popup" class="modal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">

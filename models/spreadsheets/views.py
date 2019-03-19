@@ -132,7 +132,7 @@ def identify_spreadsheet_columns():
             return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
         spreadsheet.identify_columns(column_labels)
-
+        spreadsheet.set_ids_unique()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
         return redirect(url_for('.set_spreadsheet_breakpoint'))
@@ -428,6 +428,7 @@ def edit_columns():
         if error:
             return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet, errors=errors)
         spreadsheet.identify_columns(column_labels)
+        spreadsheet.set_ids_unique()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))

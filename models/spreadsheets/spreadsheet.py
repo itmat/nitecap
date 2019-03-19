@@ -41,6 +41,7 @@ class Spreadsheet(db.Model):
     column_labels_str = db.Column(db.String(2500))
     max_value_filter = db.Column(db.FLOAT)
     last_access = db.Column(db.DateTime, nullable=False)
+    ids_unique = db.Column(db.Boolean, nullable=False, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
 
@@ -51,7 +52,7 @@ class Spreadsheet(db.Model):
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
                  breakpoint=None, num_replicates_str=None, max_value_filter=None, last_access=None, user_id=None,
-                 date_uploaded=None):
+                 date_uploaded=None, ids_unique=False):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
         method (only __new__).  Many of the parameters are filled in only after the spreadsheet has been instantiated
@@ -78,6 +79,7 @@ class Spreadsheet(db.Model):
         :param user_id: The id of the spreadsheet's owner.  For visitor spreadsheets, the owner is the anonymous
         user.
         :param date_uploaded:  The timestamp at which the original spreadsheet was uploaded.
+        :param ids_unique:  Flag indicating whether the ids are unique given the columns selected as ids
         """
         current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
@@ -95,6 +97,7 @@ class Spreadsheet(db.Model):
         self.max_value_filter = max_value_filter
         self.breakpoint = breakpoint
         self.last_access = last_access if last_access else datetime.datetime.utcnow()
+        self.ids_unique = ids_unique
 
         # The user id of the owner of the spreadsheet is part of the spreadsheet record.  But since visitors can upload
         # spreadsheets, we need to supply a generic user id in that case.  The generic user (the anonymous user) is
@@ -247,6 +250,14 @@ class Spreadsheet(db.Model):
                       for index, column_label in enumerate(self.column_labels)
                       if column_label == Spreadsheet.ID_COLUMN]
         return self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1)
+
+    def set_ids_unique(self):
+        """
+        Determines whether the results of concatenating all ids columns together into a list results in a list of
+        unique ids.  Sets a flag in the spreadsheet accordingly (which will be added to the db)
+        """
+        ids = self.get_ids()
+        self.ids_unique = len(ids) == len(set(ids))
 
     def compute_nitecap(self):
         # Runs NITECAP on the data but just to order the features
