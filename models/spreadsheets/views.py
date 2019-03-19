@@ -312,6 +312,12 @@ def download_spreadsheet():
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
 def download(spreadsheet_id):
+    """
+    Response to a request to download the spreadsheet whose id is given in the url.  The user must be logged in.
+    Additionally, the requested spreadsheet must be in the logged in user's inventory.  If it is and the file is
+    available, the file representing the fully processed version of the spreadsheet is delivered as an attachment.
+    :param spreadsheet_id: the id of the spreadsheet to download
+    """
     errors = []
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
