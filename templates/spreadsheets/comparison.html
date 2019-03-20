@@ -9,7 +9,10 @@
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
 
-        console.log(data)
+        console.log(data);
+        console.log(column_pairs);
+        console.log(x_values);
+        console.log(x_values[0])
 
         var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
@@ -152,7 +155,7 @@
 
                 paired_x_values = [];
                 for (var i in column_pairs[ctr]) {
-                    paired_x_values.push(x_values[column_pairs[ctr][i][0]], x_values[column_pairs[ctr][i][1]], null);
+                    paired_x_values.push(x_values[ctr][column_pairs[ctr][i][0]], x_values[ctr][column_pairs[ctr][i][1]], null);
                 }
 
                 console.log(paired_x_values);

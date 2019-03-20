@@ -545,7 +545,6 @@ def compare():
     compare_spreadsheet1 = df[spreadsheets[1].get_raw_data().columns]
     print(f"Shape after sep 1: {compare_spreadsheet1.shape}")
     datasets = []
-    print(type(compare_spreadsheet0.values.tolist()))
     datasets.append(compare_spreadsheet0.values.tolist())
     datasets.append(compare_spreadsheet1.values.tolist())
 
