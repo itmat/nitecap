@@ -507,3 +507,53 @@ def consume_share(token):
         return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint'))
     errors.append("The spreadsheets could not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
+@spreadsheet_blueprint.route('/compare', methods=['GET'])
+@requires_login
+def compare():
+    errors = []
+    spreadsheets = []
+    datasets = []
+    x_values = []
+    x_labels = []
+    x_label_values = []
+    column_pairs = []
+    descriptive_names = []
+    user = User.find_by_email(session['email'])
+    spreadsheet_ids = request.args.get('spreadsheet_ids').split(",")
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            errors.append('You may only manage your own spreadsheets.')
+            return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+        x_values.append(spreadsheet.x_values)
+        x_labels.append(spreadsheet.x_labels)
+        x_label_values.append(spreadsheet.x_label_values)
+        column_pairs.append(spreadsheet.column_pairs)
+        descriptive_names.append(spreadsheet.descriptive_name)
+        spreadsheets.append(spreadsheet)
+        data = spreadsheet.get_raw_data()
+        ids = list(spreadsheet.get_ids())
+        data['compare_ids'] = ids
+        datasets.append(data)
+        print(f"Shape prior to join with label col: {data.shape}")
+    df = pd.merge(datasets[0],datasets[1],how='inner',on="compare_ids", validate='one_to_one')
+    print(f"Shape after join: {df.shape}")
+    compare_ids = df['compare_ids'].tolist()
+    compare_spreadsheet0 = df[spreadsheets[0].get_raw_data().columns]
+    print(f"Shape after sep 0: {compare_spreadsheet0.shape}")
+    compare_spreadsheet1 = df[spreadsheets[1].get_raw_data().columns]
+    print(f"Shape after sep 1: {compare_spreadsheet1.shape}")
+    datasets = []
+    print(type(compare_spreadsheet0.values.tolist()))
+    datasets.append(compare_spreadsheet0.values.tolist())
+    datasets.append(compare_spreadsheet1.values.tolist())
+
+    return render_template('spreadsheets/comparison.html',
+                           data=json.dumps(datasets),
+                           x_values=x_values,
+                           x_labels=x_labels,
+                           x_label_values=x_label_values,
+                           ids=compare_ids,
+                           column_pairs=column_pairs,
+                           descriptive_names = descriptive_names)

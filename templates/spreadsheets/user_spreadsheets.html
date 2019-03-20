@@ -60,7 +60,11 @@
             if(!spreadsheet_list || spreadsheet_list.length != 2) {
                 alert("Sorry - presently a comparison can be made against only 2 spreadsheets.")
             }
-            console.log(spreadsheet_list)
+
+            console.log(spreadsheet_list);
+            spreadsheet_ids = spreadsheet_list.join(",");
+            compare_url = "{{ url_for('spreadsheets.compare') }}";
+            window.location.href = compare_url + "?spreadsheet_ids=" + spreadsheet_ids
         })
     });
 

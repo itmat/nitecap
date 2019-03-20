@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block content %}
+<script>
+    $(document).ready(function () {
+        labels = {{ ids | safe }}
+        x_values = {{ x_values | safe }};
+        x_labels = {{ x_labels | safe }};
+        x_label_values = {{ x_label_values | safe }};
+        data = {{ data | safe }};
+        column_pairs = {{ column_pairs | safe }};
+
+        console.log(data)
+
+        var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
+
+        var breakpoint = 0;
+
+        // Number of rows to show in the row selecotr
+        num_row_selections = 21;
+
+        // List of the number of significant (non-filtered) features that are at or below a given index
+        num_significant_below = labels.map(function(x,i) { return i+1;} );
+
+        // Currently selected row from slider
+        selected_row = 0;
+
+        // What row is being shown at the top of the row selector
+        row_selector_top = 0;
+
+        y_values = [];
+        trace_name = 'Nothing selected';
+        marker_settings = {size: 12, symbol: 'circle-open', color: '#FF00FF'};
+
+        var scatter_plot = Array();
+
+        number_comparisons.forEach(function(ctr) {
+
+            scatter_plot[ctr] = document.getElementById('scatter_plot' + ctr);
+
+            var values = [{
+                x: x_values[ctr],
+                y: x_values[ctr].map(function(x) {return 0;}),
+                name: trace_name,
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: marker_settings
+            }];
+
+            var layout = {
+                xaxis: {
+                    title: labels[breakpoint],
+                    ticktext: x_labels[ctr],
+                    tickvals: x_label_values[ctr],
+                    automargin: true
+                }
+            };
+
+            // This empty plot should be quickly replaced since we trigger a select change event once everything is
+            // set up.
+            Plotly.newPlot(scatter_plot[ctr], values, layout);
+
+        });
+
+        $("#coarse_slider").slider({
+            orientation: "horizontal",
+            min: 0,
+            value: breakpoint,
+            step: 1,
+            max: labels.length - 1,
+            slide: function (event, ui) {
+                selected_row = ui.value;
+                selectRow(parseInt(ui.value));
+                row_selector.focus();
+            }
+        });
+
+        // add the options to the row_selector list
+        var row_selector_options = [];
+        var row_selector = $('#row_selector')[0];
+        for(var i = 0; i < num_row_selections; i++) {
+            var row_option = document.createElement("div");
+            if (i === num_row_selections) {
+                row_option.className = "list-group-item list-group-item-action py-0";
+            } else {
+                row_option.className = "list-group-item list-group-item-action py-0";
+            }
+            row_option.textContent = "Loading...";
+
+            let my_index = i;
+            row_option.addEventListener('click', function (event) {
+                let row = row_selector_top + my_index;
+                selectRow(row);
+            } );
+            row_selector_options.push(row_option);
+            row_selector.appendChild(row_option);
+        }
+
+        var updateRowSelector = function () {
+            // Update the selector rows
+            for(var i = 0; i < num_row_selections; i++) {
+                var current_index = row_selector_top + i;
+                if (current_index < 0) {
+                    row_selector_options[i].textContent = "-";
+                } else if (current_index >= labels) {
+                    row_selector_options[i].textContent = "-";
+                } else {
+                    row_selector_options[i].textContent = labels[current_index];
+                }
+
+                if (current_index === selected_row) {
+                    row_selector_options[i].classList.add("active");
+                } else {
+                    row_selector_options[i].classList.remove("active");
+                }
+            }
+
+        };
+
+        var selectRow = function (row_index) {
+            selected_row = row_index;
+
+            if (row_index >= row_selector_top) {
+                if (row_index < row_selector_top + num_row_selections) {
+                    // Do nothing, already can see the right row
+                } else {
+                    // Moving down, put it at the bottom
+                    row_selector_top = row_index - num_row_selections + 1;
+                }
+            } else {
+                // Moving up, put it at the top
+                row_selector_top = row_index;
+            }
+
+            updateRowSelector();
+
+            // Update the coarse slider
+            $("#coarse_slider").slider("option", "value", selected_row);
+
+            // Update the Plotly plots of the feature profiles
+            number_comparisons.forEach(function (ctr) {
+
+                raw_y_values = data[ctr][row_index];
+                if (raw_y_values === undefined) {
+                    console.log("Could not find the y-values for row " + row_index);
+                    return;
+                }
+
+                paired_y_values = [];
+                for (var i in column_pairs[ctr]) {
+                    paired_y_values.push(raw_y_values[column_pairs[ctr][i][0]], raw_y_values[column_pairs[ctr][i][1]], null);
+                }
+
+                paired_x_values = [];
+                for (var i in column_pairs[ctr]) {
+                    paired_x_values.push(x_values[column_pairs[ctr][i][0]], x_values[column_pairs[ctr][i][1]], null);
+                }
+
+                console.log(paired_x_values);
+                console.log(paired_y_values);
+
+                var values = [{
+                    x: paired_x_values, y: paired_y_values,
+                    mode: 'lines+markers',
+                    marker: marker_settings,
+                    name: labels[row_index],
+                    type: 'scatter'
+                }];
+
+                var layout = {
+                    hovermode: 'closest',
+                    title: labels[row_index],
+                    xaxis: {
+                        ticktext: x_labels[ctr],
+                        tickvals: x_label_values[ctr],
+                        automargin: true
+                    }
+                };
+
+                Plotly.react(scatter_plot[ctr], values, layout);
+            });
+        };
+
+        row_selector.addEventListener('keydown', function (event) {
+            if (event.defaultPrevented) {
+                return; // Do nothing
+            }
+
+            switch (event.key) {
+                case "Down": // IE/Edge specific value
+                case "ArrowDown":
+                    // Find the next row down that is unfiltered
+                    var i = selected_row+1;
+                    while (true) {
+                        if (i >= filtered.length) {
+                            // End of the table, do nothing;
+                            break;
+                        }
+                        if (!filtered[i]) {
+                            selectRow(i);
+                            break;
+                        }
+                        i++;
+                    }
+                    break;
+                case "Up": // IE/Edge specific value
+                case "ArrowUp":
+                    // Find the next row up that is unfiltered
+                    var i = selected_row-1;
+                    while (true) {
+                        if (i < 0) {
+                            // Top of the table, do nothing;
+                            break;
+                        }
+                        if (!filtered[i]) {
+                            selectRow(i);
+                            break;
+                        }
+                        i--;
+                    }
+                    break;
+                default:
+                    return;
+            }
+
+            event.preventDefault();
+            return;
+        });
+
+        row_selector.addEventListener('wheel', function (event) {
+            if (event.deltaY > 0) {
+                row_selector_top++;
+            } else if (event.deltaY < 0) {
+                row_selector_top--;
+            }
+            updateRowSelector();
+
+            event.preventDefault();
+        });
+
+        selectRow(0);
+    });
+</script>
+
+
+
+<div id="comparison-graph-page" class="page-header">
+    <h1>Spreadsheet Comparsions <small>Data sorted by significance</small></h1>
+</div>
+
+<p id="spreadsheet-comparison-page">
+
+    <div class="row">
+        <span class="col-lg-9">
+            Number of items equal to or more significant than currently selected:
+            <span id="significant_items"></span>
+        </span>
+    </div>
+
+    <div class="row">
+        <div id="coarse_slider" class="col-lg-12 coarse-slider"></div>
+    </div>
+
+    <div class="row">
+        <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
+    </div>
+
+    <div class='row'>
+        <span class='col-xs-1' style="position:relative">
+            <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
+        </span>
+        <span class='col-xs-3 ...'>
+            <div class='row'>
+                <div class="form-group form-inline">
+                    <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
+                </div>
+                <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
+            </div>
+            <div class='row'>
+                <div class='col p-4'>
+                    <div id="row_selector" class="list-group" tabindex="0">
+                     </div>
+                </div>
+            </div>
+
+        </span>
+        <span class="'col-xs-4" id="scatter_plot0" style="width:625px;height:450px;vertical-align: top"></span>
+        <span class="'col-xs-4" id="scatter_plot1" style="width:625px;height:450px;vertical-align: top"></span>
+    </div>
+
+    <div class="row" style="padding-top:2rem;padding-bottom:2rem">
+        <span class="col-lg-5">
+            <input type="hidden" id="row_index" name="row_index"/>
+            <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
+        </span>
+        <span id="toggle_replicates" class="col-lg-5" style="display:none">
+            <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
+            <label class="switch">
+                <input id="combine_replicates" name="combine_replicates" type="checkbox" >
+                <span class="slider"></span>
+            </label>
+        </span>
+        <span class='col-lg-2'>
+            <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
+        </span>
+    </div>
+    <div id="heatmap_block" style="display:none">
+        <div class="row">
+            <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
+        </div>
+        <div class="row" id="heatmap"></div>
+    </div>
+
+
+
+{% endblock %}
