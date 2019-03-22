@@ -346,7 +346,8 @@ class Spreadsheet(db.Model):
 
             self.update_dataframe()
 
-            # TODO: delete the tmp files after use
+            os.remove(data_file_path)
+            os.remove(results_file_path)
         return self.df.jtk_p.tolist(), self.df.jtk_q.tolist()
 
     @staticmethod
