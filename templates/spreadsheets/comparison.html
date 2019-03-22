@@ -1,18 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
+
 <script>
+
     $(document).ready(function () {
+
         labels = {{ ids | safe }}
         x_values = {{ x_values | safe }};
         x_labels = {{ x_labels | safe }};
         x_label_values = {{ x_label_values | safe }};
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
-
-        console.log(data);
-        console.log(column_pairs);
-        console.log(x_values);
-        console.log(x_values[0])
 
         var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
@@ -32,37 +30,35 @@
 
         y_values = [];
         trace_name = 'Nothing selected';
-        marker_settings = {size: 12, symbol: 'circle-open', color: '#FF00FF'};
+        marker_settings = {size: 12, symbol: 'circle-open'};
 
-        var scatter_plot = Array();
+        var traces = Array(2);
 
         number_comparisons.forEach(function(ctr) {
 
-            scatter_plot[ctr] = document.getElementById('scatter_plot' + ctr);
-
-            var values = [{
+            traces[ctr] = [{
                 x: x_values[ctr],
-                y: x_values[ctr].map(function(x) {return 0;}),
+                y: x_values[ctr].map(function (x) {
+                    return 0;
+                }),
                 name: trace_name,
                 type: 'scatter',
                 mode: 'lines+markers',
                 marker: marker_settings
             }];
 
-            var layout = {
-                xaxis: {
-                    title: labels[breakpoint],
-                    ticktext: x_labels[ctr],
-                    tickvals: x_label_values[ctr],
-                    automargin: true
-                }
-            };
-
-            // This empty plot should be quickly replaced since we trigger a select change event once everything is
-            // set up.
-            Plotly.newPlot(scatter_plot[ctr], values, layout);
-
         });
+
+        var layout = {
+            xaxis: {
+                title: labels[breakpoint],
+                ticktext: x_labels[0],
+                tickvals: x_label_values[0],
+                automargin: true
+            }
+        };
+
+        Plotly.newPlot('scatter_plot', traces, layout);
 
         $("#coarse_slider").slider({
             orientation: "horizontal",
@@ -158,9 +154,6 @@
                     paired_x_values.push(x_values[ctr][column_pairs[ctr][i][0]], x_values[ctr][column_pairs[ctr][i][1]], null);
                 }
 
-                console.log(paired_x_values);
-                console.log(paired_y_values);
-
                 var values = [{
                     x: paired_x_values, y: paired_y_values,
                     mode: 'lines+markers',
@@ -169,18 +162,21 @@
                     type: 'scatter'
                 }];
 
-                var layout = {
-                    hovermode: 'closest',
-                    title: labels[row_index],
-                    xaxis: {
-                        ticktext: x_labels[ctr],
-                        tickvals: x_label_values[ctr],
-                        automargin: true
-                    }
-                };
+                traces[ctr] = values;
 
-                Plotly.react(scatter_plot[ctr], values, layout);
             });
+
+            var layout = {
+                hovermode: 'closest',
+                title: labels[row_index],
+                xaxis: {
+                    ticktext: x_labels[0],
+                    tickvals: x_label_values[0],
+                    automargin: true
+                }
+            };
+
+            Plotly.react(scatter_plot, traces, layout);
         };
 
         row_selector.addEventListener('keydown', function (event) {
@@ -242,8 +238,8 @@
 
         selectRow(0);
     });
-</script>
 
+</script>
 
 
 <div id="comparison-graph-page" class="page-header">
@@ -286,8 +282,7 @@
             </div>
 
         </span>
-        <span class="'col-xs-4" id="scatter_plot0" style="width:625px;height:450px;vertical-align: top"></span>
-        <span class="'col-xs-4" id="scatter_plot1" style="width:625px;height:450px;vertical-align: top"></span>
+        <span class="'col-xs-4" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
     </div>
 
     <div class="row" style="padding-top:2rem;padding-bottom:2rem">
@@ -312,7 +307,6 @@
         </div>
         <div class="row" id="heatmap"></div>
     </div>
-
 
 
 {% endblock %}
