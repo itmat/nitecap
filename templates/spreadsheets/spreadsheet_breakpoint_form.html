@@ -29,6 +29,10 @@
         saved_max_value_filter = {{ max_value_filter | safe }};
         filtered = {{ filtered | safe }};
 
+        // To be loaded later by ajax
+        jtk_ps = null;
+        jtk_qs = null;
+
         // Number of rows to show in the row selecotr
         num_row_selections = 21;
 
@@ -215,6 +219,10 @@
             $('#amplitude').html(toFixed(amplitudes[row_index], 3));
             $('#anova').html(toFixed(anovas[row_index], 3));
             $('#peak_time').html(toFixed(peak_times[row_index], 3));
+            if (jtk_ps !== null && jtk_qs !== null) {
+                $('#jtk_p').html(toFixed(jtk_ps[row_index], 3));
+                $('#jtk_q').html(toFixed(jtk_qs[row_index], 3));
+            }
         };
 
 
@@ -509,6 +517,7 @@
                 }
             }
         }
+
         $('#sort_select').change(function (evt) {
             if (this.value == "nitecap") {
                 // Nitecap order is default, sort_order is then just 0,1,2,3...
@@ -521,6 +530,27 @@
             selectRow(selected_row);
         });
 
+
+        // Load the JTK values
+        $.ajax({
+            url: "{{url_for('spreadsheets.get_jtk')}}",
+            data: JSON.stringify({}),
+            dataType: "json",
+            contentType: "application/json",
+            type: 'POST',
+            success: function(response) {
+                jtk_ps = response['jtk_ps'];
+                jtk_qs = response['jtk_qs'];
+                console.log(jtk_ps);
+
+
+                // Display the new values
+                updateRowSelector();
+            },
+            error: function(error) {
+                console.log(error);
+            }
+        });
     });
 
 
@@ -583,7 +613,7 @@
             </div>
             <div class="card-body">
                 Sort by: <br>
-                <select id="sort_select" class="form-control">
+                <select id="sort_select" class="form-control form-control-sm">
                      <option value="nitecap">Nitecap</option>
                      <option value="anova">ANOVA</option>
                      <option value="amplitude">Amplitude</option>
@@ -594,6 +624,8 @@
                     <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
                     <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
                     <li class="list-group-item">ANOVA p: <span id="anova"></span></li>
+                    <li class="list-group-item">JTK p: <span id="jtk_p"></span></li>
+                    <li class="list-group-item">JTK q: <span id="jtk_q"></span></li>
                 </ul>
             </div>
         </div>

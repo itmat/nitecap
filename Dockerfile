@@ -7,6 +7,7 @@ RUN apt-get update \
 && apt-get install -y libmagic-dev \
 && apt-get install -y apache2 \
 && apt-get install -y apache2-dev \
+&& apt-get install -y R-base \
 && mkdir -p /var/www/flask_apps/nitecap
 
 WORKDIR /var/www/flask_apps/nitecap

@@ -1,6 +1,7 @@
 import datetime
 import os
 import uuid
+import subprocess
 from parser import ParserError
 from pathlib import Path
 
@@ -318,6 +319,30 @@ class Spreadsheet(db.Model):
             error = True
             messages = f"The breakpoin must point to a row inside the spreadsheet."
         return error, messages
+
+    def get_jtk(self):
+        if "jtk_p" not in self.df.columns or "jtk_q" not in self.df.columns:
+            # Call out to an R script to run JTK
+            # write results to disk to pass the data to JTK
+            run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
+            data_file_path = f"/tmp/{uuid.uuid4()}"
+            self.get_raw_data().to_csv(data_file_path, sep="\t", index=False)
+            results_file_path = f"{data_file_path}.jtk_results"
+
+            # TODO: what value should we give here?
+            # probably doesn't matter if we aren't reporting JTK phase
+            hours_between_timepoints = 1
+            num_reps = max(self.num_replicates)
+
+            subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
+                            shell=True, check=True)
+
+            results = pd.read_table(results_file_path)
+            self.df["jtk_p"] = results.JTK_P
+            self.df["jtk_q"] = results.JTK_Q
+
+            # TODO: delete the tmp files after use
+        return self.df.jtk_p.tolist(), self.df.jtk_q.tolist()
 
     @staticmethod
     def normalize_data(raw_data):

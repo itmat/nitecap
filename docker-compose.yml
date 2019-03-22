@@ -25,6 +25,7 @@ services:
     volumes:
       - nitecap_data:${UPLOAD_FOLDER}
       - nitecap_db:${DATABASE_FOLDER}
+      - .:/var/www/flask_apps/nitecap
   smtp:
     image: namshi/smtp
     environment:
