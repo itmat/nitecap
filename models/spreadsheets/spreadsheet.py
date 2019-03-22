@@ -341,6 +341,8 @@ class Spreadsheet(db.Model):
             self.df["jtk_p"] = results.JTK_P
             self.df["jtk_q"] = results.JTK_Q
 
+            self.update_dataframe()
+
             # TODO: delete the tmp files after use
         return self.df.jtk_p.tolist(), self.df.jtk_q.tolist()
 
