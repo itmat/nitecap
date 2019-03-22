@@ -334,8 +334,11 @@ class Spreadsheet(db.Model):
             hours_between_timepoints = 1
             num_reps = max(self.num_replicates)
 
-            subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
-                            shell=True, check=True)
+            res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
+                                    shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            if res.returncode != 0:
+                raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout} \n {res.stderr}")
 
             results = pd.read_table(results_file_path)
             self.df["jtk_p"] = results.JTK_P
