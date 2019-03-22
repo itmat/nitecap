@@ -41,6 +41,7 @@ sudo apt-get install sendmail
 sudo apt-get install python3.6-venv
 sudo apt-get install apache2-dev
 sudo apt-get install python3.6-dev
+sudo apt-get install r-base
 ```
 Note that the python 3 version that ships with Ubuntu 16.04 is v3.5 and we need v3.6.  The apache version obtained
 here is 2.4.18.  
