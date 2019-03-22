@@ -178,39 +178,7 @@
             // after sorting
             row_index = sort_order[selected_row];
 
-            // Update the Plotly plot of the feature profile
-            raw_y_values = data[row_index];
-            if (raw_y_values === undefined) {
-                console.log("Could not find the y-values for row " + row_index);
-                return;
-            }
-
-            paired_y_values = [];
-            for( var i in column_pairs ) {
-                paired_y_values.push( raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null );
-            }
-            paired_x_values = [];
-            for( var i in column_pairs ) {
-                paired_x_values.push( x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null );
-            }
-
-            values = [{
-                x: paired_x_values, y: paired_y_values,
-                mode: 'lines+markers',
-                marker: marker_settings,
-                name: labels[row_index],
-                type: 'scatter'
-            }];
-            var layout = {
-                hovermode: 'closest',
-                title: labels[row_index],
-                xaxis: {
-                    ticktext: x_labels,
-                    tickvals: x_label_values,
-                    automargin: true
-                }
-            };
-            Plotly.react(scatter_plot, values, layout);
+            redrawPlot();
 
             // Update the "statistics" card
             $('#significant_items').html(num_significant_below[selected_row]);
@@ -296,6 +264,44 @@
 
             event.preventDefault();
         });
+
+        var redrawPlot = ( function () {
+            var row_index = sort_order[selected_row];
+
+            // Update the Plotly plot of the feature profile
+            raw_y_values = data[row_index];
+            if (raw_y_values === undefined) {
+                console.log("Could not find the y-values for row " + row_index);
+                return;
+            }
+
+            paired_y_values = [];
+            for( var i in column_pairs ) {
+                paired_y_values.push( raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null );
+            }
+            paired_x_values = [];
+            for( var i in column_pairs ) {
+                paired_x_values.push( x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null );
+            }
+
+            values = [{
+                x: paired_x_values, y: paired_y_values,
+                mode: 'lines+markers',
+                marker: marker_settings,
+                name: labels[row_index],
+                type: 'scatter'
+            }];
+            var layout = {
+                hovermode: 'closest',
+                title: labels[row_index],
+                xaxis: {
+                    ticktext: x_labels,
+                    tickvals: x_label_values,
+                    automargin: true
+                }
+            };
+            Plotly.react(scatter_plot, values, layout);
+        } );
 
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
