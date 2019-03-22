@@ -499,36 +499,51 @@
             }
         });
 
+        function compare(a,b, i,j) {
+            // Handle nans, putting them at the end
+            if (isNaN(a)) {
+                if (isNaN(b)) {
+                    // If both are Nans, then we preserve their order
+                    if (i > j) {
+                        return 1;
+                    } else if (i < j) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                } else {
+                    return 1;
+                }
+            } else if (isNaN(b)) {
+                return -1;
+            } else {
+                if (a > b) {
+                    return 1;
+                } else if (a < b) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        };
         var sorters = {
             "anova": function (i,j) {
                 // Sort anova p-values in ascending order
-                if (anovas[i] < anovas[j]) {
-                    return -1;
-                } else if (anovas[i] > anovas[j]) {
-                    return 1;
-                } else {
-                    return 0;
-                }
+                var a = anovas[i];
+                var b = anovas[j];
+                return compare(a,b,i,j);
             },
             "jtk": function (i,j) {
-                // Sort anova p-values in ascending order
-                if (jtk_ps[i] < jtk_ps[j]) {
-                    return -1;
-                } else if (jtk_ps[i] > jtk_ps[j]) {
-                    return 1;
-                } else {
-                    return 0;
-                }
+                // Sort jtk p-values in ascending order
+                var a = jtk_ps[i];
+                var b = jtk_ps[j];
+                return compare(a,b,i,j);
             },
             "amplitude": function (i,j) {
-                // Sort amplitude in *descending* order
-                if (-amplitudes[i] < -amplitudes[j]) {
-                    return -1;
-                } else if (-amplitudes[i] > -amplitudes[j]) {
-                    return 1;
-                } else {
-                    return 0;
-                }
+                // Sort jtk p-values in ascending order
+                var a = -amplitudes[i];
+                var b = -amplitudes[j];
+                return compare(a,b,i,j);
             }
         }
 
