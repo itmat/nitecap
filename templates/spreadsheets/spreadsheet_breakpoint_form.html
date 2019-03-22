@@ -114,9 +114,13 @@
         // Make labels that include q values in them, for the selector
         var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
         var nonbreakingspace = "\u00A0";
-        labels_with_qs = labels.map( function(label, i) {
-            return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2);
-        } );
+        var labels_with_qs = null;
+        function  makeRowLabels(q_values) {
+            labels_with_qs = labels.map( function(label, i) {
+                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+            } );
+        }
+        makeRowLabels(qs);
 
         var disableFilteredRows = function () {
             for(var i = 0; i < num_row_selections; i++) {
@@ -457,9 +461,11 @@
                     });
 
                     // Update row labels with new q-values
-                    labels_with_qs = labels.map( function(label, i) {
-                        return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2);
-                    } );
+                    if ($('#sort_select').val() === 'jtk') {
+                        makeRowLabels(jtk_qs);
+                    } else {
+                        makeRowLabels(qs);
+                    }
 
                     updateRowSelector();
                 },
@@ -567,9 +573,13 @@
             if (this.value == "nitecap") {
                 // Nitecap order is default, sort_order is then just 0,1,2,3...
                 sort_order = labels.map( function(x,i) {return i;} );
+
+                makeRowLabels(qs);
             } else {
                 sort_order = labels.map( function(x,i) {return i;} );
                 sort_order = sort_order.sort( sorters[this.value] );
+
+                makeRowLabels(jtk_qs);
             }
             // TODO: this will change what gene is selected
             selectRow(selected_row);
