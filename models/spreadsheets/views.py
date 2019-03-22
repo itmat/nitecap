@@ -244,7 +244,6 @@ def display_heatmap():
                     )
 
 
-
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
 @requires_login
 def display_spreadsheets():
@@ -519,6 +518,9 @@ def compare():
     x_label_values = []
     column_pairs = []
     descriptive_names = []
+    columns = []
+    compare_spreadsheets = []
+    datasets = []
     user = User.find_by_email(session['email'])
     spreadsheet_ids = request.args.get('spreadsheet_ids').split(",")
     for spreadsheet_id in spreadsheet_ids:
@@ -532,21 +534,25 @@ def compare():
         column_pairs.append(spreadsheet.column_pairs)
         descriptive_names.append(spreadsheet.descriptive_name)
         spreadsheets.append(spreadsheet)
-        data = spreadsheet.get_raw_data()
+        data = spreadsheet.df
         ids = list(spreadsheet.get_ids())
         data['compare_ids'] = ids
         datasets.append(data)
         print(f"Shape prior to join with label col: {data.shape}")
-    df = pd.merge(datasets[0],datasets[1],how='inner',on="compare_ids", validate='one_to_one')
+    common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
+    df = pd.merge(datasets[0],datasets[1],how='inner',on="compare_ids", validate='one_to_one', suffixes=('_0','_1'), sort=False)
+    df.sort_values(by=['total_delta_0'])
     print(f"Shape after join: {df.shape}")
     compare_ids = df['compare_ids'].tolist()
-    compare_spreadsheet0 = df[spreadsheets[0].get_raw_data().columns]
-    print(f"Shape after sep 0: {compare_spreadsheet0.shape}")
-    compare_spreadsheet1 = df[spreadsheets[1].get_raw_data().columns]
-    print(f"Shape after sep 1: {compare_spreadsheet1.shape}")
     datasets = []
-    datasets.append(compare_spreadsheet0.values.tolist())
-    datasets.append(compare_spreadsheet1.values.tolist())
+    for i in [0,1]:
+        columns.append(list(map(lambda column: column + f"_{i}"
+                            if column in common_columns else column,
+                            spreadsheets[i].get_raw_data().columns)))
+        compare_spreadsheets.append(df[columns[i]])
+        compare_spreadsheets[i].columns = spreadsheets[i].get_raw_data().columns
+        print(f"Shape after sep {i}: {compare_spreadsheets[i].shape}")
+        datasets.append(compare_spreadsheets[i].values.tolist())
 
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps(datasets),
