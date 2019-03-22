@@ -278,9 +278,10 @@
 
         row_selector.addEventListener('wheel', function (event) {
             if (event.deltaY > 0) {
-                row_selector_top++;
+                var max_top = Math.max(0, labels.length - num_row_selections);
+                row_selector_top = Math.min(row_selector_top + 3, max_top) ;
             } else if (event.deltaY < 0) {
-                row_selector_top--;
+                row_selector_top = Math.max(row_selector_top - 3, 0) ;
             }
             updateRowSelector();
 
