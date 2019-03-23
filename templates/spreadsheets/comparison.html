@@ -36,7 +36,7 @@
 
         number_comparisons.forEach(function(ctr) {
 
-            traces[ctr] = [{
+            traces[ctr] = {
                 x: x_values[ctr],
                 y: x_values[ctr].map(function (x) {
                     return 0;
@@ -45,7 +45,7 @@
                 type: 'scatter',
                 mode: 'lines+markers',
                 marker: marker_settings
-            }];
+            };
 
         });
 
@@ -154,13 +154,13 @@
                     paired_x_values.push(x_values[ctr][column_pairs[ctr][i][0]], x_values[ctr][column_pairs[ctr][i][1]], null);
                 }
 
-                var values = [{
+                var values = {
                     x: paired_x_values, y: paired_y_values,
                     mode: 'lines+markers',
                     marker: marker_settings,
                     name: labels[row_index],
                     type: 'scatter'
-                }];
+                };
 
                 traces[ctr] = values;
 
