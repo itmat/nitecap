@@ -332,13 +332,13 @@ class Spreadsheet(db.Model):
             # TODO: what value should we give here?
             # probably doesn't matter if we aren't reporting JTK phase
             hours_between_timepoints = 1
-            num_reps = max(self.num_replicates)
+            num_reps = ','.join(str(x) for x in self.num_replicates)
 
             res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
                                     shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             if res.returncode != 0:
-                raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout} \n {res.stderr}")
+                raise RuntimeError(f"Error running JTK: \n {res.argsedecode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
             results = pd.read_table(results_file_path)
             self.df["jtk_p"] = results.JTK_P
