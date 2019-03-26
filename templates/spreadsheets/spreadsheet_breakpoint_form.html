@@ -302,10 +302,23 @@
                 sum_by_timepoint[time] += raw_y_values[i];
                 reps_per_timepoint[time] += 1;
             }
-            var means = [];
-            for (var i = 0; i < sum_by_timepoint.length; i++) {
-                means[i] = sum_by_timepoint[i] / reps_per_timepoint[i];
+            var means = sum_by_timepoint.map( function (sum,i) {
+                return sum / reps_per_timepoint[i];
+            } );
+            var variances = [];
+            for (var i = 0; i < x_values.length; i++) {
+                var time = x_values[i];
+                if (variances[time] === undefined) {
+                    variances[time] = 0;
+                }
+
+                if (reps_per_timepoint[time] > 1) {
+                    variances[time] += (raw_y_values[i] - means[time])*(raw_y_values[i] - means[time]) / (reps_per_timepoint[time]-1);
+                } else {
+                    variances[time] = 0;
+                }
             }
+            var stds = variances.map(Math.sqrt);
 
             // Default values for the different plot styles to override
             var values = [{
@@ -350,6 +363,21 @@
                     mode: "lines"
                 };
                 layout["showlegend"] = false;
+            } else if (plot_style === "std") {
+                values[0].mode = "lines";
+                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = means;
+                values[0].name = labels[row_index] + " means";
+                values[0].error_y = {type: 'data', array:stds, visible:true};
+            } else if (plot_style === "SEM") {
+                SEM = stds.map( function (std,i) {
+                    return std / Math.sqrt( reps_per_timepoint[i]);
+                } );
+                values[0].mode = "lines";
+                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = means;
+                values[0].name = labels[row_index] + " means";
+                values[0].error_y = {type: 'data', array:SEM, visible:true};
             }
             Plotly.react(scatter_plot, values, layout);
         } );
@@ -719,6 +747,8 @@
                 <option value="points">Points</option>
                 <option value="mean">Mean only</option>
                 <option value="mean_points">Points and Mean</option>
+                <option value="std">Standard Deviations</option>
+                <option value="SEM">SEM</option>
             </select>
         </div>
 
