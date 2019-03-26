@@ -3,17 +3,19 @@
 
 library("readr")
 library("stringr")
-source("/var/www/flask_apps/nitecap/JTK_CYCLEv3.1.R")
 
 args <- commandArgs(trailingOnly = TRUE)
-input_file <- args[1]
-output_file <- args[2]
-timepoints_per_cycle <- strtoi(args[3])
-num_replicates <- as.integer(unlist(str_split(args[4], ",")))
-num_cycles <- strtoi(args[5])
-hours_between_timepoints <- strtoi(args[6])
+jtk_source_path <- args[1]
+input_file <- args[2]
+output_file <- args[3]
+timepoints_per_cycle <- strtoi(args[4])
+num_replicates <- as.integer(unlist(str_split(args[5], ",")))
+num_cycles <- strtoi(args[6])
+hours_between_timepoints <- strtoi(args[7])
 
 num_timepoints  = timepoints_per_cycle * num_cycles
+
+source(jtk_source_path)
 
 datatable = read_tsv(input_file, col_names = TRUE)
 
