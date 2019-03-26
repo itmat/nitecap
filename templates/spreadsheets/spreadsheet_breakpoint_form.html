@@ -74,7 +74,7 @@
 
         // This empty plot should be quickly replaced since we trigger a select change event once everything is
         // set up.
-        Plotly.newPlot(scatter_plot, values, layout);
+        Plotly.newPlot(scatter_plot, values, layout, {showLink: true});
 
         $("#coarse_slider").slider({
             orientation: "horizontal",
@@ -273,22 +273,42 @@
             var row_index = sort_order[selected_row];
 
             // Update the Plotly plot of the feature profile
-            raw_y_values = data[row_index];
+            var raw_y_values = data[row_index];
             if (raw_y_values === undefined) {
                 console.log("Could not find the y-values for row " + row_index);
                 return;
             }
 
-            paired_y_values = [];
+            // points for the basketweave styel
+            var paired_y_values = [];
             for( var i in column_pairs ) {
                 paired_y_values.push( raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null );
             }
-            paired_x_values = [];
+            var paired_x_values = [];
             for( var i in column_pairs ) {
                 paired_x_values.push( x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null );
             }
 
-            values = [{
+            // Mean values of each timepoint
+            var sum_by_timepoint = [];
+            var reps_per_timepoint = [];
+            for (var i = 0; i < x_values.length; i++) {
+                var time = x_values[i];
+
+                if (sum_by_timepoint[time] === undefined) {
+                    sum_by_timepoint[time] = 0;
+                    reps_per_timepoint[time] = 0;
+                }
+                sum_by_timepoint[time] += raw_y_values[i];
+                reps_per_timepoint[time] += 1;
+            }
+            var means = [];
+            for (var i = 0; i < sum_by_timepoint.length; i++) {
+                means[i] = sum_by_timepoint[i] / reps_per_timepoint[i];
+            }
+
+            // Default values for the different plot styles to override
+            var values = [{
                 x: paired_x_values, y: paired_y_values,
                 mode: 'lines+markers',
                 marker: marker_settings,
@@ -304,8 +324,39 @@
                     automargin: true
                 }
             };
+
+            // Pick data and styling based off the plot_style_select value
+            var plot_style = $('#plot_style_select').val();
+            if (plot_style === "basketweave") {
+                // Do nothing, basketweave is already the default settings
+            } else if (plot_style === "points") {
+                values[0].mode = "markers";
+                values[0].x = x_values;
+                values[0].y = raw_y_values;
+            } else if (plot_style === "mean") {
+                values[0].mode = "lines";
+                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = means;
+                values[0].name = labels[row_index] + " means";
+            } else if (plot_style === "mean_points") {
+                values[0].mode = "markers";
+                values[0].x = x_values
+                values[0].y = raw_y_values;
+                values[1] = {
+                    x: means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
+                    y: means,
+                    name: labels[row_index] + " mean",
+                    type: "scatter",
+                    mode: "lines"
+                };
+                layout["showlegend"] = false;
+            }
             Plotly.react(scatter_plot, values, layout);
         } );
+
+        $('#plot_style_select').change( function () {
+            redrawPlot();
+        });
 
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
@@ -644,13 +695,15 @@
         </span>
         <span class='col-xs-3 ...'>
             <div class='row'>
-                <div class="form-group form-inline">
-                    <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
+                <div class="col px-4">
+                    <div class="form-group form-inline">
+                        <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
+                        <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
+                    </div>
                 </div>
-                <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
             </div>
             <div class='row'>
-                <div class='col p-4'>
+                <div class='col px-4'>
                     <div id="row_selector" class="list-group" tabindex="0">
                      </div>
                 </div>
@@ -659,7 +712,15 @@
                 <button id="download_plot" class="btn btn-primary">Download Plot</button>
             </div>
         </span>
-        <span class="'col-xs-6" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
+        <div class='col-xs-6'>
+            <span id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
+            <select id="plot_style_select" value="basketweave" class="form-control form-control-sm">
+                <option value="basketweave">Basketweave</option>
+                <option value="points">Points</option>
+                <option value="mean">Mean only</option>
+                <option value="mean_points">Points and Mean</option>
+            </select>
+        </div>
 
         <div class="card col-xs-1" style="width: 15rem;">
             <div class="card-header">

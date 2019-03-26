@@ -336,6 +336,7 @@ class Spreadsheet(db.Model):
             # Call out to an R script to run JTK
             # write results to disk to pass the data to JTK
             run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
+            jtk_source_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../JTK_CYCLEv3.1.R"))
             data_file_path = f"/tmp/{uuid.uuid4()}"
             self.get_raw_data().to_csv(data_file_path, sep="\t", index=False)
             results_file_path = f"{data_file_path}.jtk_results"
@@ -343,13 +344,13 @@ class Spreadsheet(db.Model):
             # TODO: what value should we give here?
             # probably doesn't matter if we aren't reporting JTK phase
             hours_between_timepoints = 1
-            num_reps = max(self.num_replicates)
+            num_reps = ','.join(str(x) for x in self.num_replicates)
 
-            res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
+            res = subprocess.run(f"Rscript {run_jtk_file} {jtk_source_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
                                     shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             if res.returncode != 0:
-                raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout} \n {res.stderr}")
+                raise RuntimeError(f"Error running JTK: \n {res.argsedecode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
             results = pd.read_table(results_file_path)
             self.df["jtk_p"] = results.JTK_P

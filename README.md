@@ -97,7 +97,7 @@ added to the requirements.txt file without disrupting development work.
 
 Similarly we need to load an R package:
 ```bash
-sudo Rscript -e 'install.packages("readr", repos="http://cran.r-project.org")' 
+sudo Rscript -e 'install.packages(c("readr", "stringr"), repos="http://cran.r-project.org")' 
 ```
 
 Then while activated, I used by mod_wsgi command to grab the configuration data
