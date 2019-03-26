@@ -530,7 +530,6 @@ def compare():
     x_labels = []
     x_label_values = []
     column_pairs = []
-    descriptive_names = []
     columns = []
     compare_spreadsheets = []
     datasets = []
@@ -545,6 +544,7 @@ def compare():
     errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    descriptive_names = []
     for spreadsheet in spreadsheets:
         x_values.append(spreadsheet.x_values)
         x_labels.append(spreadsheet.x_labels)

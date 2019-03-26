@@ -3,8 +3,6 @@
 
 <script>
 
-
-
     $(function () {
         $('[data-toggle="tooltip"]').tooltip()
     });
@@ -58,7 +56,8 @@
                 spreadsheet_list.push(value[8])
             });
             if(!spreadsheet_list || spreadsheet_list.length != 2) {
-                alert("Sorry - presently a comparison can be made against only 2 spreadsheets.")
+                $("#alert-error").modal()
+                return
             }
 
             console.log(spreadsheet_list);
@@ -114,8 +113,6 @@
         {% for spreadsheet in user.spreadsheets %}
             {% if spreadsheet.error %}
                 {% set class="alert alert_danger" %}
-            {% elif not spreadsheet.ids_unique %}
-                {% set class="text-muted" %}
             {% else %}
                 {% set class="text-dark" %}
             {% endif %}
@@ -214,6 +211,28 @@
                     <span aria-hidden="true">Cancel</span>
                 </button>
                 <a class="btn btn-danger" href="#">Delete</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="alert-error" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="model-title text-danger">Error</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-danger">
+                Presently, we only support comparing two spreadsheets at a time.  Please adjust your selection
+                accordingly.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">Dismiss</span>
+                </button>
             </div>
         </div>
     </div>

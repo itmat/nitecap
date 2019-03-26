@@ -11,6 +11,7 @@
         x_label_values = {{ x_label_values | safe }};
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
+        descriptive_names = {{ descriptive_names | safe }}
 
         var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
@@ -158,7 +159,7 @@
                     x: paired_x_values, y: paired_y_values,
                     mode: 'lines+markers',
                     marker: marker_settings,
-                    name: labels[row_index],
+                    name: descriptive_names[ctr],
                     type: 'scatter'
                 };
 
