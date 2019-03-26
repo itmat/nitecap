@@ -528,12 +528,16 @@ def compare():
         if not spreadsheet:
             errors.append('You may only manage your own spreadsheets.')
             return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+        spreadsheets.append(spreadsheet)
+    errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
+    if errors:
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    for spreadsheet in spreadsheets:
         x_values.append(spreadsheet.x_values)
         x_labels.append(spreadsheet.x_labels)
         x_label_values.append(spreadsheet.x_label_values)
         column_pairs.append(spreadsheet.column_pairs)
         descriptive_names.append(spreadsheet.descriptive_name)
-        spreadsheets.append(spreadsheet)
         data = spreadsheet.df
         ids = list(spreadsheet.get_ids())
         data['compare_ids'] = ids

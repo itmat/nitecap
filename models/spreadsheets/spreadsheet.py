@@ -518,6 +518,33 @@ class Spreadsheet(db.Model):
         spreadsheet_share.save_to_db()
         return spreadsheet_share
 
+    def get_timepoint_labels(self):
+        return set(filter(lambda column_label:
+                      column_label != Spreadsheet.ID_COLUMN and column_label != Spreadsheet.IGNORE_COLUMN,
+                      self.column_labels))
+
+    @staticmethod
+    def check_for_timepoint_consistency(spreadsheets):
+        errors = []
+        if not spreadsheets or len(spreadsheets) < 2:
+            errors.append("Insufficient spreadsheets were provided for comparisons.")
+            return errors
+        timepoint_labels = spreadsheets[0].get_timepoint_labels()
+        for spreadsheet in spreadsheets[1:]:
+            other_timepoint_labels = spreadsheet.get_timepoint_labels()
+            print(timepoint_labels)
+            print(other_timepoint_labels)
+            print(timepoint_labels != other_timepoint_labels)
+            if timepoint_labels != other_timepoint_labels:
+                errors.append("Timepoints must be the same for the comparison of multiple spreadsheets.")
+        print(errors)
+        return errors
+
+
+
+
+
+
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
