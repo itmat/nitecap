@@ -74,7 +74,7 @@
 
         // This empty plot should be quickly replaced since we trigger a select change event once everything is
         // set up.
-        Plotly.newPlot(scatter_plot, values, layout);
+        Plotly.newPlot(scatter_plot, values, layout, {showLink: true});
 
         $("#coarse_slider").slider({
             orientation: "horizontal",
