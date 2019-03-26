@@ -29,11 +29,19 @@
         saved_max_value_filter = {{ max_value_filter | safe }};
         filtered = {{ filtered | safe }};
 
+        // To be loaded later by ajax
+        jtk_ps = null;
+        jtk_qs = null;
+
         // Number of rows to show in the row selecotr
         num_row_selections = 21;
 
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
+
+        // Indexes to the order in which we will display the genes
+        // default to the order in which they were sent
+        sort_order = labels.map(function(x,i) {return i;});
 
         // Currently selected row from slider
         selected_row = breakpoint;
@@ -76,15 +84,8 @@
             max: labels.length - 1,
             slide: function (event, ui) {
                 selected_row = ui.value;
+                selectRow(selected_row);
 
-                $('#significant_items').html(num_significant_below[ui.value]);
-                $('#q_value').html(toFixed(qs[ui.value], 3));
-                $('#p_value').html(toFixed(ps[ui.value], 3));
-                $('#amplitude').html(toFixed(amplitudes[ui.value], 3));
-                $('#anova').html(toFixed(anovas[ui.value], 3));
-                $('#peak_time').html(toFixed(peak_times[ui.value], 3));
-
-                selectRow(parseInt(ui.value));
                 row_selector.focus();
             }
         });
@@ -113,13 +114,17 @@
         // Make labels that include q values in them, for the selector
         var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
         var nonbreakingspace = "\u00A0";
-        labels_with_qs = labels.map( function(label, i) {
-            return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2);
-        } );
+        var labels_with_qs = null;
+        function  makeRowLabels(q_values) {
+            labels_with_qs = labels.map( function(label, i) {
+                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+            } );
+        }
+        makeRowLabels(qs);
 
         var disableFilteredRows = function () {
             for(var i = 0; i < num_row_selections; i++) {
-                var current_index = row_selector_top + i;
+                var current_index = sort_order[row_selector_top + i];
                 if (filtered[current_index]) {
                     row_selector_options[i].classList.add("disabled");
                 } else {
@@ -136,7 +141,7 @@
                 } else if (current_index >= labels_with_qs.length) {
                     row_selector_options[i].textContent = "-";
                 } else {
-                    row_selector_options[i].textContent = labels_with_qs[current_index];
+                    row_selector_options[i].textContent = labels_with_qs[sort_order[current_index]];
                 }
 
                 if (current_index === selected_row) {
@@ -151,24 +156,121 @@
 
         };
         var selectRow = function (row_index) {
+            // Update the coarse slider
+            $("#coarse_slider").slider("option", "value", row_index);
+
+            // Set selected row according to our sorting
             selected_row = row_index;
 
-            if (row_index >= row_selector_top) {
-                if (row_index < row_selector_top + num_row_selections) {
+            // Update row selector scrolling
+            if (selected_row >= row_selector_top) {
+                if (selected_row < row_selector_top + num_row_selections) {
                     // Do nothing, already can see the right row
                 } else {
                     // Moving down, put it at the bottom
-                    row_selector_top = row_index - num_row_selections + 1;
+                    row_selector_top = selected_row - num_row_selections + 1;
                 }
             } else {
                 // Moving up, put it at the top
-                row_selector_top = row_index;
+                row_selector_top = selected_row;
             }
 
             updateRowSelector();
 
-            // Update the coarse slider
-            $("#coarse_slider").slider("option", "value", selected_row);
+
+            // But we actually access the row by its index
+            // after sorting
+            row_index = sort_order[selected_row];
+
+            redrawPlot();
+
+            // Update the "statistics" card
+            $('#significant_items').html(num_significant_below[selected_row]);
+            $('#q_value').html(toFixed(qs[row_index], 3));
+            $('#p_value').html(toFixed(ps[row_index], 3));
+            $('#amplitude').html(toFixed(amplitudes[row_index], 3));
+            $('#anova').html(toFixed(anovas[row_index], 3));
+            $('#peak_time').html(toFixed(peak_times[row_index], 3));
+
+            if (jtk_ps !== null && jtk_qs !== null) {
+                $('#jtk_p').html(toFixed(jtk_ps[row_index], 3));
+                $('#jtk_q').html(toFixed(jtk_qs[row_index], 3));
+            } else {
+                $('#jtk_p').html("loading");
+                $('#jtk_q').html("loading");
+            }
+        };
+
+
+        row_selector.addEventListener('keydown', function (event) {
+            if (event.defaultPrevented) {
+                return; // Do nothing
+            }
+
+            switch (event.key) {
+                case "Down": // IE/Edge specific value
+                case "ArrowDown":
+                    // Find the next row down that is unfiltered
+                    var i = selected_row+1;
+                    while (true) {
+                        if (i >= filtered.length) {
+                            // End of the table, do nothing;
+                            break;
+                        }
+                        if (!filtered[sort_order[i]]) {
+                            selectRow(i);
+                            break;
+                        }
+                        i++;
+                    }
+                    break;
+                case "Up": // IE/Edge specific value
+                case "ArrowUp":
+                    // Find the next row up that is unfiltered
+                    var i = selected_row-1;
+                    while (true) {
+                        if (i < 0) {
+                            // Top of the table, do nothing;
+                            break;
+                        }
+                        if (!filtered[sort_order[i]]) {
+                            selectRow(i);
+                            break;
+                        }
+                        i--;
+                    }
+                    break;
+                case "PageDown":
+                    var max_top = Math.max(0, labels.length - num_row_selections);
+                    row_selector_top = Math.min(row_selector_top + num_row_selections, max_top);
+                    updateRowSelector();
+                    break;
+                case "PageUp":
+                    row_selector_top = Math.max(row_selector_top - num_row_selections, 0);
+                    updateRowSelector();
+                    break;
+                default:
+                    return;
+            }
+
+            event.preventDefault();
+            return;
+        });
+
+        row_selector.addEventListener('wheel', function (event) {
+            if (event.deltaY > 0) {
+                var max_top = Math.max(0, labels.length - num_row_selections);
+                row_selector_top = Math.min(row_selector_top + 3, max_top) ;
+            } else if (event.deltaY < 0) {
+                row_selector_top = Math.max(row_selector_top - 3, 0) ;
+            }
+            updateRowSelector();
+
+            event.preventDefault();
+        });
+
+        var redrawPlot = ( function () {
+            var row_index = sort_order[selected_row];
 
             // Update the Plotly plot of the feature profile
             raw_y_values = data[row_index];
@@ -203,73 +305,7 @@
                 }
             };
             Plotly.react(scatter_plot, values, layout);
-
-            // Update the "statistics" card
-            $('#significant_items').html(num_significant_below[row_index]);
-            $('#q_value').html(toFixed(qs[row_index], 3));
-            $('#p_value').html(toFixed(ps[row_index], 3));
-            $('#amplitude').html(toFixed(amplitudes[row_index], 3));
-            $('#anova').html(toFixed(anovas[row_index], 3));
-            $('#peak_time').html(toFixed(peak_times[row_index], 3));
-        };
-
-
-        row_selector.addEventListener('keydown', function (event) {
-            if (event.defaultPrevented) {
-                return; // Do nothing
-            }
-
-            switch (event.key) {
-                case "Down": // IE/Edge specific value
-                case "ArrowDown":
-                    // Find the next row down that is unfiltered
-                    var i = selected_row+1;
-                    while (true) {
-                        if (i >= filtered.length) {
-                            // End of the table, do nothing;
-                            break;
-                        }
-                        if (!filtered[i]) {
-                            selectRow(i);
-                            break;
-                        }
-                        i++;
-                    }
-                    break;
-                case "Up": // IE/Edge specific value
-                case "ArrowUp":
-                    // Find the next row up that is unfiltered
-                    var i = selected_row-1;
-                    while (true) {
-                        if (i < 0) {
-                            // Top of the table, do nothing;
-                            break;
-                        }
-                        if (!filtered[i]) {
-                            selectRow(i);
-                            break;
-                        }
-                        i--;
-                    }
-                    break;
-                default:
-                    return;
-            }
-
-            event.preventDefault();
-            return;
-        });
-
-        row_selector.addEventListener('wheel', function (event) {
-            if (event.deltaY > 0) {
-                row_selector_top++;
-            } else if (event.deltaY < 0) {
-                row_selector_top--;
-            }
-            updateRowSelector();
-
-            event.preventDefault();
-        });
+        } );
 
         $('#set_breakpoint').click(function() {
             $('#heatmap_block').hide();
@@ -425,9 +461,11 @@
                     });
 
                     // Update row labels with new q-values
-                    labels_with_qs = labels.map( function(label, i) {
-                        return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(qs[i], 2);
-                    } );
+                    if ($('#sort_select').val() === 'jtk') {
+                        makeRowLabels(jtk_qs);
+                    } else {
+                        makeRowLabels(qs);
+                    }
 
                     updateRowSelector();
                 },
@@ -448,7 +486,8 @@
             var search_value = $('#row_search_box').val().toLowerCase();
 
             // Pull out row indexes matching our search_value
-            var matching_rows = labels.map( function(label, index) {
+            var matching_rows = labels.map( function(unused, index) {
+                var label = labels[sort_order[index]];
                 if (label.toLowerCase().indexOf(search_value) !== -1) {
                     return index;
                 }
@@ -482,6 +521,90 @@
             }
         });
 
+        function compare(a,b, i,j) {
+            // Handle nans, putting them at the end
+            if (isNaN(a)) {
+                if (isNaN(b)) {
+                    // If both are Nans, then we preserve their order
+                    if (i > j) {
+                        return 1;
+                    } else if (i < j) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                } else {
+                    return 1;
+                }
+            } else if (isNaN(b)) {
+                return -1;
+            } else {
+                if (a > b) {
+                    return 1;
+                } else if (a < b) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        };
+        var sorters = {
+            "anova": function (i,j) {
+                // Sort anova p-values in ascending order
+                var a = anovas[i];
+                var b = anovas[j];
+                return compare(a,b,i,j);
+            },
+            "jtk": function (i,j) {
+                // Sort jtk p-values in ascending order
+                var a = jtk_ps[i];
+                var b = jtk_ps[j];
+                return compare(a,b,i,j);
+            },
+            "amplitude": function (i,j) {
+                // Sort jtk p-values in ascending order
+                var a = -amplitudes[i];
+                var b = -amplitudes[j];
+                return compare(a,b,i,j);
+            }
+        }
+
+        $('#sort_select').change(function (evt) {
+            if (this.value == "nitecap") {
+                // Nitecap order is default, sort_order is then just 0,1,2,3...
+                sort_order = labels.map( function(x,i) {return i;} );
+
+                makeRowLabels(qs);
+            } else {
+                sort_order = labels.map( function(x,i) {return i;} );
+                sort_order = sort_order.sort( sorters[this.value] );
+
+                makeRowLabels(jtk_qs);
+            }
+            // TODO: this will change what gene is selected
+            selectRow(selected_row);
+        });
+
+
+        // Load the JTK values
+        $.ajax({
+            url: "{{url_for('spreadsheets.get_jtk')}}",
+            data: JSON.stringify({}),
+            dataType: "json",
+            contentType: "application/json",
+            type: 'POST',
+            success: function(response) {
+                jtk_ps = response['jtk_ps'];
+                jtk_qs = response['jtk_qs'];
+
+                // Display the new values by reselecting the current row
+                selectRow(selected_row);
+            },
+            error: function(error) {
+                console.log("Error loading JTK values");
+                console.log(error);
+            }
+        });
     });
 
 
@@ -543,12 +666,21 @@
                 Statistics
             </div>
             <div class="card-body">
+                Sort by: <br>
+                <select id="sort_select" class="form-control form-control-sm">
+                     <option value="nitecap">Nitecap</option>
+                     <option value="jtk">JTK</option>
+                     <option value="anova">ANOVA</option>
+                     <option value="amplitude">Amplitude</option>
+                </select>
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item">Q: <span id="q_value"></span></li>
                     <li class="list-group-item">p-value: <span id="p_value"></span></li>
                     <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
                     <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
                     <li class="list-group-item">ANOVA p: <span id="anova"></span></li>
+                    <li class="list-group-item">JTK p: <span id="jtk_p"></span></li>
+                    <li class="list-group-item">JTK q: <span id="jtk_q"></span></li>
                 </ul>
             </div>
         </div>
