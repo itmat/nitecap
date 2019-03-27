@@ -36,6 +36,9 @@
         // Number of rows to show in the row selecotr
         num_row_selections = 21;
 
+        // Largest size of any label to use, truncate longer labels
+        max_label_size = 35;
+
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
 
@@ -117,7 +120,9 @@
         var labels_with_qs = null;
         function  makeRowLabels(q_values) {
             labels_with_qs = labels.map( function(label, i) {
-                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+                var label = String(label).padEnd(max_label_length, nonbreakingspace)
+                label = label.substring(0, max_label_size);
+                return label  + ' Q: ' + toFixed(q_values[i], 2);
             } );
         }
         makeRowLabels(qs);
