@@ -3,6 +3,18 @@
 
 <script>
 
+    var toFixed = function(num, i) {
+        // Call num.toFixed unless num is undefined (eg: null)
+        if (typeof num === 'number') {
+            return num.toFixed(i);
+        }
+        return num;
+    };
+
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+    });
+
     $(document).ready(function () {
 
         labels = {{ ids | safe }}
@@ -12,10 +24,20 @@
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
         descriptive_names = {{ descriptive_names | safe }}
+        qs = {{ qs | safe }};
+        ps = {{ ps | safe }};
+        amplitudes = {{ amplitudes | safe }};
+        anovas = {{ anovas | safe }};
+        peak_times = {{ peak_times | safe }};
+        filtered = {{ filtered | safe }};
 
         var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
         var breakpoint = 0;
+
+        // To be loaded later by ajax
+        jtk_ps = null;
+        jtk_qs = null;
 
         // Number of rows to show in the row selecotr
         num_row_selections = 21;
@@ -23,8 +45,12 @@
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
 
+        // Indexes to the order in which we will display the genes
+        // default to the order in which they were sent
+        sort_order = labels.map(function(x,i) {return i;});
+
         // Currently selected row from slider
-        selected_row = 0;
+        selected_row = breakpoint;
 
         // What row is being shown at the top of the row selector
         row_selector_top = 0;
@@ -95,16 +121,38 @@
             row_selector.appendChild(row_option);
         }
 
+        // Make labels that include q values in them, for the selector
+        var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
+        var nonbreakingspace = "\u00A0";
+        var labels_with_qs = null;
+        function  makeRowLabels(q_values) {
+            labels_with_qs = labels.map( function(label, i) {
+                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+            } );
+        }
+        makeRowLabels(qs);
+
+        var disableFilteredRows = function () {
+            for(var i = 0; i < num_row_selections; i++) {
+                var current_index = sort_order[row_selector_top + i];
+                if (filtered[current_index]) {
+                    row_selector_options[i].classList.add("disabled");
+                } else {
+                    row_selector_options[i].classList.remove("disabled");
+                }
+            }
+        };
+
         var updateRowSelector = function () {
             // Update the selector rows
             for(var i = 0; i < num_row_selections; i++) {
                 var current_index = row_selector_top + i;
                 if (current_index < 0) {
                     row_selector_options[i].textContent = "-";
-                } else if (current_index >= labels) {
+                } else if (current_index >= labels_with_qs.length) {
                     row_selector_options[i].textContent = "-";
                 } else {
-                    row_selector_options[i].textContent = labels[current_index];
+                    row_selector_options[i].textContent = labels_with_qs[sort_order[current_index]];
                 }
 
                 if (current_index === selected_row) {
@@ -114,11 +162,19 @@
                 }
             }
 
+            // Visually disable filtered options
+            disableFilteredRows();
+
         };
 
         var selectRow = function (row_index) {
+            // Update the coarse slider
+            $("#coarse_slider").slider("option", "value", row_index);
+
+             // Set selected row according to our sorting
             selected_row = row_index;
 
+            // Update row selector scrolling
             if (row_index >= row_selector_top) {
                 if (row_index < row_selector_top + num_row_selections) {
                     // Do nothing, already can see the right row
@@ -133,8 +189,13 @@
 
             updateRowSelector();
 
-            // Update the coarse slider
-            $("#coarse_slider").slider("option", "value", selected_row);
+            // But we actually access the row by its index
+            // after sorting
+            row_index = sort_order[selected_row];
+
+            // Modify redrawPlot to handle data below
+            //redrawPlot();
+
 
             // Update the Plotly plots of the feature profiles
             number_comparisons.forEach(function (ctr) {
@@ -178,7 +239,26 @@
             };
 
             Plotly.react(scatter_plot, traces, layout);
+
+            // Update the "statistics" card
+            $('#significant_items').html(num_significant_below[selected_row]);
+            $('#q_value').html(toFixed(qs[row_index], 3));
+            $('#p_value').html(toFixed(ps[row_index], 3));
+            $('#amplitude').html(toFixed(amplitudes[row_index], 3));
+            $('#anova').html(toFixed(anovas[row_index], 3));
+            $('#peak_time').html(toFixed(peak_times[row_index], 3));
+
+            if (jtk_ps !== null && jtk_qs !== null) {
+                $('#jtk_p').html(toFixed(jtk_ps[row_index], 3));
+                $('#jtk_q').html(toFixed(jtk_qs[row_index], 3));
+            } else {
+                $('#jtk_p').html("loading");
+                $('#jtk_q').html("loading");
+            }
         };
+
+
+
 
         row_selector.addEventListener('keydown', function (event) {
             if (event.defaultPrevented) {
@@ -237,18 +317,307 @@
             event.preventDefault();
         });
 
-        selectRow(0);
+        var redrawPlot = ( function () {
+            var row_index = sort_order[selected_row];
+
+            // Update the Plotly plot of the feature profile
+            var raw_y_values = data[row_index];
+            if (raw_y_values === undefined) {
+                console.log("Could not find the y-values for row " + row_index);
+                return;
+            }
+
+            // points for the basketweave styel
+            var paired_y_values = [];
+            for (var i in column_pairs) {
+                paired_y_values.push(raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null);
+            }
+            var paired_x_values = [];
+            for (var i in column_pairs) {
+                paired_x_values.push(x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null);
+            }
+
+            // Mean values of each timepoint
+            var sum_by_timepoint = [];
+            var reps_per_timepoint = [];
+            for (var i = 0; i < x_values.length; i++) {
+                var time = x_values[i];
+
+                if (sum_by_timepoint[time] === undefined) {
+                    sum_by_timepoint[time] = 0;
+                    reps_per_timepoint[time] = 0;
+                }
+                sum_by_timepoint[time] += raw_y_values[i];
+                reps_per_timepoint[time] += 1;
+            }
+            var means = [];
+            for (var i = 0; i < sum_by_timepoint.length; i++) {
+                means[i] = sum_by_timepoint[i] / reps_per_timepoint[i];
+            }
+
+            // Default values for the different plot styles to override
+            var values = [{
+                x: paired_x_values, y: paired_y_values,
+                mode: 'lines+markers',
+                marker: marker_settings,
+                name: labels[row_index],
+                type: 'scatter'
+            }];
+            var layout = {
+                hovermode: 'closest',
+                title: labels[row_index],
+                xaxis: {
+                    ticktext: x_labels,
+                    tickvals: x_label_values,
+                    automargin: true
+                }
+            };
+        });
+
+        $('#plot_style_select').change( function () {
+            //redrawPlot();
+        });
+
+        $('#set_breakpoint').click(function() {
+            $('#heatmap_block').hide();
+            $('#download_heatmap').hide();
+            $('#toggle_replicates').hide();
+            $('#cutoff').html(num_significant_below[selected_row]);
+            $.ajax({
+                url: "{{url_for('spreadsheets.display_heatmap')}}",
+                data: JSON.stringify({'row_index': selected_row}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function(response) {
+                    heatmap_x_values = response['heatmap_x_values'];
+                    heatmap_labels = response['heatmap_labels'];
+                    heatmap_data = response['heatmap_data'];
+                    heatmap_combined_data = response['heatmap_combined_data'];
+                    original_indexes = response['heatmap_indexes'];
+
+                    // Remove any rows that have been filtered
+                    var filter_out = function (x,i) { return !filtered[original_indexes[i]]; }
+                    heatmap_labels = heatmap_labels.filter(filter_out);
+                    heatmap_data = heatmap_data.filter(filter_out);
+                    heatmap_combined_data = heatmap_combined_data.filter(filter_out);
+
+                    updateHeatmap();
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
+        });
+
+                var updateHeatmap = function () {
+            var heatmap_layout = {
+                height: 700,
+                width: 900,
+                margin: {
+                    l: 200,
+                    r: 5,
+                    b: 175,
+                    t: 20
+                },
+                pad: 4
+            };
+
+            var heatmap_options = {
+                modeBarButtonsToAdd: [{
+                    name: 'download in SVG format',
+                    icon: Plotly.Icons.camera,
+                    click: function (gd) {
+                        Plotly.downloadImage(gd, {format: 'svg'})
+                    }
+                }]
+            };
+
+
+            var x_values;
+            var data;
+            var combine_replicates = $('#combine_replicates').is(':checked');
+            if (combine_replicates) {
+                x_values = x_labels;
+                data = heatmap_combined_data;
+            } else {
+                x_values = heatmap_x_values;
+                data = heatmap_data;
+            }
+
+            // Find max/min values so that we can center the colormap with 0=middle
+            var maxRow = data.map(function(row){ return Math.max.apply(Math, row); });
+            var minRow = data.map(function(row){ return Math.min.apply(Math, row); });
+
+            var max = Math.max.apply(null, maxRow);
+            var min = Math.min.apply(null, minRow);
+            var limit = Math.max(Math.abs(min), max);
+
+            var heatmap_values = [{
+                x: x_values,
+                y: heatmap_labels,
+                z: data,
+                type: 'heatmap',
+                zmin: -1 * limit,
+                zmax: limit,
+                colorbar: {
+                    title: 'Z Scale',
+                    titleside: 'right'
+                }
+            }];
+
+            Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
+            $('#heatmap_block').show();
+            $('#download_heatmap').show();
+            $('#toggle_replicates').show();
+        };
+
+
+        selectRow(breakpoint);
+
+        // Prep the initial row display
+        disableFilteredRows();
+
+        var searchRows = function() {
+            var search_value = $('#row_search_box').val().toLowerCase();
+
+            // Pull out row indexes matching our search_value
+            var matching_rows = labels.map( function(unused, index) {
+                var label = labels[sort_order[index]];
+                if (label.toLowerCase().indexOf(search_value) !== -1) {
+                    return index;
+                }
+            }).filter(isFinite);
+
+
+            if (matching_rows.length === 0) {
+                console.log("Unfortunately no matching row found.");
+                // TODO: display something to the user
+                return;
+            }
+
+            // First look for matches that are *after* our selected_row
+            // so that multiple button presses will cycle the selection through all matches
+            var matches_after = matching_rows.filter( function (i) {
+                return i > selected_row;
+            } );
+            if (matches_after.length > 0) {
+                var row = matches_after[0];
+            } else {
+                // If that fails, grab the first matching row
+                var row = matching_rows[0];
+            }
+
+            selectRow(row);
+        };
+        $('#search_button').click( searchRows);
+        $('#row_search_box').on("keydown", function (evt) {
+            if (evt.keyCode === 13) { // On Enter key press
+                searchRows();
+            }
+        });
+
+        function compare(a,b, i,j) {
+            // Handle nans, putting them at the end
+            if (isNaN(a)) {
+                if (isNaN(b)) {
+                    // If both are Nans, then we preserve their order
+                    if (i > j) {
+                        return 1;
+                    } else if (i < j) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                } else {
+                    return 1;
+                }
+            } else if (isNaN(b)) {
+                return -1;
+            } else {
+                if (a > b) {
+                    return 1;
+                } else if (a < b) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        };
+        var sorters = {
+            "anova": function (i,j) {
+                // Sort anova p-values in ascending order
+                var a = anovas[i];
+                var b = anovas[j];
+                return compare(a,b,i,j);
+            },
+            "jtk": function (i,j) {
+                // Sort jtk p-values in ascending order
+                var a = jtk_ps[i];
+                var b = jtk_ps[j];
+                return compare(a,b,i,j);
+            },
+            "amplitude": function (i,j) {
+                // Sort jtk p-values in ascending order
+                var a = -amplitudes[i];
+                var b = -amplitudes[j];
+                return compare(a,b,i,j);
+            }
+        }
+
+        $('#sort_select').change(function (evt) {
+            if (this.value == "nitecap") {
+                // Nitecap order is default, sort_order is then just 0,1,2,3...
+                sort_order = labels.map( function(x,i) {return i;} );
+
+                makeRowLabels(qs);
+            } else {
+                sort_order = labels.map( function(x,i) {return i;} );
+                sort_order = sort_order.sort( sorters[this.value] );
+
+                makeRowLabels(jtk_qs);
+            }
+            // TODO: this will change what gene is selected
+            selectRow(selected_row);
+        });
+
+
+        // Load the JTK values
+        $.ajax({
+            url: "{{url_for('spreadsheets.get_jtk')}}",
+            data: JSON.stringify({}),
+            dataType: "json",
+            contentType: "application/json",
+            type: 'POST',
+            success: function(response) {
+                jtk_ps = response['jtk_ps'];
+                jtk_qs = response['jtk_qs'];
+
+                // Display the new values by reselecting the current row
+                selectRow(selected_row);
+            },
+            error: function(error) {
+                console.log("Error loading JTK values");
+                console.log(error);
+            }
+        });
+
+
     });
 
 </script>
 
 
 <div id="comparison-graph-page" class="page-header">
-    <h1>Spreadsheet Comparsions <small>Data sorted by significance</small></h1>
+    <h1>Spreadsheet Comparsions <small>Primary Spreadsheet is the first one listed below</small></h1>
 </div>
 
 <p id="spreadsheet-comparison-page">
-
+    <div class="row">
+        <p class="col-lg-12 h3">
+            {{descriptive_names[0]}} vs. {{descriptive_names[1]}}
+        </p>
+    </div>
     <div class="row">
         <span class="col-lg-9">
             Number of items equal to or more significant than currently selected:
@@ -270,10 +639,12 @@
         </span>
         <span class='col-xs-3 ...'>
             <div class='row'>
-                <div class="form-group form-inline">
-                    <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
+                <div class="col px-4">
+                    <div class="form-group form-inline">
+                        <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
+                        <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
+                    </div>
                 </div>
-                <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
             </div>
             <div class='row'>
                 <div class='col p-4'>
@@ -281,9 +652,56 @@
                      </div>
                 </div>
             </div>
-
+            <div class='row p-3'>
+                <button id="download_plot" class="btn btn-primary">Download Plot</button>
+            </div>
         </span>
-        <span class="'col-xs-4" id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
+        <div class='col-xs-6'>
+            <span id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
+            <select id="plot_style_select" value="basketweave" class="form-control form-control-sm">
+                <option value="basketweave">Basketweave</option>
+                <option value="points">Points</option>
+                <option value="mean">Mean only</option>
+                <option value="mean_points">Points and Mean</option>
+            </select>
+        </div>
+
+        <div class="card col-xs-1" style="width: 15rem;">
+            <div class="card-header">
+                Statistics
+            </div>
+            <div class="card-body">
+                Sort by: <br>
+                <select id="sort_select" class="form-control form-control-sm">
+                     <option value="nitecap">Nitecap</option>
+                     <option value="jtk">JTK</option>
+                     <option value="anova">ANOVA</option>
+                     <option value="amplitude">Amplitude</option>
+                </select>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">Q: <span id="q_value"></span></li>
+                    <li class="list-group-item">p-value: <span id="p_value"></span></li>
+                    <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
+                    <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
+                    <li class="list-group-item">ANOVA p: <span id="anova"></span></li>
+                    <li class="list-group-item">JTK p: <span id="jtk_p"></span></li>
+                    <li class="list-group-item">JTK q: <span id="jtk_q"></span></li>
+                </ul>
+            </div>
+        </div>
+        <div id="FiltersCard" class="card col-xs-1" style="width: 20rem;">
+            <div class="card-header">
+                Filters
+            </div>
+            <div class="card-body">
+                <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
+                <div class="form-group form-inline">
+                    <label class="col-form-label" for="max_value_filter" style="margin-right: 10px">Max Value &gt;</label>
+                    <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
+                </div>
+                <button id="applyFilters" type="button" class="btn btn-primary" data-dismiss="modal">Apply filters</button>
+            </div>
+        </div>
     </div>
 
     <div class="row" style="padding-top:2rem;padding-bottom:2rem">

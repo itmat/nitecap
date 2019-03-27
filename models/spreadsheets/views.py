@@ -590,7 +590,13 @@ def compare():
                            ids=compare_ids,
                            column_pairs=column_pairs,
                            descriptive_names=descriptive_names,
-                           non_unique_id_counts=non_unique_id_counts)
+                           non_unique_id_counts=non_unique_id_counts,
+                           qs=json.dumps(list(spreadsheets[0].df.nitecap_q.values)),
+                           ps=json.dumps(list(spreadsheets[0].df.nitecap_p.values)),
+                           amplitudes=json.dumps(list(spreadsheets[0].df.amplitude.values)),
+                           peak_times=json.dumps(list(spreadsheets[0].df.peak_time.values)),
+                           anovas=json.dumps(list(spreadsheets[0].df.anova_p.values)),
+                           filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()))
 
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
