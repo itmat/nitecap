@@ -525,6 +525,7 @@ def consume_share(token):
 def compare():
     errors = []
     spreadsheets = []
+    non_unique_id_counts = []
     datasets = []
     x_values = []
     x_labels = []
@@ -546,6 +547,9 @@ def compare():
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     descriptive_names = []
     for spreadsheet in spreadsheets:
+        non_unique_ids = spreadsheet.find_replicate_ids()
+        non_unique_id_counts.append(len(non_unique_ids))
+        print(f"Number of non unique ids is {len(non_unique_ids)}")
         x_values.append(spreadsheet.x_values)
         x_labels.append(spreadsheet.x_labels)
         x_label_values.append(spreadsheet.x_label_values)
@@ -553,7 +557,11 @@ def compare():
         descriptive_names.append(spreadsheet.descriptive_name)
         data = spreadsheet.df
         ids = list(spreadsheet.get_ids())
+        unique_ids = spreadsheet.find_unique_ids()
+        print(f"Number of unique ids is {len(unique_ids)}")
         data['compare_ids'] = ids
+        print(f"Shape prior to removal of non-unique ids: {data.shape}")
+        data = data[data['compare_ids'].isin(unique_ids)]
         datasets.append(data)
         print(f"Shape prior to join with label col: {data.shape}")
     common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
@@ -578,7 +586,8 @@ def compare():
                            x_label_values=x_label_values,
                            ids=compare_ids,
                            column_pairs=column_pairs,
-                           descriptive_names = descriptive_names)
+                           descriptive_names=descriptive_names,
+                           non_unique_id_counts=non_unique_id_counts)
 
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])

@@ -254,11 +254,16 @@ class Spreadsheet(db.Model):
                           if column_label == Spreadsheet.ID_COLUMN]
         else:
             id_indices = args[0]
+        print(f"id_indices: {id_indices}")
         return self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1)
 
     def find_replicate_ids(self, *args):
-        ids = list(self.get_ids(args[0]))
+        ids = list(self.get_ids(*args))
         return [item for item, count in collections.Counter(ids).items() if count > 1]
+
+    def find_unique_ids(self):
+        ids = list(self.get_ids())
+        return [item for item, count in collections.Counter(ids).items() if count == 1]
 
     def set_ids_unique(self):
         """
