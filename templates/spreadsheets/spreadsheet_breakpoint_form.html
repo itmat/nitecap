@@ -669,9 +669,14 @@
                 sort_order = sort_order.sort( sorters[this.value] );
 
                 makeRowLabels(jtk_qs);
-            } else {
+            } else if (this.value === "nitecap") {
                 // Nitecap order is default, sort_order is then just 0,1,2,3...
                 sort_order = labels.map( function(x,i) {return i;} );
+
+                makeRowLabels(qs);
+            } else {
+                sort_order = labels.map( function(x,i) {return i;} );
+                sort_order = sort_order.sort( sorters[this.value] );
 
                 makeRowLabels(qs);
             }
