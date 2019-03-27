@@ -14,6 +14,41 @@
             $(".topScroll").scrollLeft($(".bottomScroll").scrollLeft());
         });
 
+        $("#spreadsheet-display-form").on('submit', function (e) {
+            e.preventDefault();
+            console.log("Inside check id uniqueness");
+            submit = false;
+            spreadsheet_id = {{spreadsheet.id}}
+            id_columns = [];
+            data = $('#spreadsheet-display-form').serialize().split('&');
+            data.forEach(function(item) {
+                var results = item.split("=");
+                if(results[1] === "ID") {
+                    id_columns.push(parseInt(results[0].substring(3)) - 1)
+                }
+            });
+            $.ajax({
+                url: "{{ url_for('spreadsheets.check_id_uniqueness') }}",
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'id_columns': id_columns}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function (response) {
+                    console.log(response['non-unique_ids']);
+                    if(response['non-unique_ids']) {
+                        var warning = "The IDs list here are non-unique and as such, will be excluded from any comparison studies: ";
+                        warning += non_unique_ids.join(',');
+                        console.log(warning);
+                        alert(warning);
+                    }
+                    e.currentTarget.submit();
+                },
+                // Let conventional page request handle errors
+                error: function (request, status, error) {
+                    e.currentTarget.submit();
+                }
+            });
+        });
     });
 </script>
 
@@ -41,7 +76,7 @@
     </div>
 {% endif %}
 
-<form id="spreadsheet-display-form" action="{{ url_for('spreadsheets.edit_columns') }}" method="post">
+<form id="spreadsheet-display-form" method="post" action="{{ url_for('spreadsheets.edit_columns') }}">
     <div class="topScroll">
         <div></div>
     </div>
@@ -77,7 +112,7 @@
             </table>
         </div>
     </div>
-    <button type="submit" class="btn btn-primary">Submit</button>
+    <button id="submit_labels" type="submit" class="btn btn-primary">Submit</button>
 </form>
 
 {% endblock %}

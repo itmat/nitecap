@@ -437,7 +437,7 @@ def edit_columns():
         column_labels = list(request.form.values())
         error, messages = spreadsheet.validate(column_labels)
         errors.extend(messages)
-        if error:
+        if errors:
             return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet, errors=errors)
         spreadsheet.identify_columns(column_labels)
         spreadsheet.set_ids_unique()
@@ -579,3 +579,28 @@ def compare():
                            ids=compare_ids,
                            column_pairs=column_pairs,
                            descriptive_names = descriptive_names)
+
+
+@spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
+def check_id_uniqueness():
+    user = User.find_by_email(session['email'])
+    user = user if user else User.find_by_username("annonymous")
+    spreadsheet = None
+    errors = []
+    json_data = request.get_json()
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+    id_columns = json_data.get('id_columns', None)
+    if not id_columns or len(id_columns) == 0:
+        errors.append("No id columns were selected. Please select at least one id column.")
+    if not spreadsheet_id:
+        errors.append("No spreadsheet was identified. Make sure you are selecting one you uploaded.")
+    else:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+       errors.append('The spreadsheet being edited could not be found.')
+    if errors:
+        print(errors)
+        return jsonify({'errors': errors}), 404
+    non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
+    print(non_unique_ids)
+    return jsonify({'non-unique_ids': non_unique_ids})

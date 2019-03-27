@@ -1,3 +1,4 @@
+import collections
 import datetime
 import os
 import uuid
@@ -241,16 +242,23 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
         return [column for column, label in ordered_columns]
 
-    def get_ids(self):
+    def get_ids(self, *args):
         """
         Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
         of those columns into a numpy series
         :return: a numpy series containing the complete id for each data row.
         """
-        id_indices = [index
-                      for index, column_label in enumerate(self.column_labels)
-                      if column_label == Spreadsheet.ID_COLUMN]
+        if not args:
+            id_indices = [index
+                          for index, column_label in enumerate(self.column_labels)
+                          if column_label == Spreadsheet.ID_COLUMN]
+        else:
+            id_indices = args[0]
         return self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1)
+
+    def find_replicate_ids(self, *args):
+        ids = list(self.get_ids(args[0]))
+        return [item for item, count in collections.Counter(ids).items() if count > 1]
 
     def set_ids_unique(self):
         """
@@ -571,12 +579,6 @@ class Spreadsheet(db.Model):
                 errors.append("Timepoints must be the same for the comparison of multiple spreadsheets.")
         print(errors)
         return errors
-
-
-
-
-
-
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
