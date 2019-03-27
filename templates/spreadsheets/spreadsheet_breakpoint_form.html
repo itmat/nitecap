@@ -406,31 +406,77 @@
             $('#download_heatmap').hide();
             $('#toggle_replicates').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
-            $.ajax({
-                url: "{{url_for('spreadsheets.display_heatmap')}}",
-                data: JSON.stringify({'row_index': selected_row}),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function(response) {
-                    heatmap_x_values = response['heatmap_x_values'];
-                    heatmap_labels = response['heatmap_labels'];
-                    heatmap_data = response['heatmap_data'];
-                    heatmap_combined_data = response['heatmap_combined_data'];
-                    original_indexes = response['heatmap_indexes'];
 
-                    // Remove any rows that have been filtered
-                    var filter_out = function (x,i) { return !filtered[original_indexes[i]]; }
-                    heatmap_labels = heatmap_labels.filter(filter_out);
-                    heatmap_data = heatmap_data.filter(filter_out);
-                    heatmap_combined_data = heatmap_combined_data.filter(filter_out);
+            var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
+            selected_indexes = selected_indexes.filter( function(i) {
+                return (sort_order[i] <= selected_row) & (!filtered[i]);
+            } );
+            var phase_sorted_order = selected_indexes.sort( function (i,j) {
+                return compare(peak_times[i], peak_times[j], i,j);
+            } );
 
-                    updateHeatmap();
-                },
-                error: function(error) {
-                    console.log(error);
-                }
+            var z_score_data = phase_sorted_order.map( function (i) {
+                var row = data[i];
+                var num_reps = 0;
+                var sum = row.reduce( function(x,y) {
+                     if (isNaN(y)) {return x;}
+                    num_reps += 1;
+                    return x+y;
+                }, 0);
+
+                var mean = sum / num_reps;
+                if (num_reps === 0) { mean = 0; }
+
+                var variance = row.reduce( function(x,y) {
+                    if (isNaN(y)) {return x;}
+
+                    return x + (y - mean)*(y - mean);
+                }, 0);
+                var std = Math.sqrt(variance);
+
+                var z_scores = row.map( function(x,i) {
+                    return (x - mean) / std;
+                } );
+
+                return z_scores;
+            } );
+
+            // Average all z-scores at the same timepoint together
+            var combined_z_scores = z_score_data.map( function(row) {
+                var z_sum_by_timepoint = [];
+                var reps_by_timepoint = [];
+                x_values.map( function (time,i) {
+                    var value = row[i];
+
+                    if (z_sum_by_timepoint[time] === undefined) {
+                        z_sum_by_timepoint[time] = 0;
+                        reps_by_timepoint[time] = 0;
+                    }
+
+                    if (isNaN(value)) {
+                        return;
+                    }
+
+                    z_sum_by_timepoint[time] += value;
+                    reps_by_timepoint[time] += 1;
+                });
+                var z_mean_by_timepoint = z_sum_by_timepoint.map( function(sum,i) {
+                    if (reps_by_timepoint[i] === 0) {return 0;}
+                    return sum / reps_by_timepoint[i];
+                });
+                return z_mean_by_timepoint;
             });
+
+            heatmap_data = z_score_data;
+            heatmap_combined_data = combined_z_scores;
+            heatmap_labels = phase_sorted_order.map( function(i) {
+                return labels[i];
+            } );
+
+            // TODO: set the heatmap_x_values!
+            heatmap_x_values = null;
+
+            updateHeatmap();
         });
 
         var updateHeatmap = function () {
