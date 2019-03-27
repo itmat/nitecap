@@ -299,13 +299,17 @@
             var reps_per_timepoint = [];
             for (var i = 0; i < x_values.length; i++) {
                 var time = x_values[i];
+                var value = raw_y_values[i];
 
                 if (sum_by_timepoint[time] === undefined) {
                     sum_by_timepoint[time] = 0;
                     reps_per_timepoint[time] = 0;
                 }
-                sum_by_timepoint[time] += raw_y_values[i];
-                reps_per_timepoint[time] += 1;
+                if (!isNaN(value)) {
+                    // Skip nans entirely, count the rest
+                    sum_by_timepoint[time] += value;
+                    reps_per_timepoint[time] += 1;
+                }
             }
             var means = sum_by_timepoint.map( function (sum,i) {
                 return sum / reps_per_timepoint[i];
@@ -313,12 +317,18 @@
             var variances = [];
             for (var i = 0; i < x_values.length; i++) {
                 var time = x_values[i];
+                var value = raw_y_values[i];
+
                 if (variances[time] === undefined) {
                     variances[time] = 0;
                 }
 
+                if (isNaN(value)) {
+                    continue; // skip NaNs
+                }
+
                 if (reps_per_timepoint[time] > 1) {
-                    variances[time] += (raw_y_values[i] - means[time])*(raw_y_values[i] - means[time]) / (reps_per_timepoint[time]-1);
+                    variances[time] += (value - means[time])*(value - means[time]) / (reps_per_timepoint[time]-1);
                 } else {
                     variances[time] = 0;
                 }
