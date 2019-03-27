@@ -16,8 +16,6 @@
 
         $("#spreadsheet-display-form").on('submit', function (e) {
             e.preventDefault();
-            console.log("Inside check id uniqueness");
-            submit = false;
             spreadsheet_id = {{spreadsheet.id}}
             id_columns = [];
             data = $('#spreadsheet-display-form').serialize().split('&');
@@ -34,8 +32,9 @@
                 contentType: "application/json",
                 type: 'POST',
                 success: function (response) {
-                    console.log(response['non-unique_ids']);
-                    if(response['non-unique_ids']) {
+                    var non_unique_ids = response['non-unique_ids'];
+                    console.log(non_unique_ids);
+                    if(non_unique_ids && non_unique_ids.length > 0) {
                         var warning = "The IDs list here are non-unique and as such, will be excluded from any comparison studies: ";
                         warning += non_unique_ids.join(',');
                         console.log(warning);
