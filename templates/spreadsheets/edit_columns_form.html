@@ -33,7 +33,6 @@
                 type: 'POST',
                 success: function (response) {
                     var non_unique_ids = response['non-unique_ids'];
-                    console.log(non_unique_ids);
                     if(non_unique_ids && non_unique_ids.length > 0) {
                         var warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
                         if(non_unique_ids.length > 5) {
@@ -44,7 +43,6 @@
                         else {
                             warning += non_unique_ids.join(',');
                         }
-                        console.log(warning);
                         alert(warning);
                     }
                     e.currentTarget.submit();

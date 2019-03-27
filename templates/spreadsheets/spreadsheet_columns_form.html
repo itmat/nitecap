@@ -14,6 +14,46 @@
             $(".topScroll").scrollLeft($(".bottomScroll").scrollLeft());
         });
 
+
+        $("#spreadsheet-display-form").on('submit', function (e) {
+            e.preventDefault();
+            spreadsheet_id = {{spreadsheet.id}}
+            id_columns = [];
+            data = $('#spreadsheet-display-form').serialize().split('&');
+            data.forEach(function(item) {
+                var results = item.split("=");
+                if(results[1] === "ID") {
+                    id_columns.push(parseInt(results[0].substring(3)) - 1)
+                }
+            });
+            $.ajax({
+                url: "{{ url_for('spreadsheets.check_id_uniqueness') }}",
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'id_columns': id_columns}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function (response) {
+                    var non_unique_ids = response['non-unique_ids'];
+                    if(non_unique_ids && non_unique_ids.length > 0) {
+                        var warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
+                        if(non_unique_ids.length > 5) {
+                            warning += non_unique_ids.slice(0, 5).join(', ');
+                            warning += ", ... and " + (non_unique_ids.length - 5) + " other";
+                            warning += non_unique_ids.length - 5 > 1 ? "s." : "."
+                        }
+                        else {
+                            warning += non_unique_ids.join(',');
+                        }
+                        alert(warning);
+                    }
+                    e.currentTarget.submit();
+                },
+                // Let conventional page request handle errors
+                error: function (request, status, error) {
+                    e.currentTarget.submit();
+                }
+            });
+        });
     });
 </script>
 
