@@ -353,8 +353,6 @@ class Spreadsheet(db.Model):
 
     @staticmethod
     def normalize_data(raw_data):
-        # TODO: do we always want to log first?
-        raw_data = numpy.log(1 + raw_data)
         means = raw_data.mean(axis=1)
         stds = raw_data.std(axis=1)
         return raw_data.sub(means, axis=0).div(stds, axis=0)
