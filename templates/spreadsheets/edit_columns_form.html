@@ -35,8 +35,15 @@
                     var non_unique_ids = response['non-unique_ids'];
                     console.log(non_unique_ids);
                     if(non_unique_ids && non_unique_ids.length > 0) {
-                        var warning = "The IDs list here are non-unique and as such, will be excluded from any comparison studies: ";
-                        warning += non_unique_ids.join(',');
+                        var warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
+                        if(non_unique_ids.length > 5) {
+                            warning += non_unique_ids.slice(0, 5).join(', ');
+                            warning += ", ... and " + (non_unique_ids.length - 5) + " other";
+                            warning += non_unique_ids.length - 5 > 1 ? "s." : "."
+                        }
+                        else {
+                            warning += non_unique_ids.join(',');
+                        }
                         console.log(warning);
                         alert(warning);
                     }
