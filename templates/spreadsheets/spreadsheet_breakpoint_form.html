@@ -654,17 +654,18 @@
         }
 
         $('#sort_select').change(function (evt) {
-            if (this.value == "nitecap") {
-                // Nitecap order is default, sort_order is then just 0,1,2,3...
-                sort_order = labels.map( function(x,i) {return i;} );
-
-                makeRowLabels(qs);
-            } else {
+            if (this.value === "jtk") {
                 sort_order = labels.map( function(x,i) {return i;} );
                 sort_order = sort_order.sort( sorters[this.value] );
 
                 makeRowLabels(jtk_qs);
+            } else {
+                // Nitecap order is default, sort_order is then just 0,1,2,3...
+                sort_order = labels.map( function(x,i) {return i;} );
+
+                makeRowLabels(qs);
             }
+
             // TODO: this will change what gene is selected
             selectRow(selected_row);
         });
@@ -680,6 +681,8 @@
             success: function(response) {
                 jtk_ps = response['jtk_ps'];
                 jtk_qs = response['jtk_qs'];
+
+                $('#sort_select option[value="jtk"]').removeAttr("disabled");
 
                 // Display the new values by reselecting the current row
                 selectRow(selected_row);
@@ -765,7 +768,7 @@
                 Sort by: <br>
                 <select id="sort_select" class="form-control form-control-sm">
                      <option value="nitecap">Nitecap</option>
-                     <option value="jtk">JTK</option>
+                     <option value="jtk" disabled>JTK</option>
                      <option value="anova">ANOVA</option>
                      <option value="amplitude">Amplitude</option>
                 </select>
