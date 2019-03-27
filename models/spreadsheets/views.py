@@ -564,6 +564,9 @@ def compare():
         data = data[data['compare_ids'].isin(unique_ids)]
         datasets.append(data)
         print(f"Shape prior to join with label col: {data.shape}")
+    if not set(datasets[0]['compare_ids']) & set(datasets[1]['compare_ids']):
+        errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
     common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
     df = pd.merge(datasets[0],datasets[1],how='inner',on="compare_ids", validate='one_to_one', suffixes=('_0','_1'), sort=False)
     df.sort_values(by=['total_delta_0'])
