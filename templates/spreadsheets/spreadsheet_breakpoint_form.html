@@ -409,14 +409,14 @@
 
             var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
             selected_indexes = selected_indexes.filter( function(i) {
-                return (sort_order[i] <= selected_row) & (!filtered[i]);
+                return (i <= selected_row) & (!filtered[sort_order[i]]);
             } );
             var phase_sorted_order = selected_indexes.sort( function (i,j) {
-                return compare(peak_times[i], peak_times[j], i,j);
+                return compare(peak_times[sort_order[i]], peak_times[sort_order[j]], i,j);
             } );
 
             var z_score_data = phase_sorted_order.map( function (i) {
-                var row = data[i];
+                var row = data[sort_order[i]];
                 var num_reps = 0;
                 var sum = row.reduce( function(x,y) {
                      if (isNaN(y)) {return x;}
@@ -470,7 +470,7 @@
             heatmap_data = z_score_data;
             heatmap_combined_data = combined_z_scores;
             heatmap_labels = phase_sorted_order.map( function(i) {
-                return labels[i];
+                return labels[sort_order[i]];
             } );
 
             // TODO: set the heatmap_x_values!
