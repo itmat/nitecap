@@ -489,18 +489,6 @@
         });
 
         var updateHeatmap = function () {
-            var heatmap_layout = {
-                height: 700,
-                width: 900,
-                margin: {
-                    l: 200,
-                    r: 5,
-                    b: 175,
-                    t: 20
-                },
-                pad: 4
-            };
-
             var heatmap_options = {
                 modeBarButtonsToAdd: [{
                     name: 'download in SVG format',
@@ -531,9 +519,10 @@
             var min = Math.min.apply(null, minRow);
             var limit = Math.max(Math.abs(min), max);
 
+            var y_vals =  heatmap_labels.map(function (x,i) {return i;});
             var heatmap_values = [{
                 x: x_values,
-                y: heatmap_labels,
+                y: y_vals,
                 z: data,
                 type: 'heatmap',
                 zmin: -1 * limit,
@@ -543,6 +532,23 @@
                     titleside: 'right'
                 }
             }];
+
+            var heatmap_layout = {
+                height: 700,
+                width: 900,
+                margin: {
+                    l: 200,
+                    r: 5,
+                    b: 175,
+                    t: 20
+                },
+                pad: 4,
+                yaxis: {
+                    tickmode: "array",
+                    ticktext: heatmap_labels,
+                    tickvals: y_vals
+                }
+            };
 
             Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
             $('#heatmap_block').show();
