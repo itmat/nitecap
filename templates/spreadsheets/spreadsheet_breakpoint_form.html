@@ -28,6 +28,7 @@
         peak_times = {{ peak_times | safe }};
         saved_max_value_filter = {{ max_value_filter | safe }};
         filtered = {{ filtered | safe }};
+        timepoints_per_day = {{ timepoints_per_day | safe }};
 
         // To be loaded later by ajax
         jtk_ps = null;
@@ -473,8 +474,16 @@
                 return labels[sort_order[i]];
             } );
 
-            // TODO: set the heatmap_x_values!
-            heatmap_x_values = null;
+            var rep_counts = [];
+            heatmap_x_values = x_values.map( function(time) {
+                if (rep_counts[time] === undefined) {
+                    rep_counts[time] = 0;
+                }
+                rep_counts[time] += 1;
+                var day = Math.floor(time / timepoints_per_day) + 1;
+                var time_of_day = time % timepoints_per_day + 1;
+                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            });
 
             updateHeatmap();
         });
