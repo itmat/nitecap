@@ -82,6 +82,9 @@
                 ticktext: x_labels[0],
                 tickvals: x_label_values[0],
                 automargin: true
+            },
+            legend: {
+                orientation: 'h'
             }
         };
 
@@ -231,6 +234,7 @@
             var layout = {
                 hovermode: 'closest',
                 title: labels[row_index],
+                legend: { orientation: 'h' },
                 xaxis: {
                     ticktext: x_labels[0],
                     tickvals: x_label_values[0],
