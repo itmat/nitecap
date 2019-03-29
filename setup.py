@@ -4,7 +4,7 @@ pip install .
 """
 
 #To rebuild the C extension, can run:
-#python setup.py build_ext --in_place
+#python setup.py build_ext --inplace
 
 from distutils.core import Extension, setup
 from distutils.command.build_ext import build_ext
