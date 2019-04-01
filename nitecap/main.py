@@ -191,12 +191,8 @@ def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS):
 
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
+
     contains_nans = numpy.isnan(data).any()
-    if contains_nans:
-        # Need to prep the data by moving all NaNs to the "back"
-        # This is for the randomized selection of points for total_delta
-        # Sorting (or rearranging) the reps doesn't make a difference and sorting puts NaNs at the end
-        data = numpy.sort(data, axis=1)
 
     data_folded = fold_days(data, num_cycles)
     td = total_delta(data_folded, contains_nans)
