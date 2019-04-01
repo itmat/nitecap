@@ -9,7 +9,9 @@ pip install .
 from distutils.core import Extension, setup
 from distutils.command.build_ext import build_ext
 
-total_delta = Extension("nitecap.total_delta", sources=["nitecap/total_delta.c"])
+total_delta = Extension("nitecap.total_delta",
+                        sources=["nitecap/total_delta.c"],
+                        extra_compile_args=["-std=c99"])
 
 class BuildNumpyExtCommand(build_ext):
     # Class that builds our C extension using the Numpy libraries but without
