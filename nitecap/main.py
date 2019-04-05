@@ -96,20 +96,25 @@ def FDR(td, perm_td, single_tailed=True):
     ps_sorted = numpy.broadcast_to(ps, (N_PERMS, N_GENES))# Each permutation gets the same p-value
     ps_sorted = ps_sorted.flat[perm_td_sort_order]
 
+    # Compute weights of each gene from their p-values
+    # low p-value genes do not count as much towards being a 'null' gene
+    # when computing the number of nulls below a cutoff
     if single_tailed:
         # Convert p-values of a single-tailed distribution into
         # p-values for a double-tailed distribution so that p-values near 1
         # are not treated as 'extremely null' in the weighting
-        ps_sorted = 2*numpy.minimum(ps_sorted, 1-ps_sorted)
+        weights = 30*(ps_sorted**2 * (1-ps_sorted)**2)
+    else:
+        weights = 2*ps_sorted
 
     # Sum up all the p-values in order
-    ps_sorted_cumsum = numpy.concatenate( ([0], numpy.cumsum(ps_sorted)) )
+    weights_sorted_cumsum = numpy.concatenate( ([0], numpy.cumsum(weights)) )
 
     # Compute the number of gene-permutation combinations below any given cutoff td
     num_below_cutoff = numpy.searchsorted(perm_td_sorted, td[sort_order], side="right")
 
     # Estimate the number of nulls among those below the cutoff by summing their p values and multiplying by 2
-    expected_false_discoveries = ps_sorted_cumsum[num_below_cutoff] * (2 / (N_PERMS + 1))
+    expected_false_discoveries = weights_sorted_cumsum[num_below_cutoff] / (N_PERMS + 1)
 
     # Compute q values by dividing by the number of rejected genes at each td
     q = (expected_false_discoveries+1) / numpy.arange(1, 1+N_GENES)
@@ -176,7 +181,7 @@ def total_delta(data, contains_nans = "check"):
     # So replace it with 1 since the result will have total_delta = 0 anyway
     max_delta[max_delta == 0.0] = 1.0
 
-    statistic =  total_delta / (max_delta**2)
+    statistic =  total_delta / max_delta
     if no_permutations:
         return statistic.reshape( (N_GENES) ) # If we were given a 3-dim array, return a 1-dim array
     else:
