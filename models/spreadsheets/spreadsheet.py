@@ -260,7 +260,7 @@ class Spreadsheet(db.Model):
         numpy.random.seed(1)
 
         # Main nitecap computation
-        td, perm_td = nitecap.nitecap_statistics(data_formatted)
+        td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days)
 
         # Apply q-value computation but just for the features surviving filtering
         good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
@@ -279,7 +279,7 @@ class Spreadsheet(db.Model):
 
         # Other statistics
         # TODO: should users be able to choose their cycle length?
-        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, cycle_length=self.timepoints)
+        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, num_cycles = self.days, cycle_length=self.timepoints)
         try:
             anova_p = nitecap.util.anova(data_formatted)
         except ValueError:
@@ -491,7 +491,7 @@ class Spreadsheet(db.Model):
         numpy.random.seed(1)
 
         # Main nitecap computation
-        td, perm_td = nitecap.nitecap_statistics(data_formatted)
+        td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days)
 
         # Apply q-value computation but just for the features surviving filtering
         good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]

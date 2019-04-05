@@ -64,18 +64,20 @@ def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PER
     data = numpy.array(data)
     data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
-    td, perm_td = nitecap_statistics(data_formatted, N_PERMS)
+    td, perm_td = nitecap_statistics(data_formatted, num_cycles, N_PERMS)
     q, p = FDR(td, perm_td)
     if output == "full":
         return q, td, perm_td
     return q, td, p
 
-def FDR(td, perm_td):
+def FDR(td, perm_td, single_tailed=True):
     '''Control the False Discovery Rate (FDR)
 
     Given any test statistic td and the same statistic computed on permuted data `perm_td`,
     compute the associated q values of rejecting all null hypotheses with td less than a cutoff
     Also returns the p-values of each hypothesis
+    If the test is single-tailed (like Nitecap), set single_tailed=True, otherwise single_tailed = False
+    will give more accurate estimates for double-tailed statistics
     '''
     (N_PERMS, N_GENES) = perm_td.shape
     sort_order = numpy.argsort(td)
@@ -94,14 +96,25 @@ def FDR(td, perm_td):
     ps_sorted = numpy.broadcast_to(ps, (N_PERMS, N_GENES))# Each permutation gets the same p-value
     ps_sorted = ps_sorted.flat[perm_td_sort_order]
 
+    # Compute weights of each gene from their p-values
+    # low p-value genes do not count as much towards being a 'null' gene
+    # when computing the number of nulls below a cutoff
+    if single_tailed:
+        # Convert p-values of a single-tailed distribution into
+        # p-values for a double-tailed distribution so that p-values near 1
+        # are not treated as 'extremely null' in the weighting
+        weights = 30*(ps_sorted**2 * (1-ps_sorted)**2)
+    else:
+        weights = 2*ps_sorted
+
     # Sum up all the p-values in order
-    ps_sorted_cumsum = numpy.concatenate( ([0], numpy.cumsum(ps_sorted)) )
+    weights_sorted_cumsum = numpy.concatenate( ([0], numpy.cumsum(weights)) )
 
     # Compute the number of gene-permutation combinations below any given cutoff td
     num_below_cutoff = numpy.searchsorted(perm_td_sorted, td[sort_order], side="right")
 
     # Estimate the number of nulls among those below the cutoff by summing their p values and multiplying by 2
-    expected_false_discoveries = ps_sorted_cumsum[num_below_cutoff] * (2 / (N_PERMS + 1))
+    expected_false_discoveries = weights_sorted_cumsum[num_below_cutoff] / (N_PERMS + 1)
 
     # Compute q values by dividing by the number of rejected genes at each td
     q = (expected_false_discoveries+1) / numpy.arange(1, 1+N_GENES)
@@ -174,19 +187,20 @@ def total_delta(data, contains_nans = "check"):
     else:
         return statistic
 
-def nitecap_statistics(data, N_PERMS = N_PERMS):
-    ''' Compute total_delta statistic and permutation versions of this statistic '''
+def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS):
+    ''' Compute total_delta statistic and permutation versions of this statistic
+
+        `data` is data formatted as by reformat_data(data, timepoints_per_cycle, num_reps, num_cycles)
+        `num_cylces` is the number of cycles in the data, eg 2 if data is 48hours
+        '''
 
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
-    contains_nans = numpy.isnan(data).any()
-    if contains_nans:
-        # Need to prep the data by moving all NaNs to the "back"
-        # This is for the randomized selection of points for total_delta
-        # Sorting (or rearranging) the reps doesn't make a difference and sorting puts NaNs at the end
-        data = numpy.sort(data, axis=1)
 
-    td = total_delta(data, contains_nans)
+    contains_nans = numpy.isnan(data).any()
+
+    data_folded = fold_days(data, num_cycles)
+    td = total_delta(data_folded, contains_nans)
 
     # Run N_PERMS_PER_RUN permutations repeatedly until we get a total of N_PERMS
     num_perms_done = 0
@@ -197,8 +211,9 @@ def nitecap_statistics(data, N_PERMS = N_PERMS):
 
         num_perms = min(N_PERMS - num_perms_done, N_PERMS_PER_RUN)
         perm_data = permute_timepoints(data, num_perms)
+        perm_data_folded = fold_days(perm_data, num_cycles)
 
-        perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(perm_data, contains_nans)
+        perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(perm_data_folded, contains_nans)
 
         num_perms_done += num_perms
 
@@ -236,7 +251,7 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
     '''Reformats data into the expected shape for nitecap's internal use
 
     Turns a 2D array of shape (num_features, num_samples) into a 3D array of shape
-    (num_timepoints, num_replicates*num_cycles, num_features)
+    (num_timepoints*num_cylces, num_replicates, num_features)
     Assumption is that the order of samples is with increasing time and with replicates of a single timepoint placed together
 
     If the number of replicates varies between timepoints, num_replicates should be a list
@@ -269,13 +284,19 @@ def reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles):
     # Put the data into the shape of a 3d array with dimensions [timepoints, replicates, features]
     data_formatted = data.reshape( (-1, timepoints_per_cycle*num_cycles, num_replicates) ).swapaxes(0,1).swapaxes(1,2)
 
-    # For each cycle, fold the repeated cycles over on top of each other
-    # i.e. now the shape will be (timepoints_per_cycle, num_replicates*num_cycles, num_features)
-    data_formatted = numpy.concatenate( [data_formatted[i*timepoints_per_cycle:(i+1)*timepoints_per_cycle,:,:]
-                                            for i in range(num_cycles)], axis=1 )
     return data_formatted
 
-def descriptive_statistics(data, cycle_length=24):
+def fold_days(data, num_cycles):
+    # Take data of shape (num_timepoints * num_cycles, num_replicates, num_features)
+    # such as from reformat_data, and fold the days ontop of eachother so that it is of shape
+    # (num_timepoints, num_replicates * num_cycles, num_features)
+    # Also supports data of shape (num_perms, num_timepoints * num_cycles, num_replicates, num_features)
+    timepoints_per_cycle = data.shape[-3] // num_cycles
+    data_folded = numpy.concatenate( [data[...,i*timepoints_per_cycle:(i+1)*timepoints_per_cycle,:,:]
+                                            for i in range(num_cycles)], axis=data.ndim-2 )
+    return data_folded
+
+def descriptive_statistics(data, num_cycles=1, cycle_length=24):
     ''' Given data of shape (N_TIMEPOINTS, N_REPS, N_GENES) compute the amplitude, peak time, and trough time of the data
 
     Estimates the underlying curve by a moving regression and takes peak and trough to estimate the amplitude
@@ -283,6 +304,8 @@ def descriptive_statistics(data, cycle_length=24):
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
     N_POINTS = 25
+
+    data = fold_days(data, num_cycles)
 
     ys = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) )
     xs = numpy.repeat(numpy.arange(N_TIMEPOINTS), N_REPS)
