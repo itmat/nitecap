@@ -15,6 +15,7 @@ import json
 from flask import current_app
 import constants
 
+import nitecap
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET','POST'])
@@ -534,7 +535,6 @@ def compare():
     x_label_values = []
     column_pairs = []
     columns = []
-    compare_spreadsheets = []
     datasets = []
     user = User.find_by_email(session['email'])
     spreadsheet_ids = request.args.get('spreadsheet_ids').split(",")
@@ -547,6 +547,7 @@ def compare():
     errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
     descriptive_names = []
     for spreadsheet in spreadsheets:
         non_unique_ids = spreadsheet.find_replicate_ids()
@@ -558,34 +559,33 @@ def compare():
         column_pairs.append(spreadsheet.column_pairs)
         descriptive_names.append(spreadsheet.descriptive_name)
         data = spreadsheet.df
-        ids = list(spreadsheet.get_ids())
-        unique_ids = spreadsheet.find_unique_ids()
-        print(f"Number of unique ids is {len(unique_ids)}")
-        data['compare_ids'] = ids
+        data["compare_ids"] = list(spreadsheet.get_ids())
         print(f"Shape prior to removal of non-unique ids: {data.shape}")
-        data = data[data['compare_ids'].isin(unique_ids)]
+        data = data.set_index("compare_ids").drop_duplicates(keep=False)
         datasets.append(data)
         print(f"Shape prior to join with label col: {data.shape}")
-    if not set(datasets[0]['compare_ids']) & set(datasets[1]['compare_ids']):
+
+    if not set(datasets[0].index) & set(datasets[1].index):
         errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
     common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
-    df = pd.merge(datasets[0],datasets[1],how='inner',on="compare_ids", validate='one_to_one', suffixes=('_0','_1'), sort=False)
-    df.sort_values(by=['total_delta_0'])
+    #df = pd.merge(datasets[0],datasets[1],how='inner', on="compare_ids", validate='one_to_one', suffixes=('_0','_1'), sort=False)
+    df = datasets[0].join(datasets[1], how='inner', lsuffix='_0', rsuffix='_1')
+    df = df.sort_values(by=['total_delta_0'])
     print(f"Shape after join: {df.shape}")
-    compare_ids = df['compare_ids'].tolist()
+    compare_ids = df.index.tolist()
     datasets = []
     for i in [0,1]:
-        columns.append(list(map(lambda column: column + f"_{i}"
-                            if column in common_columns else column,
-                            spreadsheets[i].get_raw_data().columns)))
-        compare_spreadsheets.append(df[columns[i]])
-        compare_spreadsheets[i].columns = spreadsheets[i].get_raw_data().columns
-        print(f"Shape after sep {i}: {compare_spreadsheets[i].shape}")
-        datasets.append(compare_spreadsheets[i].values.tolist())
+        columns.append([column + f"_{i}" if column in common_columns else column
+                            for column in spreadsheets[i].get_data_columns()])
+        datasets.append(df[columns[i]].values)
+
+    upside_ps = nitecap.upside.main(spreadsheets[0].num_replicates, datasets[0],
+                        spreadsheets[1].num_replicates, datasets[1])
 
     return render_template('spreadsheets/comparison.html',
-                           data=json.dumps(datasets),
+                           data=json.dumps([dataset.tolist() for dataset in datasets]),
                            x_values=x_values,
                            x_labels=x_labels,
                            x_label_values=x_label_values,
@@ -598,7 +598,8 @@ def compare():
                            amplitudes=json.dumps(list(spreadsheets[0].df.amplitude.values)),
                            peak_times=json.dumps(list(spreadsheets[0].df.peak_time.values)),
                            anovas=json.dumps(list(spreadsheets[0].df.anova_p.values)),
-                           filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()))
+                           filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
+                           upside_ps=json.dumps(upside_ps.tolist()))
 
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])

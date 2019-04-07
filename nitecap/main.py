@@ -2,6 +2,7 @@ import collections
 
 import numpy
 from . import util
+from . import upside
 
 try:
     from .total_delta import sum_abs_differences as _sum_abs_differences

@@ -27,6 +27,7 @@
         qs = {{ qs | safe }};
         ps = {{ ps | safe }};
         amplitudes = {{ amplitudes | safe }};
+        upside_ps = {{ upside_ps | safe }};
         anovas = {{ anovas | safe }};
         peak_times = {{ peak_times | safe }};
         filtered = {{ filtered | safe }};
@@ -251,6 +252,7 @@
             $('#amplitude').html(toFixed(amplitudes[row_index], 3));
             $('#anova').html(toFixed(anovas[row_index], 3));
             $('#peak_time').html(toFixed(peak_times[row_index], 3));
+            $('#upside').html(toFixed(upside_ps[row_index], 3));
 
             if (jtk_ps !== null && jtk_qs !== null) {
                 $('#jtk_p').html(toFixed(jtk_ps[row_index], 3));
@@ -562,9 +564,15 @@
                 return compare(a,b,i,j);
             },
             "amplitude": function (i,j) {
-                // Sort jtk p-values in ascending order
+                // Sort amplitude values in descending order
                 var a = -amplitudes[i];
                 var b = -amplitudes[j];
+                return compare(a,b,i,j);
+            },
+            "upside": function (i,j) {
+                // Sort by ascending order
+                var a = upside_ps[i];
+                var b = upside_ps[j];
                 return compare(a,b,i,j);
             }
         }
@@ -681,6 +689,7 @@
                      <option value="jtk">JTK</option>
                      <option value="anova">ANOVA</option>
                      <option value="amplitude">Amplitude</option>
+                     <option value="upside">Upside</option>
                 </select>
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item">Q: <span id="q_value"></span></li>
@@ -690,6 +699,7 @@
                     <li class="list-group-item">ANOVA p: <span id="anova"></span></li>
                     <li class="list-group-item">JTK p: <span id="jtk_p"></span></li>
                     <li class="list-group-item">JTK q: <span id="jtk_q"></span></li>
+                    <li class="list-group-item">Upside p: <span id="upside_p"></span></li>
                 </ul>
             </div>
         </div>
