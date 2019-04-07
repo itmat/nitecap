@@ -36,6 +36,9 @@
         // Number of rows to show in the row selecotr
         num_row_selections = 21;
 
+        // Largest size of any label to use, truncate longer labels
+        max_label_size = 35;
+
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
 
@@ -117,7 +120,9 @@
         var labels_with_qs = null;
         function  makeRowLabels(q_values) {
             labels_with_qs = labels.map( function(label, i) {
-                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+                var label = String(label).padEnd(max_label_length, nonbreakingspace)
+                label = label.substring(0, max_label_size);
+                return label  + ' Q: ' + toFixed(q_values[i], 2);
             } );
         }
         makeRowLabels(qs);
@@ -302,10 +307,23 @@
                 sum_by_timepoint[time] += raw_y_values[i];
                 reps_per_timepoint[time] += 1;
             }
-            var means = [];
-            for (var i = 0; i < sum_by_timepoint.length; i++) {
-                means[i] = sum_by_timepoint[i] / reps_per_timepoint[i];
+            var means = sum_by_timepoint.map( function (sum,i) {
+                return sum / reps_per_timepoint[i];
+            } );
+            var variances = [];
+            for (var i = 0; i < x_values.length; i++) {
+                var time = x_values[i];
+                if (variances[time] === undefined) {
+                    variances[time] = 0;
+                }
+
+                if (reps_per_timepoint[time] > 1) {
+                    variances[time] += (raw_y_values[i] - means[time])*(raw_y_values[i] - means[time]) / (reps_per_timepoint[time]-1);
+                } else {
+                    variances[time] = 0;
+                }
             }
+            var stds = variances.map(Math.sqrt);
 
             // Default values for the different plot styles to override
             var values = [{
@@ -350,6 +368,21 @@
                     mode: "lines"
                 };
                 layout["showlegend"] = false;
+            } else if (plot_style === "std") {
+                values[0].mode = "lines";
+                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = means;
+                values[0].name = labels[row_index] + " means";
+                values[0].error_y = {type: 'data', array:stds, visible:true};
+            } else if (plot_style === "SEM") {
+                SEM = stds.map( function (std,i) {
+                    return std / Math.sqrt( reps_per_timepoint[i]);
+                } );
+                values[0].mode = "lines";
+                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = means;
+                values[0].name = labels[row_index] + " means";
+                values[0].error_y = {type: 'data', array:SEM, visible:true};
             }
             Plotly.react(scatter_plot, values, layout);
         } );
@@ -621,17 +654,18 @@
         }
 
         $('#sort_select').change(function (evt) {
-            if (this.value == "nitecap") {
-                // Nitecap order is default, sort_order is then just 0,1,2,3...
-                sort_order = labels.map( function(x,i) {return i;} );
-
-                makeRowLabels(qs);
-            } else {
+            if (this.value === "jtk") {
                 sort_order = labels.map( function(x,i) {return i;} );
                 sort_order = sort_order.sort( sorters[this.value] );
 
                 makeRowLabels(jtk_qs);
+            } else {
+                // Nitecap order is default, sort_order is then just 0,1,2,3...
+                sort_order = labels.map( function(x,i) {return i;} );
+
+                makeRowLabels(qs);
             }
+
             // TODO: this will change what gene is selected
             selectRow(selected_row);
         });
@@ -647,6 +681,8 @@
             success: function(response) {
                 jtk_ps = response['jtk_ps'];
                 jtk_qs = response['jtk_qs'];
+
+                $('#sort_select option[value="jtk"]').removeAttr("disabled");
 
                 // Display the new values by reselecting the current row
                 selectRow(selected_row);
@@ -719,6 +755,8 @@
                 <option value="points">Points</option>
                 <option value="mean">Mean only</option>
                 <option value="mean_points">Points and Mean</option>
+                <option value="std">Standard Deviations</option>
+                <option value="SEM">SEM</option>
             </select>
         </div>
 
@@ -730,7 +768,7 @@
                 Sort by: <br>
                 <select id="sort_select" class="form-control form-control-sm">
                      <option value="nitecap">Nitecap</option>
-                     <option value="jtk">JTK</option>
+                     <option value="jtk" disabled>JTK</option>
                      <option value="anova">ANOVA</option>
                      <option value="amplitude">Amplitude</option>
                 </select>
