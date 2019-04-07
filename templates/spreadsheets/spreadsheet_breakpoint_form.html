@@ -28,6 +28,7 @@
         peak_times = {{ peak_times | safe }};
         saved_max_value_filter = {{ max_value_filter | safe }};
         filtered = {{ filtered | safe }};
+        timepoints_per_day = {{ timepoints_per_day | safe }};
 
         // To be loaded later by ajax
         jtk_ps = null;
@@ -299,13 +300,17 @@
             var reps_per_timepoint = [];
             for (var i = 0; i < x_values.length; i++) {
                 var time = x_values[i];
+                var value = raw_y_values[i];
 
                 if (sum_by_timepoint[time] === undefined) {
                     sum_by_timepoint[time] = 0;
                     reps_per_timepoint[time] = 0;
                 }
-                sum_by_timepoint[time] += raw_y_values[i];
-                reps_per_timepoint[time] += 1;
+                if (!isNaN(value)) {
+                    // Skip nans entirely, count the rest
+                    sum_by_timepoint[time] += value;
+                    reps_per_timepoint[time] += 1;
+                }
             }
             var means = sum_by_timepoint.map( function (sum,i) {
                 return sum / reps_per_timepoint[i];
@@ -313,12 +318,18 @@
             var variances = [];
             for (var i = 0; i < x_values.length; i++) {
                 var time = x_values[i];
+                var value = raw_y_values[i];
+
                 if (variances[time] === undefined) {
                     variances[time] = 0;
                 }
 
+                if (isNaN(value)) {
+                    continue; // skip NaNs
+                }
+
                 if (reps_per_timepoint[time] > 1) {
-                    variances[time] += (raw_y_values[i] - means[time])*(raw_y_values[i] - means[time]) / (reps_per_timepoint[time]-1);
+                    variances[time] += (value - means[time])*(value - means[time]) / (reps_per_timepoint[time]-1);
                 } else {
                     variances[time] = 0;
                 }
@@ -396,46 +407,88 @@
             $('#download_heatmap').hide();
             $('#toggle_replicates').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
-            $.ajax({
-                url: "{{url_for('spreadsheets.display_heatmap')}}",
-                data: JSON.stringify({'row_index': selected_row}),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function(response) {
-                    heatmap_x_values = response['heatmap_x_values'];
-                    heatmap_labels = response['heatmap_labels'];
-                    heatmap_data = response['heatmap_data'];
-                    heatmap_combined_data = response['heatmap_combined_data'];
-                    original_indexes = response['heatmap_indexes'];
 
-                    // Remove any rows that have been filtered
-                    var filter_out = function (x,i) { return !filtered[original_indexes[i]]; }
-                    heatmap_labels = heatmap_labels.filter(filter_out);
-                    heatmap_data = heatmap_data.filter(filter_out);
-                    heatmap_combined_data = heatmap_combined_data.filter(filter_out);
+            var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
+            selected_indexes = selected_indexes.filter( function(i) {
+                return (i <= selected_row) & (!filtered[sort_order[i]]);
+            } );
+            var phase_sorted_order = selected_indexes.sort( function (i,j) {
+                return compare(peak_times[sort_order[i]], peak_times[sort_order[j]], i,j);
+            } );
 
-                    updateHeatmap();
-                },
-                error: function(error) {
-                    console.log(error);
-                }
+            var z_score_data = phase_sorted_order.map( function (i) {
+                var row = data[sort_order[i]];
+                var num_reps = 0;
+                var sum = row.reduce( function(x,y) {
+                     if (isNaN(y)) {return x;}
+                    num_reps += 1;
+                    return x+y;
+                }, 0);
+
+                var mean = sum / num_reps;
+                if (num_reps === 0) { mean = 0; }
+
+                var variance = row.reduce( function(x,y) {
+                    if (isNaN(y)) {return x;}
+
+                    return x + (y - mean)*(y - mean);
+                }, 0);
+                var std = Math.sqrt(variance);
+
+                var z_scores = row.map( function(x,i) {
+                    return (x - mean) / std;
+                } );
+
+                return z_scores;
+            } );
+
+            // Average all z-scores at the same timepoint together
+            var combined_z_scores = z_score_data.map( function(row) {
+                var z_sum_by_timepoint = [];
+                var reps_by_timepoint = [];
+                x_values.map( function (time,i) {
+                    var value = row[i];
+
+                    if (z_sum_by_timepoint[time] === undefined) {
+                        z_sum_by_timepoint[time] = 0;
+                        reps_by_timepoint[time] = 0;
+                    }
+
+                    if (isNaN(value)) {
+                        return;
+                    }
+
+                    z_sum_by_timepoint[time] += value;
+                    reps_by_timepoint[time] += 1;
+                });
+                var z_mean_by_timepoint = z_sum_by_timepoint.map( function(sum,i) {
+                    if (reps_by_timepoint[i] === 0) {return 0;}
+                    return sum / reps_by_timepoint[i];
+                });
+                return z_mean_by_timepoint;
             });
+
+            heatmap_data = z_score_data;
+            heatmap_combined_data = combined_z_scores;
+            heatmap_labels = phase_sorted_order.map( function(i) {
+                return labels[sort_order[i]];
+            } );
+
+            var rep_counts = [];
+            heatmap_x_values = x_values.map( function(time) {
+                if (rep_counts[time] === undefined) {
+                    rep_counts[time] = 0;
+                }
+                rep_counts[time] += 1;
+                var day = Math.floor(time / timepoints_per_day) + 1;
+                var time_of_day = time % timepoints_per_day + 1;
+                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            });
+
+            updateHeatmap();
         });
 
         var updateHeatmap = function () {
-            var heatmap_layout = {
-                height: 700,
-                width: 900,
-                margin: {
-                    l: 200,
-                    r: 5,
-                    b: 175,
-                    t: 20
-                },
-                pad: 4
-            };
-
             var heatmap_options = {
                 modeBarButtonsToAdd: [{
                     name: 'download in SVG format',
@@ -466,9 +519,10 @@
             var min = Math.min.apply(null, minRow);
             var limit = Math.max(Math.abs(min), max);
 
+            var y_vals =  heatmap_labels.map(function (x,i) {return i;});
             var heatmap_values = [{
                 x: x_values,
-                y: heatmap_labels,
+                y: y_vals,
                 z: data,
                 type: 'heatmap',
                 zmin: -1 * limit,
@@ -478,6 +532,23 @@
                     titleside: 'right'
                 }
             }];
+
+            var heatmap_layout = {
+                height: 700,
+                width: 900,
+                margin: {
+                    l: 200,
+                    r: 5,
+                    b: 175,
+                    t: 20
+                },
+                pad: 4,
+                yaxis: {
+                    tickmode: "array",
+                    ticktext: heatmap_labels,
+                    tickvals: y_vals
+                }
+            };
 
             Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
             $('#heatmap_block').show();
@@ -659,9 +730,14 @@
                 sort_order = sort_order.sort( sorters[this.value] );
 
                 makeRowLabels(jtk_qs);
-            } else {
+            } else if (this.value === "nitecap") {
                 // Nitecap order is default, sort_order is then just 0,1,2,3...
                 sort_order = labels.map( function(x,i) {return i;} );
+
+                makeRowLabels(qs);
+            } else {
+                sort_order = labels.map( function(x,i) {return i;} );
+                sort_order = sort_order.sort( sorters[this.value] );
 
                 makeRowLabels(qs);
             }
