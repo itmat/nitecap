@@ -581,8 +581,17 @@ def compare():
                             for column in spreadsheets[i].get_data_columns()])
         datasets.append(df[columns[i]].values)
 
-    upside_ps = nitecap.upside.main(spreadsheets[0].num_replicates, datasets[0],
-                        spreadsheets[1].num_replicates, datasets[1])
+    # Run Upside dampening analysis, if it hasn't already been stored to disk
+    file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{spreadsheets[0].id}v{spreadsheets[1].id}.comparison.txt")
+    try:
+        comp_data = pd.read_table(file_path)
+        upside_ps = comp_data["upside_ps"].values
+    except FileNotFoundError:
+        upside_ps = nitecap.upside.main(spreadsheets[0].num_replicates, datasets[0],
+                            spreadsheets[1].num_replicates, datasets[1])
+        comp_data = pd.DataFrame(index = df.index)
+        comp_data["upside_ps"] = upside_ps
+        comp_data.to_csv(file_path, sep="\t")
 
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
