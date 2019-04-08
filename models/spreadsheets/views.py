@@ -578,10 +578,20 @@ def compare():
     print(f"Shape after join: {df.shape}")
     compare_ids = df.index.tolist()
     datasets = []
+    qs = []
+    ps = []
+    amplitudes = []
+    peak_times = []
+    anovas = []
     for i in [0,1]:
         columns.append([column + f"_{i}" if column in common_columns else column
                             for column in spreadsheets[i].get_data_columns()])
         datasets.append(df[columns[i]].values)
+        qs.append(df[f"nitecap_q_{i}"].values.tolist())
+        ps.append(df[f"nitecap_p_{i}"].values.tolist())
+        amplitudes.append(df[f"amplitude_{i}"].values.tolist())
+        peak_times.append(df[f"peak_time_{i}"].values.tolist())
+        anovas.append(df[f"anova_p_{i}"].values.tolist())
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
     file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{spreadsheets[0].id}v{spreadsheets[1].id}.comparison.txt")
@@ -604,11 +614,11 @@ def compare():
                            column_pairs=column_pairs,
                            descriptive_names=descriptive_names,
                            non_unique_id_counts=non_unique_id_counts,
-                           qs=json.dumps(list(spreadsheets[0].df.nitecap_q.values)),
-                           ps=json.dumps(list(spreadsheets[0].df.nitecap_p.values)),
-                           amplitudes=json.dumps(list(spreadsheets[0].df.amplitude.values)),
-                           peak_times=json.dumps(list(spreadsheets[0].df.peak_time.values)),
-                           anovas=json.dumps(list(spreadsheets[0].df.anova_p.values)),
+                           qs=json.dumps(qs),
+                           ps=json.dumps(ps),
+                           amplitudes=json.dumps(amplitudes),
+                           peak_times=json.dumps(peak_times),
+                           anovas=json.dumps(anovas),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            upside_ps=json.dumps(upside_ps.tolist()))
 
