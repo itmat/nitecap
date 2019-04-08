@@ -561,9 +561,11 @@ def compare():
         data = spreadsheet.df
         data["compare_ids"] = list(spreadsheet.get_ids())
         print(f"Shape prior to removal of non-unique ids: {data.shape}")
-        data = data.set_index("compare_ids").drop_duplicates(keep=False)
+        data = data.set_index("compare_ids")
+        data = data[~data.index.duplicated()]
         datasets.append(data)
         print(f"Shape prior to join with label col: {data.shape}")
+
 
     if not set(datasets[0].index) & set(datasets[1].index):
         errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
