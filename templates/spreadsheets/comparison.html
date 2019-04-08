@@ -367,7 +367,6 @@
                     trace.mode = "lines";
                     trace.x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
                     trace.y = means;
-                    trace.name = labels[row_index] + " means";
                 } else if (plot_style === "mean_points") {
                     trace.mode = "markers";
                     trace.x = x_values[ctr];
@@ -375,7 +374,6 @@
                     traces.push({ // The mean value trace
                         x: means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
                         y: means,
-                        name: labels[row_index] + " mean",
                         type: "scatter",
                         mode: "lines",
                         showlegend: false,
@@ -385,7 +383,6 @@
                     trace.mode = "lines";
                     trace.x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
                     trace.y = means;
-                    trace.name = labels[row_index] + " means";
                     trace.error_y = {type: 'data', array:stds, visible:true};
                 } else if (plot_style === "SEM") {
                     SEM = stds.map( function (std,i) {
@@ -394,7 +391,6 @@
                     trace.mode = "lines";
                     trace.x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
                     trace.y = means;
-                    trace.name = labels[row_index] + " means";
                     trace.error_y = {type: 'data', array:SEM, visible:true};
                 }
 
