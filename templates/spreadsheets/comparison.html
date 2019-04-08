@@ -584,6 +584,11 @@
             }
         };
         var sorters = {
+            "nitecap": function(i,j) {
+                var a = ps[number_comparisons[0]][i];
+                var b = ps[number_comparisons[0]][j];
+                return compare(a,b,i,j);
+            },
             "anova": function (i,j) {
                 // Sort anova p-values in ascending order
                 var a = anovas[number_comparisons[0]][i];
@@ -608,23 +613,25 @@
                 var b = upside_ps[j];
                 return compare(a,b,i,j);
             }
-        }
+        };
 
-        $('#sort_select').change(function (evt) {
-            if (this.value == "nitecap") {
-                // Nitecap order is default, sort_order is then just 0,1,2,3...
-                sort_order = labels.map( function(x,i) {return i;} );
+        var sortRows = function () {
+            var sorter = $('#sort_select').val();
 
+            sort_order = labels.map( function(x,i) {return i;} );
+            sort_order = sort_order.sort( sorters[sorter] );
+
+            if (sorter == "nitecap") {
                 makeRowLabels(qs[number_comparisons[0]]);
             } else {
-                sort_order = labels.map( function(x,i) {return i;} );
-                sort_order = sort_order.sort( sorters[this.value] );
 
                 makeRowLabels(jtk_qs);
             }
+
             // TODO: this will change what gene is selected
             selectRow(selected_row);
-        });
+        };
+        $('#sort_select').change( sortRows ); 
 
 
         // Load the JTK values
@@ -653,10 +660,8 @@
             number_comparisons.push(first_element);
             console.log("number of comparisons " + number_comparisons);
             $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
-            selectRow(selected_row);
-            makeRowLabels(qs[number_comparisons[0]]);
-            updateRowSelector();
-        })
+            sortRows();
+        });
 
 
     });
