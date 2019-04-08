@@ -197,53 +197,9 @@
             // after sorting
             row_index = sort_order[selected_row];
 
-            // Modify redrawPlot to handle data below
-            //redrawPlot();
+            redrawPlot();
 
 
-            // Update the Plotly plots of the feature profiles
-            number_comparisons.forEach(function (ctr) {
-
-                raw_y_values = data[ctr][row_index];
-                if (raw_y_values === undefined) {
-                    console.log("Could not find the y-values for row " + row_index);
-                    return;
-                }
-
-                paired_y_values = [];
-                for (var i in column_pairs[ctr]) {
-                    paired_y_values.push(raw_y_values[column_pairs[ctr][i][0]], raw_y_values[column_pairs[ctr][i][1]], null);
-                }
-
-                paired_x_values = [];
-                for (var i in column_pairs[ctr]) {
-                    paired_x_values.push(x_values[ctr][column_pairs[ctr][i][0]], x_values[ctr][column_pairs[ctr][i][1]], null);
-                }
-
-                var values = {
-                    x: paired_x_values, y: paired_y_values,
-                    mode: 'lines+markers',
-                    marker: marker_settings,
-                    name: descriptive_names[ctr],
-                    type: 'scatter'
-                };
-
-                traces[ctr] = values;
-
-            });
-
-            var layout = {
-                hovermode: 'closest',
-                title: labels[row_index],
-                legend: { orientation: 'h' },
-                xaxis: {
-                    ticktext: x_labels[0],
-                    tickvals: x_label_values[0],
-                    automargin: true
-                }
-            };
-
-            Plotly.react(scatter_plot, traces, layout);
 
             // Update the "statistics" card
             $('#significant_items').html(num_significant_below[selected_row]);
@@ -262,9 +218,6 @@
                 $('#jtk_q').html("loading");
             }
         };
-
-
-
 
         row_selector.addEventListener('keydown', function (event) {
             if (event.defaultPrevented) {
@@ -323,65 +276,147 @@
             event.preventDefault();
         });
 
-        var redrawPlot = ( function () {
-            var row_index = sort_order[selected_row];
-
-            // Update the Plotly plot of the feature profile
-            var raw_y_values = data[row_index];
-            if (raw_y_values === undefined) {
-                console.log("Could not find the y-values for row " + row_index);
-                return;
-            }
-
-            // points for the basketweave styel
-            var paired_y_values = [];
-            for (var i in column_pairs) {
-                paired_y_values.push(raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null);
-            }
-            var paired_x_values = [];
-            for (var i in column_pairs) {
-                paired_x_values.push(x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null);
-            }
-
-            // Mean values of each timepoint
-            var sum_by_timepoint = [];
-            var reps_per_timepoint = [];
-            for (var i = 0; i < x_values.length; i++) {
-                var time = x_values[i];
-
-                if (sum_by_timepoint[time] === undefined) {
-                    sum_by_timepoint[time] = 0;
-                    reps_per_timepoint[time] = 0;
+        var redrawPlot = function() {
+            // Update the Plotly plots of the feature profiles
+            traces = [];
+            var colors = Plotly.d3.scale.category10();
+            number_comparisons.forEach(function (ctr) {
+                var row_index = sort_order[selected_row];
+                raw_y_values = data[ctr][row_index];
+                if (raw_y_values === undefined) {
+                    console.log("Could not find the y-values for row " + row_index);
+                    return;
                 }
-                sum_by_timepoint[time] += raw_y_values[i];
-                reps_per_timepoint[time] += 1;
-            }
-            var means = [];
-            for (var i = 0; i < sum_by_timepoint.length; i++) {
-                means[i] = sum_by_timepoint[i] / reps_per_timepoint[i];
-            }
 
-            // Default values for the different plot styles to override
-            var values = [{
-                x: paired_x_values, y: paired_y_values,
-                mode: 'lines+markers',
-                marker: marker_settings,
-                name: labels[row_index],
-                type: 'scatter'
-            }];
+                paired_y_values = [];
+                for (var i in column_pairs[ctr]) {
+                    paired_y_values.push(raw_y_values[column_pairs[ctr][i][0]], raw_y_values[column_pairs[ctr][i][1]], null);
+                }
+
+                paired_x_values = [];
+                for (var i in column_pairs[ctr]) {
+                    paired_x_values.push(x_values[ctr][column_pairs[ctr][i][0]], x_values[ctr][column_pairs[ctr][i][1]], null);
+                }
+
+                // Mean values of each timepoint
+                var sum_by_timepoint = [];
+                var reps_per_timepoint = [];
+                for (var i = 0; i < x_values[ctr].length; i++) {
+                    var time = x_values[ctr][i];
+                    var value = raw_y_values[i];
+
+                    if (sum_by_timepoint[time] === undefined) {
+                        sum_by_timepoint[time] = 0;
+                        reps_per_timepoint[time] = 0;
+                    }
+                    if (!isNaN(value)) {
+                        // Skip nans entirely, count the rest
+                        sum_by_timepoint[time] += value;
+                        reps_per_timepoint[time] += 1;
+                    }
+                }
+                var means = sum_by_timepoint.map( function (sum,i) {
+                    return sum / reps_per_timepoint[i];
+                } );
+                var variances = [];
+                for (var i = 0; i < x_values[ctr].length; i++) {
+                    var time = x_values[ctr][i];
+                    var value = raw_y_values[i];
+
+                    if (variances[time] === undefined) {
+                        variances[time] = 0;
+                    }
+
+                    if (isNaN(value)) {
+                        continue; // skip NaNs
+                    }
+
+                    if (reps_per_timepoint[time] > 1) {
+                        variances[time] += (value - means[time])*(value - means[time]) / (reps_per_timepoint[time]-1);
+                    } else {
+                        variances[time] = 0;
+                    }
+                }
+                var stds = variances.map(Math.sqrt);
+
+                // Pick a color for this spreadsheet using Plotly's defaults from d3
+                var spreadsheet_color = colors(ctr);
+
+                // Default values for the different plot styles to override
+                var trace = {
+                    x: paired_x_values, y: paired_y_values,
+                    mode: 'lines+markers',
+                    marker: marker_settings,
+                    name: labels[row_index],
+                    type: 'scatter',
+                    'marker': {color: spreadsheet_color},
+                    'line': {color: spreadsheet_color}
+                };
+
+                // Pick data and styling based off the plot_style_select value
+                var plot_style = $('#plot_style_select').val();
+                if (plot_style === "basketweave") {
+                    // Do nothing, basketweave is already the default settings
+                } else if (plot_style === "points") {
+                    trace.mode = "markers";
+                    trace.x = x_values[ctr];
+                    trace.y = raw_y_values;
+                } else if (plot_style === "mean") {
+                    trace.mode = "lines";
+                    trace.x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                    trace.y = means;
+                    trace.name = labels[row_index] + " means";
+                } else if (plot_style === "mean_points") {
+                    trace.mode = "markers";
+                    trace.x = x_values[ctr];
+                    trace.y = raw_y_values;
+                    traces.push({ // The mean value trace
+                        x: means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
+                        y: means,
+                        name: labels[row_index] + " mean",
+                        type: "scatter",
+                        mode: "lines",
+                        showlegend: false,
+                        'line': {color: spreadsheet_color}
+                    });
+                } else if (plot_style === "std") {
+                    trace.mode = "lines";
+                    trace.x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                    trace.y = means;
+                    trace.name = labels[row_index] + " means";
+                    trace.error_y = {type: 'data', array:stds, visible:true};
+                } else if (plot_style === "SEM") {
+                    SEM = stds.map( function (std,i) {
+                        return std / Math.sqrt( reps_per_timepoint[i]);
+                    } );
+                    trace.mode = "lines";
+                    trace.x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                    trace.y = means;
+                    trace.name = labels[row_index] + " means";
+                    trace.error_y = {type: 'data', array:SEM, visible:true};
+                }
+
+                traces.push(trace);
+
+            });
+
             var layout = {
                 hovermode: 'closest',
                 title: labels[row_index],
+                legend: { orientation: 'h' },
                 xaxis: {
-                    ticktext: x_labels,
-                    tickvals: x_label_values,
+                    ticktext: x_labels[0],
+                    tickvals: x_label_values[0],
                     automargin: true
                 }
             };
-        });
+
+            Plotly.react(scatter_plot, traces, layout);
+        };
+
 
         $('#plot_style_select').change( function () {
-            //redrawPlot();
+            redrawPlot();
         });
 
         $('#set_breakpoint').click(function() {
@@ -675,6 +710,8 @@
                 <option value="points">Points</option>
                 <option value="mean">Mean only</option>
                 <option value="mean_points">Points and Mean</option>
+                <option value="std">Standard Deviations</option>
+                <option value="SEM">SEM</option>
             </select>
         </div>
 
