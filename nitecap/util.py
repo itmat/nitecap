@@ -141,7 +141,13 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
             #       though surprisingly it's comparable to linalg.lstsq in speed already
             gramian = A_T @ (M * A)
             right_hand_side = A_T @ B
-            coeffs = numpy.linalg.solve(gramian, right_hand_side)
+            try:
+                coeffs = numpy.linalg.solve(gramian, right_hand_side)
+            except numpy.linalg.LinAlgError:
+                # Singular matrix, can't solve.
+                # Happens, for example, if too many timepoints (all?) are NaN
+                # We'll just spit out zero here then, for better or worse
+                coeffs = numpy.zeros((degree+1,1))
 
         local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
         regression_value =  numpy.dot(local_predictor, coeffs)

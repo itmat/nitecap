@@ -43,7 +43,7 @@
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('people') }}">People</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('about') }}">About</a></li>
             </ul>
-            <ul class="nav navbar-nav ml-auto">
+            <ul class="nav navbar-nav ml-auto align-items-center">
                 {% if not session['email'] %}
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.register_user') }}">Register</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.login_user', next=request.path ) }}">Login</a></li>
@@ -52,6 +52,11 @@
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
                 {% endif %}
                 <li class="nav-item"><a class="nav-link" href="#"></a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="http://www.itmat.upenn.edu">
+                        <img src="{{ url_for('static', filename='images/itmat_logo.svg') }}" alt="ITMAT logo" height=75px>
+                    </a>
+                </li>
             </ul>
         </div>
     </nav>
