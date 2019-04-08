@@ -133,10 +133,10 @@
         var labels_with_qs = null;
         function  makeRowLabels(q_values) {
             labels_with_qs = labels.map( function(label, i) {
-                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[number_comparisons[0]][i], 2);
+                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
             } );
         }
-        makeRowLabels(qs);
+        makeRowLabels(qs[number_comparisons[0]]);
 
         var disableFilteredRows = function () {
             for(var i = 0; i < num_row_selections; i++) {
@@ -590,26 +590,26 @@
         var sorters = {
             "anova": function (i,j) {
                 // Sort anova p-values in ascending order
-                var a = anovas[i];
-                var b = anovas[j];
+                var a = anovas[number_comparisons[0]][i];
+                var b = anovas[number_comparisons[0]][j];
                 return compare(a,b,i,j);
             },
             "jtk": function (i,j) {
                 // Sort jtk p-values in ascending order
-                var a = jtk_ps[i];
-                var b = jtk_ps[j];
+                var a = jtk_ps[number_comparisons[0]][i];
+                var b = jtk_ps[number_comparisons[0]][j];
                 return compare(a,b,i,j);
             },
             "amplitude": function (i,j) {
                 // Sort amplitude values in descending order
-                var a = -amplitudes[i];
-                var b = -amplitudes[j];
+                var a = -amplitudes[number_comparisons[0]][i];
+                var b = -amplitudes[number_comparisons[0]][j];
                 return compare(a,b,i,j);
             },
             "upside": function (i,j) {
                 // Sort by ascending order
-                var a = upside_ps[i];
-                var b = upside_ps[j];
+                var a = upside_ps[number_comparisons[0]][i];
+                var b = upside_ps[number_comparisons[0]][j];
                 return compare(a,b,i,j);
             }
         }
@@ -619,7 +619,7 @@
                 // Nitecap order is default, sort_order is then just 0,1,2,3...
                 sort_order = labels.map( function(x,i) {return i;} );
 
-                makeRowLabels(qs);
+                makeRowLabels(qs[number_comparisons[0]]);
             } else {
                 sort_order = labels.map( function(x,i) {return i;} );
                 sort_order = sort_order.sort( sorters[this.value] );
@@ -658,7 +658,7 @@
             console.log("number of comparisons " + number_comparisons);
             $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
             selectRow(selected_row);
-            makeRowLabels(qs);
+            makeRowLabels(qs[number_comparisons[0]]);
             updateRowSelector();
         })
 
