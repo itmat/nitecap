@@ -210,7 +210,7 @@
             $('#amplitude').html(toFixed(amplitudes[number_comparisons[0]][row_index], 3));
             $('#anova').html(toFixed(anovas[number_comparisons[0]][row_index], 3));
             $('#peak_time').html(toFixed(peak_times[number_comparisons[0]][row_index], 3));
-            $('#upside').html(toFixed(upside_ps[row_index], 3));
+            $('#upside_p').html(toFixed(upside_ps[row_index], 3));
 
             if (jtk_ps !== null && jtk_qs !== null) {
                 $('#jtk_p').html(toFixed(jtk_ps[row_index], 3));
@@ -604,8 +604,8 @@
             },
             "upside": function (i,j) {
                 // Sort by ascending order
-                var a = upside_ps[number_comparisons[0]][i];
-                var b = upside_ps[number_comparisons[0]][j];
+                var a = upside_ps[i];
+                var b = upside_ps[j];
                 return compare(a,b,i,j);
             }
         }
