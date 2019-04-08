@@ -232,11 +232,11 @@
                     // Find the next row down that is unfiltered
                     var i = selected_row+1;
                     while (true) {
-                        if (i >= filtered.length) {
+                        if (i >= labels.length) {
                             // End of the table, do nothing;
                             break;
                         }
-                        if (!filtered[i]) {
+                        if (!filtered[sort_order[i]]) {
                             selectRow(i);
                             break;
                         }
@@ -252,12 +252,21 @@
                             // Top of the table, do nothing;
                             break;
                         }
-                        if (!filtered[i]) {
+                        if (!filtered[sort_order[i]]) {
                             selectRow(i);
                             break;
                         }
                         i--;
                     }
+                    break;
+                case "PageDown":
+                    var max_top = Math.max(0, labels.length - num_row_selections);
+                    row_selector_top = Math.min(row_selector_top + num_row_selections, max_top);
+                    updateRowSelector();
+                    break;
+                case "PageUp":
+                    row_selector_top = Math.max(row_selector_top - num_row_selections, 0);
+                    updateRowSelector();
                     break;
                 default:
                     return;
@@ -269,9 +278,10 @@
 
         row_selector.addEventListener('wheel', function (event) {
             if (event.deltaY > 0) {
-                row_selector_top++;
+                var max_top = Math.max(0, labels.length - num_row_selections);
+                row_selector_top = Math.min(row_selector_top + 3, max_top) ;
             } else if (event.deltaY < 0) {
-                row_selector_top--;
+                row_selector_top = Math.max(row_selector_top - 3, 0) ;
             }
             updateRowSelector();
 
