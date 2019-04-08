@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, session, flash, redirect, url
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
 import backup
+import spreadsheet_purge
 import logging
 import os
 from momentjs import momentjs
@@ -19,15 +20,16 @@ app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
 
+handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
+handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
+formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(message)s')
+handler.setFormatter(formatter)
+logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
+logger.addHandler(handler)
+
 @app.before_first_request
 def create_tables():
     db.create_all()
-    handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
-    handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
-    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(message)s')
-    handler.setFormatter(formatter)
-    logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
-    logger.addHandler(handler)
 
 @app.route('/', methods=['GET'])
 def home():
@@ -59,12 +61,23 @@ app.register_blueprint(confirmation_blueprint, url_prefix='/confirmations')
 app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 def db_backup_job():
+    logger.info('Database backup underway.')
     backup.backup(app.config['DATABASE'])
     backup.clean_backups()
-    print('Backup process completed')
+    logger.info('Database backup complete.')
+
+def anonymous_spreadsheet_purge_job():
+    logger.info('Visitor spreadsheet purge underway.')
+    ids = spreadsheet_purge.purge(app.config['DATABASE'])
+    if ids:
+        logger.info(f"Visitor spreadsheet ids: {(',').join(ids)} removed along with files.")
+    else:
+        logger.info(f"No old visitor spreadsheets were found.")
+    logger.info('Visitor spreadsheet purge complete.')
 
 scheduler = BackgroundScheduler()
-job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
+db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 19 * * *'))
+spreadsheet_job = scheduler.add_job(anonymous_spreadsheet_purge_job, CronTrigger.from_crontab('5 20 * * *'))
 scheduler.start()
 
 if __name__ == '__main__':
