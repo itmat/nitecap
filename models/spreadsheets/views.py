@@ -536,6 +536,7 @@ def compare():
     column_pairs = []
     columns = []
     datasets = []
+    timepoints_per_day = []
     user = User.find_by_email(session['email'])
     spreadsheet_ids = request.args.get('spreadsheet_ids').split(",")
     for spreadsheet_id in spreadsheet_ids:
@@ -558,6 +559,7 @@ def compare():
         x_label_values.append(spreadsheet.x_label_values)
         column_pairs.append(spreadsheet.column_pairs)
         descriptive_names.append(spreadsheet.descriptive_name)
+        timepoints_per_day.append(spreadsheet.timepoints)
         data = spreadsheet.df
         data["compare_ids"] = list(spreadsheet.get_ids())
         print(f"Shape prior to removal of non-unique ids: {data.shape}")
@@ -572,7 +574,6 @@ def compare():
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
     common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
-    #df = pd.merge(datasets[0],datasets[1],how='inner', on="compare_ids", validate='one_to_one', suffixes=('_0','_1'), sort=False)
     df = datasets[0].join(datasets[1], how='inner', lsuffix='_0', rsuffix='_1')
     df = df.sort_values(by=['total_delta_0'])
     print(f"Shape after join: {df.shape}")
@@ -593,17 +594,6 @@ def compare():
         peak_times.append(df[f"peak_time_{i}"].values.tolist())
         anovas.append(df[f"anova_p_{i}"].values.tolist())
 
-    # Run Upside dampening analysis, if it hasn't already been stored to disk
-    file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{spreadsheets[0].id}v{spreadsheets[1].id}.comparison.txt")
-    try:
-        comp_data = pd.read_table(file_path)
-        upside_ps = comp_data["upside_ps"].values
-    except FileNotFoundError:
-        upside_ps = nitecap.upside.main(spreadsheets[0].num_replicates, datasets[0],
-                            spreadsheets[1].num_replicates, datasets[1])
-        comp_data = pd.DataFrame(index = df.index)
-        comp_data["upside_ps"] = upside_ps
-        comp_data.to_csv(file_path, sep="\t")
 
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
@@ -620,8 +610,67 @@ def compare():
                            peak_times=json.dumps(peak_times),
                            anovas=json.dumps(anovas),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
-                           upside_ps=json.dumps(upside_ps.tolist()))
+                           timepoints_per_day = timepoints_per_day,
+                           spreadsheet_ids=json.dumps(spreadsheet_ids))
 
+@spreadsheet_blueprint.route('/get_upside', methods=['POST'])
+def get_upside():
+    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
+
+    # Run Upside dampening analysis, if it hasn't already been stored to disk
+    upside_ps = []
+    datasets = []
+    spreadsheets = []
+
+    # Check user ownership over these spreadsheets
+    user = User.find_by_email(session['email'])
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
+            return jsonify( {'upside_ps': null} )
+        spreadsheets.append(spreadsheet)
+
+    for primary, secondary in [(0,1), (1,0)]:
+        primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.txt")
+        try:
+            comp_data = pd.read_table(file_path)
+            upside_ps.append(comp_data["upside_ps"].values.tolist())
+            current_app.logger.info(f"Loaded upside values from file {file_path}")
+        except FileNotFoundError:
+            if not datasets:
+                dfs = []
+                for spreadsheet in spreadsheets:
+                    data = spreadsheet.df
+                    data["compare_ids"] = list(spreadsheet.get_ids())
+                    data = data.set_index("compare_ids")
+                    data = data[~data.index.duplicated()]
+                    dfs.append(data)
+
+                common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
+                df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
+                df = df.sort_values(by=['total_delta_0'])
+                compare_ids = df.index.tolist()
+
+                for i in [0,1]:
+                    columns = [column + f"_{i}" if column in common_columns else column
+                                        for column in spreadsheets[i].get_data_columns()]
+                    datasets.append(df[columns].values)
+
+            # Run the actual upside calculation
+            current_app.logger.info(f"Dataset sizes: {df.shape}, {datasets[primary].shape}, {datasets[secondary].shape}")
+            upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates, datasets[primary],
+                                spreadsheets[secondary].num_replicates, datasets[secondary])
+            comp_data = pd.DataFrame(index = df.index)
+            comp_data["upside_ps"] = upside_p
+            comp_data.to_csv(file_path, sep="\t")
+            upside_ps.append(upside_p.tolist())
+            current_app.logger.info("Compute upside values and saved them to file {file_path}")
+
+    return jsonify({
+                'upside_ps': upside_ps
+            })
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 def check_id_uniqueness():
