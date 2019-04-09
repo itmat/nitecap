@@ -1,4 +1,8 @@
 $(document).ready(function () {
+
+    // Needed to make popovers work
+    $("[data-toggle=popover]").popover();
+
     setCopyrightYear();
 });
 
