@@ -782,6 +782,24 @@
             }
         });
 
+        $('#share_spreadsheet').click(function(event) {
+            $.ajax({
+                url: "{{url_for('spreadsheets.share')}}",
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': $('#significant_items').text()}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function (response) {
+                    url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
+                    $("#share_url").val(url);
+                    $('#share_popup').modal()
+                },
+                error: function (response) {
+                    alert(response['errors'])
+                }
+            });
+        });
+
     });
 
 
@@ -794,9 +812,14 @@
 <p id="spreadsheet-breakpoint-page">
     <div class="row">
         <p class="col-lg-12 h3">{{descriptive_name}}
-            <a href="{{ url_for('spreadsheets.download_spreadsheet') }}" download="processed_file.txt">
+            <a href="{{ url_for('spreadsheets.download_spreadsheet') }}" class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
+            {% if not anonymous %}
+                <a id='share_spreadsheet' href="#">
+                    <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+                </a>
+            {% endif %}
         </p>
 
     </div>
@@ -924,5 +947,28 @@
         </div>
         <div class="row" id="heatmap"></div>
     </div>
+
+<div id="share_popup" class="modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">URL to share this spreadsheet</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="share_url">Copy this URL and offer it to anyone with whom you'd like to share your
+                    spreadsheet data:</label>
+                <textarea id="share_url" class="form-control" rows="5"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
