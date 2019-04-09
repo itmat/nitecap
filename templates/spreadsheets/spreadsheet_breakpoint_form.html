@@ -29,6 +29,7 @@
         saved_max_value_filter = {{ max_value_filter | safe }};
         filtered = {{ filtered | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
+        spreadsheet_id = {{ spreadsheet_id | safe }};
 
         // To be loaded later by ajax
         jtk_ps = null;
@@ -761,7 +762,7 @@
         // Load the JTK values
         $.ajax({
             url: "{{url_for('spreadsheets.get_jtk')}}",
-            data: JSON.stringify({}),
+            data: JSON.stringify({'spreadsheet_id': spreadsheet_id}),
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -772,6 +773,7 @@
                 $('#sort_select option[value="jtk"]').removeAttr("disabled");
 
                 // Display the new values by reselecting the current row
+                // TODO: this can move the row selector unexpectedly
                 selectRow(selected_row);
             },
             error: function(error) {

@@ -173,6 +173,7 @@ def set_spreadsheet_breakpoint():
                                 breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                                 descriptive_name = spreadsheet.descriptive_name,
                                 timepoints_per_day = spreadsheet.timepoints,
+                                spreadsheet_id = session['spreadsheet_id'],
                                 max_value_filter = max_value_filter)
 
 
@@ -214,6 +215,7 @@ def show_spreadsheet(spreadsheet_id):
                                 breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                                 descriptive_name=spreadsheet.descriptive_name,
                                 timepoints_per_day = spreadsheet.timepoints,
+                                spreadsheet_id = session['spreadsheet_id'],
                                 max_value_filter = max_value_filter)
 
 
@@ -251,11 +253,8 @@ def display_heatmap():
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
 def get_jtk():
     errors = []
-    json_data = request.get_json()
-    row_index = json_data.get('row_index',0)
-    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-    spreadsheet.breakpoint = row_index
-    spreadsheet.save_to_db()
+    spreadsheet_id = json.loads(request.data)['spreadsheet_id']
+    spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
     jtk_ps, jtk_qs = spreadsheet.get_jtk()
     return jsonify( { "jtk_ps": jtk_ps,
                       "jtk_qs": jtk_qs } )
