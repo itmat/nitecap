@@ -536,6 +536,7 @@ def compare():
     column_pairs = []
     columns = []
     datasets = []
+    timepoints_per_day = []
     user = User.find_by_email(session['email'])
     spreadsheet_ids = request.args.get('spreadsheet_ids').split(",")
     for spreadsheet_id in spreadsheet_ids:
@@ -558,6 +559,7 @@ def compare():
         x_label_values.append(spreadsheet.x_label_values)
         column_pairs.append(spreadsheet.column_pairs)
         descriptive_names.append(spreadsheet.descriptive_name)
+        timepoints_per_day.append(spreadsheet.timepoints)
         data = spreadsheet.df
         data["compare_ids"] = list(spreadsheet.get_ids())
         print(f"Shape prior to removal of non-unique ids: {data.shape}")
@@ -608,6 +610,7 @@ def compare():
                            peak_times=json.dumps(peak_times),
                            anovas=json.dumps(anovas),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
+                           timepoints_per_day = timepoints_per_day,
                            spreadsheet_ids=json.dumps(spreadsheet_ids))
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
@@ -668,7 +671,6 @@ def get_upside():
     return jsonify({
                 'upside_ps': upside_ps
             })
-    
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 def check_id_uniqueness():

@@ -31,6 +31,7 @@
         peak_times = {{ peak_times | safe }};
         filtered = {{ filtered | safe }};
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
+        timepoints_per_day = {{ timepoints_per_day | safe }};
 
         var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
@@ -437,46 +438,94 @@
             $('#download_heatmap').hide();
             $('#toggle_replicates').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
-            $.ajax({
-                url: "{{url_for('spreadsheets.display_heatmap')}}",
-                data: JSON.stringify({'row_index': selected_row}),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function(response) {
-                    heatmap_x_values = response['heatmap_x_values'];
-                    heatmap_labels = response['heatmap_labels'];
-                    heatmap_data = response['heatmap_data'];
-                    heatmap_combined_data = response['heatmap_combined_data'];
-                    original_indexes = response['heatmap_indexes'];
 
-                    // Remove any rows that have been filtered
-                    var filter_out = function (x,i) { return !filtered[original_indexes[i]]; }
-                    heatmap_labels = heatmap_labels.filter(filter_out);
-                    heatmap_data = heatmap_data.filter(filter_out);
-                    heatmap_combined_data = heatmap_combined_data.filter(filter_out);
+            var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
+            selected_indexes = selected_indexes.filter( function(i) {
+                return (i <= selected_row) & (!filtered[sort_order[i]]);
+            } );
+            var phase_sorted_order = selected_indexes.sort( function (i,j) {
+                return compare(peak_times[number_comparisons[0]][sort_order[i]], peak_times[number_comparisons[0]][sort_order[j]], i,j);
+            } );
 
-                    updateHeatmap();
-                },
-                error: function(error) {
-                    console.log(error);
-                }
+            var z_score_data = number_comparisons.map( function (spreadsheet_num) {
+                var zscore = phase_sorted_order.map( function (i) {
+                    var row = data[spreadsheet_num][sort_order[i]];
+                    var num_reps = 0;
+                    var sum = row.reduce( function(x,y) {
+                         if (isNaN(y)) {return x;}
+                        num_reps += 1;
+                        return x+y;
+                    }, 0);
+
+                    var mean = sum / num_reps;
+                    if (num_reps === 0) { mean = 0; }
+
+                    var variance = row.reduce( function(x,y) {
+                        if (isNaN(y)) {return x;}
+
+                        return x + (y - mean)*(y - mean);
+                    }, 0);
+                    var std = Math.sqrt(variance);
+
+                    var z_scores = row.map( function(x,i) {
+                        return (x - mean) / std;
+                    } );
+
+                    return z_scores;
+                } );
+                return zscore;
             });
+
+            // Average all z-scores at the same timepoint together
+            var combined_z_scores = number_comparisons.map( function (spreadsheet_num) {
+                var zscore = z_score_data[spreadsheet_num].map( function(row) {
+                    var z_sum_by_timepoint = [];
+                    var reps_by_timepoint = [];
+                    x_values[spreadsheet_num].map( function (time,i) {
+                        var value = row[i];
+
+                        if (z_sum_by_timepoint[time] === undefined) {
+                            z_sum_by_timepoint[time] = 0;
+                            reps_by_timepoint[time] = 0;
+                        }
+
+                        if (isNaN(value)) {
+                            return;
+                        }
+
+                        z_sum_by_timepoint[time] += value;
+                        reps_by_timepoint[time] += 1;
+                    });
+                    var z_mean_by_timepoint = z_sum_by_timepoint.map( function(sum,i) {
+                        if (reps_by_timepoint[i] === 0) {return 0;}
+                        return sum / reps_by_timepoint[i];
+                    });
+                    return z_mean_by_timepoint;
+                });
+                return zscore;
+            });
+
+            heatmap_data = z_score_data;
+            heatmap_combined_data = combined_z_scores;
+            heatmap_labels = phase_sorted_order.map( function(i) {
+                return labels[sort_order[i]];
+            } );
+
+            var rep_counts = [];
+            heatmap_x_values = x_values[number_comparisons[0]].map( function(time) {
+                if (rep_counts[time] === undefined) {
+                    rep_counts[time] = 0;
+                }
+                rep_counts[time] += 1;
+                var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
+                var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            });
+
+            updateHeatmap();
         });
 
-                var updateHeatmap = function () {
-            var heatmap_layout = {
-                height: 700,
-                width: 900,
-                margin: {
-                    l: 200,
-                    r: 5,
-                    b: 175,
-                    t: 20
-                },
-                pad: 4
-            };
-
+        var updateHeatmap = function () {
             var heatmap_options = {
                 modeBarButtonsToAdd: [{
                     name: 'download in SVG format',
@@ -499,33 +548,82 @@
                 data = heatmap_data;
             }
 
+            // Util to compute maximum of an array along its axis
+            // Apparently Math.max.apply can fail for large arrays
+            var array_max = function (array) {
+                return array.reduce( function(a,b) {
+                    return Math.max(a,b);
+                } );
+            };
+            var array_min = function (array) {
+                return array.reduce( function(a,b) {
+                    return Math.min(a,b);
+                } );
+            };
+
             // Find max/min values so that we can center the colormap with 0=middle
-            var maxRow = data.map(function(row){ return Math.max.apply(Math, row); });
-            var minRow = data.map(function(row){ return Math.min.apply(Math, row); });
+            var maxRow = data.map( function(spreadsheet) { return spreadsheet.map(array_max); });
+            var minRow = data.map( function(spreadsheet) { return spreadsheet.map(array_min); });
 
-            var max = Math.max.apply(null, maxRow);
-            var min = Math.min.apply(null, minRow);
-            var limit = Math.max(Math.abs(min), max);
+            var max = Math.max.apply(null, maxRow.map(array_max));
+            var min = Math.min.apply(null, minRow.map(array_min));
+            var limit = Math.max(Math.abs(min), Math.abs(max));
 
-            var heatmap_values = [{
-                x: x_values,
-                y: heatmap_labels,
-                z: data,
-                type: 'heatmap',
-                zmin: -1 * limit,
-                zmax: limit,
-                colorbar: {
-                    title: 'Z Scale',
-                    titleside: 'right'
+            var y_vals =  heatmap_labels.map(function (x,i) {return i;});
+            var heatmap_values = number_comparisons.map( function(spreadsheet_num) {
+                var colorbar = {};
+                if (spreadsheet_num === 0){
+                    colorbar = {
+                        title: 'Z Scale',
+                        titleside: 'right'
+                    };
                 }
-            }];
 
-            Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
+                return {
+                    x: x_values,
+                    y: y_vals,
+                    z: data[spreadsheet_num],
+                    type: 'heatmap',
+                    xaxis: "x" + (spreadsheet_num+1),
+                    yaxis: "y",
+                    zmin: -1 * limit,
+                    zmax: limit,
+                    colorbar: colorbar
+                };
+            });
+            console.log(heatmap_values);
+
+            var heatmap_layout = {
+                height: 700,
+                width: 1200,
+                margin: {
+                    l: 200,
+                    r: 5,
+                    b: 175,
+                    t: 20
+                },
+                pad: 4,
+                yaxis: {
+                    tickmode: "array",
+                    ticktext: heatmap_labels,
+                    tickvals: y_vals
+                },
+                grid: {
+                    rows: 1,
+                    columns: 2
+                }
+            };
+
+            Plotly.newPlot('heatmap', heatmap_values, heatmap_layout);//, heatmap_options);
+
             $('#heatmap_block').show();
             $('#download_heatmap').show();
             $('#toggle_replicates').show();
         };
 
+        $('#combine_replicates').change(function() {
+            updateHeatmap()
+        });
 
         selectRow(breakpoint);
 
