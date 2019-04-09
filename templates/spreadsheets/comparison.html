@@ -809,6 +809,83 @@
         });
 
 
+        // PCA plot
+        $('#run_pca').click( function() {
+            // We only run PCA on unfiltered genes below the selected row
+            var selected_genes = sort_order.filter( function(row,rank) {
+                if (rank >= selected_row) {
+                    return false;
+                }
+                if (filtered[row]) {
+                    return false;
+                }
+                return true;
+            });
+
+            var rep_counts = [];
+            var pt_labels = x_values[number_comparisons[0]].map( function(time) {
+                if (rep_counts[time] === undefined) {
+                    rep_counts[time] = 0;
+                }
+                rep_counts[time] += 1;
+                var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
+                var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            });
+
+            $.ajax({
+                url: "{{url_for('spreadsheets.run_pca')}}",
+                data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids,
+                                      'selected_genes': selected_genes}),
+                dataType: 'json',
+                contentType: 'application/json',
+                type: 'POST',
+                success: function (response) {
+                    pca_coords = response['pca_coords'];
+                    explained_variance = response['explained_variance'];
+
+                    $('#pca_block').show();
+                    var traces = [{
+                        x: pca_coords[0][0],
+                        y: pca_coords[0][1],
+                        mode: 'markers',
+                        name: descriptive_names[0],
+                        text: pt_labels
+                    },
+                    {
+                        x: pca_coords[1][0],
+                        y: pca_coords[1][1],
+                        mode: 'markers',
+                        name: descriptive_names[1],
+                        text: pt_labels
+                    }];
+
+                    var layout = {
+                        height:800,
+                        width:800,
+                        xaxis: {
+                            title: "PCA1 (" + toFixed(explained_variance[0]*100,1) + "%)"
+                        },
+                        yaxis: {
+                            title: "PCA2 (" + toFixed(explained_variance[1]*100,1) + "%)"
+                        },
+                        hovermode: 'closest',
+                        legend: {
+                            x:0,
+                            y:1,
+                            bgcolor: '#EEEEEE'
+                        }
+                    };
+
+                    Plotly.newPlot("pca_plot", traces, layout);
+                },
+                error: function (error) {
+                    console.log("Error running PCA");
+                    console.log(error);
+                }
+            });
+        });
+
     });
 
 </script>
@@ -920,6 +997,7 @@
         <span class="col-lg-5">
             <input type="hidden" id="row_index" name="row_index"/>
             <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
+            <button id="run_pca" class="btn btn-primary">Run PCA</button>
         </span>
         <span id="toggle_replicates" class="col-lg-5" style="display:none">
             <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
@@ -937,6 +1015,9 @@
             <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
         </div>
         <div class="row" id="heatmap"></div>
+    </div>
+    <div id="pca_block" style="display:none">
+        <div class="row" id="pca_plot"></div>
     </div>
 
 

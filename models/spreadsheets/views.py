@@ -14,6 +14,8 @@ from models.users.user import User
 import json
 from flask import current_app
 import constants
+from sklearn.decomposition import PCA
+import numpy
 
 import nitecap
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
@@ -669,6 +671,71 @@ def get_upside():
 
     return jsonify({
                 'upside_ps': upside_ps
+            })
+
+@spreadsheet_blueprint.route('/run_pca', methods=['POST'])
+def run_pca():
+    args = json.loads(request.data)
+    spreadsheet_ids = args['spreadsheet_ids']
+    selected_genes = args['selected_genes']
+
+    # Run Upside dampening analysis, if it hasn't already been stored to disk
+    datasets = []
+    spreadsheets = []
+
+    # Check user ownership over these spreadsheets
+    user = User.find_by_email(session['email'])
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
+            return jsonify( {'upside_ps': null} )
+        spreadsheets.append(spreadsheet)
+
+    dfs = []
+    for spreadsheet in spreadsheets:
+        data = spreadsheet.df
+        data["compare_ids"] = list(spreadsheet.get_ids())
+        data = data.set_index("compare_ids")
+        data = data[~data.index.duplicated()]
+        dfs.append(data)
+
+    common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
+    df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
+    df = df.sort_values(by=['total_delta_0'])
+    df = df.iloc[selected_genes]
+    compare_ids = df.index.tolist()
+
+    data_columns = [column + f"_{i}" if column in common_columns else column
+                            for i in range(len(spreadsheets))
+                            for column in spreadsheets[i].get_data_columns() ]
+
+    # Normalize to z-scored data across both datasets
+    #df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
+    df[data_columns] = numpy.log(1 + df[data_columns])
+
+    # Extract individual datasets
+    for i in [0,1]:
+        columns = [column + f"_{i}" if column in common_columns else column
+                            for column in spreadsheets[i].get_data_columns()]
+        datasets.append(df[columns].values)
+
+    # Run the PCA
+    pca = PCA(n_components=2)
+    coords = pca.fit_transform(numpy.concatenate(datasets, axis=1).T)
+
+    # Separate the coords into the two datasets
+    pca_coords = []
+    start = 0
+    for dataset in datasets:
+        num_cols = dataset.shape[1]
+        pca_coords.append(coords[start:start + num_cols].T.tolist())
+        start += num_cols
+
+
+    return jsonify({
+                'pca_coords': pca_coords,
+                'explained_variance': pca.explained_variance_ratio_.tolist()
             })
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
