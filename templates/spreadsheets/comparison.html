@@ -433,7 +433,7 @@
             redrawPlot();
         });
 
-        $('#set_breakpoint').click(function() {
+        var computeHeatmap = function() {
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
             $('#toggle_replicates').hide();
@@ -523,7 +523,7 @@
             });
 
             updateHeatmap();
-        });
+        };
 
         var updateHeatmap = function () {
             var heatmap_options = {
@@ -620,6 +620,7 @@
             $('#download_heatmap').show();
             $('#toggle_replicates').show();
         };
+        $('#set_breakpoint').click(computeHeatmap);
 
         $('#combine_replicates').change(function() {
             updateHeatmap()
@@ -795,6 +796,10 @@
             console.log("number of comparisons " + number_comparisons);
             $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
             sortRows();
+
+            if ($('#heatmap_block').is(":visible")) {
+                computeHeatmap();
+            }
         });
 
 
