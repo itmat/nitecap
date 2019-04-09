@@ -578,22 +578,25 @@
 
         $('#applyFilters').click(function() {
             row_index = $('input[name="row_index"]').val();
-            if($('#max_value_filter').val().length == 0) {
-                $('#EmptyFiltersList').css({"visibility":"visible"});
+            if ($('#max_value_filter').val().length == 0) {
+                $('#EmptyFiltersList').css({"visibility": "visible"});
                 $('#significant_items').html(row_index);
                 return
             }
             var max_value_filter = parseInt($('#max_value_filter').val());
-            $('#EmptyFiltersList').css({"visibility":"hidden"});
+            $('#EmptyFiltersList').css({"visibility": "hidden"});
+            $('#filterProgress').css({"visibility": "visible"});
 
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
-                data: JSON.stringify({'max_value_filter': max_value_filter,
-                                      'filtered': filtered}),
+                data: JSON.stringify({
+                    'max_value_filter': max_value_filter,
+                    'filtered': filtered
+                }),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
-                success: function(response) {
+                success: function (response) {
                     qs = response["qs"];
                     ps = response["ps"];
                     filtered = response["filtered"];
@@ -601,7 +604,7 @@
                     var ctr = 0;
                     var set_significant_items = false;
                     var significant_items = $('#significant_items');
-                    $.each(data, function(index, row) {
+                    $.each(data, function (index, row) {
                         if (!filtered[index]) {
                             ctr++;
                         }
@@ -609,7 +612,7 @@
                         num_significant_below[index] = ctr;
 
                         // Update number of significant items
-                        if(index >= row_index && !set_significant_items) {
+                        if (index >= row_index && !set_significant_items) {
                             significant_items.html(ctr);
                             set_significant_items = true;
                         }
@@ -624,8 +627,11 @@
 
                     updateRowSelector();
                 },
-                error: function(response, status, error) {
+                error: function (response, status, error) {
                     console.log(response, status, error);
+                },
+                complete: function () {
+                    $('#filterProgress').css({"visibility": "hidden"});
                 }
             });
         });
@@ -869,7 +875,13 @@
                     <label class="col-form-label" for="max_value_filter" style="margin-right: 10px">Max Value &gt;</label>
                     <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
                 </div>
-                <button id="applyFilters" type="button" class="btn btn-primary" data-dismiss="modal">Apply filters</button>
+                <div>
+                    <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
+                </div>
+                <div id="filterProgress" class="progress" style="visibility:hidden">
+                  <div class="progress-bar progress-bar-animated progress-bar-striped" style="width:100%"></div>
+                  </div>
+                </div>
             </div>
         </div>
     </div>
