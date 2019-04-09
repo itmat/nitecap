@@ -537,14 +537,11 @@
             };
 
 
-            var x_values;
             var data;
             var combine_replicates = $('#combine_replicates').is(':checked');
             if (combine_replicates) {
-                x_values = x_labels;
                 data = heatmap_combined_data;
             } else {
-                x_values = heatmap_x_values;
                 data = heatmap_data;
             }
 
@@ -578,9 +575,12 @@
                         titleside: 'right'
                     };
                 }
-
+                var x_vals = heatmap_x_values;
+                if (combine_replicates) {
+                    x_vals = x_labels[spreadsheet_num];
+                }
                 return {
-                    x: x_values,
+                    x: x_vals,
                     y: y_vals,
                     z: data[spreadsheet_num],
                     type: 'heatmap',
@@ -614,7 +614,7 @@
                 }
             };
 
-            Plotly.newPlot('heatmap', heatmap_values, heatmap_layout);//, heatmap_options);
+            Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
 
             $('#heatmap_block').show();
             $('#download_heatmap').show();
