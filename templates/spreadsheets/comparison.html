@@ -591,7 +591,6 @@
                     colorbar: colorbar
                 };
             });
-            console.log(heatmap_values);
 
             var heatmap_layout = {
                 height: 700,
@@ -793,7 +792,6 @@
         $("#toggle_primary").click(function() {
             first_element = number_comparisons.shift();
             number_comparisons.push(first_element);
-            console.log("number of comparisons " + number_comparisons);
             $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
             sortRows();
 
