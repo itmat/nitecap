@@ -460,7 +460,7 @@ def save_filters():
     json_data = request.get_json()
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-    spreadsheet.max_value_filter = max_value_filter
+    spreadsheet.max_value_filter = float(max_value_filter) if max_value_filter else None
     spreadsheet.apply_filters()
     spreadsheet.save_to_db()
     response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],

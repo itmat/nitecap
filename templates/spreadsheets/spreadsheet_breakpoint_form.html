@@ -577,16 +577,18 @@
         }
 
         $('#applyFilters').click(function() {
+            $('#filterError').hide();
             row_index = $('input[name="row_index"]').val();
-            if ($('#max_value_filter').val().length == 0) {
+            var max_value_filter = $('#max_value_filter').val();
+            if (isNaN(max_value_filter) && max_value_filter.length > 0) {
+                $("#max_value_filter").val('');
                 $('#EmptyFiltersList').css({"visibility": "visible"});
                 $('#significant_items').html(row_index);
                 return
             }
-            var max_value_filter = parseInt($('#max_value_filter').val());
             $('#EmptyFiltersList').css({"visibility": "hidden"});
             $('#filterProgress').css({"visibility": "visible"});
-
+            $('#applyFilters').prop('disabled', true)
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
@@ -628,10 +630,13 @@
                     updateRowSelector();
                 },
                 error: function (response, status, error) {
+                    $("#max_value_filter").val('');
+                    $('#filterError').show();
                     console.log(response, status, error);
                 },
                 complete: function () {
                     $('#filterProgress').css({"visibility": "hidden"});
+                    $('#applyFilters').prop('disabled', false);
                 }
             });
         });
@@ -880,7 +885,9 @@
                 </div>
                 <div id="filterProgress" class="progress" style="visibility:hidden">
                   <div class="progress-bar progress-bar-animated progress-bar-striped" style="width:100%"></div>
-                  </div>
+                </div>
+                <div id="filterError" class="text-danger" style="display:none">
+                    Filter processing failed!
                 </div>
             </div>
         </div>
