@@ -159,6 +159,8 @@ def set_spreadsheet_breakpoint():
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
     ids = list(spreadsheet.get_ids())
+    user = User.find_by_email(session.get('email', None))
+    anonymous = user == None or user.is_annoymous_user()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                                 data=data.to_json(orient='values'),
                                 x_values=spreadsheet.x_values,
@@ -176,7 +178,8 @@ def set_spreadsheet_breakpoint():
                                 descriptive_name = spreadsheet.descriptive_name,
                                 timepoints_per_day = spreadsheet.timepoints,
                                 spreadsheet_id = session['spreadsheet_id'],
-                                max_value_filter = max_value_filter)
+                                max_value_filter = max_value_filter,
+                                anonymous=anonymous)
 
 
 
@@ -483,11 +486,12 @@ def share():
     user = User.find_by_email(session['email'])
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
-    print(f"Spreadsheet {spreadsheet_id}")
+    row_index = json_data.get('row_index', 0)
+    print(f"Spreadsheet {spreadsheet_id} and row index {row_index}")
     if not user.find_user_spreadsheet_by_id(spreadsheet_id):
         errors.append('You may only manage your own spreadsheets.')
         return jsonify({"errors": errors}, 401)
-    return jsonify({'share': user.get_share_token(spreadsheet_id)})
+    return jsonify({'share': user.get_share_token(spreadsheet_id, row_index)})
 
 
 @spreadsheet_blueprint.route('/share/<string:token>', methods=['GET'])
@@ -506,7 +510,7 @@ def consume_share(token):
     :param token: the share token given to the receiving user
     """
     errors = []
-    sharing_user, spreadsheet_id = User.verify_share_token(token)
+    sharing_user, spreadsheet_id, row_index = User.verify_share_token(token)
     spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet or not sharing_user:
         errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
@@ -516,10 +520,11 @@ def consume_share(token):
     if 'email' in session:
         user = User.find_by_email(session['email'])
     shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id if user else None)
-    session['spreadsheet_id'] = shared_spreadsheet.id
-    if user and shared_spreadsheet:
-        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=shared_spreadsheet.id))
-    if not user and shared_spreadsheet:
+    if shared_spreadsheet:
+        if row_index:
+            shared_spreadsheet.breakpoint = row_index
+            shared_spreadsheet.save_to_db()
+        session['spreadsheet_id'] = shared_spreadsheet.id
         return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint'))
     errors.append("The spreadsheets could not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)

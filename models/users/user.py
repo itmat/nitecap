@@ -309,16 +309,17 @@ class User(db.Model):
     def is_annoymous_user(self):
         return self.username == 'annonymous'
 
-    def get_share_token(self, spreadsheet_id):
+    def get_share_token(self, spreadsheet_id, row_index=0):
         """
         Uses a serializer and the website secret key to encrypt the id of the spreadsheet to be shared and the id of
         the users doing the sharing into a token.  The token has no expiration.  So the user with whom the token is
         shared may use it repeatedly.
         :param spreadsheet_id: the id of the spreadsheet to share
+        :param row_index: the spreadsheet row to share (optional - only when on a display page).  Otherwise 0.
         :return: token to pass along to the receiving user
         """
         s = Serializer(os.environ['SECRET_KEY'])
-        return s.dumps({'user_id': self.id, 'spreadsheet_id': spreadsheet_id}).decode('utf-8')
+        return s.dumps({'user_id': self.id, 'spreadsheet_id': spreadsheet_id, 'row_index': row_index}).decode('utf-8')
 
     @staticmethod
     def verify_share_token(token):
@@ -326,7 +327,8 @@ class User(db.Model):
         Determines the validity of a share token.  The token is decrypted and the user id verified as a user having
         a site login.  The sharing user object and the spreadsheet id are returned
         :param token: The share token to be validated
-        :return: A tuple containing the sharing user object and the id of the spreadsheet to be shared.
+        :return: A tuple containing the sharing user object, the id of the spreadsheet to be shared and the row
+        index (defaults to 0).
         """
         s = Serializer(os.environ['SECRET_KEY'])
         try:
@@ -334,7 +336,7 @@ class User(db.Model):
             user = User.find_by_id(user_id)
             if(not user):
                 return None
-            return user, s.loads(token)['spreadsheet_id']
+            return user, s.loads(token)['spreadsheet_id'], s.loads(token)['row_index']
         except:
             return None
 
