@@ -850,24 +850,32 @@
                         y: pca_coords[0][1],
                         mode: 'markers',
                         name: descriptive_names[0],
-                        text: pt_labels
+                        text: pt_labels,
+                        marker: {
+                            size: 25,
+                            opacity: x_values[0].map( function (x) {return (x+1) / (1+Math.max.apply(null, x_values[0]));} )
+                        }
                     },
                     {
                         x: pca_coords[1][0],
                         y: pca_coords[1][1],
                         mode: 'markers',
                         name: descriptive_names[1],
-                        text: pt_labels
+                        text: pt_labels,
+                        marker: {
+                            size: 25,
+                            opacity: x_values[1].map( function (x) {return (x+1) / (1+Math.max.apply(null, x_values[1]));} )
+                        }
                     }];
 
                     var layout = {
                         height:800,
                         width:800,
                         xaxis: {
-                            title: "PCA1 (" + toFixed(explained_variance[0]*100,1) + "%)"
+                            title: "PC1 (" + toFixed(explained_variance[0]*100,1) + "%)"
                         },
                         yaxis: {
-                            title: "PCA2 (" + toFixed(explained_variance[1]*100,1) + "%)"
+                            title: "PC2 (" + toFixed(explained_variance[1]*100,1) + "%)"
                         },
                         hovermode: 'closest',
                         legend: {
