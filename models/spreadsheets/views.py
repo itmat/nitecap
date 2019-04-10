@@ -710,9 +710,12 @@ def run_pca():
                             for i in range(len(spreadsheets))
                             for column in spreadsheets[i].get_data_columns() ]
 
+    # TODO: both z-scores and log(x) or log(1+x) should be options for normalization before PCA
+    #       and if both, z-scores should be done after log transform
+    # log(1+x) normalize data
+    df[data_columns] = numpy.log(1 + df[data_columns])
     # Normalize to z-scored data across both datasets
     #df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
-    df[data_columns] = numpy.log(1 + df[data_columns])
 
     # Extract individual datasets
     for i in [0,1]:
