@@ -76,8 +76,8 @@ def anonymous_spreadsheet_purge_job():
     logger.info('Visitor spreadsheet purge complete.')
 
 scheduler = BackgroundScheduler()
-db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 19 * * *'))
-spreadsheet_job = scheduler.add_job(anonymous_spreadsheet_purge_job, CronTrigger.from_crontab('5 20 * * *'))
+db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
+spreadsheet_job = scheduler.add_job(anonymous_spreadsheet_purge_job, CronTrigger.from_crontab('5 1 * * *'))
 scheduler.start()
 
 if __name__ == '__main__':
