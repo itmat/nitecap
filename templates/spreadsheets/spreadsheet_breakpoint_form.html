@@ -816,6 +816,9 @@
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
             {% if not anonymous %}
+                <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet_id) }}">
+                    <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+                </a>
                 <a id='share_spreadsheet' href="#">
                     <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
                 </a>
