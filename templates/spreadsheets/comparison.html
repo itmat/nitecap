@@ -813,7 +813,7 @@
         $('#run_pca').click( function() {
             // We only run PCA on unfiltered genes below the selected row
             var selected_genes = sort_order.filter( function(row,rank) {
-                if (rank >= selected_row) {
+                if (rank > selected_row) {
                     return false;
                 }
                 if (filtered[row]) {
@@ -821,6 +821,15 @@
                 }
                 return true;
             });
+
+            var alert = $('#run_pca_alert');
+            if (selected_genes.length <  3) {
+                alert.text("Too few rows selected, need at least 3 for PCA.");
+                alert.show();
+                return;
+            } else {
+                alert.hide();
+            }
 
             var rep_counts = [];
             var pt_labels = x_values[number_comparisons[0]].map( function(time) {
@@ -999,6 +1008,7 @@
             <input type="hidden" id="row_index" name="row_index"/>
             <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
             <button id="run_pca" class="btn btn-primary">Run PCA</button>
+            <span id="run_pca_alert" class="alert alert-error"></span>
         </span>
         <span id="toggle_replicates" class="col-lg-5" style="display:none">
             <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
