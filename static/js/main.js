@@ -100,6 +100,50 @@ function meanByTimepoints(data, times) {
     return means;
 }
 
+function rowStatsByTimepoint(row, times) {
+    var sum_by_timepoint = [];
+    var reps_per_timepoint = [];
+    times.forEach(function (time, i) {
+        var value = row[i];
+
+        if (sum_by_timepoint[time] === undefined) {
+            sum_by_timepoint[time] = 0;
+            reps_per_timepoint[time] = 0;
+        }
+        if (!isNaN(value)) {
+            // Skip nans entirely, count the rest
+            sum_by_timepoint[time] += value;
+            reps_per_timepoint[time] += 1;
+        }
+    });
+
+    var means = sum_by_timepoint.map( function (sum,i) {
+        return sum / reps_per_timepoint[i];
+    } );
+
+    var variances = [];
+    times.forEach( function(time, i) {
+        var value = raw_y_values[i];
+
+        if (variances[time] === undefined) {
+            variances[time] = 0;
+        }
+
+        if (!isNaN(value)) {
+            if (reps_per_timepoint[time] > 1) {
+                variances[time] += (value - means[time])*(value - means[time]) / (reps_per_timepoint[time]-1);
+            } else {
+                variances[time] = 0;
+            }
+        }
+    });
+
+    var stds = variances.map(Math.sqrt);
+    var sems = stds.map(function (std, time) { return std / reps_per_timepoint[time]; });
+
+    return {means: means, variances: variances, stds: stds,  sems:sems};
+}
+
 // Util to compute maximum of an array along its axis
 // Apparently Math.max.apply can fail for large arrays
 var array_max = function (array) {
