@@ -3,14 +3,6 @@
 
 <script>
 
-    var toFixed = function(num, i) {
-        // Call num.toFixed unless num is undefined (eg: null)
-        if (typeof num === 'number') {
-            return num.toFixed(i);
-        }
-        return num;
-    };
-
     $(function () {
         $('[data-toggle="tooltip"]').tooltip()
     });
@@ -44,8 +36,8 @@
         jtk_qs = [null,null];
         upside_ps = null;
 
-        // Number of rows to show in the row selecotr
-        num_row_selections = 21;
+        // Number of rows to show in the row selector
+        var num_row_selections = 21;
 
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
@@ -95,52 +87,60 @@
 
         Plotly.newPlot('scatter_plot', traces, layout);
 
-        $("#coarse_slider").slider({
-            orientation: "horizontal",
-            min: 0,
-            value: breakpoint,
-            step: 1,
-            max: labels.length - 1,
-            slide: function (event, ui) {
-                selected_row = ui.value;
-                selectRow(parseInt(ui.value));
-                row_selector.focus();
-            }
-        });
-
-        // add the options to the row_selector list
-        var row_selector_options = [];
-        var row_selector = $('#row_selector')[0];
-        for(var i = 0; i < num_row_selections; i++) {
-            var row_option = document.createElement("div");
-            if (i === num_row_selections) {
-                row_option.className = "list-group-item list-group-item-action py-0";
-            } else {
-                row_option.className = "list-group-item list-group-item-action py-0";
-            }
-            row_option.textContent = "Loading...";
-
-            let my_index = i;
-            row_option.addEventListener('click', function (event) {
-                let row = row_selector_top + my_index;
-                selectRow(row);
-            } );
-            row_selector_options.push(row_option);
-            row_selector.appendChild(row_option);
+        function makeCoarseSlider(element, start_value, maximum) {
+            element.slider({
+                orientation: "horizontal",
+                min: 0,
+                value: start_value,
+                step: 1,
+                max: maximum,
+                slide: function (event, ui) {
+                    selected_row = ui.value;
+                    selectRow(parseInt(ui.value));
+                    row_selector.focus();
+                }
+            });
         }
 
+        makeCoarseSlider($('#coarse_slider'), breakpoint, labels.length - 1);
+
+        var row_selector_options = [];
+        // add the options to the row_selector list
+        function populateRowSelector(row_selector) {
+            for(var i = 0; i < num_row_selections; i++) {
+                var row_option = document.createElement("div");
+                if (i === num_row_selections) {
+                    row_option.className = "list-group-item list-group-item-action py-0";
+                } else {
+                    row_option.className = "list-group-item list-group-item-action py-0";
+                }
+                row_option.textContent = "Loading...";
+
+                let my_index = i;
+                row_option.addEventListener('click', function (event) {
+                    let row = row_selector_top + my_index;
+                    selectRow(row);
+                } );
+                row_selector_options.push(row_option);
+                row_selector.appendChild(row_option);
+            }
+        }
+
+        var row_selector = $('#row_selector')[0];
+        populateRowSelector(row_selector);
+
         // Make labels that include q values in them, for the selector
-        var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
         var nonbreakingspace = "\u00A0";
         var labels_with_qs = null;
-        function  makeRowLabels(q_values) {
+        function  makeRowLabels(labels, q_values) {
+            var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
             labels_with_qs = labels.map( function(label, i) {
                 return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
             } );
         }
-        makeRowLabels(qs[number_comparisons[0]]);
+        makeRowLabels(labels, qs[number_comparisons[0]]);
 
-        var disableFilteredRows = function () {
+        function disableFilteredRows() {
             for(var i = 0; i < num_row_selections; i++) {
                 var current_index = sort_order[row_selector_top + i];
                 if (filtered[current_index]) {
@@ -151,7 +151,7 @@
             }
         };
 
-        var updateRowSelector = function () {
+        function updateRowSelector() {
             // Update the selector rows
             for(var i = 0; i < num_row_selections; i++) {
                 var current_index = row_selector_top + i;
@@ -172,7 +172,6 @@
 
             // Visually disable filtered options
             disableFilteredRows();
-
         };
 
         var selectRow = function (row_index) {
@@ -336,6 +335,7 @@
                 var means = sum_by_timepoint.map( function (sum,i) {
                     return sum / reps_per_timepoint[i];
                 } );
+
                 var variances = [];
                 for (var i = 0; i < x_values[ctr].length; i++) {
                     var time = x_values[ctr][i];
@@ -440,73 +440,22 @@
             $('#cutoff').html(num_significant_below[selected_row]);
 
             var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
-            selected_indexes = selected_indexes.filter( function(i) {
-                return (i <= selected_row) & (!filtered[sort_order[i]]);
+            selected_indexes = sort_order.filter( function(row_num,rank) {
+                return (rank <= selected_row) & (!filtered[row_num]);
             } );
             var phase_sorted_order = selected_indexes.sort( function (i,j) {
-                return compare(peak_times[number_comparisons[0]][sort_order[i]], peak_times[number_comparisons[0]][sort_order[j]], i,j);
+                return compare(peak_times[number_comparisons[0]][i], peak_times[number_comparisons[0]][j], i,j);
             } );
 
-            var z_score_data = number_comparisons.map( function (spreadsheet_num) {
-                var zscore = phase_sorted_order.map( function (i) {
-                    var row = data[spreadsheet_num][sort_order[i]];
-                    var num_reps = 0;
-                    var sum = row.reduce( function(x,y) {
-                         if (isNaN(y)) {return x;}
-                        num_reps += 1;
-                        return x+y;
-                    }, 0);
-
-                    var mean = sum / num_reps;
-                    if (num_reps === 0) { mean = 0; }
-
-                    var variance = row.reduce( function(x,y) {
-                        if (isNaN(y)) {return x;}
-
-                        return x + (y - mean)*(y - mean);
-                    }, 0);
-                    var std = Math.sqrt(variance);
-
-                    var z_scores = row.map( function(x,i) {
-                        return (x - mean) / std;
-                    } );
-
-                    return z_scores;
-                } );
-                return zscore;
-            });
+            var zScoreData = data.map(computeZScores(phase_sorted_order));
 
             // Average all z-scores at the same timepoint together
-            var combined_z_scores = number_comparisons.map( function (spreadsheet_num) {
-                var zscore = z_score_data[spreadsheet_num].map( function(row) {
-                    var z_sum_by_timepoint = [];
-                    var reps_by_timepoint = [];
-                    x_values[spreadsheet_num].map( function (time,i) {
-                        var value = row[i];
-
-                        if (z_sum_by_timepoint[time] === undefined) {
-                            z_sum_by_timepoint[time] = 0;
-                            reps_by_timepoint[time] = 0;
-                        }
-
-                        if (isNaN(value)) {
-                            return;
-                        }
-
-                        z_sum_by_timepoint[time] += value;
-                        reps_by_timepoint[time] += 1;
-                    });
-                    var z_mean_by_timepoint = z_sum_by_timepoint.map( function(sum,i) {
-                        if (reps_by_timepoint[i] === 0) {return 0;}
-                        return sum / reps_by_timepoint[i];
-                    });
-                    return z_mean_by_timepoint;
-                });
-                return zscore;
+            var meanZScores = zScoreData.map(  function(zscores,i) {
+                meanByTimepoints(zscores, x_values[i]);
             });
 
-            heatmap_data = z_score_data;
-            heatmap_combined_data = combined_z_scores;
+            heatmap_data = zScoreData;
+            heatmap_combined_data = meanZScores;
             heatmap_labels = phase_sorted_order.map( function(i) {
                 return labels[sort_order[i]];
             } );
@@ -544,26 +493,12 @@
             } else {
                 data = heatmap_data;
             }
-
-            // Util to compute maximum of an array along its axis
-            // Apparently Math.max.apply can fail for large arrays
-            var array_max = function (array) {
-                return array.reduce( function(a,b) {
-                    return Math.max(a,b);
-                } );
-            };
-            var array_min = function (array) {
-                return array.reduce( function(a,b) {
-                    return Math.min(a,b);
-                } );
-            };
-
             // Find max/min values so that we can center the colormap with 0=middle
-            var maxRow = data.map( function(spreadsheet) { return spreadsheet.map(array_max); });
-            var minRow = data.map( function(spreadsheet) { return spreadsheet.map(array_min); });
+            var maxInRow = data.map( function(spreadsheet) { return spreadsheet.map(array_max); });
+            var minInRow = data.map( function(spreadsheet) { return spreadsheet.map(array_min); });
 
-            var max = Math.max.apply(null, maxRow.map(array_max));
-            var min = Math.min.apply(null, minRow.map(array_min));
+            var max = Math.max.apply(null, maxInRow.map(array_max));
+            var min = Math.min.apply(null, minInRow.map(array_min));
             var limit = Math.max(Math.abs(min), Math.abs(max));
 
             var y_vals =  heatmap_labels.map(function (x,i) {return i;});
@@ -735,10 +670,10 @@
             sort_order = sort_order.sort( sorters[sorter] );
 
             if (sorter == "nitecap") {
-                makeRowLabels(qs[number_comparisons[0]]);
+                makeRowLabels(labels, qs[number_comparisons[0]]);
             } else {
 
-                makeRowLabels(jtk_qs[number_comparisons[0]]);
+                makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
             }
 
             // TODO: this will change what gene is selected
