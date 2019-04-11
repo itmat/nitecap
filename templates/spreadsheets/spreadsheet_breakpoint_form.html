@@ -876,6 +876,12 @@
         <div class="card col-xs-1" style="width: 15rem;">
             <div class="card-header">
                 Statistics
+                <a id="statsHelp"
+                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                   title="Statistics Help"
+                   data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
+                    <i class="fas fa-info-circle ml-3"></i>
+                </a>
             </div>
             <div class="card-body">
                 Sort by: <br>
@@ -899,7 +905,7 @@
         <div id="FiltersCard" class="card col-xs-1" style="width: 20rem;">
             <div class="card-header">
                 Filters
-                <a id="filtersHelp" href="#"
+                <a id="filtersHelp"
                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                    title="Filter Help"
                    data-content="Please note that filter application can take a dozen or more seconds to complete.">
