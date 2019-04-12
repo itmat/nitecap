@@ -28,7 +28,7 @@ def purge(dbfile):
                         os.remove(working_file_path)
                     if os.path.exists(uploaded_file_path):
                         os.remove(uploaded_file_path)
-                    ids.append(id)
+                    ids.append(str(id))
                     print(f"Visitor spreadsheet {id} at "
                                             f"{uploaded_file_path} completely purged.")
                 except Exception as e:

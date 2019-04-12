@@ -168,3 +168,7 @@ body {
     background-color: #f5f5f5;
 }
 
+.help-pointer {
+    cursor: pointer;
+}
+
