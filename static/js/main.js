@@ -226,9 +226,6 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
         },
 
         selectRow: function (row_index) {
-            // Update the coarse slider
-            $("#coarse_slider").slider("option", "value", row_index);
-
             rowSelector.selectedRow = row_index;
 
             // Update row selector scrolling
@@ -275,13 +272,13 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
             case "Up": // IE/Edge specific value
             case "ArrowUp":
                 // Find the next row up that is unfiltered
-                var i = selectedRow-1;
+                var i = rowSelector.selectedRow-1;
                 while (true) {
                     if (i < 0) {
                         // Top of the table, do nothing;
                         break;
                     }
-                    if (!rowSelector.filtered_rows[rowSelectorsort_order[i]]) {
+                    if (!rowSelector.filtered_rows[rowSelector.sort_order[i]]) {
                         rowSelector.selectRow(i);
                         break;
                     }

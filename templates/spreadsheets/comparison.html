@@ -91,7 +91,7 @@
                 slide: function (event, ui) {
                     selected_row = ui.value;
                     rowSelector.selectRow(parseInt(ui.value));
-                    row_selector.focus();
+                    $('#row_selector').focus();
                 }
             });
         }
@@ -222,6 +222,10 @@
         // Make the row selector
         function onRowSelect(selection) {
             selected_row = selection;
+
+            // Update the coarse slider
+            $("#coarse_slider").slider("option", "value", selected_row);
+
             updateStatsBox();
             redrawPlot();
         }
@@ -458,14 +462,18 @@
         var sortRows = function () {
             var sorter = $('#sort_select').val();
 
-            sort_order = labels.map( function(x,i) {return i;} );
-            sort_order = sort_order.sort( sorters[sorter] );
 
-            if (sorter == "nitecap") {
+            if (sorter === "nitecap") {
                 rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
+                sort_order = labels.map( function(x,i) {return i;} );
             } else {
-
-                rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
+                sort_order = labels.map( function(x,i) {return i;} );
+                sort_order = sort_order.sort( sorters[sorter] );
+                if (sorter === 'jtk') {
+                    rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
+                } else {
+                    rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
+                }
             }
 
             rowSelector.setSortOrder(sort_order);
