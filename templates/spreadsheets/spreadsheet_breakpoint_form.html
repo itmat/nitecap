@@ -42,7 +42,9 @@
 
         y_values = [];
         trace_name = 'Nothing selected';
-        marker_settings = {size: 12, symbol: 'circle-open', color: '#FF00FF'};
+        marker_settings = {};
+        // d3's default color
+        var plot_color = Plotly.d3.scale.category10()[0];
 
         var scatter_plot = document.getElementById('scatter_plot');
 
@@ -169,7 +171,8 @@
                     y: means,
                     name: labels[row_index] + " mean",
                     type: "scatter",
-                    mode: "lines"
+                    mode: "lines",
+                    'line': {color: plot_color}
                 };
                 layout["showlegend"] = false;
             } else if (plot_style === "std") {
