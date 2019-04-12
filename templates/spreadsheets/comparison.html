@@ -252,7 +252,7 @@
 
             // Average all z-scores at the same timepoint together
             var meanZScores = zScoreData.map(  function(zscores,i) {
-                meanByTimepoints(zscores, x_values[i]);
+                return meanByTimepoints(zscores, x_values[i]);
             });
 
             heatmap_data = zScoreData;
