@@ -218,6 +218,10 @@
             redrawPlot();
         });
 
+        $('#download_plot').click(function() {
+            var gd = document.getElementById('scatter_plot');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (selected_row+1)});
+        });
 
         // Make the row selector
         function onRowSelect(selection) {
@@ -237,7 +241,7 @@
         var computeHeatmap = function() {
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
-            $('#toggle_replicates').hide();
+            $('#heatmap_controls').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
 
             var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
@@ -353,9 +357,14 @@
 
             $('#heatmap_block').show();
             $('#download_heatmap').show();
-            $('#toggle_replicates').show();
+            $('#heatmap_controls').show();
         };
         $('#set_breakpoint').click(computeHeatmap);
+
+        $('#download_heatmap').click(function() {
+            var gd = document.getElementById('heatmap');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (selected_row+1)});
+        });
 
         $('#combine_replicates').change(function() {
             updateHeatmap()
@@ -585,7 +594,6 @@
                     pca_coords = response['pca_coords'];
                     explained_variance = response['explained_variance'];
 
-                    $('#pca_block').show();
                     var traces = number_comparisons.map( function (spreadsheet_num) {
                         return {
                             x: pca_coords[spreadsheet_num][0],
@@ -739,28 +747,34 @@
         <span class="col-lg-5">
             <input type="hidden" id="row_index" name="row_index"/>
             <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
-            <button id="run_pca" class="btn btn-primary">Run PCA</button>
-            <span id="run_pca_alert" class="alert alert-error"></span>
-        </span>
-        <span id="toggle_replicates" class="col-lg-5" style="display:none">
-            <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
-            <label class="switch">
-                <input id="combine_replicates" name="combine_replicates" type="checkbox" >
-                <span class="slider"></span>
-            </label>
-        </span>
-        <span class='col-lg-2'>
-            <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
         </span>
     </div>
-    <div id="heatmap_block" style="display:none">
-        <div class="row">
-            <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
+    <div class="row">
+        <div class="col card" id="heatmap_block" style="display:none">
+            <div class="card-body">
+                <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
+                <div id="heatmap"></div>
+                <span id="heatmap_controls" class="col-lg-5" style="display:none">
+                    <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
+                    <label class="switch">
+                        <input id="combine_replicates" name="combine_replicates" type="checkbox" >
+                        <span class="slider"></span>
+                    </label>
+                </span>
+                <span class='col-lg-2'>
+                    <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
+                </span>
+            </div>
         </div>
-        <div class="row" id="heatmap"></div>
     </div>
-    <div id="pca_block" style="display:none">
-        <div class="row" id="pca_plot"></div>
+    <div class="row">
+        <div class="col card">
+            <div class="card-body">
+                <button id="run_pca" class="btn btn-primary">Run PCA</button>
+                <span id="run_pca_alert" class="alert alert-error"></span>
+                <div id="pca_plot"></div>
+            </div>
+        </div>
     </div>
 
 
