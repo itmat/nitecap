@@ -241,7 +241,7 @@
         rowSelector = makeRowSelector($('#row_selector')[0],  labels, qs, filtered, sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(breakpoint);
 
-        $('#set_breakpoint').click(function() {
+        var computeHeatmap = function() {
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
             $('#toggle_replicates').hide();
@@ -255,63 +255,15 @@
                 return compare(peak_times[sort_order[i]], peak_times[sort_order[j]], i,j);
             } );
 
-            var z_score_data = phase_sorted_order.map( function (i) {
-                var row = data[sort_order[i]];
-                var num_reps = 0;
-                var sum = row.reduce( function(x,y) {
-                     if (isNaN(y)) {return x;}
-                    num_reps += 1;
-                    return x+y;
-                }, 0);
+            var zScoreData = computeZScores(phase_sorted_order)(data);
+            var meanZScores = meanByTimepoints(zScoreData, x_values);
 
-                var mean = sum / num_reps;
-                if (num_reps === 0) { mean = 0; }
-
-                var variance = row.reduce( function(x,y) {
-                    if (isNaN(y)) {return x;}
-
-                    return x + (y - mean)*(y - mean);
-                }, 0);
-                var std = Math.sqrt(variance);
-
-                var z_scores = row.map( function(x,i) {
-                    return (x - mean) / std;
-                } );
-
-                return z_scores;
-            } );
-
-            // Average all z-scores at the same timepoint together
-            var combined_z_scores = z_score_data.map( function(row) {
-                var z_sum_by_timepoint = [];
-                var reps_by_timepoint = [];
-                x_values.map( function (time,i) {
-                    var value = row[i];
-
-                    if (z_sum_by_timepoint[time] === undefined) {
-                        z_sum_by_timepoint[time] = 0;
-                        reps_by_timepoint[time] = 0;
-                    }
-
-                    if (isNaN(value)) {
-                        return;
-                    }
-
-                    z_sum_by_timepoint[time] += value;
-                    reps_by_timepoint[time] += 1;
-                });
-                var z_mean_by_timepoint = z_sum_by_timepoint.map( function(sum,i) {
-                    if (reps_by_timepoint[i] === 0) {return 0;}
-                    return sum / reps_by_timepoint[i];
-                });
-                return z_mean_by_timepoint;
-            });
-
-            heatmap_data = z_score_data;
-            heatmap_combined_data = combined_z_scores;
+            heatmap_data = zScoreData;
+            heatmap_combined_data = meanZScores;
             heatmap_labels = phase_sorted_order.map( function(i) {
                 return labels[sort_order[i]];
             } );
+
 
             var rep_counts = [];
             heatmap_x_values = x_values.map( function(time) {
@@ -325,7 +277,7 @@
             });
 
             updateHeatmap();
-        });
+        };
 
         var updateHeatmap = function () {
             var heatmap_options = {
@@ -394,6 +346,7 @@
             $('#download_heatmap').show();
             $('#toggle_replicates').show();
         };
+        $('#set_breakpoint').click(computeHeatmap);
 
         $('#download_heatmap').click(function() {
             var gd = document.getElementById('heatmap');
