@@ -157,3 +157,187 @@ var array_min = function (array) {
     } );
 };
 
+
+//// Row selector object ////
+var nonbreakingspace = "\u00A0";
+function makeRowSelector(element, labels, q_values, filtered, sort_order, num_row_selections, onSelect) {
+    var rowSelector = {
+        top: 0, // Top row visible
+        options: [], // List of all the option elements inside of the row selector
+        labels: labels, // list of strings used to label the rows
+        sort_order: sort_order, // List of indexes to use to reorder the rows
+        filtered_rows: filtered, // Boolean list with 1 meaning corresponding row is filtered out (disabled)
+
+        // Event callbacks
+        onSelect: onSelect,
+
+        // Methods
+        makeRowLabels: function(labels, q_values) {
+            // Make labels that include q values in them, for the selector
+            var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
+            rowSelector.labels = labels.map( function(label, i) {
+                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+            } );
+            rowSelector.update();
+        },
+
+        filterRows: function(filtered_rows) {
+            rowSelector.filtered_rows = filtered_rows;
+            rowSelector.disableFilteredRows();
+        },
+
+        disableFilteredRows: function() {
+            for(var i = 0; i < num_row_selections; i++) {
+                var current_index = rowSelector.sort_order[rowSelector.top + i];
+                if (rowSelector.filtered_rows[current_index]) {
+                    rowSelector.options[i].classList.add("disabled");
+                } else {
+                    rowSelector.options[i].classList.remove("disabled");
+                }
+            }
+        },
+
+        setSortOrder: function(sort_order) {
+            rowSelector.sort_order = sort_order;
+            rowSelector.update();
+        },
+
+        update: function () {
+            // Update the selector rows
+            for(var i = 0; i < num_row_selections; i++) {
+                var current_index = rowSelector.top + i;
+                if (current_index < 0) {
+                    rowSelector.options[i].textContent = "-";
+                } else if (current_index >= rowSelector.labels.length) {
+                    rowSelector.options[i].textContent = "-";
+                } else {
+                    rowSelector.options[i].textContent = rowSelector.labels[rowSelector.sort_order[current_index]];
+                }
+
+                if (current_index === rowSelector.selectedRow) {
+                    rowSelector.options[i].classList.add("active");
+                } else {
+                    rowSelector.options[i].classList.remove("active");
+                }
+            }
+
+            // Visually disable filtered options
+            rowSelector.disableFilteredRows();
+        },
+
+        selectRow: function (row_index) {
+            // Update the coarse slider
+            $("#coarse_slider").slider("option", "value", row_index);
+
+            rowSelector.selectedRow = row_index;
+
+            // Update row selector scrolling
+            if (row_index >= rowSelector.top) {
+                if (row_index < rowSelector.top + num_row_selections) {
+                    // Do nothing, already can see the right row
+                } else {
+                    // Moving down, put it at the bottom
+                    rowSelector.top = row_index - num_row_selections + 1;
+                }
+            } else {
+                // Moving up, put it at the top
+                rowSelector.top = row_index;
+            }
+
+            rowSelector.update();
+
+            rowSelector.onSelect(rowSelector.selectedRow);
+        }
+    };
+
+    element.addEventListener('keydown', function (event) {
+        if (event.defaultPrevented) {
+            return; // Do nothing
+        }
+
+        switch (event.key) {
+            case "Down": // IE/Edge specific value
+            case "ArrowDown":
+                // Find the next row down that is unfiltered
+                var i = rowSelector.selectedRow+1;
+                while (true) {
+                    if (i >= rowSelector.labels.length) {
+                        // End of the table, do nothing;
+                        break;
+                    }
+                    if (!rowSelector.filtered_rows[rowSelector.sort_order[i]]) {
+                        rowSelector.selectRow(i);
+                        break;
+                    }
+                    i++;
+                }
+                break;
+            case "Up": // IE/Edge specific value
+            case "ArrowUp":
+                // Find the next row up that is unfiltered
+                var i = selectedRow-1;
+                while (true) {
+                    if (i < 0) {
+                        // Top of the table, do nothing;
+                        break;
+                    }
+                    if (!rowSelector.filtered_rows[rowSelectorsort_order[i]]) {
+                        rowSelector.selectRow(i);
+                        break;
+                    }
+                    i--;
+                }
+                break;
+            case "PageDown":
+                var max_top = Math.max(0, rowSelector.labels.length - num_row_selections);
+                rowSelector.top = Math.min(rowSelector.top + num_row_selections, max_top);
+                rowSelector.update();
+                break;
+            case "PageUp":
+                rowSelector.top = Math.max(rowSelector.top - num_row_selections, 0);
+                rowSelector.update();
+                break;
+            default:
+                return;
+        }
+
+        event.preventDefault();
+        return;
+    });
+
+    element.addEventListener('wheel', function (event) {
+        if (event.deltaY > 0) {
+            var max_top = Math.max(0, rowSelector.labels.length - num_row_selections);
+            rowSelector.top = Math.min(rowSelector.top + 3, max_top) ;
+        } else if (event.deltaY < 0) {
+            rowSelector.top = Math.max(rowSelector.top - 3, 0) ;
+        }
+        rowSelector.update();
+
+        event.preventDefault();
+    });
+
+    // add the options to the row_selector list
+    for(var i = 0; i < num_row_selections; i++) {
+        var row_option = document.createElement("div");
+        if (i === num_row_selections) {
+            row_option.className = "list-group-item list-group-item-action py-0";
+        } else {
+            row_option.className = "list-group-item list-group-item-action py-0";
+        }
+        row_option.textContent = "Loading...";
+
+        let my_index = i;
+        row_option.addEventListener('click', function (event) {
+            let row = rowSelector.top + my_index;
+            rowSelector.selectRow(row);
+        } );
+        rowSelector.options.push(row_option);
+
+        element.appendChild(row_option);
+    }
+
+    rowSelector.makeRowLabels(labels, q_values);
+
+    return rowSelector;
+}
