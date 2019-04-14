@@ -172,3 +172,9 @@ body {
     cursor: pointer;
 }
 
+.smaller-text {
+    /* Smaller font for home page */
+    font-size: 12px;
+}
+
+
