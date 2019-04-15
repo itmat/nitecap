@@ -22,7 +22,7 @@ import copy
 
 import nitecap
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p"]
+NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p", "anova_q"]
 
 
 class Spreadsheet(db.Model):
@@ -306,15 +306,18 @@ class Spreadsheet(db.Model):
         amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, num_cycles = self.days, cycle_length=self.timepoints)
         try:
             anova_p = nitecap.util.anova(data_formatted)
+            anova_q = nitecap.util.BH_FDR(anova_p)
         except ValueError:
             # Can't run anova (eg: no replicates)
             anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
+            anova_q = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
 
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
         self.df["anova_p"] = anova_p
+        self.df["anova_q"] = anova_q
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 

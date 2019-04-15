@@ -170,7 +170,8 @@ def set_spreadsheet_breakpoint():
                                 ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                                anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
+                                anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
+                                anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
                                 filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
@@ -213,7 +214,8 @@ def show_spreadsheet(spreadsheet_id):
                                 ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
                                 amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
                                 peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                                anovas=json.dumps(list(spreadsheet.df.anova_p.values)),
+                                anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
+                                anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
                                 filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
                                 ids=ids,
                                 column_pairs=spreadsheet.column_pairs,
@@ -589,7 +591,8 @@ def compare():
     ps = []
     amplitudes = []
     peak_times = []
-    anovas = []
+    anova_ps = []
+    anova_qs = []
     for i in [0,1]:
         columns.append([column + f"_{i}" if column in common_columns else column
                             for column in spreadsheets[i].get_data_columns()])
@@ -598,8 +601,8 @@ def compare():
         ps.append(df[f"nitecap_p_{i}"].values.tolist())
         amplitudes.append(df[f"amplitude_{i}"].values.tolist())
         peak_times.append(df[f"peak_time_{i}"].values.tolist())
-        anovas.append(df[f"anova_p_{i}"].values.tolist())
-
+        anova_ps.append(df[f"anova_p_{i}"].values.tolist())
+        anova_qs.append(df[f"anova_q_{i}"].values.tolist())
 
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
@@ -614,7 +617,8 @@ def compare():
                            ps=json.dumps(ps),
                            amplitudes=json.dumps(amplitudes),
                            peak_times=json.dumps(peak_times),
-                           anovas=json.dumps(anovas),
+                           anova_ps=json.dumps(anova_ps),
+                           anova_qs=json.dumps(anova_qs),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            timepoints_per_day = timepoints_per_day,
                            spreadsheet_ids=json.dumps(spreadsheet_ids))
@@ -625,6 +629,7 @@ def get_upside():
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
     upside_ps = []
+    upside_qs = []
     datasets = []
     spreadsheets = []
 
@@ -643,6 +648,7 @@ def get_upside():
         try:
             comp_data = pd.read_table(file_path)
             upside_ps.append(comp_data["upside_ps"].values.tolist())
+            upside_qs.append(comp_data["upside_qs"].values.tolist())
             current_app.logger.info(f"Loaded upside values from file {file_path}")
         except FileNotFoundError:
             if not datasets:
@@ -668,14 +674,18 @@ def get_upside():
             current_app.logger.info(f"Dataset sizes: {df.shape}, {datasets[primary].shape}, {datasets[secondary].shape}")
             upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates, datasets[primary],
                                 spreadsheets[secondary].num_replicates, datasets[secondary])
+            upside_q = nitecap.util.BH_FDR(upside_p)
             comp_data = pd.DataFrame(index = df.index)
             comp_data["upside_ps"] = upside_p
+            comp_data["upside_qs"] = upside_q
             comp_data.to_csv(file_path, sep="\t")
             upside_ps.append(upside_p.tolist())
+            upside_qs.append(upside_q.tolist())
             current_app.logger.info("Compute upside values and saved them to file {file_path}")
 
     return jsonify({
-                'upside_ps': upside_ps
+                'upside_ps': upside_ps,
+                'upside_qs': upside_qs
             })
 
 @spreadsheet_blueprint.route('/run_pca', methods=['POST'])
