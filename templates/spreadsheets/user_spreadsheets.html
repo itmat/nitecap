@@ -26,7 +26,7 @@
             }
         });
 
-        $('.share_spreadsheet').click(function(event) {
+        $('#spreadsheetTable').on('click','.share_spreadsheet', function(event) {
             spreadsheet_id = $(event.target).parent().attr('id').split("_")[2];
             $.ajax({
                 url: "{{url_for('spreadsheets.share')}}",
@@ -44,7 +44,8 @@
                 }
             });
         });
-        $('.delete_spreadsheet').click(function(event) {
+        $('#spreadsheetTable').on('click', '.delete_spreadsheet' , function(event) {
+            console.log("Got here");
             $("#confirm_delete .btn-danger").attr('href', $(this).attr('data-href'));
             $("#confirm_delete").modal();
         });
@@ -56,7 +57,7 @@
                 spreadsheet_list.push(value[8])
             });
             if(!spreadsheet_list || spreadsheet_list.length != 2) {
-                $("#alert-error").modal()
+                $("#alert-error").modal();
                 return
             }
 
