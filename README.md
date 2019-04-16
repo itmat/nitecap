@@ -35,6 +35,7 @@ sudo apt-get update
 sudo apt-get install git
 sudo apt-get install apache2
 sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt-get update
 sudo apt-get install python3.6
 sudo apt-get install emacs
 sudo apt-get install sendmail
@@ -63,18 +64,15 @@ sudo mkdir /var/www/flask_apps
 sudo mkdir /var/www/flask_apps/logs
 ```
 I was unable to do a `git clone` directly into `flask_apps` even when I temporarily changed ownership
-to `ubuntu:ubuntu`.  Trying `sudo git clone git@github.com:tgbrooks/nitecap.git` inside
-`/var/www/flask_apps` resulted in a permission denied error.  Instead, I attempted the
-git command inside the home directory and that was successful.  Then I switched to the
-development branch:
+to `ubuntu:ubuntu`.  Run `git clone git@github.com:tgbrooks/nitecap.git` inside
+home directory. Then switch to the development branch
 ```bash
-git checkout cris
+git checkout develop
 ```
-It may be possible to create a symbolic link from `/var/www/flask_apps/nitecap` to
-the home directory's `nitecap` folder, but I gave up on the idea and simply copied
-the entire folder into `/var/www/flask_apps`:
+Create a symbolic link from `/var/www/flask_apps/nitecap` to
+the home directory's `nitecap` folder:
 ```bash
-sudo cp -R ~/nitecap /var/www/flask_apps/.
+sudo ln -s /home/ubuntu/nitecap /var/www/flask_apps/nitecap
 ```
 Since `www-data` is the account for Apache2, I changed ownership of the `/var/www`
 from `root`:
@@ -82,18 +80,13 @@ from `root`:
 sudo chown -R www-data:www-data /var/www
 ``` 
 Then inside `/var/www/flask_apps/nitecap`, I created the virtual environment and
-populated it.
+populated it. NOTE: try the below without 'sudo' in first command and ommiting the chown, it should hopefully be equivalent.
 ```bash
 sudo python3.6 -m venv venv
 source venv/bin/activate
+chown -R ubuntu.ubuntu venv
 pip install -r requirements.txt
-pip install flask-sqlalchemy
-pip install msgpack
-pip install mod_wsgi
 ```
-The `flask-sqlalchemy` package will be added to the requirements.txt to avoid having to
-`pip install` it separately.  The `msgpack` and `mod_wsgi` packages can possibly be
-added to the requirements.txt file without disrupting development work.
 
 Similarly we need to load an R package:
 ```bash
@@ -106,12 +99,13 @@ needed for the apache2.conf site:
 mod_wsgi-express module-config
 deactivate
 ```
-The 2 lines obtained above where added to `/etc/apache2/apache2.conf` just above
+The 2 lines obtained must then be added to `/etc/apache2/apache2.conf` just above
 the include directive for virtual hosts:
 ```
 # Include generic snippets of statements
 IncludeOptional conf-enabled/*.conf
 
+## Add these two lines, which are the output of the `mod_wsgi-express module-config` command
 LoadModule wsgi_module "/var/www/flask_apps/nitecap/venv/lib/python3.6/site-packages/mod_wsgi/server/mod_wsgi-py36.cpython-36m-x86_64-linux-gnu.so"
 WSGIPythonHome "/var/www/flask_apps/nitecap/venv"
 
@@ -147,36 +141,58 @@ may be more configuration here than is actually necessary.
 The configuration constants inside the apache2 configurations (e.g., `%{GLOBAL}`
 above) need to be populated, which is done as follows:
 ```bash
-sudo source /etc/apache2/envvars
+source /etc/apache2/envvars
 ```
-Finally, we need to set the entry point into the `nitecap` application, `wsgi.py`:
-```python
-import sys
-sys.path.append('/var/www/flask_apps/nitecap')
 
-from app import app as application
-from db import db
-db.init_app(application)
+# Make and mount volume
 
-if __name__=="__main__":
-    application.run()
+On EC2 create a new volume and attach to the instance. It will be located at `/dev/xvdf`.
+```bash
+sudo mkfs -t ext2 /dev/xvdf
+sudo mkdir /mnt/vol1
+sudo mount /dev/xvdf /mnt/vol1
+sudo mkdir /mnt/vol1/logs
+sudo mkdir /mnt/vol1/uploads
+sudo mkdir /mnt/vol1/dbs
+sudo chown www-data:www-data dbs logs uploads
 ```
-Note that the db.init_app(application) must happen first to avoid a SQLAlchemy
-assertion error.  The same statement inside the `app.py` does not serve here
-because it is not executed when `app.py` is called as a module, as it is here.
-We can probably put this python script in the git repository as well.
+Also need to add the user to the www-data usergroup:
+```
+sudo usermod -a -G www-data ubuntu
+```
+NOTE: you must log out and log back in for this to take effect.
+
+# Write .env file
+Create the .env file in the nitecap directory, eg:
+
+```
+APPLICATION_SETTINGS = "config_default.py"
+EMAIL_SENDER =  "admin@nitecap.org"
+UPLOAD_FOLDER = "/mnt/vol1/uploads"
+DB_BACKUP_FOLDER = '/mnt/vol1/dbs'
+DB_BACKUP_LIMIT = 7
+SECRET_KEY = "MY_SECRET_KEY"
+ANNONYMOUS_EMAIL = "anonymous@upenn.edu"
+ANNONYMOUS_PWD = "MY_ANONYMOUS_PASSWORD"
+SMTP_SERVER_HOST = '127.0.0.1'
+DATABASE_FILE = "nitecap.db"
+LOG_FILE = "/mnt/vol1/logs/nitecap.log"
+LOG_LEVEL = "INFO"
+```
 
 # Execution
 Enable the nitecap virtual host and disable the default virtual host:
 ```bash
 sudo a2ensite nitecap.conf
-sudo a2dissites 000-default.conf
+sudo a2dissite 000-default.conf
 ```
 Ensure that the apache2 configuration has no syntax errors (it may complain
 about not finding a FQDN server name, but that's OK for now).
 ```bash
 apache2ctl configtest
 ```
+If you receive an error about `AH00557: apache2: apr_sockaddr_info_get() failed for ip-######`, add a line to /etc/hosts that is `127.0.0.1 ip-######` where ip-####### is from the error message before.
+
 Start the apache2 service:
 ```bash
 sudo service apache2 start
