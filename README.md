@@ -86,13 +86,7 @@ sudo python3.6 -m venv venv
 source venv/bin/activate
 chown -R ubuntu.ubuntu venv
 pip install -r requirements.txt
-pip install flask-sqlalchemy
-pip install msgpack
-pip install mod_wsgi
 ```
-The `flask-sqlalchemy` package will be added to the requirements.txt to avoid having to
-`pip install` it separately.  The `msgpack` and `mod_wsgi` packages can possibly be
-added to the requirements.txt file without disrupting development work.
 
 Similarly we need to load an R package:
 ```bash
