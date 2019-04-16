@@ -99,12 +99,13 @@ needed for the apache2.conf site:
 mod_wsgi-express module-config
 deactivate
 ```
-The 2 lines obtained above where added to `/etc/apache2/apache2.conf` just above
+The 2 lines obtained must then be added to `/etc/apache2/apache2.conf` just above
 the include directive for virtual hosts:
 ```
 # Include generic snippets of statements
 IncludeOptional conf-enabled/*.conf
 
+## Add these two lines, which are the output of the `mod_wsgi-express module-config` command
 LoadModule wsgi_module "/var/www/flask_apps/nitecap/venv/lib/python3.6/site-packages/mod_wsgi/server/mod_wsgi-py36.cpython-36m-x86_64-linux-gnu.so"
 WSGIPythonHome "/var/www/flask_apps/nitecap/venv"
 
