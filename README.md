@@ -141,36 +141,22 @@ may be more configuration here than is actually necessary.
 The configuration constants inside the apache2 configurations (e.g., `%{GLOBAL}`
 above) need to be populated, which is done as follows:
 ```bash
-sudo source /etc/apache2/envvars
+source /etc/apache2/envvars
 ```
-Finally, we need to set the entry point into the `nitecap` application, `wsgi.py`:
-```python
-import sys
-sys.path.append('/var/www/flask_apps/nitecap')
-
-from app import app as application
-from db import db
-db.init_app(application)
-
-if __name__=="__main__":
-    application.run()
-```
-Note that the db.init_app(application) must happen first to avoid a SQLAlchemy
-assertion error.  The same statement inside the `app.py` does not serve here
-because it is not executed when `app.py` is called as a module, as it is here.
-We can probably put this python script in the git repository as well.
 
 # Execution
 Enable the nitecap virtual host and disable the default virtual host:
 ```bash
 sudo a2ensite nitecap.conf
-sudo a2dissites 000-default.conf
+sudo a2dissite 000-default.conf
 ```
 Ensure that the apache2 configuration has no syntax errors (it may complain
 about not finding a FQDN server name, but that's OK for now).
 ```bash
 apache2ctl configtest
 ```
+If you receive an error about `AH00557: apache2: apr_sockaddr_info_get() failed for ip-######`, add a line to /etc/hosts that is `127.0.0.1 ip-######` where ip-####### is from the error message before.
+
 Start the apache2 service:
 ```bash
 sudo service apache2 start
