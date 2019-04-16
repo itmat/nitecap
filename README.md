@@ -35,6 +35,7 @@ sudo apt-get update
 sudo apt-get install git
 sudo apt-get install apache2
 sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt-get update
 sudo apt-get install python3.6
 sudo apt-get install emacs
 sudo apt-get install sendmail
