@@ -156,6 +156,23 @@ sudo mkdir /mnt/vol1/uploads
 sudo mkdir /mnt/vol1/dbs
 ```
 
+# Write .env file
+Write the .env file in the nitecap directory eg:
+
+```
+APPLICATION_SETTINGS = "config_default.py"
+EMAIL_SENDER =  "admin@nitecap.org"
+UPLOAD_FOLDER = "/mnt/vol1/uploads"
+DB_BACKUP_FOLDER = '/mnt/vol1/dbs'
+DB_BACKUP_LIMIT = 7
+SECRET_KEY = "MYSECRETKEY"
+ANNONYMOUS_EMAIL = "anonymous@upenn.edu"
+ANNONYMOUS_PWD = "MYANONYMOUSPASSWORD"
+SMTP_SERVER_HOST = '127.0.0.1'
+DATABASE_FILE = "nitecap.db"
+LOG_FILE = "/mnt/vol1/logs/nitecap.log"
+LOG_LEVEL = "INFO"
+```
 
 # Execution
 Enable the nitecap virtual host and disable the default virtual host:
