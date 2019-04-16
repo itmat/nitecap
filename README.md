@@ -80,10 +80,11 @@ from `root`:
 sudo chown -R www-data:www-data /var/www
 ``` 
 Then inside `/var/www/flask_apps/nitecap`, I created the virtual environment and
-populated it.
+populated it. NOTE: try the below without 'sudo' in first command and ommiting the chown, it should hopefully be equivalent.
 ```bash
 sudo python3.6 -m venv venv
 source venv/bin/activate
+chown -R ubuntu.ubuntu venv
 pip install -r requirements.txt
 pip install flask-sqlalchemy
 pip install msgpack
