@@ -142,7 +142,17 @@ The configuration constants inside the apache2 configurations (e.g., `%{GLOBAL}`
 above) need to be populated, which is done as follows:
 ```bash
 source /etc/apache2/envvars
+sudo mkdir /mnt/vol1
+sudo mount /dev/xvdf /mnt/vol1
 ```
+
+# Make and mount volume
+
+On EC2 create a new volume and attach to the instance. It will be located at `/dev/xvdf`.
+```bash
+sudo mkfs -t ext2 /dev/xvdf
+```
+
 
 # Execution
 Enable the nitecap virtual host and disable the default virtual host:
