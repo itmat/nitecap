@@ -146,7 +146,7 @@ source /etc/apache2/envvars
 
 # Make and mount volume
 
-On EC2 create a new volume and attach to the instance. It will be located at `/dev/xvdf`.
+On EC2 create a new volume and attach to the instance. It will be located at `/dev/xvdf`. If it is not `xvdf`, run `lsblk` and it will be listed there (probably as the last entry, type `disk` and of the appropriate size).
 ```bash
 sudo mkfs -t ext2 /dev/xvdf
 sudo mkdir /mnt/vol1
