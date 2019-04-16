@@ -64,18 +64,15 @@ sudo mkdir /var/www/flask_apps
 sudo mkdir /var/www/flask_apps/logs
 ```
 I was unable to do a `git clone` directly into `flask_apps` even when I temporarily changed ownership
-to `ubuntu:ubuntu`.  Trying `sudo git clone git@github.com:tgbrooks/nitecap.git` inside
-`/var/www/flask_apps` resulted in a permission denied error.  Instead, I attempted the
-git command inside the home directory and that was successful.  Then I switched to the
-development branch:
+to `ubuntu:ubuntu`.  Run `git clone git@github.com:tgbrooks/nitecap.git` inside
+home directory. Then switch to the development branch
 ```bash
-git checkout cris
+git checkout develop
 ```
-It may be possible to create a symbolic link from `/var/www/flask_apps/nitecap` to
-the home directory's `nitecap` folder, but I gave up on the idea and simply copied
-the entire folder into `/var/www/flask_apps`:
+Create a symbolic link from `/var/www/flask_apps/nitecap` to
+the home directory's `nitecap` folder:
 ```bash
-sudo cp -R ~/nitecap /var/www/flask_apps/.
+sudo ln -s /home/ubuntu/nitecap /var/www/flask_apps/nitecap
 ```
 Since `www-data` is the account for Apache2, I changed ownership of the `/var/www`
 from `root`:
