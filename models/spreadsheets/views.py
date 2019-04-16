@@ -589,6 +589,7 @@ def compare():
     datasets = []
     qs = []
     ps = []
+    tds = []
     amplitudes = []
     peak_times = []
     anova_ps = []
@@ -603,6 +604,7 @@ def compare():
         peak_times.append(df[f"peak_time_{i}"].values.tolist())
         anova_ps.append(df[f"anova_p_{i}"].values.tolist())
         anova_qs.append(df[f"anova_q_{i}"].values.tolist())
+        tds.append(df[f"total_delta_{i}"].tolist())
 
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
@@ -619,6 +621,7 @@ def compare():
                            peak_times=json.dumps(peak_times),
                            anova_ps=json.dumps(anova_ps),
                            anova_qs=json.dumps(anova_qs),
+                           tds = json.dumps(tds),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            timepoints_per_day = timepoints_per_day,
                            spreadsheet_ids=json.dumps(spreadsheet_ids))

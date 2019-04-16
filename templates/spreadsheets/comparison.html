@@ -18,6 +18,7 @@
         descriptive_names = {{ descriptive_names | safe }}
         qs = {{ qs | safe }};
         ps = {{ ps | safe }};
+        tds = {{ tds | safe }};
         amplitudes = {{ amplitudes | safe }};
         anova_ps = {{ anova_ps | safe }};
         anova_qs = {{ anova_qs | safe }};
@@ -443,8 +444,8 @@
         };
         var sorters = {
             "nitecap": function(i,j) {
-                var a = ps[number_comparisons[0]][i];
-                var b = ps[number_comparisons[0]][j];
+                var a = tds[number_comparisons[0]][i];
+                var b = tds[number_comparisons[0]][j];
                 return compare(a,b,i,j);
             },
             "anova": function (i,j) {
@@ -477,21 +478,16 @@
             var sorter = $('#sort_select').val();
 
 
-            if (sorter === "nitecap") {
-                rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
-                sort_order = labels.map( function(x,i) {return i;} );
+            sort_order = labels.map( function(x,i) {return i;} );
+            sort_order = sort_order.sort( sorters[sorter] );
+            if (sorter === 'jtk') {
+                rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
+            } else if (sorter === 'upside') {
+                rowSelector.makeRowLabels(labels, upside_qs[number_comparisons[0]]);
+            } else if (sorter === 'anova') {
+                rowSelector.makeRowLabels(labels, anova_qs[number_comparisons[0]]);
             } else {
-                sort_order = labels.map( function(x,i) {return i;} );
-                sort_order = sort_order.sort( sorters[sorter] );
-                if (sorter === 'jtk') {
-                    rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
-                } else if (sorter === 'upside') {
-                    rowSelector.makeRowLabels(labels, upside_qs[number_comparisons[0]]);
-                } else if (sorter === 'anova') {
-                    rowSelector.makeRowLabels(labels, anova_qs[number_comparisons[0]]);
-                } else {
-                    rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
-                }
+                rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
             }
 
             rowSelector.setSortOrder(sort_order);
