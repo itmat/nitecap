@@ -151,6 +151,9 @@ On EC2 create a new volume and attach to the instance. It will be located at `/d
 sudo mkfs -t ext2 /dev/xvdf
 sudo mkdir /mnt/vol1
 sudo mount /dev/xvdf /mnt/vol1
+sudo mkdir /mnt/vol1/logs
+sudo mkdir /mnt/vol1/uploads
+sudo mkdir /mnt/vol1/dbs
 ```
 
 
