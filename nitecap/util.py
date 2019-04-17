@@ -11,9 +11,12 @@ def BH_FDR(ps):
     adjusted = numpy.zeros(ps.shape)
     adjusted[sort_order] = numpy.array(ps)[sort_order]*len(ps)/numpy.arange(1,len(ps)+1)
 
-    # Make monotone
-    for i, r in enumerate(sort_order):
-        adjusted[r] = min(numpy.min(adjusted[sort_order[i:]]), 1)
+    # Make monotone, skipping NaNs
+    m = 1;
+    for i, r in enumerate(sort_order[::-1]):
+        if numpy.isfinite(adjusted[r]):
+            m = min(adjusted[r], m)
+            adjusted[r] = m
 
     return adjusted # the q-values
 

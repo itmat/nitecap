@@ -118,7 +118,7 @@ def allowed_file(filename):
     extension = Path(filename).suffix
     return extension.lower() in constants.ALLOWED_EXTENSIONS
 
-@spreadsheet_blueprint.route('spreadsheets/identify_spreadsheet_columns', methods=['GET','POST'])
+@spreadsheet_blueprint.route('identify_spreadsheet_columns', methods=['GET','POST'])
 def identify_spreadsheet_columns():
     errors = []
 
@@ -126,6 +126,10 @@ def identify_spreadsheet_columns():
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+
+    # Populate
+    spreadsheet.init_on_load()
+
     if request.method == 'POST':
         column_labels = list(request.form.values())
 
@@ -138,17 +142,21 @@ def identify_spreadsheet_columns():
         spreadsheet.set_ids_unique()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
-        return redirect(url_for('.set_spreadsheet_breakpoint'))
+        return redirect(url_for('.set_spreadsheet_breakpoint', spreadsheet_id = spreadsheet.id))
     return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
 
-@spreadsheet_blueprint.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
-def set_spreadsheet_breakpoint():
+@spreadsheet_blueprint.route('/set_spreadsheet_breakpoint/<int:spreadsheet_id>', methods=['GET','POST'])
+def set_spreadsheet_breakpoint(spreadsheet_id):
     errors = []
     if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+
+    # Populate
+    spreadsheet.init_on_load()
+
     if request.method == 'POST':
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
@@ -194,6 +202,10 @@ def show_spreadsheet(spreadsheet_id):
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    # Populate
+    spreadsheet.init_on_load()
+
     if request.method == 'POST':
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index
@@ -232,6 +244,10 @@ def display_heatmap():
     json_data = request.get_json()
     row_index = json_data.get('row_index',0)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+
+    # Populate
+    spreadsheet.init_on_load()
+
     spreadsheet.breakpoint = row_index
     spreadsheet.save_to_db()
     data, labels, original_indexes = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
@@ -261,7 +277,12 @@ def display_heatmap():
 def get_jtk():
     errors = []
     spreadsheet_id = json.loads(request.data)['spreadsheet_id']
+    current_app.logger.info(f'In JTK - spreadsheet_id is {spreadsheet_id}')
     spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+
+    # Populate
+    spreadsheet.init_on_load()
+
     jtk_ps, jtk_qs = spreadsheet.get_jtk()
     return jsonify( { "jtk_ps": jtk_ps,
                       "jtk_qs": jtk_qs } )
@@ -442,6 +463,10 @@ def edit_columns():
         current_app.logger.warn(f"User {user.id} attempted to edit the column labels of spreadsheet "
                                 f"{session['spreadsheet_id']}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    # Populate
+    spreadsheet.init_on_load()
+
     if request.method == 'POST':
         column_labels = list(request.form.values())
         error, messages = spreadsheet.validate(column_labels)
@@ -466,9 +491,14 @@ def save_filters():
     json_data = request.get_json()
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+
+    # Populate
+    spreadsheet.init_on_load()
+
     spreadsheet.max_value_filter = float(max_value_filter) if max_value_filter else None
     spreadsheet.apply_filters()
     spreadsheet.save_to_db()
+
     response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
                         'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
                         'filtered': spreadsheet.df.filtered_out.values.tolist()})
@@ -552,6 +582,10 @@ def compare():
         if not spreadsheet:
             errors.append('You may only manage your own spreadsheets.')
             return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+        # Populate
+        spreadsheet.init_on_load()
+
         spreadsheets.append(spreadsheet)
     errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     if errors:
@@ -643,6 +677,10 @@ def get_upside():
         if not spreadsheet:
             current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
             return jsonify( {'upside_ps': null} )
+
+        # Populate
+        spreadsheet.init_on_load()
+
         spreadsheets.append(spreadsheet)
 
     for primary, secondary in [(0,1), (1,0)]:
@@ -705,6 +743,10 @@ def run_pca():
     user = User.find_by_email(session['email'])
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+        # Populate
+        spreadsheet.init_on_load()
+
         if not spreadsheet:
             current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
             return jsonify( {'upside_ps': null} )
@@ -781,6 +823,10 @@ def check_id_uniqueness():
     if errors:
         print(errors)
         return jsonify({'errors': errors}), 404
+
+    # Populate
+    spreadsheet.init_on_load()
+
     non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
     print(non_unique_ids)
     return jsonify({'non-unique_ids': non_unique_ids})
