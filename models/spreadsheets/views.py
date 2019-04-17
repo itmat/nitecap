@@ -761,8 +761,10 @@ def run_pca():
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 def check_id_uniqueness():
-    user = User.find_by_email(session['email'])
-    user = user if user else User.find_by_username("annonymous")
+    if 'email' in session:
+        user = User.find_by_email(session['email'])
+    else:
+        user = User.find_by_username("annonymous")
     spreadsheet = None
     errors = []
     json_data = request.get_json()
