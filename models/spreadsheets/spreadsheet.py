@@ -120,7 +120,6 @@ class Spreadsheet(db.Model):
         else:
             self.df = pd.read_csv(self.file_path, sep="\t")
 
-    @orm.reconstructor
     def init_on_load(self):
         """
         The method that runs when SQLAlchemy reloads a Spreadsheet.  A pandas dataframe is rebuilt from the file
