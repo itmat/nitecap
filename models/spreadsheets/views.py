@@ -18,9 +18,12 @@ from sklearn.decomposition import PCA
 import numpy
 
 import nitecap
+from timer_decorator import timeit
+
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET','POST'])
+@timeit
 def load_spreadsheet():
     current_app.logger.info('Loading spreadsheet')
     if request.method == 'POST':
@@ -119,6 +122,7 @@ def allowed_file(filename):
     return extension.lower() in constants.ALLOWED_EXTENSIONS
 
 @spreadsheet_blueprint.route('identify_spreadsheet_columns', methods=['GET','POST'])
+@timeit
 def identify_spreadsheet_columns():
     errors = []
 
