@@ -22,7 +22,7 @@ app.jinja_env.globals['momentjs'] = momentjs
 
 handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
 handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
-formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(message)s')
+formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(thread)d : %(message)s')
 handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 logger.addHandler(handler)
