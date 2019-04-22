@@ -1,3 +1,5 @@
+import time
+
 import magic
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file, jsonify
 from pandas.errors import ParserError
@@ -27,81 +29,45 @@ spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 def load_spreadsheet():
     current_app.logger.info('Loading spreadsheet')
     if request.method == 'POST':
-        # http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
-        descriptive_name = request.form['descriptive_name']
-        days = request.form['days']
-        timepoints = request.form['timepoints']
-        repeated_measures = request.form['repeated_measures']
-        repeated_measures = True if repeated_measures == 'y' else False
-        header_row = request.form['header_row']
-        upload_file = request.files['upload_file'] if 'upload_file' in request.files else None
 
-        # Validate and give errors
-        errors = []
-
-        if not descriptive_name or len(descriptive_name) > 250:
-            errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
-        if not days or not days.isdigit():
-            errors.append(f"The value for days is required and must be a positve integer.")
-        if not timepoints or not timepoints.isdigit():
-            errors.append(f"The value for timepoints is required and must be a positve integer.")
-        if not header_row or not header_row.isdigit():
-            errors.append(f"The value of the header row is required and must be a positive integer.")
-        if not upload_file:
-            errors.append(f'No spreadsheet file was provided.')
-        else:
-            if not len(upload_file.filename):
-                errors.append('No spreadsheet file was provided.')
-            if not allowed_file(upload_file.filename):
-                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
+        # Collect and validate the form data
+        descriptive_name, days, timepoints, repeated_measures, header_row, upload_file, errors =\
+            validate_spreadsheet_upload_form(request.form, request.files)
         if errors:
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
                                    descriptive_name=descriptive_name, days=days,
                                    timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
-        # Not really necessary since we re-name the file.
-        filename = secure_filename(upload_file.filename)
-
-        extension = Path(filename).suffix
+        # Rename the uploaded file to avoid any naming collisions and save it
+        extension = Path(upload_file.filename).suffix
         new_filename = uuid.uuid4().hex + extension
         file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
         upload_file.save(file_path)
 
-        # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
-        # to be one of the accepted file mime types.
-        disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  They may be gzipped."
-        x = magic.Magic(mime=True)
-        z = magic.Magic(mime=True, uncompress=True)
-        file_mime_type = x.from_file(file_path)
-        print(file_mime_type)
-        if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-            errors.append(disallowed_mime_type)
-        elif file_mime_type in constants.COMPRESSED_MIME_TYPES:
-            file_mime_type = z.from_file(file_path)
-            print(file_mime_type)
-            if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-                errors.append(disallowed_mime_type)
+        # If the mime type validation fails, remove the uploaded file from the disk
+        file_mime_type, errors = validate_mime_type(file_path)
         if errors:
             os.remove(file_path)
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
                                    descriptive_name=descriptive_name, days=days,
                                    timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
-        # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
-        # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
-        # We throw the file away and report the error.
+        # Identify any logged in user so that ownership of the spreadsheet is established.
         user_id = None
         if 'email' in session and session['email']:
             user = User.find_by_email(session['email'])
-            if user:
-                user_id = user.id
+            user_id = user.id if user else None
+
+        # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
+        # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
+        # We throw the file away and report the error.
         try:
             spreadsheet = Spreadsheet(descriptive_name=descriptive_name,
                                       days = days,
                                       timepoints = timepoints,
                                       repeated_measures = repeated_measures,
                                       header_row = header_row,
-                                      original_filename = filename,
+                                      original_filename = upload_file.filename,
                                       file_mime_type = file_mime_type,
                                       uploaded_file_path = file_path,
                                       user_id = user_id)
@@ -110,6 +76,8 @@ def load_spreadsheet():
             os.remove(file_path)
             errors.append(ne.message)
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
+
+        # Save the spreadsheet metadata to the database and add the spreadsheet id to the session.
         spreadsheet.save_to_db()
         session['spreadsheet_id'] = spreadsheet.id
 
@@ -117,9 +85,80 @@ def load_spreadsheet():
 
     return render_template('spreadsheets/spreadsheet_upload_form.html')
 
+@timeit
+def validate_spreadsheet_upload_form(form_data, files):
+    """
+    Helper method to collect form data and validate it
+    :param form_data: the form dictionary from requests
+    :param files: the files dictionary from requests
+    :return: a tuplbe consisting of the form data and an array of error msgs.  An empty array indicates no errors
+    """
+
+    # Gather data
+    descriptive_name = form_data.get('descriptive_name', None)
+    days = form_data.get('days', None)
+    timepoints = form_data.get('timepoints', None)
+    repeated_measures = form_data.get('repeated_measures', 'n')
+    repeated_measures = True if repeated_measures == 'y' else False
+    header_row = form_data.get('header_row', None)
+    upload_file = files.get('upload_file', None)
+
+    # Check data for errors
+    errors = []
+    if not descriptive_name or len(descriptive_name) > 250:
+        errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
+    if not days or not days.isdigit():
+        errors.append(f"The value for days is required and must be a positve integer.")
+    if not timepoints or not timepoints.isdigit():
+        errors.append(f"The value for timepoints is required and must be a positve integer.")
+    if not header_row or not header_row.isdigit():
+        errors.append(f"The value of the header row is required and must be a positive integer.")
+    if not upload_file:
+        errors.append(f'No spreadsheet file was provided.')
+    else:
+        if not len(upload_file.filename):
+            errors.append('No spreadsheet file was provided.')
+        if not allowed_file(upload_file.filename):
+            errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
+    return descriptive_name, days, timepoints, repeated_measures, header_row, upload_file, errors
+
 def allowed_file(filename):
+    """
+    Helper method to establish whether the filename of the uploaded file contains an acceptable suffix.
+    :param filename: uploaded file filename
+    :return: True if the suffix is allowed and false otherwise
+    """
     extension = Path(filename).suffix
     return extension.lower() in constants.ALLOWED_EXTENSIONS
+
+@timeit
+def validate_mime_type(file_path):
+    """
+    Helper method to determine the mime type of the uploaded file.  It appears that the mime type can only be verified
+    for a saved file.  So the path to the saved uploaded file is provided. A check is made that the mime type is among
+    those allowed for an uploaded spreadsheet.  The mime type of underlying file that is compressed is also checked.
+    :param file_path: file path of saved uploaded file
+    :return: A tuple, containing the discovered mime type and an array containing an error message if an error was
+     found and an empty array otherwise
+    """
+
+    # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
+    # to be one of the accepted file mime types.
+    errors = []
+    disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  " \
+                           f"They may be gzipped."
+    x = magic.Magic(mime=True)
+    z = magic.Magic(mime=True, uncompress=True)
+    file_mime_type = x.from_file(file_path)
+    current_app.logger.info(f"Upload file type: {file_mime_type}")
+    if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+        errors.append(disallowed_mime_type)
+    elif file_mime_type in constants.COMPRESSED_MIME_TYPES:
+        file_mime_type = z.from_file(file_path)
+        if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+            errors.append(disallowed_mime_type)
+    return file_mime_type, errors
+
 
 @spreadsheet_blueprint.route('identify_spreadsheet_columns', methods=['GET','POST'])
 @timeit
@@ -278,10 +317,10 @@ def display_heatmap():
 
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
+@timeit
 def get_jtk():
     errors = []
     spreadsheet_id = json.loads(request.data)['spreadsheet_id']
-    current_app.logger.info(f'In JTK - spreadsheet_id is {spreadsheet_id}')
     spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
 
     # Populate
