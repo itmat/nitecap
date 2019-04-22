@@ -8,7 +8,10 @@
     });
 
     $(document).ready(function() {
-        var table = $('#spreadsheetTable').DataTable({
+
+        let spreadsheetTableElement = $('#spreadsheetTable');
+
+        let table = spreadsheetTableElement.DataTable({
                         aoColumnDefs: [
                             { 'bSortable': false, 'aTargets': [ 7 ] },
                             { 'visible': false, 'aTargets': [8] }
@@ -26,7 +29,7 @@
             }
         });
 
-        $('#spreadsheetTable').on('click','.share_spreadsheet', function(event) {
+        spreadsheetTableElement.on('click','.share_spreadsheet', function(event) {
             spreadsheet_id = $(event.target).parent().attr('id').split("_")[2];
             $.ajax({
                 url: "{{url_for('spreadsheets.share')}}",
@@ -44,10 +47,10 @@
                 }
             });
         });
-        $('#spreadsheetTable').on('click', '.delete_spreadsheet' , function(event) {
-            console.log("Got here");
-            $("#confirm_delete .btn-danger").attr('href', $(this).attr('data-href'));
-            $("#confirm_delete").modal();
+
+        spreadsheetTableElement.on('click', '.delete_spreadsheet' , function(event) {
+            $("#delete_confirmed").attr('data-id', $(this).attr('data-id'));
+            $("#confirm_delete_modal").modal();
         });
 
         $('#compare').click(function(event) {
@@ -57,15 +60,42 @@
                 spreadsheet_list.push(value[8])
             });
             if(!spreadsheet_list || spreadsheet_list.length != 2) {
+                let error_message = "Presently, we only support comparing two spreadsheets at a time.  " +
+                                    "Please adjust your selection accordingly.";
+                $("#ajax-error").text(error_message);
                 $("#alert-error").modal();
                 return
             }
-
-            console.log(spreadsheet_list);
             spreadsheet_ids = spreadsheet_list.join(",");
             compare_url = "{{ url_for('spreadsheets.compare') }}";
             window.location.href = compare_url + "?spreadsheet_ids=" + spreadsheet_ids
-        })
+        });
+
+
+        // Delete is confirmed - send AJAX call to delete spreadsheet
+        $("#delete_confirmed").on('click', function(event) {
+            var spreadsheet_id = $(this).attr('data-id');
+            $("#confirm_delete_modal").modal('toggle');
+            $.ajax({
+                url: "{{url_for('spreadsheets.delete')}}",
+                data: JSON.stringify({"spreadsheet_id": spreadsheet_id}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function (response) {
+                    // The parameter in draw is needed to keep the user on the current page
+                    table.row("#spreadsheet_" + spreadsheet_id).remove().draw(false);
+                    if(errorIndicatorElement.length) {
+                        errorIndicatorElement.remove();
+                    }
+                },
+                error: function (request, status, error) {
+                    error_message = $.parseJSON(request.responseText).error;
+                    $("#ajax-error").text(error_message);
+                    $("#alert-error").modal();
+                }
+            })
+        });
     });
 
 </script>
@@ -86,14 +116,13 @@
 {% endwith %}
 
 {% if errors %}
-    <div class="badge badge-danger">Errors</div>
+    <div id="error-indicator" class="badge badge-danger">Errors</div>
     <div class="server-errors">
         {% for error in errors %}
             <div>{{error}}</div>
         {% endfor %}
     </div>
 {% endif %}
-
 
 {% if user.spreadsheets %}
     <table id="spreadsheetTable" class="table table-striped table-bordered" width="100%">
@@ -117,7 +146,7 @@
             {% else %}
                 {% set class="text-dark" %}
             {% endif %}
-            <tr class={{class}}>
+            <tr class={{class}} id="spreadsheet_{{spreadsheet.id}}">
                 <td>{{spreadsheet.original_filename}}</td>
                 <td data-sort="{{spreadsheet.date_uploaded}}">
                     {{ momentjs(spreadsheet.date_uploaded).format('LLL') }}
@@ -140,10 +169,10 @@
                        download="processed_file_{{spreadsheet.id}}.txt">
                         <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
                     </a>
-                    <a id='share_spreadsheet_{{spreadsheet.id}}' class="share_spreadsheet" href="#">
+                    <a id='share_spreadsheet_{{spreadsheet.id}}' class="share_spreadsheet text-primary">
                        <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
                     </a>
-                    <a data-href="{{ url_for('spreadsheets.delete', spreadsheet_id = spreadsheet.id) }}" class="delete_spreadsheet" href="#">
+                    <a data-id="{{ spreadsheet.id }}" class="delete_spreadsheet text-primary">
                         <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                     </a>
                 </td>
@@ -195,7 +224,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="confirm_delete" tabindex="-1" role="dialog">
+<div class="modal fade" id="confirm_delete_modal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -211,7 +240,7 @@
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">Cancel</span>
                 </button>
-                <a class="btn btn-danger" href="#">Delete</a>
+                <a id="delete_confirmed" class="btn btn-danger">Delete</a>
             </div>
         </div>
     </div>
@@ -226,9 +255,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body text-danger">
-                Presently, we only support comparing two spreadsheets at a time.  Please adjust your selection
-                accordingly.
+            <div id="ajax-error" class="modal-body text-danger">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">

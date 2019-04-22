@@ -338,36 +338,32 @@ def display_spreadsheets():
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
 
-@spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>', methods=['GET'])
+@spreadsheet_blueprint.route('/delete', methods=['POST'])
 @requires_login
-def delete(spreadsheet_id):
+def delete():
     """
-    The spreadsheet deletion is intended only for logged in users and is activated via a trashcan
-    icon alongside each spreadsheet in the user's spreadsheet list.  That the spreadsheet to be
-    deleted belongs to the user making the request is verified.  If so verified, the spreadsheet is
-    deleted first from the database and then the originally uploaded spreadsheet file and the
-    processed spreadsheet file are removed from the file system.  The user is notified in the event
-    on an incomplete removal.
-    :param spreadsheet_id: the spreadsheet id to be removed
+    Rest call to delete the user's spreadsheet data and its metadata.  The user most own the spreadsheet given by the
+    id provided.  The reference to the spreadsheet is first removed from the database and then the associated files
+    are removed.  Any incomplete removal is reported to the user and logged.
+    :return: A successful ajax call returns nothing (just a 204 status code).
     """
-    errors = []
+    spreadsheet_id = json.loads(request.data).get('spreadsheet_id', None)
+    if not spreadsheet_id:
+        return jsonify({"error": "No spreadsheet id provided."}), 400
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        errors.append('You may only manage your own spreadsheets.')
         current_app.logger.warn(f"User {user.id} attempted to delete spreadsheet {spreadsheet_id}")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+        return jsonify({"error": "You may only manage your own spreadsheets"}), 403
     try:
         spreadsheet.delete_from_db()
         os.remove(spreadsheet.file_path)
         os.remove(spreadsheet.uploaded_file_path)
     except Exception as e:
-       errors.append("The spreadsheet data may not have been all successfully removed.")
-       current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
-                                f"expunged.", e)
-    if errors:
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-    return redirect(url_for('.display_spreadsheets'))
+        current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
+                                 f"expunged.", e)
+        return jsonify({"error": 'The spreadsheet data may not have been all successfully removed'}), 500
+    return '', 204
 
 
 @spreadsheet_blueprint.route('/download', methods=['GET'])
@@ -610,7 +606,6 @@ def compare():
     errors = []
     spreadsheets = []
     non_unique_id_counts = []
-    datasets = []
     x_values = []
     x_labels = []
     x_label_values = []
@@ -630,6 +625,7 @@ def compare():
         spreadsheet.init_on_load()
 
         spreadsheets.append(spreadsheet)
+        
     errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)

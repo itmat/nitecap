@@ -582,15 +582,17 @@ class Spreadsheet(db.Model):
         if not spreadsheets or len(spreadsheets) < 2:
             errors.append("Insufficient spreadsheets were provided for comparisons.")
             return errors
+        missing_column_labels = [spreadsheet.descriptive_name for spreadsheet in spreadsheets
+                                 if not spreadsheet.column_labels]
+        if missing_column_labels:
+            errors.append(f'Column labels for the following spreadsheet(s) are not specified: '
+                          f'{",".join(missing_column_labels)}.  You may have skipped this step.  Go back and re-edit')
+            return errors
         timepoint_labels = spreadsheets[0].get_timepoint_labels()
         for spreadsheet in spreadsheets[1:]:
             other_timepoint_labels = spreadsheet.get_timepoint_labels()
-            print(timepoint_labels)
-            print(other_timepoint_labels)
-            print(timepoint_labels != other_timepoint_labels)
             if timepoint_labels != other_timepoint_labels:
                 errors.append("Timepoints must be the same for the comparison of multiple spreadsheets.")
-        print(errors)
         return errors
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
