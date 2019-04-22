@@ -13,3 +13,5 @@ data
 build/
 .env
 nitecap.db
+cwl_*
+
