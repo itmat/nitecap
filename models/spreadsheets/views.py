@@ -189,7 +189,7 @@ def identify_spreadsheet_columns():
     return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
 
-@spreadsheet_blueprint.route('/set_spreadsheet_breakpoint/<int:spreadsheet_id>', methods=['GET','POST'])
+@spreadsheet_blueprint.route('/set_spreadsheet_breakpoint/<int:spreadsheet_id>', methods=['GET'])
 def set_spreadsheet_breakpoint(spreadsheet_id):
     errors = []
     if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
@@ -199,13 +199,6 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
 
     # Populate
     spreadsheet.init_on_load()
-
-    if request.method == 'POST':
-        row_index = int(request.form['row_index'])
-        spreadsheet.breakpoint = row_index
-        spreadsheet.save_to_db()
-        session['spreadsheet'] = spreadsheet.to_json()
-        return redirect(url_for('.display_heatmap'))
 
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
@@ -235,7 +228,7 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
 
 
 
-@spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET','POST'])
+@spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
 def show_spreadsheet(spreadsheet_id):
     errors = []
@@ -253,12 +246,6 @@ def show_spreadsheet(spreadsheet_id):
         errors = [f"Column labels were not selected for spreadsheet '{spreadsheet.descriptive_name}'.  "
                   f"You may have skipped a step.  Please re-edit your data."]
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-    if request.method == 'POST':
-        row_index = int(request.form['row_index'])
-        spreadsheet.breakpoint = row_index
-        spreadsheet.save_to_db()
-        return redirect(url_for('.display_heatmap'))
 
     session["spreadsheet_id"] = spreadsheet.id
 
@@ -284,42 +271,6 @@ def show_spreadsheet(spreadsheet_id):
                                 timepoints_per_day = spreadsheet.timepoints,
                                 spreadsheet_id = session['spreadsheet_id'],
                                 max_value_filter = max_value_filter)
-
-
-@spreadsheet_blueprint.route('/heatmap', methods=['POST'])
-def display_heatmap():
-    errors = []
-    json_data = request.get_json()
-    row_index = json_data.get('row_index',0)
-    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-
-    # Populate
-    spreadsheet.init_on_load()
-
-    spreadsheet.breakpoint = row_index
-    spreadsheet.save_to_db()
-    data, labels, original_indexes = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
-    data = spreadsheet.normalize_data(data)
-    combined_data = spreadsheet.average_replicates(data)
-    heatmap_x_values = []
-    for day in range(spreadsheet.days):
-        for timepoint in range(spreadsheet.timepoints):
-             num_replicates = spreadsheet.num_replicates[timepoint]
-             for rep in range(num_replicates):
-                 heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
-    heatmap_data = data.where((pd.notnull(data)), None).values.tolist()
-    heatmap_combined_data = combined_data.where((pd.notnull(combined_data)), None).values.tolist()
-    return jsonify(
-                        {
-                            "heatmap_labels": labels,
-                            "heatmap_data": heatmap_data,
-                            "heatmap_combined_data": heatmap_combined_data,
-                            "heatmap_x_values": heatmap_x_values,
-                            "heatmap_indexes": list(original_indexes)
-                        }
-                    )
-
-
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
 @timeit
@@ -858,19 +809,19 @@ def check_id_uniqueness():
     id_columns = json_data.get('id_columns', None)
     if not id_columns or len(id_columns) == 0:
         errors.append("No id columns were selected. Please select at least one id column.")
+        return jsonify({'error': errors}), 400
     if not spreadsheet_id:
         errors.append("No spreadsheet was identified. Make sure you are selecting one you uploaded.")
+        return jsonify({'error': errors}), 400
     else:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-       errors.append('The spreadsheet being edited could not be found.')
-    if errors:
-        print(errors)
-        return jsonify({'errors': errors}), 404
+        errors.append('The spreadsheet being edited could not be found.')
+        return jsonify({'error': errors}), 404
 
     # Populate
     spreadsheet.init_on_load()
 
     non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
-    print(non_unique_ids)
+    current_app.logger.debug(f"Non-unique ids {non_unique_ids}")
     return jsonify({'non-unique_ids': non_unique_ids})

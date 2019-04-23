@@ -74,7 +74,8 @@
     </nav>
 </div>
 
-<div class="alert alert-warning" style="display:block" role="alert">
+{# Maintenance Banner - set display:block to show banner #}
+<div class="alert alert-warning" style="display:none" role="alert">
     We will be doing maintenance on the Nitecap site between 6 pm and 7 pm on Wednesday, April 24th.  You may experience
     interruptions in the site during that period.
 </div>
@@ -82,6 +83,27 @@
 <div class="content container">
     {% block content %}
     {% endblock %}
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="error-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="model-title text-danger">Error</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="error-modal-message" class="modal-body text-danger">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">Dismiss</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Sticky footer -->
