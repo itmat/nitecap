@@ -249,6 +249,11 @@ def show_spreadsheet(spreadsheet_id):
     # Populate
     spreadsheet.init_on_load()
 
+    if not spreadsheet.column_labels:
+        errors = [f"Column labels were not selected for spreadsheet '{spreadsheet.descriptive_name}'.  "
+                  f"You may have skipped a step.  Please re-edit your data."]
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
     if request.method == 'POST':
         row_index = int(request.form['row_index'])
         spreadsheet.breakpoint = row_index

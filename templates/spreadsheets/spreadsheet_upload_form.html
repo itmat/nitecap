@@ -3,10 +3,11 @@
 
 <script>
     $(document).ready(function () {
+        let form = $('form');
         let button = $("button");
         button.prop('disabled', false);
         button.html('Submit');
-        $('#spreadsheet-details-form').submit(function (e) {
+        form.submit(function (e) {
             e.preventDefault();
             button.prop('disabled', true);
             button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
