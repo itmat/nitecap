@@ -24,6 +24,10 @@
         timepoints_per_day = {{ timepoints_per_day | safe }};
         spreadsheet_id = {{ spreadsheet_id | safe }};
 
+        // Handles to the error modal on base.html
+        let nitecap_error = $("#error-modal");
+        let nitecap_error_message = $("#error-modal-message");
+
         // To be loaded later by ajax
         jtk_ps = null;
         jtk_qs = null;
@@ -254,6 +258,24 @@
             $('#download_heatmap').hide();
             $('#heatmap_controls').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
+
+            // Ajax call to save cutoff value
+            $.ajax({
+                url: "{{ url_for('spreadsheets.save_cutoff') }}",
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'cutoff': selected_row}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                // No response is coming back
+                success: function (response) {
+                },
+                // If an error is returned notify the user.
+                error: function (request, status, error) {
+                    error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
+                }
+            });
 
             var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
             selected_indexes = selected_indexes.filter( function(i) {

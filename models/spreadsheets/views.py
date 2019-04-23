@@ -807,7 +807,7 @@ def check_id_uniqueness():
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     id_columns = json_data.get('id_columns', None)
-    if not id_columns or len(id_columns) == 0:
+    if not id_columns:
         errors.append("No id columns were selected. Please select at least one id column.")
         return jsonify({'error': errors}), 400
     if not spreadsheet_id:
@@ -825,3 +825,33 @@ def check_id_uniqueness():
     non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
     current_app.logger.debug(f"Non-unique ids {non_unique_ids}")
     return jsonify({'non-unique_ids': non_unique_ids})
+
+@spreadsheet_blueprint.route('/save_cutoff', methods=['POST'])
+def save_cutoff():
+    """
+    When the user selects a significance cutoff, in addition to showing the heatmap, the cutoff value is saved to the
+    spreadsheet database record.
+    :return: Nothing is return in the event of a successful save.  Otherwise an error message is returned.
+    """
+    if 'email' in session:
+        user = User.find_by_email(session['email'])
+    else:
+        user = User.find_by_username("annonymous")
+    spreadsheet = None
+    errors = []
+    json_data = request.get_json()
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+    cutoff = json_data.get('cutoff', None)
+    if not cutoff:
+        cutoff = 0
+    if not spreadsheet_id:
+        errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
+        return jsonify({'error': errors}), 400
+    else:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('The spreadsheet being requested could not be found.')
+        return jsonify({'error': errors}), 404
+    spreadsheet.breakpoint = cutoff
+    spreadsheet.save_to_db()
+    return '', 204
