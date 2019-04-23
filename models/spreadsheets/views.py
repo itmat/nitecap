@@ -319,7 +319,7 @@ def display_spreadsheets():
     This method takes the logging in user to a listing of his/her spreadsheets.  The decorator assures that only logged
     in users may make such a request.
     """
-    current_app.log.info(f"Displaing spreadsheets for user {session['email']}")
+    current_app.logger.info(f"Displaing spreadsheets for user {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
@@ -620,7 +620,7 @@ def compare():
     for spreadsheet in spreadsheets:
         non_unique_ids = spreadsheet.find_replicate_ids()
         non_unique_id_counts.append(len(non_unique_ids))
-        current_app.log.debug(f"Number of non unique ids is {len(non_unique_ids)}")
+        current_app.logger.debug(f"Number of non unique ids is {len(non_unique_ids)}")
         x_values.append(spreadsheet.x_values)
         x_labels.append(spreadsheet.x_labels)
         x_label_values.append(spreadsheet.x_label_values)
@@ -629,11 +629,11 @@ def compare():
         timepoints_per_day.append(spreadsheet.timepoints)
         data = spreadsheet.df
         data["compare_ids"] = list(spreadsheet.get_ids())
-        current_app.log.debug(f"Shape prior to removal of non-unique ids: {data.shape}")
+        current_app.logger.debug(f"Shape prior to removal of non-unique ids: {data.shape}")
         data = data.set_index("compare_ids")
         data = data[~data.index.duplicated()]
         datasets.append(data)
-        current_app.log.debug(f"Shape prior to join with label col: {data.shape}")
+        current_app.logger.debug(f"Shape prior to join with label col: {data.shape}")
     if not set(datasets[0].index) & set(datasets[1].index):
         errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
@@ -641,7 +641,7 @@ def compare():
     common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
     df = datasets[0].join(datasets[1], how='inner', lsuffix='_0', rsuffix='_1')
     df = df.sort_values(by=['total_delta_0'])
-    current_app.log.debug(f"Shape after join: {df.shape}")
+    current_app.logger.debug(f"Shape after join: {df.shape}")
     compare_ids = df.index.tolist()
     datasets = []
     qs = []
