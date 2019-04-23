@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
 
+<script>
+    $(document).ready(function () {
+        let button = $("button");
+        let spinner = $("button > span");
+        button.prop('disabled', false);
+        button.html('Submit');
+        $('#spreadsheet-details-form').submit(function (e) {
+            e.preventDefault();
+            button.prop('disabled', true);
+            button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                        "</span>Loading...");
+            e.currentTarget.submit();
+        });
+    });
+</script>
+
 <div class="page-header">
     <h1>Load Spreadsheet <small>Expecting csv, tsv, txt, xls or xlsx fomats only</small></h1>
 </div>
@@ -62,7 +78,9 @@
         <div class="form-group">
             <input type="file" id="upload_file" name="upload_file" required>
         </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="submit" class="btn btn-primary">
+            Submit
+        </button>
 </form>
 
 {% endblock %}
