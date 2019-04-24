@@ -9,6 +9,9 @@
 
     $(document).ready(function() {
 
+        nitecap_error = $("#error-modal");
+        nitecap_error_message = $("#error-modal-message");
+
         let spreadsheetTableElement = $('#spreadsheetTable');
 
         let table = spreadsheetTableElement.DataTable({
@@ -42,18 +45,20 @@
                     $("#share_url").val(url);
                     $('#share_popup').modal()
                 },
-                error: function (response) {
-                    alert(response['errors'])
+                error: function (request) {
+                    let error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
                 }
             });
         });
 
-        spreadsheetTableElement.on('click', '.delete_spreadsheet' , function(event) {
+        spreadsheetTableElement.on('click', '.delete_spreadsheet' , function() {
             $("#delete_confirmed").attr('data-id', $(this).attr('data-id'));
             $("#confirm_delete_modal").modal();
         });
 
-        $('#compare').click(function(event) {
+        $('#compare').click(function() {
             var row_data = table.rows( { selected: true } ).data();
             var spreadsheet_list = [];
             $.each($(row_data), function(key, value) {
@@ -62,18 +67,18 @@
             if(!spreadsheet_list || spreadsheet_list.length != 2) {
                 let error_message = "Presently, we only support comparing two spreadsheets at a time.  " +
                                     "Please adjust your selection accordingly.";
-                $("#ajax-error").text(error_message);
-                $("#alert-error").modal();
-                return
+                nitecap_error_message.text(error_message);
+                nitecap_error.modal();
             }
-            spreadsheet_ids = spreadsheet_list.join(",");
-            compare_url = "{{ url_for('spreadsheets.compare') }}";
-            window.location.href = compare_url + "?spreadsheet_ids=" + spreadsheet_ids
+            else {
+                let spreadsheet_ids = spreadsheet_list.join(",");
+                let compare_url = "{{ url_for('spreadsheets.compare') }}";
+                window.location.href = compare_url + "?spreadsheet_ids=" + spreadsheet_ids;
+            }
         });
 
-
         // Delete is confirmed - send AJAX call to delete spreadsheet
-        $("#delete_confirmed").on('click', function(event) {
+        $("#delete_confirmed").on('click', function() {
             var spreadsheet_id = $(this).attr('data-id');
             $("#confirm_delete_modal").modal('toggle');
             $.ajax({
@@ -82,17 +87,17 @@
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
-                success: function (response) {
+                success: function () {
                     // The parameter in draw is needed to keep the user on the current page
                     table.row("#spreadsheet_" + spreadsheet_id).remove().draw(false);
                     if(errorIndicatorElement.length) {
                         errorIndicatorElement.remove();
                     }
                 },
-                error: function (request, status, error) {
-                    error_message = $.parseJSON(request.responseText).error;
-                    $("#ajax-error").text(error_message);
-                    $("#alert-error").modal();
+                error: function (request) {
+                    let error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
                 }
             })
         });
@@ -133,7 +138,7 @@
                 <th>Name</th>
                 <th>Days</th>
                 <th>Time-<br />points</th>
-                <th>Break<br />point</th>
+                <th>Sig.<br />Cutoff</th>
                 <th>Last Update</th>
                 <th>Actions</th>
                 <th>IDs</th>
@@ -201,13 +206,13 @@
 {% endif %}
 
 
-<div id="share_popup" class="modal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+<div id="share_popup" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">URL to share this spreadsheet</h5>
+      <div class="modal-header bg-primary">
+        <h5 class="modal-title text-white">SHARE this spreadsheet</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+          <span class="text-white" aria-hidden="true">&times;</span>
         </button>
       </div>
         <div class="modal-body">
@@ -225,12 +230,12 @@
 </div>
 
 <div class="modal fade" id="confirm_delete_modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="model-title">Delete Confirmation</h5>
+            <div class="modal-header bg-primary">
+                <h5 class="model-title text-white">DELETE Confirmation</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span class="text-white" aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -240,27 +245,9 @@
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">Cancel</span>
                 </button>
-                <a id="delete_confirmed" class="btn btn-danger">Delete</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal" id="alert-error" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="model-title text-danger">Error</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div id="ajax-error" class="modal-body text-danger">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">Dismiss</span>
-                </button>
+                <a id="delete_confirmed" class="btn btn-primary">
+                    <span class="text-white">Delete</span>
+                </a>
             </div>
         </div>
     </div>

@@ -57,9 +57,9 @@
                     type: 'POST',
                     // Notify the user of any non-unique ids and then submit the form once the user acknowledges.
                     success: function (response) {
-                        var non_unique_ids = response['non-unique_ids'];
+                        let non_unique_ids = response['non-unique_ids'];
                         if (non_unique_ids && non_unique_ids.length > 0) {
-                            var warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
+                            let warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
                             if (non_unique_ids.length > 5) {
                                 warning += non_unique_ids.slice(0, 5).join(', ');
                                 warning += ", ... and " + (non_unique_ids.length - 5) + " other";
@@ -77,7 +77,7 @@
                         e.currentTarget.submit();
                     },
                     // If an error is returned notify the user.
-                    error: function (request, status, error) {
+                    error: function (request) {
                         error_message = $.parseJSON(request.responseText).error;
                         nitecap_error_message.text(error_message);
                         nitecap_error.modal();

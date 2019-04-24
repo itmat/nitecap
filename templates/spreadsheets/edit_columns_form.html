@@ -77,7 +77,7 @@
                         e.currentTarget.submit();
                     },
                     // If an error is returned notify the user.
-                    error: function (request, status, error) {
+                    error: function (request) {
                         error_message = $.parseJSON(request.responseText).error;
                         nitecap_error_message.text(error_message);
                         nitecap_error.modal();
