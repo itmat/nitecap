@@ -28,6 +28,10 @@
         let nitecap_error = $("#error-modal");
         let nitecap_error_message = $("#error-modal-message");
 
+        // Handles to the filter panel features
+        let apply_filters_button = $('#applyFilters');
+        let max_value_filter_input = $('#max_value_filter');
+
         // To be loaded later by ajax
         jtk_ps = null;
         jtk_qs = null;
@@ -390,25 +394,29 @@
 
         // Setup of filters card on page load
         if(saved_max_value_filter) {
-            $('#max_value_filter').val(saved_max_value_filter)
+            max_value_filter_input.val(saved_max_value_filter)
         }
         else {
             $('#EmptyFiltersList').css({"visibility":"visible"});
         }
 
-        $('#applyFilters').click(function() {
+        // Applying Filters
+        apply_filters_button.click(function() {
             $('#filterError').hide();
             row_index = $('input[name="row_index"]').val();
-            var max_value_filter = $('#max_value_filter').val();
+            var max_value_filter = max_value_filter_input.val();
             if (isNaN(max_value_filter) && max_value_filter.length > 0) {
-                $("#max_value_filter").val('');
+                max_value_filter_input.val('');
                 $('#EmptyFiltersList').css({"visibility": "visible"});
                 $('#significant_items').html(row_index);
                 return
             }
             $('#EmptyFiltersList').css({"visibility": "hidden"});
-            $('#filterProgress').css({"visibility": "visible"});
-            $('#applyFilters').prop('disabled', true)
+
+            apply_filters_button.prop('disabled', true);
+            apply_filters_button.html(
+                "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                "</span>Filtering...");
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
@@ -450,13 +458,13 @@
                     }
                 },
                 error: function (response, status, error) {
-                    $("#max_value_filter").val('');
+                    max_value_filter_input.val('');
                     $('#filterError').show();
                     console.log(response, status, error);
                 },
                 complete: function () {
-                    $('#filterProgress').css({"visibility": "hidden"});
-                    $('#applyFilters').prop('disabled', false);
+                    apply_filters_button.prop('disabled', false);
+                    apply_filters_button.html('Submit');
                 }
             });
         });
@@ -741,14 +749,11 @@
             <div class="card-body">
                 <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
                 <div class="form-group form-inline">
-                    <label class="col-form-label" for="max_value_filter" style="margin-right: 10px">Max Value &gt;</label>
+                    <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
                     <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
                 </div>
                 <div>
                     <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
-                </div>
-                <div id="filterProgress" class="progress" style="visibility:hidden">
-                  <div class="progress-bar progress-bar-animated progress-bar-striped" style="width:100%"></div>
                 </div>
                 <div id="filterError" class="text-danger" style="display:none">
                     Filter processing failed!
