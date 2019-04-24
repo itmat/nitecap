@@ -1,20 +1,21 @@
+import json
+import os
+import uuid
+from pathlib import Path
+
 import magic
+import numpy
+import pandas as pd
 from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify
+from flask import current_app
+from sklearn.decomposition import PCA
+
+import constants
+import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-import os
-from pathlib import Path
-import pandas as pd
-import uuid
 from models.users.decorators import requires_login
 from models.users.user import User
-import json
-from flask import current_app
-import constants
-from sklearn.decomposition import PCA
-import numpy
-
-import nitecap
 from timer_decorator import timeit
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
