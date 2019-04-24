@@ -700,7 +700,7 @@ def get_upside():
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
+            current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
             return jsonify({'upside_ps': None})
 
         # Populate
