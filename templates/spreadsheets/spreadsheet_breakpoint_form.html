@@ -401,7 +401,7 @@
             max_value_filter_input.val(saved_max_value_filter)
         }
         else {
-            $('#EmptyFiltersList').css({"visibility":"visible"});
+            empty_filters_list_msg.css({"visibility":"visible"});
         }
 
         // Applying Filters
@@ -461,7 +461,7 @@
                 },
 
                 // If an error is returned notify the user.
-                error: function (request, status, error) {
+                error: function (request) {
                     max_value_filter_input.val('');
                     error_message = $.parseJSON(request.responseText).error;
                     nitecap_error_message.text(error_message);
@@ -546,7 +546,7 @@
                     return 0;
                 }
             }
-        };
+        }
         var sorters = {
             "anova": function (i,j) {
                 // Sort anova p-values in ascending order
@@ -629,14 +629,16 @@
                 contentType: "application/json",
                 type: 'POST',
                 success: function (response) {
-                    url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
+                    let url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
                     $("#share_url").val(url);
                     $('#share_popup').modal()
                 },
-                error: function (response) {
-                    alert(response['errors'])
+                error: function (request) {
+                    error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
                 }
-            });
+            })
         });
 
     });
@@ -784,7 +786,7 @@
 <div class="row py-2">
     <span class="col-lg-5">
         <input type="hidden" id="row_index" name="row_index"/>
-        <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
+        <button id="set_breakpoint" class="btn btn-primary">Generate Heatmap</button>
     </span>
 </div>
 
