@@ -21,6 +21,7 @@ from shutil import copyfile
 import copy
 
 import nitecap
+from timer_decorator import timeit
 
 NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p", "anova_q"]
 
@@ -51,6 +52,7 @@ class Spreadsheet(db.Model):
     IGNORE_COLUMN = "Ignore"
     NON_DATA_COLUMNS = [ID_COLUMN, IGNORE_COLUMN]
 
+    @timeit
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
                  breakpoint=None, num_replicates_str=None, max_value_filter=None, last_access=None, user_id=None,
@@ -120,7 +122,7 @@ class Spreadsheet(db.Model):
         else:
             self.df = pd.read_csv(self.file_path, sep="\t")
 
-    @orm.reconstructor
+    @timeit
     def init_on_load(self):
         """
         The method that runs when SQLAlchemy reloads a Spreadsheet.  A pandas dataframe is rebuilt from the file
@@ -168,6 +170,7 @@ class Spreadsheet(db.Model):
                 # or if somehow a spreadsheet was never computed)
                 self.compute_nitecap()
 
+    @timeit
     def set_df(self):
         """
         Use the uploaded file's mimetype to determine whether the file in an Excel spreadsheet or the file's
@@ -273,6 +276,7 @@ class Spreadsheet(db.Model):
         ids = self.get_ids()
         self.ids_unique = len(ids) == len(set(ids))
 
+    @timeit
     def compute_nitecap(self):
         # Runs NITECAP on the data but just to order the features
 
@@ -321,6 +325,7 @@ class Spreadsheet(db.Model):
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 
+    @timeit
     def update_dataframe(self):
         self.df.to_csv(self.file_path, sep="\t", index=False)
 
@@ -347,6 +352,7 @@ class Spreadsheet(db.Model):
             messages = f"The breakpoin must point to a row inside the spreadsheet."
         return error, messages
 
+    @timeit
     def get_jtk(self):
         if "jtk_p" not in self.df.columns or "jtk_q" not in self.df.columns:
             # Call out to an R script to run JTK
@@ -455,6 +461,7 @@ class Spreadsheet(db.Model):
         else:
             return None
 
+    @timeit
     def save_to_db(self):
         """
         Save the spreadsheet to the database and note the current time as the last modified time in the
@@ -575,15 +582,17 @@ class Spreadsheet(db.Model):
         if not spreadsheets or len(spreadsheets) < 2:
             errors.append("Insufficient spreadsheets were provided for comparisons.")
             return errors
+        missing_column_labels = [spreadsheet.descriptive_name for spreadsheet in spreadsheets
+                                 if not spreadsheet.column_labels]
+        if missing_column_labels:
+            errors.append(f'Column labels for the following spreadsheet(s) are not specified: '
+                          f'{",".join(missing_column_labels)}.  You may have skipped this step.  Go back and re-edit')
+            return errors
         timepoint_labels = spreadsheets[0].get_timepoint_labels()
         for spreadsheet in spreadsheets[1:]:
             other_timepoint_labels = spreadsheet.get_timepoint_labels()
-            print(timepoint_labels)
-            print(other_timepoint_labels)
-            print(timepoint_labels != other_timepoint_labels)
             if timepoint_labels != other_timepoint_labels:
                 errors.append("Timepoints must be the same for the comparison of multiple spreadsheets.")
-        print(errors)
         return errors
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),

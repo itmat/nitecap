@@ -4,8 +4,16 @@
 <script>
     $(document).ready ( function() {
 
-        $('.topScroll > div').width($('#colIdentityTable').width());
-        $('.bottomScroll > div').width($('#colIdentityTable').width());
+        // List of elements
+        let nitecap_form = $('form');
+        let nitecap_table = $('form table');
+        let submit_button = $("form button");
+        let nitecap_error = $("#error-modal");
+        let nitecap_error_message = $("#error-modal-message");
+
+        // Set up scrollbars for top and bottom
+        $('.topScroll > div').width(nitecap_table.width());
+        $('.bottomScroll > div').width(nitecap_table.width());
 
         $(".topScroll").scroll( function() {
             $(".bottomScroll").scrollLeft($(".topScroll").scrollLeft());
@@ -14,45 +22,68 @@
             $(".topScroll").scrollLeft($(".bottomScroll").scrollLeft());
         });
 
+        // Insure same starting state
+        submit_button.prop('disabled', false);
+        submit_button.html('Submit');
+        nitecap_error_message.text("");
 
-        $("#spreadsheet-display-form").on('submit', function (e) {
+        // Form Submitted
+        nitecap_form.on('submit', function (e) {
             e.preventDefault();
-            spreadsheet_id = {{spreadsheet.id}}
-            id_columns = [];
-            data = $('#spreadsheet-display-form').serialize().split('&');
+
+            // Build the parameter list for the AJAX call.
+            let spreadsheet_id = {{ spreadsheet.id }}
+            let id_columns = [];
+            let data = nitecap_form.serialize().split('&');
             data.forEach(function(item) {
-                var results = item.split("=");
+                let results = item.split("=");
                 if(results[1] === "ID") {
                     id_columns.push(parseInt(results[0].substring(3)) - 1)
                 }
             });
-            $.ajax({
-                url: "{{ url_for('spreadsheets.check_id_uniqueness') }}",
-                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'id_columns': id_columns}),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function (response) {
-                    var non_unique_ids = response['non-unique_ids'];
-                    if(non_unique_ids && non_unique_ids.length > 0) {
-                        var warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
-                        if(non_unique_ids.length > 5) {
-                            warning += non_unique_ids.slice(0, 5).join(', ');
-                            warning += ", ... and " + (non_unique_ids.length - 5) + " other";
-                            warning += non_unique_ids.length - 5 > 1 ? "s." : "."
+
+            // If no ID columns are selected.  Stop the submit and notify the user.
+            if($.isEmptyObject(id_columns)) {
+                nitecap_error_message.text("You must select at least one ID column.");
+                nitecap_error.modal();
+            }
+            else {
+                // Otherwise check the id combined id columns for duplicates
+                $.ajax({
+                    url: "{{ url_for('spreadsheets.check_id_uniqueness') }}",
+                    data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'id_columns': id_columns}),
+                    dataType: "json",
+                    contentType: "application/json",
+                    type: 'POST',
+                    // Notify the user of any non-unique ids and then submit the form once the user acknowledges.
+                    success: function (response) {
+                        let non_unique_ids = response['non-unique_ids'];
+                        if (non_unique_ids && non_unique_ids.length > 0) {
+                            let warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
+                            if (non_unique_ids.length > 5) {
+                                warning += non_unique_ids.slice(0, 5).join(', ');
+                                warning += ", ... and " + (non_unique_ids.length - 5) + " other";
+                                warning += non_unique_ids.length - 5 > 1 ? "s." : "."
+                            } else {
+                                warning += non_unique_ids.join(',');
+                            }
+                            alert(warning);
                         }
-                        else {
-                            warning += non_unique_ids.join(',');
-                        }
-                        alert(warning);
+
+                        // Only when form is about to be submitted should the submit button is disabled
+                        submit_button.prop('disabled', true);
+                        submit_button.html("<span class='spinner-border spinner-border-sm text-light mr-2' " +
+                                           "role='status' aria-hidden='true'></span>Loading...");
+                        e.currentTarget.submit();
+                    },
+                    // If an error is returned notify the user.
+                    error: function (request) {
+                        error_message = $.parseJSON(request.responseText).error;
+                        nitecap_error_message.text(error_message);
+                        nitecap_error.modal();
                     }
-                    e.currentTarget.submit();
-                },
-                // Let conventional page request handle errors
-                error: function (request, status, error) {
-                    e.currentTarget.submit();
-                }
-            });
+                });
+            }
         });
     });
 </script>
@@ -86,14 +117,13 @@
     </div>
 {% endif %}
 
-<form id="spreadsheet-display-form" action="{{ url_for('spreadsheets.identify_spreadsheet_columns') }}" method="post">
+<form method="post" action="{{ url_for('spreadsheets.identify_spreadsheet_columns') }}">
     <div class="topScroll">
         <div></div>
     </div>
     <div class="bottomScroll">
         <div>
-            <table id="colIdentityTable" class="table table-striped table-bordered table-sm" cellspacing="0"
-                   width="100%">
+            <table class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
                 <tr>
                     {% for heading in spreadsheet.df.columns %}
                     <th>{{ heading }}</th>
@@ -104,8 +134,9 @@
                     <th>
                         <select style="font-size: 10px" name="col{{ loop.index }}" id="col{{ loop.index }}">
                             {% for selection in spreadsheet.get_selection_options() %}
-                            <option value="{{selection}}" {{
-                            'selected' if selection == default_selection else ''}} >{{selection}}</option>
+                            <option value="{{selection}}"
+                                    {{'selected' if selection == default_selection else ''}} > {{selection}}
+                            </option>
                             {% endfor %}
                         </select>
                     </th>
@@ -118,7 +149,6 @@
                     {% endfor %}
                 </tr>
                 {% endfor %}
-
             </table>
         </div>
     </div>

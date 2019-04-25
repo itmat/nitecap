@@ -24,6 +24,18 @@
         timepoints_per_day = {{ timepoints_per_day | safe }};
         spreadsheet_id = {{ spreadsheet_id | safe }};
 
+        // Handles to the error modal on base.html
+        nitecap_error = $("#error-modal");
+        nitecap_error_message = $("#error-modal-message");
+
+        // Handles to the filter panel features
+        apply_filters_button = $('#applyFilters');
+        max_value_filter_input = $('#max_value_filter');
+        empty_filters_list_msg = $('#EmptyFiltersList');
+
+        // Handles for the slider
+        coarse_slider = $("#coarse_slider");
+
         // To be loaded later by ajax
         jtk_ps = null;
         jtk_qs = null;
@@ -76,7 +88,7 @@
             var row_index = sort_order[selected_row];
 
             // Update the Plotly plot of the feature profile
-            var raw_y_values = data[row_index];
+            let raw_y_values = data[row_index];
             if (raw_y_values === undefined) {
                 console.log("Could not find the y-values for row " + row_index);
                 return;
@@ -221,7 +233,7 @@
             redrawPlot();
         });
 
-        $("#coarse_slider").slider({
+        coarse_slider.slider({
             orientation: "horizontal",
             min: 0,
             value: breakpoint,
@@ -240,7 +252,7 @@
             selected_row = selection;
 
             // Update the coarse slider
-            $("#coarse_slider").slider("option", "value", selected_row);
+            coarse_slider.slider("option", "value", selected_row);
 
             updateStatsBox();
             redrawPlot();
@@ -254,6 +266,24 @@
             $('#download_heatmap').hide();
             $('#heatmap_controls').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
+
+            // Ajax call to save cutoff value
+            $.ajax({
+                url: "{{ url_for('spreadsheets.save_cutoff') }}",
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'cutoff': selected_row}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                // No response is coming back
+                success: function (response) {
+                },
+                // If an error is returned notify the user.
+                error: function (request, status, error) {
+                    error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
+                }
+            });
 
             var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
             selected_indexes = selected_indexes.filter( function(i) {
@@ -368,25 +398,27 @@
 
         // Setup of filters card on page load
         if(saved_max_value_filter) {
-            $('#max_value_filter').val(saved_max_value_filter)
+            max_value_filter_input.val(saved_max_value_filter)
         }
         else {
-            $('#EmptyFiltersList').css({"visibility":"visible"});
+            empty_filters_list_msg.css({"visibility":"visible"});
         }
 
-        $('#applyFilters').click(function() {
-            $('#filterError').hide();
-            row_index = $('input[name="row_index"]').val();
-            var max_value_filter = $('#max_value_filter').val();
+        // Applying Filters
+        apply_filters_button.click(function() {
+            let row_index = $('input[name="row_index"]').val();
+            let max_value_filter = max_value_filter_input.val();
             if (isNaN(max_value_filter) && max_value_filter.length > 0) {
-                $("#max_value_filter").val('');
-                $('#EmptyFiltersList').css({"visibility": "visible"});
+                max_value_filter_input.val('');
+                empty_filters_list_msg.css({"visibility": "visible"});
                 $('#significant_items').html(row_index);
                 return
             }
-            $('#EmptyFiltersList').css({"visibility": "hidden"});
-            $('#filterProgress').css({"visibility": "visible"});
-            $('#applyFilters').prop('disabled', true)
+            empty_filters_list_msg.css({"visibility": "hidden"});
+            apply_filters_button.prop('disabled', true);
+            apply_filters_button.html(
+                "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                "</span>Filtering...");
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
@@ -427,14 +459,20 @@
                         rowSelector.makeRowLabels(labels, qs);
                     }
                 },
-                error: function (response, status, error) {
-                    $("#max_value_filter").val('');
-                    $('#filterError').show();
-                    console.log(response, status, error);
+
+                // If an error is returned notify the user.
+                error: function (request) {
+                    max_value_filter_input.val('');
+                    error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
                 },
                 complete: function () {
-                    $('#filterProgress').css({"visibility": "hidden"});
-                    $('#applyFilters').prop('disabled', false);
+                    if (max_value_filter_input.val().trim().length === 0) {
+                        empty_filters_list_msg.css({"visibility": "visible"});
+                    }
+                    apply_filters_button.prop('disabled', false);
+                    apply_filters_button.html('Submit');
                 }
             });
         });
@@ -508,7 +546,7 @@
                     return 0;
                 }
             }
-        };
+        }
         var sorters = {
             "anova": function (i,j) {
                 // Sort anova p-values in ascending order
@@ -528,7 +566,7 @@
                 var b = -amplitudes[j];
                 return compare(a,b,i,j);
             }
-        }
+        };
 
         $('#sort_select').change(function (evt) {
             var sorter = $('#sort_select').val();
@@ -582,7 +620,8 @@
             }
         });
 
-        $('#share_spreadsheet').click(function(event) {
+        // Create a share
+        $('#share_spreadsheet').click(function() {
             $.ajax({
                 url: "{{url_for('spreadsheets.share')}}",
                 data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': $('#significant_items').text()}),
@@ -590,14 +629,16 @@
                 contentType: "application/json",
                 type: 'POST',
                 success: function (response) {
-                    url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
+                    let url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
                     $("#share_url").val(url);
                     $('#share_popup').modal()
                 },
-                error: function (response) {
-                    alert(response['errors'])
+                error: function (request) {
+                    error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
                 }
-            });
+            })
         });
 
     });
@@ -609,171 +650,190 @@
     <h1>Results <small>Data sorted by significance</small></h1>
 </div>
 
-<p id="spreadsheet-breakpoint-page">
-    <div class="row">
-        <p class="col-lg-12 h3">{{descriptive_name}}
-            <a href="{{ url_for('spreadsheets.download_spreadsheet') }}" class="mx-3" download="processed_file.txt">
-                <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
-            </a>
-            {% if not anonymous %}
-                <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet_id) }}">
-                    <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
-                </a>
-                <a id='share_spreadsheet' href="#">
-                    <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
-                </a>
-            {% endif %}
-        </p>
 
-    </div>
-    <div class="row">
-        <span class="col-lg-9">
-            Number of items equal to or more significant than currently selected:
-            <span id="significant_items"></span>
-        </span>
-    </div>
+<div class="row">
+    <p class="col-lg-12 h3">{{descriptive_name}}
+        <a href="{{ url_for('spreadsheets.download_spreadsheet') }}" class="mx-3" download="processed_file.txt">
+            <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
+        </a>
+        {% if not anonymous %}
+        <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet_id) }}">
+            <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+        </a>
+        <a id='share_spreadsheet' href="#">
+            <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+        </a>
+        {% endif %}
+    </p>
+</div>
 
-    <div class="row">
-        <div id="coarse_slider" class="col-lg-12 coarse-slider"></div>
-    </div>
+<div class="row">
+    <span class="col-lg-9">
+        Number of items equal to or more significant than currently selected:
+        <span id="significant_items"></span>
+    </span>
+</div>
 
-    <div class="row">
-        <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
-    </div>
+<div class="row">
+    <div id="coarse_slider" class="col-lg-12 coarse-slider"></div>
+</div>
 
-    <div class='row'>
-        <span class='col-xs-1' style="position:relative">
+<div class="row">
+    <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
+</div>
+
+<div class='row'>
+
+    <span class='col-xs-1' style="position:relative">
             <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
-        </span>
-        <span class='col-xs-3 ...'>
-            <div class='row'>
-                <div class="col px-4">
-                    <div class="form-group form-inline">
-                        <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
-                        <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
+    </span>
+
+    <div class='col-xs-3 ...'>
+
+        <div class='row'>
+            <div class="col px-4">
+                <div class="input-group mb-2">
+                    <input class="form-control form-control-sm" type="text" name="row_search"
+                           placeholder="Search for row by label" id="row_search_box" />
+                    <div class="input-group-append">
+                        <button type="button" id="search_button" class="btn btn-secondary btn-sm">
+                            Search
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class='row'>
-                <div class='col px-4'>
-                    <div id="row_selector" class="list-group" tabindex="0">
-                     </div>
+        </div>
+        <div class='row'>
+            <div class='col px-4'>
+                <div id="row_selector" class="list-group" tabindex="0">
                 </div>
             </div>
-            <div class='row p-3'>
-                <button id="download_plot" class="btn btn-primary">Download Plot</button>
-            </div>
-        </span>
-        <div class='col-xs-6'>
-            <span id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></span>
-            <select id="plot_style_select" value="basketweave" class="form-control form-control-sm">
-                <option value="basketweave">Basketweave</option>
-                <option value="points">Points</option>
-                <option value="mean">Mean only</option>
-                <option value="mean_points">Points and Mean</option>
-                <option value="std">Standard Deviations</option>
-                <option value="SEM">SEM</option>
+        </div>
+
+    </div>
+
+    <div class='col-xs-6'>
+        <div id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></div>
+        <label for="plot_style_select"></label>
+        <select id="plot_style_select" class="form-control form-control-sm">
+            <option value="basketweave" selected>Basketweave</option>
+            <option value="points">Points</option>
+            <option value="mean">Mean only</option>
+            <option value="mean_points">Points and Mean</option>
+            <option value="std">Standard Deviations</option>
+            <option value="SEM">SEM</option>
+        </select>
+        <div class='py-3 float-right'>
+            <button id="download_plot" class="btn btn-primary">Download Plot</button>
+        </div>
+    </div>
+
+    <div class="card col-xs-1 ml-2" style="width: 15rem;">
+        <div class="card-header">
+            Statistics
+            <a id="statsHelp" class="text-primary help-pointer"
+               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+               title="Statistics Help"
+               data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
+                <i class="fas fa-info-circle ml-3"></i>
+            </a>
+        </div>
+        <div class="card-body">
+            Sort by: <br>
+            <label for="sort_select"></label>
+            <select id="sort_select" class="form-control form-control-sm">
+                <option value="nitecap">Nitecap</option>
+                <option value="jtk" disabled>JTK</option>
+                <option value="anova">ANOVA</option>
+                <option value="amplitude">Amplitude</option>
             </select>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">Q: <span id="q_value"></span></li>
+                <li class="list-group-item">p-value: <span id="p_value"></span></li>
+                <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
+                <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
+                <li class="list-group-item">ANOVA p: <span id="anova_p"></span></li>
+                <li class="list-group-item">ANOVA q: <span id="anova_q"></span></li>
+                <li class="list-group-item">JTK p: <span id="jtk_p"></span></li>
+                <li class="list-group-item">JTK q: <span id="jtk_q"></span></li>
+            </ul>
         </div>
+    </div>
 
-        <div class="card col-xs-1" style="width: 15rem;">
-            <div class="card-header">
-                Statistics
-                <a id="statsHelp" class="text-primary help-pointer"
-                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                   title="Statistics Help"
-                   data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
-                    <i class="fas fa-info-circle ml-3"></i>
-                </a>
-            </div>
-            <div class="card-body">
-                Sort by: <br>
-                <select id="sort_select" class="form-control form-control-sm">
-                     <option value="nitecap">Nitecap</option>
-                     <option value="jtk" disabled>JTK</option>
-                     <option value="anova">ANOVA</option>
-                     <option value="amplitude">Amplitude</option>
-                </select>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item">Q: <span id="q_value"></span></li>
-                    <li class="list-group-item">p-value: <span id="p_value"></span></li>
-                    <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
-                    <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
-                    <li class="list-group-item">ANOVA p: <span id="anova_p"></span></li>
-                    <li class="list-group-item">ANOVA q: <span id="anova_q"></span></li>
-                    <li class="list-group-item">JTK p: <span id="jtk_p"></span></li>
-                    <li class="list-group-item">JTK q: <span id="jtk_q"></span></li>
-                </ul>
-            </div>
+    <div id="FiltersCard" class="card col-xs-1" style="width: 17rem;">
+        <div class="card-header">
+            Filters
+            <a id="filtersHelp" class="text-primary help-pointer"
+               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+               title="Filter Help"
+               data-content="Please note that filter application can take a dozen or more seconds to complete.">
+                <i class="fas fa-info-circle ml-3"></i>
+            </a>
         </div>
-        <div id="FiltersCard" class="card col-xs-1" style="width: 20rem;">
-            <div class="card-header">
-                Filters
-                <a id="filtersHelp" class="text-primary help-pointer"
-                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                   title="Filter Help"
-                   data-content="Please note that filter application can take a dozen or more seconds to complete.">
-                    <i class="fas fa-info-circle ml-3"></i>
-                </a>
+        <div class="card-body">
+            <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
+            <div class="form-group form-inline">
+                <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
+                <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
             </div>
-            <div class="card-body">
-                <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
-                <div class="form-group form-inline">
-                    <label class="col-form-label" for="max_value_filter" style="margin-right: 10px">Max Value &gt;</label>
-                    <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
-                </div>
-                <div>
-                    <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
-                </div>
-                <div id="filterProgress" class="progress" style="visibility:hidden">
-                  <div class="progress-bar progress-bar-animated progress-bar-striped" style="width:100%"></div>
-                </div>
-                <div id="filterError" class="text-danger" style="display:none">
-                    Filter processing failed!
-                </div>
+            <div>
+                <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
             </div>
         </div>
     </div>
 
-    <div class="row" style="padding-top:2rem;padding-bottom:2rem">
-        <span class="col-lg-5">
-            <input type="hidden" id="row_index" name="row_index"/>
-            <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
-        </span>
-    </div>
-    <div class="row">
-        <div class="col card" id="heatmap_block" style="display:none">
-            <div class="card-body">
-                <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
+</div>
+
+<div class="row py-2">
+    <span class="col-lg-5">
+        <input type="hidden" id="row_index" name="row_index"/>
+        <button id="set_breakpoint" class="btn btn-primary">Generate Heatmap</button>
+    </span>
+</div>
+
+<div class="row">
+    <div class="card" id="heatmap_block" style="display:none">
+        <div class="card-body">
+
+            <div>
+                Number of items in heatmap: <span id="cutoff"></span>
                 <div id="heatmap"></div>
-                <span id="heatmap_controls" class="col-lg-5" style="display:none">
+            </div>
+
+            <div class="row">
+                <div id="heatmap_controls" class="col-lg-6" style="display:none">
                     <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
                     <label class="switch">
-                        <input id="combine_replicates" name="combine_replicates" type="checkbox" >
+                        <input id="combine_replicates" name="combine_replicates" type="checkbox" />
                         <span class="slider"></span>
                     </label>
-                </span>
-                <span class='col-lg-2'>
+                </div>
+
+                <div class='col-lg-6'>
                     <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
-                </span>
+                </div>
+
             </div>
+
         </div>
     </div>
+</div>
 
+<!-- Modals -->
 <div id="share_popup" class="modal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">URL to share this spreadsheet</h5>
+      <div class="modal-header bg-primary">
+        <h5 class="modal-title text-white">SHARE this spreadsheet</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+          <span class="text-white" aria-hidden="true">&times;</span>
         </button>
       </div>
         <div class="modal-body">
             <div class="form-group">
                 <label for="share_url">Copy this URL and offer it to anyone with whom you'd like to share your
                     spreadsheet data:</label>
-                <textarea id="share_url" class="form-control" rows="5"></textarea>
+                <textarea id="share_url" class="form-control" rows="6"></textarea>
             </div>
         </div>
         <div class="modal-footer">

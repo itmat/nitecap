@@ -1,112 +1,82 @@
-import magic
-from flask import Blueprint, request, session, url_for, redirect, render_template, flash, send_file, jsonify
-from pandas.errors import ParserError
+import json
+import os
+import uuid
+from pathlib import Path
 
+import magic
+import numpy
+import pandas as pd
+from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify
+from flask import current_app
+from sklearn.decomposition import PCA
+
+import constants
+import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from werkzeug.utils import secure_filename
-import os
-from pathlib import Path
-import pandas as pd
-import uuid
 from models.users.decorators import requires_login
 from models.users.user import User
-import json
-from flask import current_app
-import constants
-from sklearn.decomposition import PCA
-import numpy
+from timer_decorator import timeit
 
-import nitecap
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
-@spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET','POST'])
+
+@spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET', 'POST'])
+@timeit
 def load_spreadsheet():
     current_app.logger.info('Loading spreadsheet')
     if request.method == 'POST':
-        # http: // flask.pocoo.org / docs / 1.0 / patterns / fileuploads /  # improving-uploads
-        descriptive_name = request.form['descriptive_name']
-        days = request.form['days']
-        timepoints = request.form['timepoints']
-        repeated_measures = request.form['repeated_measures']
-        repeated_measures = True if repeated_measures == 'y' else False
-        header_row = request.form['header_row']
-        upload_file = request.files['upload_file'] if 'upload_file' in request.files else None
 
-        # Validate and give errors
-        errors = []
-
-        if not descriptive_name or len(descriptive_name) > 250:
-            errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
-        if not days or not days.isdigit():
-            errors.append(f"The value for days is required and must be a positve integer.")
-        if not timepoints or not timepoints.isdigit():
-            errors.append(f"The value for timepoints is required and must be a positve integer.")
-        if not header_row or not header_row.isdigit():
-            errors.append(f"The value of the header row is required and must be a positive integer.")
-        if not upload_file:
-            errors.append(f'No spreadsheet file was provided.')
-        else:
-            if not len(upload_file.filename):
-                errors.append('No spreadsheet file was provided.')
-            if not allowed_file(upload_file.filename):
-                errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
+        # Collect and validate the form data
+        descriptive_name, days, timepoints, repeated_measures, header_row, upload_file, errors =\
+            validate_spreadsheet_upload_form(request.form, request.files)
         if errors:
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
                                    descriptive_name=descriptive_name, days=days,
                                    timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
-        # Not really necessary since we re-name the file.
-        filename = secure_filename(upload_file.filename)
-
-        extension = Path(filename).suffix
+        # Rename the uploaded file to avoid any naming collisions and save it
+        extension = Path(upload_file.filename).suffix
         new_filename = uuid.uuid4().hex + extension
         file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
         upload_file.save(file_path)
 
-        # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
-        # to be one of the accepted file mime types.
-        disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  They may be gzipped."
-        x = magic.Magic(mime=True)
-        z = magic.Magic(mime=True, uncompress=True)
-        file_mime_type = x.from_file(file_path)
-        print(file_mime_type)
-        if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-            errors.append(disallowed_mime_type)
-        elif file_mime_type in constants.COMPRESSED_MIME_TYPES:
-            file_mime_type = z.from_file(file_path)
-            print(file_mime_type)
-            if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-                errors.append(disallowed_mime_type)
+        # If the mime type validation fails, remove the uploaded file from the disk
+        file_mime_type, errors = validate_mime_type(file_path)
         if errors:
             os.remove(file_path)
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
                                    descriptive_name=descriptive_name, days=days,
                                    timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
+        # Identify any logged in user so that ownership of the spreadsheet is established.
+        user_id = None
+        user_email = session['email'] if 'email' in session else None
+        if user_email:
+            user = User.find_by_email(user_email)
+            user_id = user.id if user else None
+
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
         # We throw the file away and report the error.
-        user_id = None
-        if 'email' in session and session['email']:
-            user = User.find_by_email(session['email'])
-            if user:
-                user_id = user.id
         try:
             spreadsheet = Spreadsheet(descriptive_name=descriptive_name,
-                                      days = days,
-                                      timepoints = timepoints,
-                                      repeated_measures = repeated_measures,
-                                      header_row = header_row,
-                                      original_filename = filename,
-                                      file_mime_type = file_mime_type,
-                                      uploaded_file_path = file_path,
-                                      user_id = user_id)
+                                      days=days,
+                                      timepoints=timepoints,
+                                      repeated_measures=repeated_measures,
+                                      header_row=header_row,
+                                      original_filename=upload_file.filename,
+                                      file_mime_type=file_mime_type,
+                                      uploaded_file_path=file_path,
+                                      user_id=user_id)
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
             os.remove(file_path)
             errors.append(ne.message)
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors, days=days, timepoints=timepoints)
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
+                                   days=days, timepoints=timepoints)
+
+        # Save the spreadsheet metadata to the database and add the spreadsheet id to the session.
         spreadsheet.save_to_db()
         session['spreadsheet_id'] = spreadsheet.id
 
@@ -114,11 +84,86 @@ def load_spreadsheet():
 
     return render_template('spreadsheets/spreadsheet_upload_form.html')
 
+
+@timeit
+def validate_spreadsheet_upload_form(form_data, files):
+    """
+    Helper method to collect form data and validate it
+    :param form_data: the form dictionary from requests
+    :param files: the files dictionary from requests
+    :return: a tuplbe consisting of the form data and an array of error msgs.  An empty array indicates no errors
+    """
+
+    # Gather data
+    descriptive_name = form_data.get('descriptive_name', None)
+    days = form_data.get('days', None)
+    timepoints = form_data.get('timepoints', None)
+    repeated_measures = form_data.get('repeated_measures', 'n')
+    repeated_measures = True if repeated_measures == 'y' else False
+    header_row = form_data.get('header_row', None)
+    upload_file = files.get('upload_file', None)
+
+    # Check data for errors
+    errors = []
+    if not descriptive_name or len(descriptive_name) > 250:
+        errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
+    if not days or not days.isdigit():
+        errors.append(f"The value for days is required and must be a positve integer.")
+    if not timepoints or not timepoints.isdigit():
+        errors.append(f"The value for timepoints is required and must be a positve integer.")
+    if not header_row or not header_row.isdigit():
+        errors.append(f"The value of the header row is required and must be a positive integer.")
+    if not upload_file:
+        errors.append(f'No spreadsheet file was provided.')
+    else:
+        if not len(upload_file.filename):
+            errors.append('No spreadsheet file was provided.')
+        if not allowed_file(upload_file.filename):
+            errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
+    return descriptive_name, days, timepoints, repeated_measures, header_row, upload_file, errors
+
+
 def allowed_file(filename):
+    """
+    Helper method to establish whether the filename of the uploaded file contains an acceptable suffix.
+    :param filename: uploaded file filename
+    :return: True if the suffix is allowed and false otherwise
+    """
     extension = Path(filename).suffix
     return extension.lower() in constants.ALLOWED_EXTENSIONS
 
-@spreadsheet_blueprint.route('spreadsheets/identify_spreadsheet_columns', methods=['GET','POST'])
+
+@timeit
+def validate_mime_type(file_path):
+    """
+    Helper method to determine the mime type of the uploaded file.  It appears that the mime type can only be verified
+    for a saved file.  So the path to the saved uploaded file is provided. A check is made that the mime type is among
+    those allowed for an uploaded spreadsheet.  The mime type of underlying file that is compressed is also checked.
+    :param file_path: file path of saved uploaded file
+    :return: A tuple, containing the discovered mime type and an array containing an error message if an error was
+     found and an empty array otherwise
+    """
+
+    # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
+    # to be one of the accepted file mime types.
+    errors = []
+    disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  " \
+                           f"They may be gzipped."
+    x = magic.Magic(mime=True)
+    z = magic.Magic(mime=True, uncompress=True)
+    file_mime_type = x.from_file(file_path)
+    current_app.logger.info(f"Upload file type: {file_mime_type}")
+    if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+        errors.append(disallowed_mime_type)
+    elif file_mime_type in constants.COMPRESSED_MIME_TYPES:
+        file_mime_type = z.from_file(file_path)
+        if file_mime_type not in constants.ALLOWED_MIME_TYPES:
+            errors.append(disallowed_mime_type)
+    return file_mime_type, errors
+
+
+@spreadsheet_blueprint.route('identify_spreadsheet_columns', methods=['GET', 'POST'])
+@timeit
 def identify_spreadsheet_columns():
     errors = []
 
@@ -126,6 +171,10 @@ def identify_spreadsheet_columns():
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+
+    # Populate
+    spreadsheet.init_on_load()
+
     if request.method == 'POST':
         column_labels = list(request.form.values())
 
@@ -138,67 +187,92 @@ def identify_spreadsheet_columns():
         spreadsheet.set_ids_unique()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
-        return redirect(url_for('.set_spreadsheet_breakpoint'))
+        return redirect(url_for('.set_spreadsheet_breakpoint', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
 
-@spreadsheet_blueprint.route('/set_spreadsheet_breakpoint', methods=['GET','POST'])
-def set_spreadsheet_breakpoint():
+@spreadsheet_blueprint.route('/set_spreadsheet_breakpoint/<int:spreadsheet_id>', methods=['GET'])
+def set_spreadsheet_breakpoint(spreadsheet_id):
+    """
+    Misnamed at this point.  Takes the user to the page which displays the processed data in a series of graphs and
+    tables.  The spreadsheet_id may be in the url but it is not used here because our visitors share a user id.  I
+    need to protect the spreadsheet of one visiting user from another visiting user.  I can establish ownership for
+    the spreadsheets of logged in users only.  So I use the spreadsheet id found in the session object.  To change
+    this, we would need to assign each visiting user his/her own account, even if just temporary.
+    :param spreadsheet_id: id of spreadsheet used to display graphs/tables (not used - see above)
+    """
     errors = []
     if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
         errors.append("You may only work with your own spreadsheet.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-    if request.method == 'POST':
-        row_index = int(request.form['row_index'])
-        spreadsheet.breakpoint = row_index
-        spreadsheet.save_to_db()
-        session['spreadsheet'] = spreadsheet.to_json()
-        return redirect(url_for('.display_heatmap'))
+
+    # Populate
+    spreadsheet.init_on_load()
 
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
     ids = list(spreadsheet.get_ids())
-    user = User.find_by_email(session.get('email', None))
-    anonymous = user == None or user.is_annoymous_user()
+
+    # Certain functionality exists on the display page only if the user is not a visitor.  A logged in user is
+    # recognized by his/her email address in the session cookie.  If there is no email in the cookie or if the
+    # email does not result in a user or if the user returned is the anonymous user, indicate such in the parameters
+    # delivered to the template.
+    user_email = session['email'] if 'email' in session else None
+    user = User.find_by_email(user_email) if user_email else None
+    anonymous = not user or user.is_annoymous_user()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
-                                data=data.to_json(orient='values'),
-                                x_values=spreadsheet.x_values,
-                                x_labels=spreadsheet.x_labels,
-                                x_label_values=spreadsheet.x_label_values,
-                                qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                                ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                                amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                                peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                                anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                                anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                                filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
-                                ids=ids,
-                                column_pairs=spreadsheet.column_pairs,
-                                breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                                descriptive_name = spreadsheet.descriptive_name,
-                                timepoints_per_day = spreadsheet.timepoints,
-                                spreadsheet_id = session['spreadsheet_id'],
-                                max_value_filter = max_value_filter,
-                                anonymous=anonymous)
+                           data=data.to_json(orient='values'),
+                           x_values=spreadsheet.x_values,
+                           x_labels=spreadsheet.x_labels,
+                           x_label_values=spreadsheet.x_label_values,
+                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
+                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
+                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
+                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
+                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
+                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
+                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
+                           ids=ids,
+                           column_pairs=spreadsheet.column_pairs,
+                           breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                           descriptive_name=spreadsheet.descriptive_name,
+                           timepoints_per_day=spreadsheet.timepoints,
+                           spreadsheet_id=session['spreadsheet_id'],
+                           max_value_filter=max_value_filter,
+                           anonymous=anonymous)
 
 
-
-@spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET','POST'])
+@spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
 def show_spreadsheet(spreadsheet_id):
+    """
+    This retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
+    request is expected from the spreadsheet listing and therefore the request should be made by a logged in user.  Any
+    user not logged in is prevented from making this request via the decorator.  A logged in user is identified by the
+    email address stored in the session cookie.  A logged in user is prevented from viewing any but his/her own
+    spreadsheets.
+    :param spreadsheet_id:  the id of the spreadsheet whose results are to be displayed.
+    """
     errors = []
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     if not spreadsheet:
         errors.append('You may only manage your own spreadsheets.')
+        current_app.warn(f"User {user.id} attempted to display result for spreadsheet {spreadsheet_id}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-    if request.method == 'POST':
-        row_index = int(request.form['row_index'])
-        spreadsheet.breakpoint = row_index
-        spreadsheet.save_to_db()
-        return redirect(url_for('.display_heatmap'))
+
+    # Populate
+    spreadsheet.init_on_load()
+
+    # In the case of an incompletely processed spreadsheet (e.g., the user uploaded a spreadsheet, got distracted and
+    # closed the browser only later to see the spreadsheet in his/her spreadsheet listing), the user must still match
+    # days and timepoints to columns.
+    if not spreadsheet.column_labels:
+        errors = [f"Days/timepoint were not yet matched to columns for spreadsheet '{spreadsheet.descriptive_name}'.  "
+                  f"You may have skipped a step.  Please re-edit your data."]
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
     session["spreadsheet_id"] = spreadsheet.id
 
@@ -206,104 +280,77 @@ def show_spreadsheet(spreadsheet_id):
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
     ids = list(spreadsheet.get_ids())
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
-                                data=data.to_json(orient='values'),
-                                x_values=spreadsheet.x_values,
-                                x_labels=spreadsheet.x_labels,
-                                x_label_values=spreadsheet.x_label_values,
-                                qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                                ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                                amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                                peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                                anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                                anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                                filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
-                                ids=ids,
-                                column_pairs=spreadsheet.column_pairs,
-                                breakpoint = spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                                descriptive_name=spreadsheet.descriptive_name,
-                                timepoints_per_day = spreadsheet.timepoints,
-                                spreadsheet_id = session['spreadsheet_id'],
-                                max_value_filter = max_value_filter)
-
-
-@spreadsheet_blueprint.route('/heatmap', methods=['POST'])
-def display_heatmap():
-    errors = []
-    json_data = request.get_json()
-    row_index = json_data.get('row_index',0)
-    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-    spreadsheet.breakpoint = row_index
-    spreadsheet.save_to_db()
-    data, labels, original_indexes = spreadsheet.reduce_dataframe(spreadsheet.breakpoint)
-    data = spreadsheet.normalize_data(data)
-    combined_data = spreadsheet.average_replicates(data)
-    heatmap_x_values = []
-    for day in range(spreadsheet.days):
-        for timepoint in range(spreadsheet.timepoints):
-             num_replicates = spreadsheet.num_replicates[timepoint]
-             for rep in range(num_replicates):
-                 heatmap_x_values.append(f"Day{day + 1} Timepoint{timepoint + 1} Rep{rep + 1}")
-    heatmap_data = data.where((pd.notnull(data)), None).values.tolist()
-    heatmap_combined_data = combined_data.where((pd.notnull(combined_data)), None).values.tolist()
-    return jsonify(
-                        {
-                            "heatmap_labels": labels,
-                            "heatmap_data": heatmap_data,
-                            "heatmap_combined_data": heatmap_combined_data,
-                            "heatmap_x_values": heatmap_x_values,
-                            "heatmap_indexes": list(original_indexes)
-                        }
-                    )
-
+                           data=data.to_json(orient='values'),
+                           x_values=spreadsheet.x_values,
+                           x_labels=spreadsheet.x_labels,
+                           x_label_values=spreadsheet.x_label_values,
+                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
+                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
+                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
+                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
+                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
+                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
+                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
+                           ids=ids,
+                           column_pairs=spreadsheet.column_pairs,
+                           breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                           descriptive_name=spreadsheet.descriptive_name,
+                           timepoints_per_day=spreadsheet.timepoints,
+                           spreadsheet_id=session['spreadsheet_id'],
+                           max_value_filter=max_value_filter)
 
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
+@timeit
 def get_jtk():
-    errors = []
     spreadsheet_id = json.loads(request.data)['spreadsheet_id']
     spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+
+    # Populate
+    spreadsheet.init_on_load()
+
     jtk_ps, jtk_qs = spreadsheet.get_jtk()
-    return jsonify( { "jtk_ps": jtk_ps,
-                      "jtk_qs": jtk_qs } )
+    return jsonify({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
+
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
 @requires_login
 def display_spreadsheets():
-    print("Display spreadsheets {session['email']}")
+    """
+    This method takes the logging in user to a listing of his/her spreadsheets.  The decorator assures that only logged
+    in users may make such a request.
+    """
+    current_app.logger.info(f"Displaing spreadsheets for user {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
 
-@spreadsheet_blueprint.route('/delete/<int:spreadsheet_id>', methods=['GET'])
+@spreadsheet_blueprint.route('/delete', methods=['POST'])
 @requires_login
-def delete(spreadsheet_id):
+def delete():
     """
-    The spreadsheet deletion is intended only for logged in users and is activated via a trashcan
-    icon alongside each spreadsheet in the user's spreadsheet list.  That the spreadsheet to be
-    deleted belongs to the user making the request is verified.  If so verified, the spreadsheet is
-    deleted first from the database and then the originally uploaded spreadsheet file and the
-    processed spreadsheet file are removed from the file system.  The user is notified in the event
-    on an incomplete removal.
-    :param spreadsheet_id: the spreadsheet id to be removed
+    Rest call to delete the user's spreadsheet data and its metadata.  The user most own the spreadsheet given by the
+    id provided.  The reference to the spreadsheet is first removed from the database and then the associated files
+    are removed.  Any incomplete removal is reported to the user and logged.
+    :return: A successful ajax call returns nothing (just a 204 status code).
     """
-    errors = []
+    spreadsheet_id = json.loads(request.data).get('spreadsheet_id', None)
+    if not spreadsheet_id:
+        return jsonify({"error": "No spreadsheet id provided."}), 400
     user = User.find_by_email(session['email'])
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        errors.append('You may only manage your own spreadsheets.')
         current_app.logger.warn(f"User {user.id} attempted to delete spreadsheet {spreadsheet_id}")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+        return jsonify({"error": "You may only manage your own spreadsheets"}), 403
     try:
         spreadsheet.delete_from_db()
         os.remove(spreadsheet.file_path)
         os.remove(spreadsheet.uploaded_file_path)
     except Exception as e:
-       errors.append("The spreadsheet data may not have been all successfully removed.")
-       current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
-                                f"expunged.", e)
-    if errors:
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-    return redirect(url_for('.display_spreadsheets'))
+        current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
+                                 f"expunged.", e)
+        return jsonify({"error": 'The spreadsheet data may not have been all successfully removed'}), 500
+    return '', 204
 
 
 @spreadsheet_blueprint.route('/download', methods=['GET'])
@@ -318,7 +365,6 @@ def download_spreadsheet():
     errors = []
     spreadsheet_id = session['spreadsheet_id']
     user = User.find_by_email(session['email'])
-    spreadsheet = None
     if user:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
@@ -374,7 +420,7 @@ def download(spreadsheet_id):
 def edit_details(spreadsheet_id):
     """
     Allows a logged in user to edit the details of an existing spreadsheet (e.g., name, # days, # timepoints, etc).  A
-    check is made to insure that the spreadsheet id sent in the url identified a spreadsheet in the logged in user's
+    check is made to insure that the spreadsheet id sent in the url identifies a spreadsheet in the logged in user's
     inventory.
     :param spreadsheet_id:  id to the spreadsheet whose details the logged in user wishes to edit.
     """
@@ -442,6 +488,10 @@ def edit_columns():
         current_app.logger.warn(f"User {user.id} attempted to edit the column labels of spreadsheet "
                                 f"{session['spreadsheet_id']}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    # Populate
+    spreadsheet.init_on_load()
+
     if request.method == 'POST':
         column_labels = list(request.form.values())
         error, messages = spreadsheet.validate(column_labels)
@@ -466,9 +516,14 @@ def save_filters():
     json_data = request.get_json()
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+
+    # Populate
+    spreadsheet.init_on_load()
+
     spreadsheet.max_value_filter = float(max_value_filter) if max_value_filter else None
     spreadsheet.apply_filters()
     spreadsheet.save_to_db()
+
     response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
                         'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
                         'filtered': spreadsheet.df.filtered_out.values.tolist()})
@@ -531,13 +586,13 @@ def consume_share(token):
     errors.append("The spreadsheets could not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
+
 @spreadsheet_blueprint.route('/compare', methods=['GET'])
 @requires_login
 def compare():
     errors = []
     spreadsheets = []
     non_unique_id_counts = []
-    datasets = []
     x_values = []
     x_labels = []
     x_label_values = []
@@ -552,7 +607,12 @@ def compare():
         if not spreadsheet:
             errors.append('You may only manage your own spreadsheets.')
             return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+        # Populate
+        spreadsheet.init_on_load()
+
         spreadsheets.append(spreadsheet)
+        
     errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
@@ -561,7 +621,7 @@ def compare():
     for spreadsheet in spreadsheets:
         non_unique_ids = spreadsheet.find_replicate_ids()
         non_unique_id_counts.append(len(non_unique_ids))
-        print(f"Number of non unique ids is {len(non_unique_ids)}")
+        current_app.logger.debug(f"Number of non unique ids is {len(non_unique_ids)}")
         x_values.append(spreadsheet.x_values)
         x_labels.append(spreadsheet.x_labels)
         x_label_values.append(spreadsheet.x_label_values)
@@ -570,13 +630,11 @@ def compare():
         timepoints_per_day.append(spreadsheet.timepoints)
         data = spreadsheet.df
         data["compare_ids"] = list(spreadsheet.get_ids())
-        print(f"Shape prior to removal of non-unique ids: {data.shape}")
+        current_app.logger.debug(f"Shape prior to removal of non-unique ids: {data.shape}")
         data = data.set_index("compare_ids")
         data = data[~data.index.duplicated()]
         datasets.append(data)
-        print(f"Shape prior to join with label col: {data.shape}")
-
-
+        current_app.logger.debug(f"Shape prior to join with label col: {data.shape}")
     if not set(datasets[0].index) & set(datasets[1].index):
         errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
@@ -584,7 +642,7 @@ def compare():
     common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
     df = datasets[0].join(datasets[1], how='inner', lsuffix='_0', rsuffix='_1')
     df = df.sort_values(by=['total_delta_0'])
-    print(f"Shape after join: {df.shape}")
+    current_app.logger.debug(f"Shape after join: {df.shape}")
     compare_ids = df.index.tolist()
     datasets = []
     qs = []
@@ -594,9 +652,9 @@ def compare():
     peak_times = []
     anova_ps = []
     anova_qs = []
-    for i in [0,1]:
+    for i in [0, 1]:
         columns.append([column + f"_{i}" if column in common_columns else column
-                            for column in spreadsheets[i].get_data_columns()])
+                        for column in spreadsheets[i].get_data_columns()])
         datasets.append(df[columns[i]].values)
         qs.append(df[f"nitecap_q_{i}"].values.tolist())
         ps.append(df[f"nitecap_p_{i}"].values.tolist())
@@ -621,10 +679,11 @@ def compare():
                            peak_times=json.dumps(peak_times),
                            anova_ps=json.dumps(anova_ps),
                            anova_qs=json.dumps(anova_qs),
-                           tds = json.dumps(tds),
+                           tds=json.dumps(tds),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
-                           timepoints_per_day = timepoints_per_day,
+                           timepoints_per_day=timepoints_per_day,
                            spreadsheet_ids=json.dumps(spreadsheet_ids))
+
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
 def get_upside():
@@ -641,11 +700,15 @@ def get_upside():
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
-            return jsonify( {'upside_ps': null} )
+            current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
+            return jsonify({'upside_ps': None})
+
+        # Populate
+        spreadsheet.init_on_load()
+
         spreadsheets.append(spreadsheet)
 
-    for primary, secondary in [(0,1), (1,0)]:
+    for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
         file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.txt")
         try:
@@ -668,7 +731,7 @@ def get_upside():
                 df = df.sort_values(by=['total_delta_0'])
                 compare_ids = df.index.tolist()
 
-                for i in [0,1]:
+                for i in [0, 1]:
                     columns = [column + f"_{i}" if column in common_columns else column
                                         for column in spreadsheets[i].get_data_columns()]
                     datasets.append(df[columns].values)
@@ -676,9 +739,9 @@ def get_upside():
             # Run the actual upside calculation
             current_app.logger.info(f"Dataset sizes: {df.shape}, {datasets[primary].shape}, {datasets[secondary].shape}")
             upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates, datasets[primary],
-                                spreadsheets[secondary].num_replicates, datasets[secondary])
+                                           spreadsheets[secondary].num_replicates, datasets[secondary])
             upside_q = nitecap.util.BH_FDR(upside_p)
-            comp_data = pd.DataFrame(index = df.index)
+            comp_data = pd.DataFrame(index=df.index)
             comp_data["upside_ps"] = upside_p
             comp_data["upside_qs"] = upside_q
             comp_data.to_csv(file_path, sep="\t")
@@ -690,6 +753,7 @@ def get_upside():
                 'upside_ps': upside_ps,
                 'upside_qs': upside_qs
             })
+
 
 @spreadsheet_blueprint.route('/run_pca', methods=['POST'])
 def run_pca():
@@ -705,9 +769,13 @@ def run_pca():
     user = User.find_by_email(session['email'])
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+        # Populate
+        spreadsheet.init_on_load()
+
         if not spreadsheet:
             current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
-            return jsonify( {'upside_ps': null} )
+            return jsonify({'upside_ps': None})
         spreadsheets.append(spreadsheet)
 
     dfs = []
@@ -725,18 +793,18 @@ def run_pca():
     compare_ids = df.index.tolist()
 
     data_columns = [column + f"_{i}" if column in common_columns else column
-                            for i in range(len(spreadsheets))
-                            for column in spreadsheets[i].get_data_columns() ]
+                    for i in range(len(spreadsheets))
+                    for column in spreadsheets[i].get_data_columns()]
 
     # TODO: both z-scores and log(x) or log(1+x) should be options for normalization before PCA
     #       and if both, z-scores should be done after log transform
     # log(1+x) normalize data
     df[data_columns] = numpy.log(1 + df[data_columns])
     # Normalize to z-scored data across both datasets
-    #df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
+    # df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
 
     # Extract individual datasets
-    for i in [0,1]:
+    for i in [0, 1]:
         columns = [column + f"_{i}" if column in common_columns else column
                             for column in spreadsheets[i].get_data_columns()]
         datasets.append(df[columns].values)
@@ -752,33 +820,67 @@ def run_pca():
         num_cols = dataset.shape[1]
         pca_coords.append(coords[start:start + num_cols].T.tolist())
         start += num_cols
-
-
     return jsonify({
                 'pca_coords': pca_coords,
                 'explained_variance': pca.explained_variance_ratio_.tolist()
             })
 
+
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 def check_id_uniqueness():
-    user = User.find_by_email(session['email'])
-    user = user if user else User.find_by_username("annonymous")
-    spreadsheet = None
+    if 'email' in session:
+        user = User.find_by_email(session['email'])
+    else:
+        user = User.find_by_username("annonymous")
     errors = []
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     id_columns = json_data.get('id_columns', None)
-    if not id_columns or len(id_columns) == 0:
+    if not id_columns:
         errors.append("No id columns were selected. Please select at least one id column.")
+        return jsonify({'error': errors}), 400
     if not spreadsheet_id:
         errors.append("No spreadsheet was identified. Make sure you are selecting one you uploaded.")
+        return jsonify({'error': errors}), 400
     else:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-       errors.append('The spreadsheet being edited could not be found.')
-    if errors:
-        print(errors)
-        return jsonify({'errors': errors}), 404
+        errors.append('The spreadsheet being edited could not be found.')
+        return jsonify({'error': errors}), 404
+
+    # Populate
+    spreadsheet.init_on_load()
+
     non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
-    print(non_unique_ids)
+    current_app.logger.debug(f"Non-unique ids {non_unique_ids}")
     return jsonify({'non-unique_ids': non_unique_ids})
+
+
+@spreadsheet_blueprint.route('/save_cutoff', methods=['POST'])
+def save_cutoff():
+    """
+    When the user selects a significance cutoff, in addition to showing the heatmap, the cutoff value is saved to the
+    spreadsheet database record.
+    :return: Nothing is return in the event of a successful save.  Otherwise an error message is returned.
+    """
+    if 'email' in session:
+        user = User.find_by_email(session['email'])
+    else:
+        user = User.find_by_username("annonymous")
+    errors = []
+    json_data = request.get_json()
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+    cutoff = json_data.get('cutoff', None)
+    if not cutoff:
+        cutoff = 0
+    if not spreadsheet_id:
+        errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
+        return jsonify({'error': errors}), 400
+    else:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('The spreadsheet being requested could not be found.')
+        return jsonify({'error': errors}), 404
+    spreadsheet.breakpoint = cutoff
+    spreadsheet.save_to_db()
+    return '', 204
