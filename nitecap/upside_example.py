@@ -1,7 +1,8 @@
 import time
 import numpy
 
-import nitecap.upside
+import upside
+import util
 
 ###### Parameters for generated data
 # Always generate the same random data
@@ -38,7 +39,8 @@ data = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all 
 # B-condition which is the same as A except that some are dampened (amplitude multiplied by a random number 0 to 0.75)
 DAMPENED_AMPLITUDES = AMPLITUDES.copy()
 DAMPENED_AMPLITUDES[:,:,:N_DAMPENED] *= numpy.random.random(N_DAMPENED) * 0.75
-DAMPENED_DATA_MEANS = (WAVEFORM * DAMPENED_AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS
+MEAN_RATIOS =  numpy.exp(numpy.random.uniform(-0.3,0.3))
+DAMPENED_DATA_MEANS = (WAVEFORM * DAMPENED_AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS * MEAN_RATIOS
 data_B = numpy.random.poisson(DAMPENED_DATA_MEANS, size=(N_TIMEPOINTS,  N_REPS, N_GENES))
 data_B = data_B.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all replicates in a timepoint
 
@@ -47,7 +49,7 @@ start = time.time()
 
 ##### Run upside
 # We use this instead for plotting results
-ps = nitecap.upside.main([N_REPS]*N_TIMEPOINTS, data,
+ps = upside.main([N_REPS]*N_TIMEPOINTS, data,
                          [N_REPS]*N_TIMEPOINTS, data_B)
 ##### End upside
 
@@ -55,3 +57,21 @@ ps = nitecap.upside.main([N_REPS]*N_TIMEPOINTS, data,
 end = time.time()
 print(f"Ran upside on {N_GENES} genes in {end-start:.2f} seconds")
 print(f"Estimate {numpy.sum(ps)*2} nulls out of {N_GENES}")
+
+# FDR computations
+qs = util.BH_FDR(ps)
+
+# Compare FDR results to truth
+sort_order = numpy.argsort(ps)
+is_null = numpy.array([0]*N_DAMPENED + [1]*N_NONDAMPENED)
+num_nulls_so_far = numpy.cumsum(is_null[sort_order])
+real_qs = num_nulls_so_far / numpy.arange(1,N_GENES+1)
+
+
+# Plotting
+import pylab
+pylab.scatter(qs[sort_order], real_qs)
+pylab.plot([0,1],[0,1])
+pylab.xlabel("Reported FDR")
+pylab.ylabel("True FDR")
+pylab.show()

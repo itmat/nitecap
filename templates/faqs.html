@@ -76,6 +76,121 @@
                 </div>
             </div>
         </div>
+
+        <div class="card">
+            <div class="card-header" id="headingFour">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseFour"
+                             aria-expanded="true" aria-controls="collapseFour">
+                        What limits on file size are there?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseFour" class="collapse" aria-labelledby="headingFour" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap can accept spreadsheets up to 40 megabytes.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingFive">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseFive"
+                             aria-expanded="true" aria-controls="collapseFive">
+                        How can I compare datasets? Which datasets can I compare?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseFive" class="collapse" aria-labelledby="headingFive" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        To compare two datasets, you must upload them each individually as separate datasets.
+                        Then, go to the Display Spreadsheets page and select both datasets and hit the Compare button at the bottom.
+                    </p>
+                    <p>
+                        Two datasets can be compared only if they have the same days and timepoints per days.
+                        Since values in the two datasets must be paired together, the IDs must be unique within a dataset and match across the datasets.
+                        Any IDs that are duplicated within a dataset is dropped from the analysis.
+                        Any IDs that appear in one but not the other dataset is dropped from the analysis.
+                    </p>
+                    <p>
+                        The 'dampening' statistic is available for comparison pages and low q-values indicates that the change over time decreases in the secondary dataset compared to the primary dataset.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingSix">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseSix"
+                             aria-expanded="true" aria-controls="collapseSix">
+                    What columns should I select as ID columns? </button>
+                </h5>
+            </div>
+            <div id="collapseSix" class="collapse" aria-labelledby="headingSix" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        You can select any columns for ID but must choose at least one.
+                        These are used for labelling the rows.
+                    </p>
+                    <p>
+                        If you are comparing datasets, then there are further considerations.
+                        IDs should be unique (any non-unique IDs are dropped from comparisons, but not from a single dataset analysis).
+                        The IDs from two datasets should match if you wish to compare them as any IDs that do not exist in both spreadsheets will be dropped from the comparsion.
+                        For these purposes, if you select multiple ID columns, then the columns are joined together to form the IDs and IDs match only if they match in every ID column.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingSeven">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseSeven"
+                             aria-expanded="true" aria-controls="collapseSeven">
+                    How can I cite my use of Nitecap?</button>
+                </h5>
+            </div>
+            <div id="collapseSeven" class="collapse" aria-labelledby="headingSeven" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap is currently under development and has not yet been published, so no citation is yet possible.
+                    </p>
+                    <p>
+                        If you use the JTK analysis results in your paper, the <a href="https://openwetware.org/wiki/HughesLab:JTK_Cycle">developers of JTK_cycle</a> ask users to cite <a href="http://www.ncbi.nlm.nih.gov/pubmed/20876817">their paper</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingEight">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseEight"
+                             aria-expanded="true" aria-controls="collapseEight">
+                        How can I share my dataset and analysis with my colleagues?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseEight" class="collapse" aria-labelledby="headingEight" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        There is a share button on every dataset which gives a URL that can be given to your colleagues to access the dataset.
+                        Note that anyone with the URL can access it, so consider who you share it with.
+                    </p>
+                    <p>
+                        When someone opens the link, they receive a copy of the dataset and none of the changes they make will be reflected in your copy.
+                        If you modify your dataset, then that modification will go to anyone who clicks the link after your modification, but not for anyone who clicked before.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+
 </div>
 
 
