@@ -544,7 +544,7 @@ def share():
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     row_index = json_data.get('row_index', 0)
-    print(f"Spreadsheet {spreadsheet_id} and row index {row_index}")
+    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_id} and row index {row_index}")
     if not user.find_user_spreadsheet_by_id(spreadsheet_id):
         errors.append('You may only manage your own spreadsheets.')
         return jsonify({"errors": errors}, 401)
@@ -568,7 +568,9 @@ def consume_share(token):
     """
     errors = []
     sharing_user, spreadsheet_id, row_index = User.verify_share_token(token)
+    current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_id}")
     spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
+
     if not spreadsheet or not sharing_user:
         errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
                       "another share")
@@ -576,13 +578,15 @@ def consume_share(token):
     user = None
     if 'email' in session:
         user = User.find_by_email(session['email'])
+
     shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id if user else None)
     if shared_spreadsheet:
+
         if row_index:
             shared_spreadsheet.breakpoint = row_index
             shared_spreadsheet.save_to_db()
         session['spreadsheet_id'] = shared_spreadsheet.id
-        return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint'))
+        return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint', spreadsheet_id=spreadsheet.id))
     errors.append("The spreadsheets could not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
