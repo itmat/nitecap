@@ -739,24 +739,25 @@
             </a>
         </div>
         <div class="card-body">
-            Sort by: <br>
-            <label for="sort_select"></label>
+            <label for="sort_select">Sort by:</label>
             <select id="sort_select" class="form-control form-control-sm">
                 <option value="nitecap">Nitecap</option>
                 <option value="jtk" disabled>JTK</option>
                 <option value="anova">ANOVA</option>
                 <option value="amplitude">Amplitude</option>
             </select>
-            <ul class="list-group list-group-flush">
-                <li class="list-group-item">Q: <span id="q_value"></span></li>
-                <li class="list-group-item">p-value: <span id="p_value"></span></li>
-                <li class="list-group-item">Amplitude: <span id="amplitude"></span></li>
-                <li class="list-group-item">Peak-time: <span id="peak_time"></span></li>
-                <li class="list-group-item">ANOVA p: <span id="anova_p"></span></li>
-                <li class="list-group-item">ANOVA q: <span id="anova_q"></span></li>
-                <li class="list-group-item">JTK p: <span id="jtk_p"></span></li>
-                <li class="list-group-item">JTK q: <span id="jtk_q"></span></li>
-            </ul>
+            <table class="table table-sm">
+                <tbody>
+                    <tr> <td rowspan="2">Nitecap</td> <td>p: <span id="p_value"></span></td> </tr>
+                    <tr> <td>q: <span id="q_value"></span></td></tr>
+                    <tr> <td rowspan="2">JTK</td> <td>p: <span id="jtk_p"></span></td> </tr>
+                    <tr> <td>q: <span id="jtk_q"></span></td></tr>
+                    <tr> <td rowspan="2">ANOVA</td> <td>p: <span id="anova_p"></span></td> </tr>
+                    <tr> <td>q: <span id="anova_q"></span></td></tr>
+                    <tr> <td>Amplitude</td> <td id="amplitude"></td> </tr>
+                    <tr> <td>Peak-time</td> <td id="peak_time"></td> </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
