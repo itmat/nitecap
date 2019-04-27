@@ -874,9 +874,7 @@ def save_cutoff():
     errors = []
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
-    cutoff = json_data.get('cutoff', None)
-    if not cutoff:
-        cutoff = 0
+    cutoff = json_data.get('cutoff', 0)
     if not spreadsheet_id:
         errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
         return jsonify({'error': errors}), 400
@@ -886,5 +884,26 @@ def save_cutoff():
         errors.append('The spreadsheet being requested could not be found.')
         return jsonify({'error': errors}), 404
     spreadsheet.breakpoint = cutoff
+    spreadsheet.save_to_db()
+    return '', 204
+
+
+@spreadsheet_blueprint.route('/save_note', methods=['POST'])
+@requires_login
+def save_note():
+    errors = []
+    user = User.find_by_email(session['email'])
+    json_data = request.get_json()
+    note = json_data.get('note', '')
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+    if not spreadsheet_id:
+        errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
+        return jsonify({'error': errors}), 400
+    else:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('The spreadsheet being requested could not be found.')
+        return jsonify({'error': errors}), 404
+    spreadsheet.note = note
     spreadsheet.save_to_db()
     return '', 204

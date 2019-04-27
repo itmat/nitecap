@@ -9,6 +9,58 @@
 
     $(document).ready(function() {
 
+
+        {#  raw/endraw needed to make jinga ignore this code.  This is a Mustache template. #}
+        {% raw %}
+        var template = "<div id='spreadsheet_notes_{{ spreadsheet_id }}' class='annotate_form'>\n" +
+            "             <textarea data-id='{{ spreadsheet_id }}' class='form-control' cols='30' rows='10'>{{ note }}</textarea>\n" +
+            "              <div class='float-right'>\n" +
+            "                <button class='btn-annotate btn btn-primary'>\n" +
+            "                  <i class='fas fa-check'></i>\n" +
+            "                </button>\n" +
+            "                <button class='btn-annotate-dismiss btn btn-white'>\n" +
+            "                  <i class='fas fa-times'></i>\n" +
+            "                </button>\n" +
+            "              </div>\n" +
+            "            </div>";
+        {% endraw %}
+
+        let popovers = $('.annotate_spreadsheet[data-toggle="popover"]');
+        popovers.popover().on('shown.bs.popover', function() {
+            $('.btn-annotate').on('click', function() {
+                let parentElement = $(this).parent().parent();
+                let textareaElement = parentElement.find('textarea');
+                let spreadsheet_id = textareaElement.attr("data-id");
+                let note = textareaElement.val();
+                let anchorElement = $('a.annotate_spreadsheet[data-id="' + spreadsheet_id + '"]');
+                console.log(anchorElement);
+                $.ajax({
+                    url: "{{url_for('spreadsheets.save_note')}}",
+                    data: JSON.stringify({"spreadsheet_id": spreadsheet_id, "note": note}),
+                    dataType: "json",
+                    contentType: "application/json",
+                    type: 'POST',
+                    success: function () {
+                        let new_data = {"spreadsheet_id": spreadsheet_id, "note": note};
+                        let new_content = '"' + Mustache.to_html(template, new_data) + '"';
+                        anchorElement.attr('data-content', new_content);
+                        console.log(anchorElement.data('content'));
+                    },
+                    error: function (request) {
+                        let error_message = $.parseJSON(request.responseText).error;
+                        nitecap_error_message.text(error_message);
+                        nitecap_error.modal();
+                    },
+                    complete: function(data) {
+                        popovers.popover('hide');
+                    }
+                });
+            });
+            $('.btn-annotate-dismiss').on('click', function() {
+                popovers.popover('hide');
+            });
+        });
+
         nitecap_error = $("#error-modal");
         nitecap_error_message = $("#error-modal-message");
 
@@ -156,7 +208,9 @@
                 <td data-sort="{{spreadsheet.date_uploaded}}">
                     {{ momentjs(spreadsheet.date_uploaded).format('LLL') }}
                 </td>
-                <td>{{spreadsheet.descriptive_name}}</td>
+                <td>
+                    {{spreadsheet.descriptive_name}}
+                </td>
                 <td>{{spreadsheet.days}}</td>
                 <td>{{spreadsheet.timepoints}}</td>
                 <td>{{spreadsheet.breakpoint}}</td>
@@ -179,6 +233,23 @@
                     </a>
                     <a data-id="{{ spreadsheet.id }}" class="delete_spreadsheet text-primary">
                         <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                    </a>
+                    <a data-id="{{ spreadsheet.id }}" class="annotate_spreadsheet text-primary" rel="popover"
+                       data-container="body" data-toggle="popover" data-placement="left" data-trigger="click"
+                       title="Add a Note" data-html=true
+                       data-content="<div id='spreadsheet_notes_{{ spreadsheet.id }}' class='annotate_form'>
+                                       <textarea data-id='{{ spreadsheet.id }}' class='form-control' cols='30' rows='10'>{{ spreadsheet.note }}</textarea>
+                                       <div class='float-right'>
+                                         <button class='btn-annotate btn btn-primary'>
+                                           <i class='fas fa-check'></i>
+                                         </button>
+                                         <button class='btn-annotate-dismiss btn btn-white'>
+                                           <i class='fas fa-times'></i>
+                                         </button>
+                                       </div>
+                                     </div>"
+                    >
+                        <i class="fas fa-sticky-note" data-toggle="tooltip" data-placement="top" title="Annotate"></i>
                     </a>
                 </td>
                 <td>{{spreadsheet.id}}</td>
