@@ -748,14 +748,58 @@
             </select>
             <table class="table table-sm">
                 <tbody>
-                    <tr> <td rowspan="2">Nitecap</td> <td>p: <span id="p_value"></span></td> </tr>
+                    <tr> <td rowspan="2">Nitecap
+                        <a class="text-primary help-pointer float-right"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Nitecap"
+                           data-content="Nitecap significance of rhythmicity for primary dataset.">
+                            <i class="fas fa-info-circle ml-3"></i>
+                        </a>
+                        </td> <td>p: <span id="p_value"></span></td>
+                    </tr>
                     <tr> <td>q: <span id="q_value"></span></td></tr>
-                    <tr> <td rowspan="2">JTK</td> <td>p: <span id="jtk_p"></span></td> </tr>
+
+                    <tr> <td rowspan="2">JTK
+                        <a class="text-primary help-pointer float-right"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="JTK"
+                           data-content="JTK_cycle significance of rhythmicity for primary dataset.">
+                            <i class="fas fa-info-circle ml-3"></i>
+                        </a>
+                        </td> <td>p: <span id="jtk_p"></span></td> </tr>
                     <tr> <td>q: <span id="jtk_q"></span></td></tr>
-                    <tr> <td rowspan="2">ANOVA</td> <td>p: <span id="anova_p"></span></td> </tr>
+
+                    <tr> <td rowspan="2"> ANOVA
+                        <a class="text-primary help-pointer float-right"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="ANOVA"
+                           data-content="1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.">
+                            <i class="fas fa-info-circle ml-3"></i>
+                        </a>
+                         </td> <td>p: <span id="anova_p"></span></td>
+                    </tr>
                     <tr> <td>q: <span id="anova_q"></span></td></tr>
-                    <tr> <td>Amplitude</td> <td id="amplitude"></td> </tr>
-                    <tr> <td>Peak-time</td> <td id="peak_time"></td> </tr>
+
+                    <tr> <td>Amplitude
+                        <a class="text-primary help-pointer float-right"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Amplitude"
+                           data-content="Amplitude of the variation.">
+                            <i class="fas fa-info-circle ml-3"></i>
+                        </a>
+                        </td>
+                        <td id="amplitude"></td>
+                    </tr>
+
+                    <tr> <td>Peak-time
+                        <a class="text-primary help-pointer float-right"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Peak-time"
+                           data-content="Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.">
+                            <i class="fas fa-info-circle ml-3"></i>
+                        </a>
+                         </td> <td id="peak_time"></td>
+                    </tr>
                 </tbody>
             </table>
         </div>
