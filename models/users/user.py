@@ -318,7 +318,7 @@ class User(db.Model):
         user.save_to_db()
         return user
 
-    def is_annoymous_user(self):
+    def is_anonymous_user(self):
         return self.username == 'annonymous'
 
     def get_share_token(self, spreadsheet_id, row_index=0):

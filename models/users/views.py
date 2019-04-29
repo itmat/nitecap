@@ -109,7 +109,7 @@ def login_user():
             if 'spreadsheet_id' in session and session['spreadsheet_id']:
                 spreadsheet_id = session['spreadsheet_id']
                 spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
-                if spreadsheet.user.is_annoymous_user():
+                if spreadsheet.user.is_anonymous_user():
                     spreadsheet.update_user(user.id)
 
         # If the user logged in from a different page on this website, return to that page with the exception of
