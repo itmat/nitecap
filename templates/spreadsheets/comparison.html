@@ -313,6 +313,8 @@
             var limit = Math.max(Math.abs(min), Math.abs(max));
 
             var y_vals =  heatmap_labels.map(function (x,i) {return i;});
+            var show_labels = $('#heatmap_show_labels').is(':checked');
+
             var heatmap_values = number_comparisons.map( function(spreadsheet_num) {
                 var colorbar = {};
                 if (spreadsheet_num === 0){
@@ -351,7 +353,9 @@
                 yaxis: {
                     tickmode: "array",
                     ticktext: heatmap_labels,
-                    tickvals: y_vals
+                    tickvals: y_vals,
+                    showticklabels: show_labels,
+                    ticks: ''
                 },
                 grid: {
                     rows: 1,
@@ -373,6 +377,10 @@
         });
 
         $('#combine_replicates').change(function() {
+            updateHeatmap()
+        });
+
+        $('#heatmap_show_labels').change(function() {
             updateHeatmap()
         });
 
@@ -648,7 +656,7 @@
 
 
 <div id="comparison-graph-page" class="page-header">
-    <h1>Spreadsheet Comparsions <small>Primary Spreadsheet is the first one listed below</small></h1>
+    <h1>Spreadsheet Comparsions</h1>
 </div>
 
 <p id="spreadsheet-comparison-page">
@@ -679,9 +687,14 @@
         <span class='col-xs-3 ...'>
             <div class='row'>
                 <div class="col px-4">
-                    <div class="form-group form-inline">
-                        <input class="form-control form-control-sm" type="text" name="row_search" placeholder="Search for row by label" id="row_search_box">
-                        <button type="button" id="search_button" class="btn btn-secondary btn-sm" style="height:1.8rem">search</button>
+                    <div class="input-group mb-2">
+                        <input class="form-control form-control-sm" type="text" name="row_search"
+                               placeholder="Search for row by label" id="row_search_box" />
+                        <div class="input-group-append">
+                            <button type="button" id="search_button" class="btn btn-secondary btn-sm">
+                                Search
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -712,6 +725,12 @@
         <div class="card col-xs-1" style="width: 15rem;">
             <div class="card-header">
                 Statistics
+                <a id="statsHelp" class="text-primary help-pointer"
+                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                   title="Statistics Help"
+                   data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
+                    <i class="fas fa-info-circle ml-3"></i>
+                </a>
             </div>
             <div class="card-body">
                 <label for="sort_select">Sort by:</label>
@@ -720,20 +739,73 @@
                      <option value="jtk" disabled>JTK</option>
                      <option value="anova">ANOVA</option>
                      <option value="amplitude">Amplitude</option>
-                     <option value="upside" disabled>Upside</option>
+                     <option value="upside" disabled>Damping</option>
                 </select>
                 <table class="table table-sm">
                     <tbody>
-                        <tr> <td rowspan="2">Nitecap</td> <td>p: <span id="p_value"></span></td> </tr>
+                        <tr> <td rowspan="2">Nitecap
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Nitecap"
+                               data-content="Nitecap significance of rhythmicity for primary dataset.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td> <td>p: <span id="p_value"></span></td>
+                        </tr>
                         <tr> <td>q: <span id="q_value"></span></td></tr>
-                        <tr> <td rowspan="2">JTK</td> <td>p: <span id="jtk_p"></span></td> </tr>
+
+                        <tr> <td rowspan="2">JTK
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="JTK"
+                               data-content="JTK_cycle significance of rhythmicity for primary dataset.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td> <td>p: <span id="jtk_p"></span></td> </tr>
                         <tr> <td>q: <span id="jtk_q"></span></td></tr>
-                        <tr> <td rowspan="2">ANOVA</td> <td>p: <span id="anova_p"></span></td> </tr>
+
+                        <tr> <td rowspan="2"> ANOVA
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="ANOVA"
+                               data-content="1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                             </td> <td>p: <span id="anova_p"></span></td>
+                        </tr>
                         <tr> <td>q: <span id="anova_q"></span></td></tr>
-                        <tr> <td rowspan="2">Upside</td> <td>p: <span id="upside_p"></span></td> </tr>
+
+                        <tr> <td rowspan="2">Damping
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Damping"
+                               data-content="Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td> <td>p: <span id="upside_p"></span></td>
+                        </tr>
                         <tr> <td>q: <span id="upside_q"></span></td></tr>
-                        <tr> <td>Amplitude</td> <td id="amplitude"></td> </tr>
-                        <tr> <td>Peak-time</td> <td id="peak_time"></td> </tr>
+
+                        <tr> <td>Amplitude
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Amplitude"
+                               data-content="Amplitude of the variation.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td>
+                            <td id="amplitude"></td>
+                        </tr>
+
+                        <tr> <td>Peak-time
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Peak-time"
+                               data-content="Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                             </td> <td id="peak_time"></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -741,6 +813,12 @@
         <div id="FiltersCard" class="card col-xs-1" style="width: 20rem;">
             <div class="card-header">
                 Filters
+                <a id="filtersHelp" class="text-primary help-pointer"
+                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                   title="Filter Help"
+                   data-content="Please note that filter application can take a dozen or more seconds to complete.">
+                    <i class="fas fa-info-circle ml-3"></i>
+                </a>
             </div>
             <div class="card-body">
                 <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
@@ -768,6 +846,12 @@
                     <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
                     <label class="switch">
                         <input id="combine_replicates" name="combine_replicates" type="checkbox" >
+                        <span class="slider"></span>
+                    </label>
+
+                    <span style="vertical-align:center;padding-right:1rem">Show row labels</span>
+                    <label class="switch">
+                        <input id="heatmap_show_labels" name="combine_replicates" type="checkbox" />
                         <span class="slider"></span>
                     </label>
                 </span>
