@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Welcome to NITECAP</h1>
+</div>
+
+<div class="jumbotron smaller-text">
+    <h2>Introduction</h2>
+    <p>
+        Nitecap is a method for identification of circadian or rhythmic patterns in massively-parallel measurements of biological entities; for example, finding circadian behavior in timecourse gene expression data from RNA-Seq or microarrays.
+        Our web interface makes it easy to run circadian analyses with just a spreadsheet of data, as well as to visualize the results.
+    </p>
+    <p>
+        You may use the site's functionality without registering.  But if you'd like to have your data
+        saved on the site, you will need to register and then log in.
+    </p>
+    <p>
+        Nitecap requires at least one cycle's worth of data, but multiple cycles (for example, multiple days) worth of data produces stronger analyses.
+        Nitecap searches for very general criteria for the shape of the expected data.
+        Instead of comparing to cosine curves, like most methods, it prioritizes data that has a single peak and trough over the course of the cycle instead of more random ups-and-downs.
+        Nitecap produces multiple-hypothesis-corrected results through q-values giving the false discovery rate (FDR) of the set of genes chosen.
+        Our web interface helps investigators choose a reasonable q-value cutoff by visual inspection of the data.
+    </p>
+    <p>
+        <a href="https://nitecap.org/spreadsheets/share/eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX2lkIjo0LCJzcHJlYWRzaGVldF9pZCI6MTgyLCJyb3dfaW5kZXgiOiIxIn0.aUKYx_EYhnImvADwPtfReZlSsQGQpoXuFOfnzjte7i3SCRzjoPwHpFYZ-A5W7zlGv55pUV0UniWOkT9OMz2w9g">Try Nitecap with an example dataset.</a>
+    </p>
+    <div class="alert alert-warning smaller-text" role="alert">
+        <h2>Please Note:</h2>
+        <p>
+            While we endeavor to protect the data uploaded to this site, we make no guarantees as to its
+            security, and sensitive data (such as anything covered by HIPAA) should not be uploaded.
+        </p>
+    </div>
+</div>
+
+<div class="row">
+     <a href="{{url_for('spreadsheets.load_spreadsheet')}}">
+        <button class="btn btn-primary">
+            Proceed to Load My Spreadsheet
+        </button>
+     </a>
+</div>
+
+{% endblock %}

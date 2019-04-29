@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>User Login</h1>
+</div>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form id="login-form" action="{{ url_for('users.login_user', next=next) }}" method="post">
+    <div class="form-group">
+        <label for="username">Username or Email Address:</label>
+        <input type="username" id="username" name="username" class="form-control" value="{{username}}"
+               placeholder="username or email address" style="width:25rem" maxlength="150" required />
+    </div>
+    <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" class="form-control" style="width:25rem" required
+               maxlength="100" aria-describedby="passwordHelp"/>
+        <div id="passwordHelp">If you've forgotten your password, click
+            <a href="{{url_for('users.request_password_reset') }}">here</a>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+</form>
+
+{% endblock %}

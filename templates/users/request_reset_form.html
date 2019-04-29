@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Password Reset Request</h1>
+</div>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form id="reset_request-form" action="{{ url_for('users.request_password_reset') }}" method="post">
+    <div class="form-group">
+        <label for="email">Email Address:</label>
+        <input type="email" id="email" name="email" maxlength="150" class="form-control" value="{{email}}"
+               placeholder="email address" style="width:25rem" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Request Password Reset</button>
+</form>
+
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>User Registration</h1>
+</div>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+    <form id="registration-form" action="{{ url_for('users.register_user') }}" method="post">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" class="form-control" value="{{username}}"
+                   maxlength="150"  style="width:25rem" aria-describedby="usernameHelp" />
+            <p id="usernameHelp">This is optional.  If not filled in, we will just make your email address your username.</p>
+        </div>
+        <div class="form-group">
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" class="form-control" value="{{email}}" style="width:25rem"
+                   maxlength="150" required />
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" class="form-control" maxlength="100"
+                   style="width:25rem" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Register</button>
+    </form>
+
+
+{% endblock %}

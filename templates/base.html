@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-138419827-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-138419827-1');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Nitecap</title>
+    <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v5.0.4/css/all.css" />
+    <link rel="stylesheet" href="https://getbootstrap.com/docs/4.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/select/1.3.0/css/select.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='images/favicon-16x16.png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/select/1.3.0/js/dataTables.select.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="{{ url_for('static', filename='js/moment.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</head>
+<body>
+<div class="container">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="{{url_for('home')}}">
+            <img src="{{ url_for('static', filename='images/nitecap_logo.svg') }}" alt="NITECAP logo" height="100px">
+        </a>
+        <button class="navbar-toggler" type="button"
+                data-toggle="collapse" data-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="navbarNav" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav mr-auto">
+                <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.load_spreadsheet')}}">Load Spreadsheet</a></li>
+                {% if 'email' in session and session['email'] %}
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.display_spreadsheets')}}">Display Spreadsheets</a></li>
+                {% endif %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('faqs') }}">FAQs</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('people') }}">People</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('about') }}">About</a></li>
+            </ul>
+            <ul class="nav navbar-nav ml-auto align-items-center">
+                {% if not session['email'] %}
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('users.register_user') }}">Register</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('users.login_user', next=request.path ) }}">Login</a></li>
+                {% else %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('users.update_profile') }}">Profile for {{ session['email'] }}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
+                {% endif %}
+                <li class="nav-item"><a class="nav-link" href="#"></a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="http://www.itmat.upenn.edu">
+                        <img src="{{ url_for('static', filename='images/itmat_logo.svg') }}" alt="ITMAT logo" height=75px>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</div>
+
+{# Maintenance Banner - set display:block to show banner #}
+<div class="alert alert-warning" style="display:none" role="alert">
+    We will be doing maintenance on the Nitecap site between 6 pm and 7 pm on Wednesday, April 24th.  You may experience
+    interruptions in the site during that period.
+</div>
+
+<div class="content container">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="error-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <h5 class="model-title text-white">Error</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span class="text-white" aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="error-modal-message" class="modal-body text-danger">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">Dismiss</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sticky footer -->
+<footer class="footer">
+      <div class="container">
+          <div class="row">
+              <span class="col-lg-6 text-muted">
+                  <small>Copyright
+                    <span id="copyrightYear"></span>&copy;
+                    <a href="http://www.itmat.upenn.edu/" target="_blank">ITMAT</a>
+                    All rights reserved
+                  </small>
+              </span>
+              <span class="col-lg-6 text-muted text-right">
+                  <a href="mailto:admin@nitecap.org">
+                      <i class="fa fa-envelope" aria-hidden="true"></i>
+                      <small class="pl-2">admin@nitecap.org</small>
+                  </a>
+              </span>
+          </div>
+      </div>
+</footer>
+
+</body>
+</html>

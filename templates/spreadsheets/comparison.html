@@ -1,0 +1,875 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script>
+
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+    });
+
+    $(document).ready(function () {
+
+        labels = {{ ids | safe }}
+        x_values = {{ x_values | safe }};
+        x_labels = {{ x_labels | safe }};
+        x_label_values = {{ x_label_values | safe }};
+        data = {{ data | safe }};
+        column_pairs = {{ column_pairs | safe }};
+        descriptive_names = {{ descriptive_names | safe }}
+        qs = {{ qs | safe }};
+        ps = {{ ps | safe }};
+        tds = {{ tds | safe }};
+        amplitudes = {{ amplitudes | safe }};
+        anova_ps = {{ anova_ps | safe }};
+        anova_qs = {{ anova_qs | safe }};
+        peak_times = {{ peak_times | safe }};
+        filtered = {{ filtered | safe }};
+        spreadsheet_ids = {{ spreadsheet_ids | safe }};
+        timepoints_per_day = {{ timepoints_per_day | safe }};
+
+        var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
+
+        $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
+
+        var breakpoint = 0;
+
+        // To be loaded later by ajax
+        jtk_ps = [null,null];
+        jtk_qs = [null,null];
+        upside_ps = null;
+        upside_qs = null;
+
+        // List of the number of significant (non-filtered) features that are at or below a given index
+        num_significant_below = labels.map(function(x,i) { return i+1;} );
+
+        // Indexes to the order in which we will display the genes
+        // default to the order in which they were sent
+        sort_order = labels.map(function(x,i) {return i;});
+
+        // Currently selected row from slider
+        selected_row = breakpoint;
+
+        y_values = [];
+        trace_name = 'Nothing selected';
+        marker_settings = {size: 12, symbol: 'circle-open'};
+
+        var traces = Array(2);
+
+        number_comparisons.forEach(function(ctr) {
+
+            traces[ctr] = {
+                x: x_values[ctr],
+                y: x_values[ctr].map(function (x) {
+                    return 0;
+                }),
+                name: trace_name,
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: marker_settings
+            };
+
+        });
+
+        var layout = {
+            xaxis: {
+                title: labels[breakpoint],
+                ticktext: x_labels[0],
+                tickvals: x_label_values[0],
+                automargin: true
+            },
+            legend: {
+                orientation: 'h', y: -0.2
+            }
+        };
+
+        Plotly.newPlot('scatter_plot', traces, layout);
+
+        function makeCoarseSlider(element, start_value, maximum) {
+            element.slider({
+                orientation: "horizontal",
+                min: 0,
+                value: start_value,
+                step: 1,
+                max: maximum,
+                slide: function (event, ui) {
+                    selected_row = ui.value;
+                    rowSelector.selectRow(parseInt(ui.value));
+                    $('#row_selector').focus();
+                }
+            });
+        }
+
+        makeCoarseSlider($('#coarse_slider'), breakpoint, labels.length - 1);
+
+        function updateStatsBox() {
+            // Update the "statistics" card
+            var row_index = sort_order[selected_row];
+            $('#significant_items').html(num_significant_below[selected_row]);
+            $('#q_value').html(toFixed(qs[number_comparisons[0]][row_index], 3));
+            $('#p_value').html(toFixed(ps[number_comparisons[0]][row_index], 3));
+            $('#amplitude').html(toFixed(amplitudes[number_comparisons[0]][row_index], 3));
+            $('#anova_p').html(toFixed(anova_ps[number_comparisons[0]][row_index], 3));
+            $('#anova_q').html(toFixed(anova_qs[number_comparisons[0]][row_index], 3));
+            $('#peak_time').html(toFixed(peak_times[number_comparisons[0]][row_index] + 1, 3));
+            if (upside_ps !== null && upside_qs !== null) {
+                $('#upside_p').html(toFixed(upside_ps[number_comparisons[0]][row_index], 3));
+                $('#upside_q').html(toFixed(upside_qs[number_comparisons[0]][row_index], 3));
+            } else {
+                $('#upside_p').html("loading");
+                $('#upside_q').html("loading");
+            }
+
+            if (jtk_ps[number_comparisons[0]] !== null && jtk_qs[number_comparisons[0]] !== null) {
+                $('#jtk_p').html(toFixed(jtk_ps[number_comparisons[0]][row_index], 3));
+                $('#jtk_q').html(toFixed(jtk_qs[number_comparisons[0]][row_index], 3));
+            } else {
+                $('#jtk_p').html("loading");
+                $('#jtk_q').html("loading");
+            }
+        }
+
+        var redrawPlot = function() {
+            // Update the Plotly plots of the feature profiles
+            traces = [];
+            var colors = Plotly.d3.scale.category10();
+            number_comparisons.forEach(function (ctr) {
+                var row_index = sort_order[selected_row];
+                raw_y_values = data[ctr][row_index];
+                if (raw_y_values === undefined) {
+                    console.log("Could not find the y-values for row " + row_index);
+                    return;
+                }
+
+                paired_y_values = [];
+                for (var i in column_pairs[ctr]) {
+                    paired_y_values.push(raw_y_values[column_pairs[ctr][i][0]], raw_y_values[column_pairs[ctr][i][1]], null);
+                }
+
+                paired_x_values = [];
+                for (var i in column_pairs[ctr]) {
+                    paired_x_values.push(x_values[ctr][column_pairs[ctr][i][0]], x_values[ctr][column_pairs[ctr][i][1]], null);
+                }
+
+                var stats = rowStatsByTimepoint(raw_y_values, x_values[ctr]);
+
+                // Pick a color for this spreadsheet using Plotly's defaults from d3
+                var spreadsheet_color = colors(ctr);
+
+                // Default values for the different plot styles to override
+                var trace = {
+                    x: paired_x_values, y: paired_y_values,
+                    mode: 'lines+markers',
+                    marker: marker_settings,
+                    name: descriptive_names[ctr],
+                    type: 'scatter',
+                    'marker': {color: spreadsheet_color},
+                    'line': {color: spreadsheet_color}
+                };
+
+                // Pick data and styling based off the plot_style_select value
+                var plot_style = $('#plot_style_select').val();
+                if (plot_style === "basketweave") {
+                    // Do nothing, basketweave is already the default settings
+                } else if (plot_style === "points") {
+                    trace.mode = "markers";
+                    trace.x = x_values[ctr];
+                    trace.y = raw_y_values;
+                } else if (plot_style === "mean") {
+                    trace.mode = "lines";
+                    trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                    trace.y = stats.means;
+                } else if (plot_style === "mean_points") {
+                    trace.mode = "markers";
+                    trace.x = x_values[ctr];
+                    trace.y = raw_y_values;
+                    traces.push({ // The mean value trace
+                        x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
+                        y: stats.means,
+                        type: "scatter",
+                        mode: "lines",
+                        showlegend: false,
+                        'line': {color: spreadsheet_color}
+                    });
+                } else if (plot_style === "std") {
+                    trace.mode = "lines";
+                    trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                    trace.y = stats.means;
+                    trace.error_y = {type: 'data', array:stats.stds, visible:true};
+                } else if (plot_style === "SEM") {
+                    trace.mode = "lines";
+                    trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                    trace.y = stats.means;
+                    trace.error_y = {type: 'data', array:stats.sems, visible:true};
+                }
+
+                traces.push(trace);
+
+            });
+
+            var layout = {
+                hovermode: 'closest',
+                title: labels[sort_order[selected_row]],
+                legend: { orientation: 'h', y: -0.2 },
+                xaxis: {
+                    ticktext: x_labels[0],
+                    tickvals: x_label_values[0],
+                    automargin: true
+                }
+            };
+
+            Plotly.react(scatter_plot, traces, layout);
+        };
+
+        $('#plot_style_select').change( function () {
+            redrawPlot();
+        });
+
+        $('#download_plot').click(function() {
+            var gd = document.getElementById('scatter_plot');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (selected_row+1)});
+        });
+
+        // Make the row selector
+        function onRowSelect(selection) {
+            selected_row = selection;
+
+            // Update the coarse slider
+            $("#coarse_slider").slider("option", "value", selected_row);
+
+            updateStatsBox();
+            redrawPlot();
+        }
+        var num_row_selections = 21; // Show this many rows at once
+        rowSelector = makeRowSelector($('#row_selector')[0],  labels, qs[number_comparisons[0]], filtered, sort_order, num_row_selections, onRowSelect);
+        rowSelector.selectRow(breakpoint);
+
+        // Heatmap
+        var computeHeatmap = function() {
+            $('#heatmap_block').hide();
+            $('#download_heatmap').hide();
+            $('#heatmap_controls').hide();
+            $('#cutoff').html(num_significant_below[selected_row]);
+
+            var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
+            selected_indexes = sort_order.filter( function(row_num,rank) {
+                return (rank <= selected_row) & (!filtered[row_num]);
+            } );
+            var phase_sorted_order = selected_indexes.sort( function (i,j) {
+                return compare(peak_times[number_comparisons[0]][i], peak_times[number_comparisons[0]][j], i,j);
+            } );
+
+            var zScoreData = data.map(computeZScores(phase_sorted_order));
+
+            // Average all z-scores at the same timepoint together
+            var meanZScores = zScoreData.map(  function(zscores,i) {
+                return meanByTimepoints(zscores, x_values[i]);
+            });
+
+            heatmap_data = zScoreData;
+            heatmap_combined_data = meanZScores;
+            heatmap_labels = phase_sorted_order.map( function(i) {
+                return labels[sort_order[i]];
+            } );
+
+            var rep_counts = [];
+            heatmap_x_values = x_values[number_comparisons[0]].map( function(time) {
+                if (rep_counts[time] === undefined) {
+                    rep_counts[time] = 0;
+                }
+                rep_counts[time] += 1;
+                var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
+                var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            });
+
+            updateHeatmap();
+        };
+
+        var updateHeatmap = function () {
+            var heatmap_options = {
+                modeBarButtonsToAdd: [{
+                    name: 'download in SVG format',
+                    icon: Plotly.Icons.camera,
+                    click: function (gd) {
+                        Plotly.downloadImage(gd, {format: 'svg'})
+                    }
+                }]
+            };
+
+
+            var data;
+            var combine_replicates = $('#combine_replicates').is(':checked');
+            if (combine_replicates) {
+                data = heatmap_combined_data;
+            } else {
+                data = heatmap_data;
+            }
+            // Find max/min values so that we can center the colormap with 0=middle
+            var maxInRow = data.map( function(spreadsheet) { return spreadsheet.map(array_max); });
+            var minInRow = data.map( function(spreadsheet) { return spreadsheet.map(array_min); });
+
+            var max = Math.max.apply(null, maxInRow.map(array_max));
+            var min = Math.min.apply(null, minInRow.map(array_min));
+            var limit = Math.max(Math.abs(min), Math.abs(max));
+
+            var y_vals =  heatmap_labels.map(function (x,i) {return i;});
+            var show_labels = $('#heatmap_show_labels').is(':checked');
+
+            var heatmap_values = number_comparisons.map( function(spreadsheet_num) {
+                var colorbar = {};
+                if (spreadsheet_num === 0){
+                    colorbar = {
+                        title: 'Z Score',
+                        titleside: 'right'
+                    };
+                }
+                var x_vals = heatmap_x_values;
+                if (combine_replicates) {
+                    x_vals = x_labels[spreadsheet_num];
+                }
+                return {
+                    x: x_vals,
+                    y: y_vals,
+                    z: data[spreadsheet_num],
+                    type: 'heatmap',
+                    xaxis: "x" + (spreadsheet_num+1),
+                    yaxis: "y",
+                    zmin: -1 * limit,
+                    zmax: limit,
+                    colorbar: colorbar
+                };
+            });
+
+            var heatmap_layout = {
+                height: 700,
+                width: 1200,
+                margin: {
+                    l: 200,
+                    r: 5,
+                    b: 175,
+                    t: 20
+                },
+                pad: 4,
+                yaxis: {
+                    tickmode: "array",
+                    ticktext: heatmap_labels,
+                    tickvals: y_vals,
+                    showticklabels: show_labels,
+                    ticks: ''
+                },
+                grid: {
+                    rows: 1,
+                    columns: 2
+                }
+            };
+
+            Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
+
+            $('#heatmap_block').show();
+            $('#download_heatmap').show();
+            $('#heatmap_controls').show();
+        };
+        $('#set_breakpoint').click(computeHeatmap);
+
+        $('#download_heatmap').click(function() {
+            var gd = document.getElementById('heatmap');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (selected_row+1)});
+        });
+
+        $('#combine_replicates').change(function() {
+            updateHeatmap()
+        });
+
+        $('#heatmap_show_labels').change(function() {
+            updateHeatmap()
+        });
+
+        var searchRows = function() {
+            var search_value = $('#row_search_box').val().toLowerCase();
+
+            // Pull out row indexes matching our search_value
+            var matching_rows = labels.map( function(unused, index) {
+                var label = labels[sort_order[index]];
+                if (label.toLowerCase().indexOf(search_value) !== -1) {
+                    return index;
+                }
+            }).filter(isFinite);
+
+
+            if (matching_rows.length === 0) {
+                console.log("Unfortunately no matching row found.");
+                // TODO: display something to the user
+                return;
+            }
+
+            // First look for matches that are *after* our selected_row
+            // so that multiple button presses will cycle the selection through all matches
+            var matches_after = matching_rows.filter( function (i) {
+                return i > selected_row;
+            } );
+            if (matches_after.length > 0) {
+                var row = matches_after[0];
+            } else {
+                // If that fails, grab the first matching row
+                var row = matching_rows[0];
+            }
+
+            rowSelector.selectRow(row);
+        };
+        $('#search_button').click( searchRows);
+        $('#row_search_box').on("keydown", function (evt) {
+            if (evt.keyCode === 13) { // On Enter key press
+                searchRows();
+            }
+        });
+
+        function compare(a,b, i,j) {
+            // Handle nans, putting them at the end
+            if (isNaN(a)) {
+                if (isNaN(b)) {
+                    // If both are Nans, then we preserve their order
+                    if (i > j) {
+                        return 1;
+                    } else if (i < j) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                } else {
+                    return 1;
+                }
+            } else if (isNaN(b)) {
+                return -1;
+            } else {
+                if (a > b) {
+                    return 1;
+                } else if (a < b) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        };
+        var sorters = {
+            "nitecap": function(i,j) {
+                var a = tds[number_comparisons[0]][i];
+                var b = tds[number_comparisons[0]][j];
+                return compare(a,b,i,j);
+            },
+            "anova": function (i,j) {
+                // Sort anova p-values in ascending order
+                var a = anova_ps[number_comparisons[0]][i];
+                var b = anova_ps[number_comparisons[0]][j];
+                return compare(a,b,i,j);
+            },
+            "jtk": function (i,j) {
+                // Sort jtk p-values in ascending order
+                var a = jtk_ps[number_comparisons[0]][i];
+                var b = jtk_ps[number_comparisons[0]][j];
+                return compare(a,b,i,j);
+            },
+            "amplitude": function (i,j) {
+                // Sort amplitude values in descending order
+                var a = -amplitudes[number_comparisons[0]][i];
+                var b = -amplitudes[number_comparisons[0]][j];
+                return compare(a,b,i,j);
+            },
+            "upside": function (i,j) {
+                // Sort by ascending order
+                var a = upside_ps[number_comparisons[0]][i];
+                var b = upside_ps[number_comparisons[0]][j];
+                return compare(a,b,i,j);
+            }
+        };
+
+        var sortRows = function () {
+            var sorter = $('#sort_select').val();
+
+
+            sort_order = labels.map( function(x,i) {return i;} );
+            sort_order = sort_order.sort( sorters[sorter] );
+            if (sorter === 'jtk') {
+                rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
+            } else if (sorter === 'upside') {
+                rowSelector.makeRowLabels(labels, upside_qs[number_comparisons[0]]);
+            } else if (sorter === 'anova') {
+                rowSelector.makeRowLabels(labels, anova_qs[number_comparisons[0]]);
+            } else {
+                rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
+            }
+
+            rowSelector.setSortOrder(sort_order);
+            // TODO: this will change what gene is selected
+            rowSelector.selectRow(selected_row);
+        };
+        $('#sort_select').change( sortRows );
+
+
+        // Load the JTK values for each spreadsheet
+        number_comparisons.forEach( function (i) {
+            $.ajax({
+                url: "{{url_for('spreadsheets.get_jtk')}}",
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_ids[i]}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function(response) {
+                    jtk_ps[i] = response['jtk_ps'];
+                    jtk_qs[i] = response['jtk_qs'];
+
+                    if (i === 0) {
+                        $('#sort_select option[value="jtk"]').removeAttr("disabled");
+                    }
+
+                    updateStatsBox();
+                },
+                error: function(error) {
+                    console.log("Error loading JTK values");
+                    console.log(error);
+                }
+            });
+        });
+
+        // Load the Upside values
+        $.ajax({
+            url: "{{url_for('spreadsheets.get_upside')}}",
+            data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+            dataType: 'json',
+            contentType: 'application/json',
+            type: 'POST',
+            success: function(response) {
+                upside_ps = response['upside_ps'];
+                upside_qs = response['upside_qs'];
+
+                $('#sort_select option[value="upside"]').removeAttr("disabled");
+
+                updateStatsBox();
+            },
+            error: function(error) {
+                console.log("Error loading upside values");
+                console.log(error);
+            }
+        });
+
+        // Cycle current primary to back of array and refresh relevant data
+        $("#toggle_primary").click(function() {
+            first_element = number_comparisons.shift();
+            number_comparisons.push(first_element);
+            $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
+            sortRows();
+
+            if ($('#heatmap_block').is(":visible")) {
+                computeHeatmap();
+            }
+        });
+
+
+        // PCA plot
+        $('#run_pca').click( function() {
+            // We only run PCA on unfiltered genes below the selected row
+            var selected_genes = sort_order.filter( function(row,rank) {
+                if (rank > selected_row) {
+                    return false;
+                }
+                if (filtered[row]) {
+                    return false;
+                }
+                return true;
+            });
+
+            var alert = $('#run_pca_alert');
+            if (selected_genes.length <  3) {
+                alert.text("Too few rows selected, need at least 3 for PCA.");
+                alert.show();
+                return;
+            } else {
+                alert.hide();
+            }
+
+            var rep_counts = [];
+            var pt_labels = x_values[number_comparisons[0]].map( function(time) {
+                if (rep_counts[time] === undefined) {
+                    rep_counts[time] = 0;
+                }
+                rep_counts[time] += 1;
+                var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
+                var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            });
+
+            $.ajax({
+                url: "{{url_for('spreadsheets.run_pca')}}",
+                data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids,
+                                      'selected_genes': selected_genes}),
+                dataType: 'json',
+                contentType: 'application/json',
+                type: 'POST',
+                success: function (response) {
+                    pca_coords = response['pca_coords'];
+                    explained_variance = response['explained_variance'];
+
+                    var traces = number_comparisons.map( function (spreadsheet_num) {
+                        return {
+                            x: pca_coords[spreadsheet_num][0],
+                            y: pca_coords[spreadsheet_num][1],
+                            mode: 'markers',
+                            name: descriptive_names[spreadsheet_num],
+                            text: pt_labels,
+                            marker: {
+                                size: 25,
+                                opacity: x_values[spreadsheet_num].map( function (x) {
+                                    return (x+1) / (1+Math.max.apply(null, x_values[spreadsheet_num]));
+                                })
+                            }
+                        };
+                    });
+
+                    var layout = {
+                        height:800,
+                        width:800,
+                        xaxis: {
+                            title: "PC1 (" + toFixed(explained_variance[0]*100,1) + "%)"
+                        },
+                        yaxis: {
+                            title: "PC2 (" + toFixed(explained_variance[1]*100,1) + "%)"
+                        },
+                        hovermode: 'closest',
+                        legend: {
+                            x:0,
+                            y:1,
+                            bgcolor: '#EEEEEE'
+                        }
+                    };
+
+                    Plotly.newPlot("pca_plot", traces, layout);
+                },
+                error: function (error) {
+                    console.log("Error running PCA");
+                    console.log(error);
+                }
+            });
+        });
+
+    });
+
+</script>
+
+
+<div id="comparison-graph-page" class="page-header">
+    <h1>Spreadsheet Comparsions</h1>
+</div>
+
+<p id="spreadsheet-comparison-page">
+    <div class="row">
+        <p class="col-lg-12 h3">
+            {{descriptive_names[0]}} vs. {{descriptive_names[1]}}
+        </p>
+    </div>
+    <div class="row">
+        <span class="col-lg-9">
+            Number of items equal to or more significant than currently selected:
+            <span id="significant_items"></span>
+        </span>
+    </div>
+
+    <div class="row">
+        <div id="coarse_slider" class="col-lg-12 coarse-slider"></div>
+    </div>
+
+    <div class="row">
+        <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
+    </div>
+
+    <div class='row'>
+        <span class='col-xs-1' style="position:relative">
+            <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
+        </span>
+        <span class='col-xs-3 ...'>
+            <div class='row'>
+                <div class="col px-4">
+                    <div class="input-group mb-2">
+                        <input class="form-control form-control-sm" type="text" name="row_search"
+                               placeholder="Search for row by label" id="row_search_box" />
+                        <div class="input-group-append">
+                            <button type="button" id="search_button" class="btn btn-secondary btn-sm">
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class='row'>
+                <div class='col p-4'>
+                    <div id="row_selector" class="list-group" tabindex="0">
+                     </div>
+                </div>
+            </div>
+            <div class='row p-3'>
+                <button id="download_plot" class="btn btn-primary">Download Plot</button>
+            </div>
+        </span>
+        <div class='col-xs-6'>
+            <span id="scatter_plot" style="width:625px;height:525px;vertical-align: top"></span>
+            <select id="plot_style_select" value="basketweave" class="form-control form-control-sm">
+                <option value="basketweave">Basketweave</option>
+                <option value="points">Points</option>
+                <option value="mean">Mean only</option>
+                <option value="mean_points">Points and Mean</option>
+                <option value="std">Standard Deviations</option>
+                <option value="SEM">SEM</option>
+            </select>
+            <button id="toggle_primary" class="btn btn-primary mt-2">Toggle Primary Plot</button>
+            <span>Currently: <span id="primary_plot_name"></span></span>
+        </div>
+
+        <div class="card col-xs-1" style="width: 15rem;">
+            <div class="card-header">
+                Statistics
+                <a id="statsHelp" class="text-primary help-pointer"
+                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                   title="Statistics Help"
+                   data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
+                    <i class="fas fa-info-circle ml-3"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <label for="sort_select">Sort by:</label>
+                <select id="sort_select" class="form-control form-control-sm">
+                     <option value="nitecap">Nitecap</option>
+                     <option value="jtk" disabled>JTK</option>
+                     <option value="anova">ANOVA</option>
+                     <option value="amplitude">Amplitude</option>
+                     <option value="upside" disabled>Damping</option>
+                </select>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr> <td rowspan="2">Nitecap
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Nitecap"
+                               data-content="Nitecap significance of rhythmicity for primary dataset.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td> <td>p: <span id="p_value"></span></td>
+                        </tr>
+                        <tr> <td>q: <span id="q_value"></span></td></tr>
+
+                        <tr> <td rowspan="2">JTK
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="JTK"
+                               data-content="JTK_cycle significance of rhythmicity for primary dataset.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td> <td>p: <span id="jtk_p"></span></td> </tr>
+                        <tr> <td>q: <span id="jtk_q"></span></td></tr>
+
+                        <tr> <td rowspan="2"> ANOVA
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="ANOVA"
+                               data-content="1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                             </td> <td>p: <span id="anova_p"></span></td>
+                        </tr>
+                        <tr> <td>q: <span id="anova_q"></span></td></tr>
+
+                        <tr> <td rowspan="2">Damping
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Damping"
+                               data-content="Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td> <td>p: <span id="upside_p"></span></td>
+                        </tr>
+                        <tr> <td>q: <span id="upside_q"></span></td></tr>
+
+                        <tr> <td>Amplitude
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Amplitude"
+                               data-content="Amplitude of the variation.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                            </td>
+                            <td id="amplitude"></td>
+                        </tr>
+
+                        <tr> <td>Peak-time
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Peak-time"
+                               data-content="Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                             </td> <td id="peak_time"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="FiltersCard" class="card col-xs-1" style="width: 20rem;">
+            <div class="card-header">
+                Filters
+                <a id="filtersHelp" class="text-primary help-pointer"
+                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                   title="Filter Help"
+                   data-content="Please note that filter application can take a dozen or more seconds to complete.">
+                    <i class="fas fa-info-circle ml-3"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
+                <div class="form-group form-inline">
+                    <label class="col-form-label" for="max_value_filter" style="margin-right: 10px">Max Value &gt;</label>
+                    <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
+                </div>
+                <button id="applyFilters" type="button" class="btn btn-primary" data-dismiss="modal">Apply filters</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" style="padding-top:2rem;padding-bottom:2rem">
+        <span class="col-lg-5">
+            <input type="hidden" id="row_index" name="row_index"/>
+            <button id="set_breakpoint" class="btn btn-primary">Set Significance Cutoff</button>
+        </span>
+    </div>
+    <div class="row">
+        <div class="col card" id="heatmap_block" style="display:none">
+            <div class="card-body">
+                <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
+                <div id="heatmap"></div>
+                <span id="heatmap_controls" class="col-lg-5" style="display:none">
+                    <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
+                    <label class="switch">
+                        <input id="combine_replicates" name="combine_replicates" type="checkbox" >
+                        <span class="slider"></span>
+                    </label>
+
+                    <span style="vertical-align:center;padding-right:1rem">Show row labels</span>
+                    <label class="switch">
+                        <input id="heatmap_show_labels" name="combine_replicates" type="checkbox" />
+                        <span class="slider"></span>
+                    </label>
+                </span>
+                <span class='col-lg-2'>
+                    <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col card">
+            <div class="card-body">
+                <button id="run_pca" class="btn btn-primary">Run PCA</button>
+                <span id="run_pca_alert" class="alert alert-error"></span>
+                <div id="pca_plot"></div>
+            </div>
+        </div>
+    </div>
+
+
+{% endblock %}

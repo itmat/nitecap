@@ -1,3 +1,4 @@
+import time
 import numpy
 
 import nitecap
@@ -16,9 +17,10 @@ N_CYCLES = 1 # One day of data
 WAVEFORM = [0, -0.8, -1.0, 0.3, 1.0, 0.60] # A nice, simple wave form
 WAVEFORM= 1/2*numpy.array(WAVEFORM)
 WAVEFORM.shape = (-1,1,1)
-N_GENES = 200
+N_GENES = 1000
 PORTION_CIRC = 0.2 # Fraction of genes that are 'circadian'
 MAX_AMPLITUDE  = 0.3
+TIMEPOINT_NOISE = 0.02 # Small amount of variation of between timepoints, consistent among replicates in that timepoint
 
 N_CIRC = int(N_GENES * PORTION_CIRC)
 N_NONCIRC = N_GENES - N_CIRC
@@ -32,18 +34,27 @@ AMPLITUDES = numpy.array( [0]*N_NONCIRC #The non-circ parts
 AMPLITUDES.shape = (1,1,N_GENES)
 
 DATA_MEANS = (WAVEFORM * AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS
+DATA_MEANS *= numpy.random.uniform(1 - TIMEPOINT_NOISE, 1 + TIMEPOINT_NOISE, size=(N_TIMEPOINTS, 1, N_GENES))
 
 
 ###### Create the random data
 data = numpy.random.poisson(DATA_MEANS, size=(N_TIMEPOINTS, N_REPS, N_GENES))
 data = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all replicates in a timepoint
 
+# timing measurement
+start = time.time()
+
 ##### Run nitecap
 # Use the following for most use-cases:
-#q, td, perm_td  = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
+#q, td = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
 
 # We use this instead for plotting results
-q, td, perm_td  = nitecap.nitecap(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")
+q, td, perm_td  = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")
+##### End nitecap
+
+# Finish timing
+end = time.time()
+print(f"Ran nitecap on {N_GENES} genes in {end-start:.2f} seconds")
 
 
 ####### Compute the actual false discoveries and report the results
@@ -59,10 +70,14 @@ for gene in sort_order: # Doesn't actually need to be in sorted order
 found, = numpy.where(q <= TARGET_FDR)
 num_rejected = len(found)
 num_false_positives = numpy.sum(found < N_NONCIRC)
-CUTOFF = numpy.sort(td)[num_rejected]
-print(f"Rejected {num_rejected} genes with FDR <= {TARGET_FDR}")
-print(f"True proportion of false discoveries was {num_false_positives / num_rejected:.2f} with {num_false_positives} false rejections")
-print(f"Found {num_rejected - num_false_positives} true positives out of a total of {N_CIRC} possible")
+if num_rejected > 0:
+    CUTOFF = numpy.sort(td)[num_rejected-1]
+    print(f"Rejected {num_rejected} genes with FDR <= {TARGET_FDR}")
+    print(f"True proportion of false discoveries was {num_false_positives / num_rejected:.2f} with {num_false_positives} false rejections")
+    print(f"Found {num_rejected - num_false_positives} true positives out of a total of {N_CIRC} possible")
+else:
+    print(f"No genes were rejected at FDR <= {TARGET_FDR}")
+    CUTOFF = float('-inf')
 
 ###### Plot the data
 import pylab

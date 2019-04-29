@@ -1,0 +1,188 @@
+@media only screen and (min-width : 1600px) {
+    .container { max-width: 1500px; }
+}
+
+
+#spreadsheet-details-page, #spreadsheet-display-page {
+    margin-top: 25px;
+}
+
+#spreadsheet-details-form {
+    max-width: 600px;
+}
+
+.coarse-slider {
+    -webkit-appearance: none;
+    background: #BBB;
+    width: 1000px;
+    margin: 10px 0 10px 0;
+    opacity: 2;
+}
+
+.coarse-slider:hover {
+    opacity: 1;
+}
+
+#heatmap_block {
+    text-align: center;
+    width: 1000px;
+}
+
+
+.server-errors {
+    padding: 3px 0 10px 3px;
+    color: red;
+}
+
+.server-notes {
+    padding: 3px 0 10px 3px;
+    color: #17a2b8;
+}
+
+.server-errors, .server-notes > div {
+    padding-left: 5px;
+}
+
+.selector-info {
+    padding: 0 1em;
+    top: 50px;
+    left: -20px;
+    position: absolute;
+    transform-origin: center right;
+    transform: translate(-100%,-50%) rotate(-90deg);
+    white-space:nowrap;
+}
+
+.topScroll, .topScroll > div{
+    height: 25px;
+}
+
+.bottomScroll, .topScroll {
+    width: 100%;
+    overflow-x: scroll;
+    overflow-y: hidden;
+}
+
+#colIdentityTable th, td {
+    white-space: nowrap;
+}
+
+#row_selector {
+    font-family: monospace;
+}
+
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+/* Row selector for breakpoint page */
+#row_selector div.disabled {
+    background-color: #CCCCCC;
+}
+
+/* Puts spacing around action icons */
+
+td.actions a {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* CSS below intended for sticky footer placement */
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  /* Margin bottom by footer height */
+  margin-bottom: 60px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  /* Set the fixed height of the footer here */
+  height: 60px;
+}
+
+.footer .container {
+    background-color: #f5f5f5;
+}
+
+.help-pointer {
+    cursor: pointer;
+}
+
+.smaller-text {
+    /* Smaller font for home page */
+    font-size: 12px;
+}
+
+
+.modal {
+  position: absolute;
+  float: left;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+

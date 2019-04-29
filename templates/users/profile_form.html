@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>User Profile<small>View and Update your Information</small></h1>
+</div>
+
+<p>Just fill in the fields that you want to change.</p>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+    <form id="profile-form" action="{{ url_for('users.update_profile') }}" method="post">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" style="width:25rem" class="form-control"
+                   value="{{username}}" maxlength="150" />
+        </div>
+        <div class="form-group">
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" style="width:25rem" class="form-control" value="{{email}}"
+                   maxlength="150" required />
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" style="width:25rem" class="form-control"
+                   maxlength="100" value="" />
+        </div>
+        <button type="submit" class="btn btn-primary">Update</button>
+    </form>
+
+
+{% endblock %}

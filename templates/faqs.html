@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Frequently Asked Questions</h1>
+</div>
+
+<div id="faq_list" class="accordion">
+
+
+        <div class="card">
+            <div class="card-header" id="headingOne">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne"
+                            aria-expanded="true" aria-controls="collapseOne">
+                    Why aren't p-values from Nitecap in the same order as q-values?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Typical q-values are calculated by a p-value correction, such as Benjamini-Hochberg, and so p-values and q-values are always in the same order.
+                        Instead, Nitecap orders all hypotheses by a statistic, "total delta," and q-values are in the same order as this statistic.
+                        The Nitecap p-value of a hypothesis is not used in this ordering and so it is typical to see p-values in a different order.
+                        The q-values should be treated as the more meaningful value when analyzing datasets with Nitecap.
+                    </p>
+
+                    <p>
+                        Nitecap avoids Benjamini-Hochberg correction since it is a permutation-based method that has limited ability to produce extremely low p-values.
+                        For example, a dataset with 6 timepoints over one cycle has a minimum p-value of about 0.008.
+                        With a dataset containing tens of thousands of measurements, Benjamini-Hochberg correction usually leaves little at a significant q-value.
+                        The q-values produced by Nitecap are able to be more significant by considering the exact test statistic rather than merely the p-value.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingTwo">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseTwo"
+                             aria-expanded="true" aria-controls="collapseTwo">
+                        Why are my ANOVA p-values blank?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        ANOVA p-values are computed as a one-way ANOVA where the values are grouped by timepoint.
+                        If your dataset does not contain any multiple replicates for any timepoint, or multiple cycles worth of data, then ANOVA has zero degrees of freedom and cannot be run.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingThree">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseThree"
+                             aria-expanded="true" aria-controls="collapseThree">
+                        What format should my spreadsheet be in?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseThree" class="collapse" aria-labelledby="headingThree" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap accepts most spreadsheets as is and supports Excel xls, xlsx spreadsheets (with your data in the first sheet in the file, if multiple sheets) as well as tab-separated and comma-separated files.
+                        The data should be formatted with one column per sample and one row per one feature (e.g. gene, protein or other value measured).
+                        Which column corresponds to which timepoint is set by the user after uploading the spreadsheet and no specific column headers are required.
+                        For convenience, if sample columns are labelled as ZT## or CT##  (e.g. CT0, CT4, CT8, CT12, ...) then the number values will be used to infer timepoints when possible.
+                        Additional columns are no problem and can be used to label the values by selecting ID and multiple columns may be used as ID columns.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingFour">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseFour"
+                             aria-expanded="true" aria-controls="collapseFour">
+                        What limits on file size are there?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseFour" class="collapse" aria-labelledby="headingFour" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap can accept spreadsheets up to 40 megabytes.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingFive">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseFive"
+                             aria-expanded="true" aria-controls="collapseFive">
+                        How can I compare datasets? Which datasets can I compare?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseFive" class="collapse" aria-labelledby="headingFive" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        To compare two datasets, you must upload them each individually as separate datasets.
+                        Then, go to the Display Spreadsheets page and select both datasets and hit the Compare button at the bottom.
+                    </p>
+                    <p>
+                        Two datasets can be compared only if they have the same days and timepoints per days.
+                        Since values in the two datasets must be paired together, the IDs must be unique within a dataset and match across the datasets.
+                        Any IDs that are duplicated within a dataset is dropped from the analysis.
+                        Any IDs that appear in one but not the other dataset is dropped from the analysis.
+                    </p>
+                    <p>
+                        The 'damping' statistic is available for comparison pages and low q-values indicates that the change over time decreases in the secondary dataset compared to the primary dataset.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingSix">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseSix"
+                             aria-expanded="true" aria-controls="collapseSix">
+                    What columns should I select as ID columns? </button>
+                </h5>
+            </div>
+            <div id="collapseSix" class="collapse" aria-labelledby="headingSix" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        You can select any columns for ID but must choose at least one.
+                        These are used for labelling the rows.
+                    </p>
+                    <p>
+                        If you are comparing datasets, then there are further considerations.
+                        IDs should be unique (any non-unique IDs are dropped from comparisons, but not from a single dataset analysis).
+                        The IDs from two datasets should match if you wish to compare them as any IDs that do not exist in both spreadsheets will be dropped from the comparsion.
+                        For these purposes, if you select multiple ID columns, then the columns are joined together to form the IDs and IDs match only if they match in every ID column.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingSeven">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseSeven"
+                             aria-expanded="true" aria-controls="collapseSeven">
+                    How can I cite my use of Nitecap?</button>
+                </h5>
+            </div>
+            <div id="collapseSeven" class="collapse" aria-labelledby="headingSeven" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap is currently under development and has not yet been published, so no citation is yet possible.
+                    </p>
+                    <p>
+                        If you use the JTK analysis results in your paper, the <a href="https://openwetware.org/wiki/HughesLab:JTK_Cycle">developers of JTK_cycle</a> ask users to cite <a href="http://www.ncbi.nlm.nih.gov/pubmed/20876817">their paper</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingEight">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseEight"
+                             aria-expanded="true" aria-controls="collapseEight">
+                        How can I share my dataset and analysis with my colleagues?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseEight" class="collapse" aria-labelledby="headingEight" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        There is a share button on every dataset which gives a URL that can be given to your colleagues to access the dataset.
+                        Note that anyone with the URL can access it, so consider who you share it with.
+                    </p>
+                    <p>
+                        When someone opens the link, they receive a copy of the dataset and none of the changes they make will be reflected in your copy.
+                        If you modify your dataset, then that modification will go to anyone who clicks the link after your modification, but not for anyone who clicked before.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+
+</div>
+
+
+{% endblock %}

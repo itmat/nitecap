@@ -2,3 +2,16 @@ __pycache__
 *.pyc
 
 *.swp
+venv*
+.DS_Store
+.idea
+data
+*.db
+*.so
+*.pem
+*.egg-info
+build/
+.env
+nitecap.db
+cwl_*
+
