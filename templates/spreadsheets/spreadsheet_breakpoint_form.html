@@ -349,6 +349,8 @@
             var limit = Math.max(Math.abs(min), max);
 
             var y_vals =  heatmap_labels.map(function (x,i) {return i;});
+            var show_labels = $('#heatmap_show_labels').is(':checked');
+
             var heatmap_values = [{
                 x: x_values,
                 y: y_vals,
@@ -375,7 +377,9 @@
                 yaxis: {
                     tickmode: "array",
                     ticktext: heatmap_labels,
-                    tickvals: y_vals
+                    tickvals: y_vals,
+                    showticklabels: show_labels,
+                    ticks: ''
                 }
             };
 
@@ -478,6 +482,10 @@
         });
 
         $('#combine_replicates').change(function() {
+            updateHeatmap()
+        });
+
+        $('#heatmap_show_labels').change(function() {
             updateHeatmap()
         });
 
@@ -850,6 +858,12 @@
                     <span style="vertical-align:center;padding-right:1rem">Combine Replicates</span>
                     <label class="switch">
                         <input id="combine_replicates" name="combine_replicates" type="checkbox" />
+                        <span class="slider"></span>
+                    </label>
+
+                    <span style="vertical-align:center;padding-right:1rem">Show row labels</span>
+                    <label class="switch">
+                        <input id="heatmap_show_labels" name="combine_replicates" type="checkbox" />
                         <span class="slider"></span>
                     </label>
                 </div>
