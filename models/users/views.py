@@ -2,12 +2,13 @@ from flask import Blueprint, request, session, url_for, redirect, render_templat
 
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
-from models.users.decorators import requires_login
+from models.users.decorators import requires_login, requires_admin
 from flask import current_app
 
 user_blueprint = Blueprint('users', __name__)
 
-@user_blueprint.route('/register', methods=['GET','POST'])
+
+@user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
     """
     Handles user registration.  The GET method requests the form.  The POST method attempts to process the user's
@@ -48,7 +49,7 @@ def register_user():
         # User already registered and activated.  Send user to login page.
         if status == 'confirmed':
             flash("You are already registered and your account is activated.  Just log in.")
-            return render_template('users/login_form.html', username = user.username)
+            return render_template('users/login_form.html', username=user.username)
 
         # User successfully registered and email sent.
         current_app.logger.info(f"user {username} - {email} just registered.")
@@ -60,7 +61,8 @@ def register_user():
         # User requests registration form.
         return render_template('users/registration_form.html')
 
-@user_blueprint.route('/login', methods=['GET','POST'])
+
+@user_blueprint.route('/login', methods=['GET', 'POST'])
 def login_user():
     """
     Handles user login.  The GET method requests the form.  The POST method attempts to process the user's input.
@@ -70,7 +72,7 @@ def login_user():
     where the user may resend a confirmation email.
     """
 
-    next = request.args.get('next')
+    next_url = request.args.get('next')
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -91,15 +93,15 @@ def login_user():
         # User did not log in correctly - empty field or invalid credentials.  Return user to login form and note
         # errors.
         if errors:
-            return render_template('users/login_form.html', username = username, errors = errors)
+            return render_template('users/login_form.html', username=username, errors=errors)
 
         # User's account is not yet activated - possibly user ignored confirmation email or never received it.
         # Invite user to resend confirmation email.
         if messages:
             [flash(message) for message in messages]
             return render_template('confirmations/resend_confirmation_form.html',
-                                    email = user.email,
-                                    confirmation_id = user.most_recent_confirmation.id)
+                                   email=user.email,
+                                   confirmation_id=user.most_recent_confirmation.id)
 
         # Log in user and redirect to the user spreadsheets form.
         if user:
@@ -112,13 +114,14 @@ def login_user():
 
         # If the user logged in from a different page on this website, return to that page with the exception of
         # the logout route or the home page.
-        if next and next != '/users/logout' and next != '/':
-            return redirect(next)
+        if next_url and next_url != '/users/logout' and next_url != '/':
+            return redirect(next_url)
 
         return redirect(url_for("spreadsheets.display_spreadsheets"))
 
     # User requests login form.
-    return render_template('users/login_form.html', next=next)
+    return render_template('users/login_form.html', next=next_url)
+
 
 @user_blueprint.route('/logout', methods=['GET'])
 def logout_user():
@@ -131,7 +134,8 @@ def logout_user():
     session['spreadsheet_id'] = None
     return render_template('spreadsheets/spreadsheet_upload_form.html')
 
-@user_blueprint.route('/reset_password', methods=['GET','POST'])
+
+@user_blueprint.route('/reset_password', methods=['GET', 'POST'])
 def request_password_reset():
     """
     Handles request for a password reset.  The link to this URL is found on the login form under the
@@ -175,7 +179,8 @@ def request_password_reset():
     # User requests password reset request form
     return render_template('users/request_reset_form.html')
 
-@user_blueprint.route('/reset_password/<string:token>', methods=['GET','POST'])
+
+@user_blueprint.route('/reset_password/<string:token>', methods=['GET', 'POST'])
 def reset_password(token):
     """
     Handles the password reset itself.  The link to this URL is provided in the password reset request
@@ -222,10 +227,10 @@ def reset_password(token):
     # User requests password reset form.
     return render_template('users/reset_password_form.html', token=token)
 
-@user_blueprint.route('/update_profile', methods=['GET','POST'])
+
+@user_blueprint.route('/update_profile', methods=['GET', 'POST'])
 @requires_login
 def update_profile():
-    errors = []
 
     user = User.find_by_email(session['email'])
 
@@ -244,6 +249,8 @@ def update_profile():
     return render_template('users/profile_form.html', username=user.username, email=user.email)
 
 
-
-
-
+@user_blueprint.route('/display_users', methods=['GET'])
+@requires_admin
+def display_users():
+    users = User.find_all_users()
+    return render_template('users/display_users.html', users=users)

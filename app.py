@@ -11,6 +11,7 @@ import logging
 import os
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
+from models.users.decorators import requires_admin
 
 logger = logging.getLogger("")
 
@@ -27,31 +28,44 @@ handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 logger.addHandler(handler)
 
+
 @app.before_first_request
 def create_tables():
     db.create_all()
+
 
 @app.route('/', methods=['GET'])
 def home():
     logger.info("Accessing home")
     return render_template("home.html")
 
+
 @app.route('/faqs', methods=['GET'])
 def faqs():
     return render_template("faqs.html")
+
 
 @app.route('/people', methods=['GET'])
 def people():
     return render_template("people.html")
 
+
 @app.route('/about', methods=['GET'])
 def about():
     return render_template("about.html")
 
+
+@app.route('/dashboard', methods=['GET'])
+@requires_admin
+def dashboard():
+    return render_template('dashboard.html')
+
+
 @app.errorhandler(413)
-def file_to_large(e):
+def file_too_large(e):
     messages = ["The file you are attempting to upload is too large for the site to accommodate."]
     return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages), 413
+
 
 from models.users.views import user_blueprint
 from models.confirmations.views import confirmation_blueprint
@@ -60,25 +74,29 @@ app.register_blueprint(user_blueprint, url_prefix='/users')
 app.register_blueprint(confirmation_blueprint, url_prefix='/confirmations')
 app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
+
 def db_backup_job():
     logger.info('Database backup underway.')
     backup.backup(app.config['DATABASE'])
     backup.clean_backups()
     logger.info('Database backup complete.')
 
+
 def anonymous_spreadsheet_purge_job():
     logger.info('Visitor spreadsheet purge underway.')
     ids = spreadsheet_purge.purge(app.config['DATABASE'])
     if ids:
-        logger.info(f"Visitor spreadsheet ids: {(',').join(ids)} removed along with files.")
+        logger.info(f"Visitor spreadsheet ids: {','.join(ids)} removed along with files.")
     else:
         logger.info(f"No old visitor spreadsheets were found.")
     logger.info('Visitor spreadsheet purge complete.')
+
 
 scheduler = BackgroundScheduler()
 db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
 spreadsheet_job = scheduler.add_job(anonymous_spreadsheet_purge_job, CronTrigger.from_crontab('5 1 * * *'))
 scheduler.start()
+
 
 if __name__ == '__main__':
     db.init_app(app)

@@ -165,12 +165,13 @@ class User(db.Model):
         errors = []
         subject = 'User registration confirmation for Nitecap access'
         sender = os.environ.get('EMAIL_SENDER')
-        link = request.url_root[:-1] + url_for("confirmations.confirm_user", confirmation_id=self.most_recent_confirmation.id)
+        link = request.url_root[:-1] + url_for("confirmations.confirm_user",
+                                               confirmation_id=self.most_recent_confirmation.id)
         content = f'Please click on this link to confirm your registration. {link}'
         error = self.send_email(subject, sender, content)
         if error:
             errors.append("A confirmation email could not be sent at this time.  "
-                      "Please attempt a registration later or notify us of the problem.")
+                          "Please attempt a registration later or notify us of the problem.")
         return errors
 
     def send_reset_email(self):
@@ -221,7 +222,7 @@ class User(db.Model):
             error = True
         return error
 
-    def get_reset_token(self, expires_sec = 1800):
+    def get_reset_token(self, expires_sec=1800):
         """
         Uses the SECRET_KEY to fashion a token which contains the user's id.  The token is emailed to the user when a
         password reset request is made.  The user is recognized by the token's contents and allowed then to update his/
@@ -273,6 +274,17 @@ class User(db.Model):
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
+
+    @classmethod
+    def find_all_users(cls):
+        return cls.query.all()
+
+    @classmethod
+    def spreadsheet_counts(cls):
+        from sqlalchemy import func
+        from models.spreadsheets.spreadsheet import Spreadsheet
+        count = db.session.query(User, func.count(Spreadsheet.id)).join(self.spreadsheets).group_by(self.id).all()
+        return count
 
     @staticmethod
     def check_existence(email, password):
@@ -334,12 +346,8 @@ class User(db.Model):
         try:
             user_id = s.loads(token)['user_id']
             user = User.find_by_id(user_id)
-            if(not user):
+            if not user:
                 return None
             return user, s.loads(token)['spreadsheet_id'], s.loads(token)['row_index']
         except:
             return None
-
-
-
-
