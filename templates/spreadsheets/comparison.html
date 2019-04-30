@@ -103,9 +103,11 @@
         makeCoarseSlider($('#coarse_slider'), breakpoint, labels.length - 1);
 
         function updateStatsBox() {
-            // Update the "statistics" card
             var row_index = sort_order[selected_row];
-            $('#significant_items').html(num_significant_below[selected_row]);
+
+            $('#significant_items')[0].value = num_significant_below[selected_row];
+
+            // Update the "statistics" card
             $('#q_value').html(toFixed(qs[number_comparisons[0]][row_index], 3));
             $('#p_value').html(toFixed(ps[number_comparisons[0]][row_index], 3));
             $('#amplitude').html(toFixed(amplitudes[number_comparisons[0]][row_index], 3));
@@ -505,6 +507,18 @@
         };
         $('#sort_select').change( sortRows );
 
+        $('#significant_items').change( function () {
+            let row = Math.round(this.value) -1;
+            console.log("Significant items changed to " + row);
+
+            if (row < 0) {
+                row = 0;
+            } else if (row > labels.length-1) {
+                row = labels.length-1;
+            }
+
+            rowSelector.selectRow(row);
+        } );
 
         // Load the JTK values for each spreadsheet
         number_comparisons.forEach( function (i) {
@@ -667,9 +681,9 @@
         </p>
     </div>
     <div class="row">
-        <span class="col-lg-9">
-            Number of items equal to or more significant than currently selected:
-            <span id="significant_items"></span>
+        <span class="form-group col-lg-9">
+            Number of selected rows:
+            <input type="number" id="significant_items"></input>
         </span>
     </div>
 
