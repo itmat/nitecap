@@ -45,6 +45,7 @@ class Spreadsheet(db.Model):
     max_value_filter = db.Column(db.FLOAT)
     last_access = db.Column(db.DateTime, nullable=False)
     ids_unique = db.Column(db.Boolean, nullable=False, default=0)
+    note = db.Column(db.String(5000))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
 
@@ -102,6 +103,7 @@ class Spreadsheet(db.Model):
         self.breakpoint = breakpoint
         self.last_access = last_access if last_access else datetime.datetime.utcnow()
         self.ids_unique = ids_unique
+        self.note = ''
 
         # The user id of the owner of the spreadsheet is part of the spreadsheet record.  But since visitors can upload
         # spreadsheets, we need to supply a generic user id in that case.  The generic user (the anonymous user) is

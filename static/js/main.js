@@ -14,7 +14,7 @@ function setCopyrightYear() {
 
 // Initialize popovers
 function initializePopovers() {
-    var el = $('[data-toggle="popover"]');
+    var el = $('.help-pointer[data-toggle="popover"]');
     el.on('click', function(e){
         var el = $(this);
         setTimeout(function(){
