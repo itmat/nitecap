@@ -8,8 +8,12 @@
         });
 
         $(document).ready(function() {
+            let visitorSpreadsheetTableElement = $('#visitorSpreadsheetTable');
 
-          });
+            let table = visitorSpreadsheetTableElement.DataTable({
+                        order: [[ 5, 'desc' ]],
+            });
+        });
     </script>
 
     <div class="page-header">
