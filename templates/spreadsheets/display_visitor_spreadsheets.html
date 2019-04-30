@@ -49,7 +49,7 @@
                 <th>Uploaded File</th>
                 <th>Date Installed</th>
                 <th>Name</th>
-                <th>Current File Size</th>
+                <th>Current File<br />Size (MB)</th>
                 <th>Last Update</th>
             </tr>
         </thead>
@@ -65,7 +65,7 @@
                     {{spreadsheet.descriptive_name}}
                 </td>
                 <td>
-                    1
+                    {{ spreadsheet.get_total_diskspace_used() }}
                 </td>
                 <td data-sort="{{spreadsheet.last_access}}">
                     {{ momentjs(spreadsheet.last_access).format('LLL') }}

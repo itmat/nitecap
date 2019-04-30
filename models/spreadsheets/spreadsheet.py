@@ -463,6 +463,14 @@ class Spreadsheet(db.Model):
         else:
             return None
 
+    def get_total_diskspace_used(self):
+        """
+        Get the total size in MB of the disk space consumed by the original spreadsheet file and
+        its processed equivalent.
+        :return: total used diskspace in MB of this spreadsheet object.
+        """
+        return round((os.path.getsize(self.uploaded_file_path) + os.path.getsize(self.file_path))/1E6,3)
+
     @timeit
     def save_to_db(self):
         """
