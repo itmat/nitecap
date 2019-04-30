@@ -14,7 +14,7 @@ import constants
 import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from models.users.decorators import requires_login
+from models.users.decorators import requires_login, requires_admin
 from models.users.user import User
 from timer_decorator import timeit
 
@@ -220,7 +220,7 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
     # delivered to the template.
     user_email = session['email'] if 'email' in session else None
     user = User.find_by_email(user_email) if user_email else None
-    anonymous = not user or user.is_annoymous_user()
+    anonymous = not user or user.is_anonymous_user()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                            data=data.to_json(orient='values'),
                            x_values=spreadsheet.x_values,
@@ -320,7 +320,7 @@ def display_spreadsheets():
     This method takes the logging in user to a listing of his/her spreadsheets.  The decorator assures that only logged
     in users may make such a request.
     """
-    current_app.logger.info(f"Displaing spreadsheets for user {session['email']}")
+    current_app.logger.info(f"Displaying spreadsheets for user {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
@@ -907,3 +907,10 @@ def save_note():
     spreadsheet.note = note
     spreadsheet.save_to_db()
     return '', 204
+
+
+@spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
+@requires_admin
+def display_visitor_spreadsheets():
+    user = User.find_by_username("annonymous")
+    return render_template('spreadsheets/display_visitor_spreadsheets.html', user=user)
