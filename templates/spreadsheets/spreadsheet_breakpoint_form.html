@@ -211,8 +211,9 @@
         function updateStatsBox() {
             var row_index = sort_order[selected_row];
 
+            $('#significant_items')[0].value = num_significant_below[selected_row];
+
             // Update the "statistics" card
-            $('#significant_items').html(num_significant_below[selected_row]);
             $('#q_value').html(toFixed(qs[row_index], 3));
             $('#p_value').html(toFixed(ps[row_index], 3));
             $('#amplitude').html(toFixed(amplitudes[row_index], 3));
@@ -238,6 +239,7 @@
             min: 0,
             value: breakpoint,
             step: 1,
+            range: "min",
             max: labels.length - 1,
             slide: function (event, ui) {
                 selected_row = ui.value;
@@ -415,7 +417,7 @@
             if (isNaN(max_value_filter) && max_value_filter.length > 0) {
                 max_value_filter_input.val('');
                 empty_filters_list_msg.css({"visibility": "visible"});
-                $('#significant_items').html(row_index);
+                $('#significant_items')[0].value = row_index;
                 return
             }
             empty_filters_list_msg.css({"visibility": "hidden"});
@@ -439,7 +441,7 @@
 
                     var ctr = 0;
                     var set_significant_items = false;
-                    var significant_items = $('#significant_items');
+                    var significant_items = $('#significant_items')[0];
                     $.each(data, function (index, row) {
                         if (!filtered[index]) {
                             ctr++;
@@ -449,7 +451,7 @@
 
                         // Update number of significant items
                         if (index >= row_index && !set_significant_items) {
-                            significant_items.html(ctr);
+                            significant_items.value  = ctr;
                             set_significant_items = true;
                         }
                     });
@@ -605,6 +607,19 @@
             rowSelector.selectRow(selected_row);
         });
 
+        $('#significant_items').change( function () {
+            let row = Math.round(this.value) -1;
+            console.log("Significant items changed to " + row);
+
+            if (row < 0) {
+                row = 0;
+            } else if (row > labels.length-1) {
+                row = labels.length-1;
+            }
+
+            rowSelector.selectRow(row);
+        } );
+
 
         // Load the JTK values
         $.ajax({
@@ -632,7 +647,7 @@
         $('#share_spreadsheet').click(function() {
             $.ajax({
                 url: "{{url_for('spreadsheets.share')}}",
-                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': $('#significant_items').text()}),
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': $('#significant_items')[0].value}),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
@@ -676,9 +691,9 @@
 </div>
 
 <div class="row">
-    <span class="col-lg-9">
-        Number of items equal to or more significant than currently selected:
-        <span id="significant_items"></span>
+    <span class="form-group col-lg-9">
+        Number of selected rows:
+        <input type="number" id="significant_items"></input>
     </span>
 </div>
 
