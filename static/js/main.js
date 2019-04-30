@@ -157,6 +157,14 @@ var array_min = function (array) {
     } );
 };
 
+// Util to pad a string with copies of a character
+function padEnd(string, length, character) {
+    if (string.length > length) {
+            return string;
+    } else {
+        return string + character.repeat(length - string.length);
+    }
+}
 
 //// Row selector object ////
 var nonbreakingspace = "\u00A0";
@@ -176,7 +184,7 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
             // Make labels that include q values in them, for the selector
             var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
             rowSelector.labels = labels.map( function(label, i) {
-                return String(label).padEnd(max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+                return padEnd(String(label), max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
             } );
             rowSelector.update();
         },
