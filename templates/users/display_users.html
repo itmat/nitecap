@@ -68,7 +68,13 @@
                 <td>{{user.username}}</td>
                 <td>{{user.email}}</td>
                 <td>{{user.most_recent_confirmation.confirmed}}</td>
-                <td>1</td>
+                <td>
+                    {% if user.id in user_counts_map %}
+                        {{ user_counts_map[user.id] }}
+                    {%  else  %}
+                        0
+                    {% endif %}
+                </td>
                 <td data-sort="{{user.last_access}}">
                     {{ momentjs(user.last_access).format('LLL') }}
                 </td>

@@ -279,12 +279,18 @@ class User(db.Model):
     def find_all_users(cls):
         return cls.query.all()
 
-    @classmethod
-    def spreadsheet_counts(cls):
+    @staticmethod
+    def spreadsheet_counts():
+        """
+        Finds the number of spreadsheets owned by each user
+        :return: a map of user_id to spreadsheet count.  The absense of a user_id indicates the the user owns no
+        spreadsheets
+        """
         from sqlalchemy import func
         from models.spreadsheets.spreadsheet import Spreadsheet
-        count = db.session.query(User, func.count(Spreadsheet.id)).join(self.spreadsheets).group_by(self.id).all()
-        return count
+        results = db.session.query(User.id, func.count(Spreadsheet.id)).join(User.spreadsheet).group_by(User.id).all()
+        user_counts_map = {user_id : spreadsheet_count for user_id, spreadsheet_count in results}
+        return user_counts_map
 
     @staticmethod
     def check_existence(email, password):

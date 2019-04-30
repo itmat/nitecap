@@ -253,4 +253,5 @@ def update_profile():
 @requires_admin
 def display_users():
     users = User.find_all_users()
-    return render_template('users/display_users.html', users=users)
+    user_counts_map = User.spreadsheet_counts()
+    return render_template('users/display_users.html', users=users, user_counts_map=user_counts_map)
