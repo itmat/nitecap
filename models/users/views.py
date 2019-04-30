@@ -275,8 +275,7 @@ def delete():
         return jsonify({"error": "No user id provided."}), 400
     user = User.find_by_id(user_id)
     if user:
-        print(f"Delete user {user_id}")
-        #user.delete()
+        user.delete()
     return '', 204
 
 
@@ -292,7 +291,6 @@ def confirm():
         return jsonify({"error": "No user id provided."}), 400
     user = User.find_by_id(user_id)
     if user and user.confirmation and not user.most_recent_confirmation.confirmed:
-        print(f"Confirm user {user_id}")
         user.most_recent_confirmation.confirmed = True
-        #user.most_recent_confirmation.save_to_db()
+        user.most_recent_confirmation.save_to_db()
         return jsonify({'confirmed': True})
