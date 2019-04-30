@@ -180,6 +180,13 @@ LOG_FILE = "/mnt/vol1/logs/nitecap.log"
 LOG_LEVEL = "INFO"
 ```
 
+# Networking
+
+You must enable the correct ports in AWS EC2 dashboard.
+You can configure this under Security Groups.
+For inbound traffic, we have enabled ports 80, 22, 25, 465, 443 for HTTP, SSH, SMTP, SMTPS, and HTTPS, respectively with source ::/0.
+All outbound traffic is allowed.
+
 # Execution
 Enable the nitecap virtual host and disable the default virtual host:
 ```bash
