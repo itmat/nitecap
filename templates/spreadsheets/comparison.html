@@ -580,7 +580,8 @@
 
 
         // PCA plot
-        $('#run_pca').click( function() {
+        let pca_button = $('#run_pca');
+        pca_button.click( function() {
             // We only run PCA on unfiltered genes below the selected row
             var selected_genes = sort_order.filter( function(row,rank) {
                 if (rank > selected_row) {
@@ -611,6 +612,10 @@
                 var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
                 return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
             });
+
+            pca_button.prop('disabled', true);
+            pca_button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                        "</span>Processing...");
 
             $.ajax({
                 url: "{{url_for('spreadsheets.run_pca')}}",
@@ -661,6 +666,11 @@
                 error: function (error) {
                     console.log("Error running PCA");
                     console.log(error);
+                },
+                complete: function() {
+                    // Restore PCA button function
+                    pca_button.prop('disabled', false);
+                    pca_button.html('Run PCA');
                 }
             });
         });
