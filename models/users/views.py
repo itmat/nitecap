@@ -1,4 +1,6 @@
-from flask import Blueprint, request, session, url_for, redirect, render_template, flash
+import json
+
+from flask import Blueprint, request, session, url_for, redirect, render_template, flash, jsonify
 
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
@@ -252,6 +254,41 @@ def update_profile():
 @user_blueprint.route('/display_users', methods=['GET'])
 @requires_admin
 def display_users():
+    """
+    Administrative function only - displays a list of the site users.  Additionally, the number of
+    spreadsheets owned by each user is determined and displayed.
+    """
     users = User.find_all_users()
     user_counts_map = User.spreadsheet_counts()
     return render_template('users/display_users.html', users=users, user_counts_map=user_counts_map)
+
+
+@user_blueprint.route('/delete', methods=['POST'])
+@requires_admin
+def delete():
+    """
+    Adminstrative function only - deletes the user provided and all of that user's spreadsheets.
+    :param user_id: id of the user to delete
+    """
+    user_id = json.loads(request.data).get('user_id', None)
+    if not user_id:
+        return jsonify({"error": "No user id provided."}), 400
+    user = User.find_by_id(user_id)
+    if user:
+        print(f"Delete user {user_id}")
+        #user.delete()
+    return '', 204
+
+
+@user_blueprint.route('/confirm/<user_id>', methods=['POST'])
+@requires_admin
+def confirm(user_id):
+    """
+    Administrative function only - confirms the user provided, expiration notwithstanding
+    :param user_id: id of the user to confirm
+    """
+    user = User.find_by_id(user_id)
+    if user and user.confirmation and not user.confirmation.confirmed:
+        user.confirmation.confirmed = True
+        user.confirmation.save_to_db()
+        return jsonify({'confirmed': True})

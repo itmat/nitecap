@@ -357,3 +357,19 @@ class User(db.Model):
             return user, s.loads(token)['spreadsheet_id'], s.loads(token)['row_index']
         except:
             return None
+
+    def delete(self):
+        """
+        Removes this user from the database and discards any spreadsheets belonging to this user.  Spreadsheets that
+        are unsuccessfully removed from the disk are noted in the log only.
+        """
+        for spreadsheet in self.spreadsheets:
+            try:
+                spreadsheet.delete_from_db()
+                os.remove(spreadsheet.file_path)
+                os.remove(spreadsheet.uploaded_file_path)
+            except Exception as e:
+                current_app.logger.error(f"The data for spreadsheet {spreadsheet.id} could not all be successfully "
+                                         f"expunged. It may be orphaned.", e)
+        self.delete_from_db()
+

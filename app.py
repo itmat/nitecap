@@ -58,7 +58,7 @@ def about():
 @app.route('/dashboard', methods=['GET'])
 @requires_admin
 def dashboard():
-    return render_template('dashboard.html')
+    return render_template('users/display_users.html')
 
 
 @app.errorhandler(413)
