@@ -280,15 +280,19 @@ def delete():
     return '', 204
 
 
-@user_blueprint.route('/confirm/<user_id>', methods=['POST'])
+@user_blueprint.route('/confirm', methods=['POST'])
 @requires_admin
-def confirm(user_id):
+def confirm():
     """
     Administrative function only - confirms the user provided, expiration notwithstanding
     :param user_id: id of the user to confirm
     """
+    user_id = json.loads(request.data).get('user_id', None)
+    if not user_id:
+        return jsonify({"error": "No user id provided."}), 400
     user = User.find_by_id(user_id)
-    if user and user.confirmation and not user.confirmation.confirmed:
-        user.confirmation.confirmed = True
-        user.confirmation.save_to_db()
+    if user and user.confirmation and not user.most_recent_confirmation.confirmed:
+        print(f"Confirm user {user_id}")
+        user.most_recent_confirmation.confirmed = True
+        #user.most_recent_confirmation.save_to_db()
         return jsonify({'confirmed': True})
