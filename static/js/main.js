@@ -167,7 +167,6 @@ function padEnd(string, length, character) {
 }
 
 //// Row selector object ////
-var nonbreakingspace = "\u00A0";
 function makeRowSelector(element, labels, q_values, filtered, sort_order, num_row_selections, onSelect) {
     var rowSelector = {
         top: 0, // Top row visible
@@ -184,7 +183,7 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
             // Make labels that include q values in them, for the selector
             var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
             rowSelector.labels = labels.map( function(label, i) {
-                return padEnd(String(label), max_label_length, nonbreakingspace) + ' Q: ' + toFixed(q_values[i], 2);
+                return padEnd(String(label), max_label_length, ' ') + ' Q: ' + toFixed(q_values[i], 2);
             } );
             rowSelector.update();
         },
