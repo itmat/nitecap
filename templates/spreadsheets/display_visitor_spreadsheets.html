@@ -11,7 +11,52 @@
             let visitorSpreadsheetTableElement = $('#visitorSpreadsheetTable');
 
             let table = visitorSpreadsheetTableElement.DataTable({
-                        order: [[ 5, 'desc' ]],
+                order: [[ 5, 'desc' ]],
+                select: {
+                    style: 'multi'
+                }
+            });
+
+            let nitecap_error = $("#error-modal");
+            let nitecap_error_message = $("#error-modal-message");
+
+            let delete_button = $('#delete');
+            let confirm_delete_modal = $("#confirm_delete_modal");
+            let delete_confirmed_button = $("#delete_confirmed")
+
+            delete_button.click(function() {
+                var row_data = table.rows( { selected: true } ).data();
+                var spreadsheet_list = [];
+                $.each($(row_data), function(key, value) {
+                    spreadsheet_list.push(value[0])
+                });
+                delete_confirmed_button.attr('data-id', spreadsheet_list.join(","));
+                confirm_delete_modal.modal();
+                console.log(spreadsheet_list)
+            });
+
+            // Delete is confirmed - send AJAX call to delete spreadsheet
+            delete_confirmed_button.on('click', function() {
+                let spreadsheet_list = $(this).attr('data-id').split(",");
+                confirm_delete_modal.modal('toggle');
+                $.ajax({
+                    url: "{{url_for('spreadsheets.delete_visitor_spreadsheets')}}",
+                    data: JSON.stringify({"spreadsheet_list": spreadsheet_list}),
+                    dataType: "json",
+                    contentType: "application/json",
+                    type: 'POST',
+                    success: function () {
+                        // The parameter in draw is needed to keep the user on the current page
+                        spreadsheet_list.forEach(function(spreadsheet_id) {
+                            table.row("#spreadsheet_" + spreadsheet_id).remove().draw(false);
+                        });
+                    },
+                    error: function (request) {
+                        let error_message = $.parseJSON(request.responseText).error;
+                        nitecap_error_message.text(error_message);
+                        nitecap_error.modal();
+                    }
+                })
             });
         });
     </script>
@@ -87,5 +132,29 @@
         -->
     </table>
 {% endif %}
+    <button type="button" class="btn btn-primary" id="delete">Delete</button>
 
+    <div class="modal fade" id="confirm_delete_modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary">
+                    <h5 class="model-title text-white">DELETE Confirmation</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span class="text-white" aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Please confirm deletion...
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">Cancel</span>
+                    </button>
+                    <a id="delete_confirmed" class="btn btn-primary">
+                        <span class="text-white">Delete</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 {%  endblock %}

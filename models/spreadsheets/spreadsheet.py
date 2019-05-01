@@ -513,7 +513,24 @@ class Spreadsheet(db.Model):
         only by a visitor.
         :return: True if the spreadsheet belongs to a credentialed user and False otherwise.
         """
-        return not self.user.is_annoymous_user()
+        return not self.user.is_anonymous_user()
+
+    def delete(self):
+        """
+        Deletes this spreadsheet by removing it from the spreadsheets database table and removing its
+        file footprint.
+        :return: an error message or None in the case of no error
+        """
+        error = None
+        error_message = f"The data for spreadsheet {self.id} could not all be successfully expunged."
+        try:
+            self.delete_from_db()
+            os.remove(self.file_path)
+            os.remove(self.uploaded_file_path)
+        except Exception as e:
+            current_app.logger.error(error_message, e)
+            error = error_message
+        return error
 
     def apply_filters(self):
         self.df["filtered_out"] = False

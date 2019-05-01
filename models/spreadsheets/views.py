@@ -510,7 +510,7 @@ def edit_columns():
 def save_filters():
     """
     Response to ajax request to apply filters set on the graphs page.  Those filter values are also saved to the
-    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annoymous user).
+    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annonymous user).
     :return: A json string containing filtered values along with associated q values and p values.
     """
     json_data = request.get_json()
@@ -914,3 +914,16 @@ def save_note():
 def display_visitor_spreadsheets():
     user = User.find_by_username("annonymous")
     return render_template('spreadsheets/display_visitor_spreadsheets.html', user=user)
+
+@spreadsheet_blueprint.route('/delete_visitor_spreadsheets', methods=['POST'])
+@requires_admin
+def delete_visitor_spreadsheets():
+    errors = []
+    spreadsheet_ids = json.loads(request.data).get('spreadsheet_list', None)
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+        if spreadsheet and not spreadsheet.owned():
+            error = spreadsheet.delete()
+            if error:
+                errors.append(error)
+    return jsonify({'errors': errors}), 500
