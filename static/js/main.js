@@ -168,13 +168,14 @@ function padEnd(string, length, character) {
 
 //// Row selector object ////
 function makeRowSelector(element, labels, q_values, filtered, sort_order, num_row_selections, onSelect) {
-    var rowSelector = {
+    let rowSelector = {
         top: 0, // Top row visible
         options: [], // List of all the option elements inside of the row selector
         labels: labels, // list of strings used to label the rows
+        full_labels: labels, // the labels not shortened (incase they exceed the maximum length) for hovertext
         sort_order: sort_order, // List of indexes to use to reorder the rows
         filtered_rows: filtered, // Boolean list with 1 meaning corresponding row is filtered out (disabled)
-        label_length_maximum: 35, // longest label to ever make
+        label_length_maximum: 30, // longest label to ever make
 
         // Event callbacks
         onSelect: onSelect,
@@ -183,10 +184,14 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
         makeRowLabels: function(labels, q_values) {
             // Make labels that include q values in them, for the selector
             let max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
-            max_label_length = Math.min(max_label_length, label_length_maximum);
+            max_label_length = Math.min(max_label_length, rowSelector.label_length_maximum);
+
             rowSelector.labels = labels.map( function(label, i) {
-                return padEnd(String(label), max_label_length, ' ') + ' Q: ' + toFixed(q_values[i], 2);
+                label = String(label).slice(0,rowSelector.label_length_maximum);
+                return padEnd(label, max_label_length, ' ') + ' Q: ' + toFixed(q_values[i], 2);
             } );
+
+            rowSelector.full_labels = labels;
             rowSelector.update();
         },
 
@@ -217,10 +222,13 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
                 var current_index = rowSelector.top + i;
                 if (current_index < 0) {
                     rowSelector.options[i].textContent = "-";
+                    rowSelector.options[i].title = "-";
                 } else if (current_index >= rowSelector.labels.length) {
                     rowSelector.options[i].textContent = "-";
+                    rowSelector.options[i].title = "-";
                 } else {
                     rowSelector.options[i].textContent = rowSelector.labels[rowSelector.sort_order[current_index]];
+                    rowSelector.options[i].title = rowSelector.full_labels[rowSelector.sort_order[current_index]];
                 }
 
                 if (current_index === rowSelector.selectedRow) {
