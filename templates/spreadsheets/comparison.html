@@ -706,7 +706,7 @@
     </div>
 
     <div class='row'>
-        <span class='col-lg-3 col-6'>
+        <span class='col-auto'>
             <div class='row'>
                 <div class="col px-4">
                     <div class="input-group mb-2">
@@ -731,7 +731,7 @@
                 <button id="download_plot" class="btn btn-primary">Download Plot</button>
             </div>
         </span>
-        <div class='col-12 col-lg-6'>
+        <div class='col-auto'>
             <span id="scatter_plot" style="width:625px;height:525px;vertical-align: top"></span>
             <select id="plot_style_select" value="basketweave" class="form-control form-control-sm">
                 <option value="basketweave">Basketweave</option>
@@ -745,7 +745,7 @@
             <span>Currently: <span id="primary_plot_name"></span></span>
         </div>
 
-        <div class="col-6 col-lg-3" style="width: 15rem;">
+        <div class="col-auto">
             <div class="card">
                 <div class="card-header">
                     Statistics
@@ -835,33 +835,34 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="row">
-        <div id="FiltersCard" class="col">
-            <div class="card">
-                <div class="card-header">
-                    Filters
-                    <a id="filtersHelp" class="text-primary help-pointer"
-                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                       title="Filter Help"
-                       data-content="Keep only rows matching the criteria provided. Please note that filter application can take some time to process.">
-                        <i class="fas fa-info-circle ml-3"></i>
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
-                    <div class="form-group form-inline">
-                        <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
-                        <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
+        <div class="row">
+            <div id="FiltersCard" class="col-auto">
+                <div class="card">
+                    <div class="card-header">
+                        Filters
+                        <a id="filtersHelp" class="text-primary help-pointer"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Filter Help"
+                           data-content="Keep only rows matching the criteria provided. Please note that filter application can take some time to process.">
+                            <i class="fas fa-info-circle ml-3"></i>
+                        </a>
                     </div>
-                    <div>
-                        <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
+                    <div class="card-body">
+                        <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
+                        <div class="form-group form-inline">
+                            <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
+                            <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
+                        </div>
+                        <div>
+                            <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <div class="row" style="padding-top:2rem;padding-bottom:2rem">
         <span class="col-lg-5">
