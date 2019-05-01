@@ -101,46 +101,7 @@
                 paired_x_values.push( x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null );
             }
 
-            // Mean values of each timepoint
-            var sum_by_timepoint = [];
-            var reps_per_timepoint = [];
-            for (var i = 0; i < x_values.length; i++) {
-                var time = x_values[i];
-                var value = raw_y_values[i];
-
-                if (sum_by_timepoint[time] === undefined) {
-                    sum_by_timepoint[time] = 0;
-                    reps_per_timepoint[time] = 0;
-                }
-                if (!isNaN(value) && value !== null) {
-                    // Skip nans entirely, count the rest
-                    sum_by_timepoint[time] += value;
-                    reps_per_timepoint[time] += 1;
-                }
-            }
-            var means = sum_by_timepoint.map( function (sum,i) {
-                return sum / reps_per_timepoint[i];
-            } );
-            var variances = [];
-            for (var i = 0; i < x_values.length; i++) {
-                var time = x_values[i];
-                var value = raw_y_values[i];
-
-                if (variances[time] === undefined) {
-                    variances[time] = 0;
-                }
-
-                if (isNaN(value) || value === null) {
-                    continue; // skip NaNs
-                }
-
-                if (reps_per_timepoint[time] > 1) {
-                    variances[time] += (value - means[time])*(value - means[time]) / (reps_per_timepoint[time]-1);
-                } else {
-                    variances[time] = 0;
-                }
-            }
-            var stds = variances.map(Math.sqrt);
+            var stats = rowStatsByTimepoint(raw_y_values, x_values);
 
             // Default values for the different plot styles to override
             var values = [{
@@ -170,16 +131,16 @@
                 values[0].y = raw_y_values;
             } else if (plot_style === "mean") {
                 values[0].mode = "lines";
-                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                values[0].y = means;
+                values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = stats.means;
                 values[0].name = labels[row_index] + " means";
             } else if (plot_style === "mean_points") {
                 values[0].mode = "markers";
                 values[0].x = x_values
                 values[0].y = raw_y_values;
                 values[1] = {
-                    x: means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
-                    y: means,
+                    x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
+                    y: stats.means,
                     name: labels[row_index] + " mean",
                     type: "scatter",
                     mode: "lines",
@@ -188,19 +149,16 @@
                 layout["showlegend"] = false;
             } else if (plot_style === "std") {
                 values[0].mode = "lines";
-                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                values[0].y = means;
+                values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = stats.means;
                 values[0].name = labels[row_index] + " means";
-                values[0].error_y = {type: 'data', array:stds, visible:true};
+                values[0].error_y = {type: 'data', array:stats.stds, visible:true};
             } else if (plot_style === "SEM") {
-                SEM = stds.map( function (std,i) {
-                    return std / Math.sqrt( reps_per_timepoint[i]);
-                } );
                 values[0].mode = "lines";
-                values[0].x = means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                values[0].y = means;
+                values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                values[0].y = stats.means;
                 values[0].name = labels[row_index] + " means";
-                values[0].error_y = {type: 'data', array:SEM, visible:true};
+                values[0].error_y = {type: 'data', array:stats.sems, visible:true};
             }
             Plotly.react(scatter_plot, values, layout);
         };
@@ -537,33 +495,6 @@
             }
         });
 
-        function compare(a,b, i,j) {
-            // Handle nans, putting them at the end
-            if (isNaN(a)) {
-                if (isNaN(b)) {
-                    // If both are Nans, then we preserve their order
-                    if (i > j) {
-                        return 1;
-                    } else if (i < j) {
-                        return -1;
-                    } else {
-                        return 0;
-                    }
-                } else {
-                    return 1;
-                }
-            } else if (isNaN(b)) {
-                return -1;
-            } else {
-                if (a > b) {
-                    return 1;
-                } else if (a < b) {
-                    return -1;
-                } else {
-                    return 0;
-                }
-            }
-        }
         var sorters = {
             "anova": function (i,j) {
                 // Sort anova p-values in ascending order

@@ -39,6 +39,35 @@ var toFixed = function(num, i) {
     return num;
 };
 
+// For sorting values with nans, returns -1,0,1 based off value and current index
+function compare(a,b, i,j) {
+    // Handle nans, putting them at the end
+    if (isNaN(a)) {
+        if (isNaN(b)) {
+            // If both are Nans, then we preserve their order
+            if (i > j) {
+                return 1;
+            } else if (i < j) {
+                return -1;
+            } else {
+                return 0;
+            }
+        } else {
+            return 1;
+        }
+    } else if (isNaN(b)) {
+        return -1;
+    } else {
+        if (a > b) {
+            return 1;
+        } else if (a < b) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+}
+
 //// COMPUTATIONAL UTILS ////
 function computeZScores(ordering) {
     return function(data) {
@@ -123,7 +152,7 @@ function rowStatsByTimepoint(row, times) {
 
     var variances = [];
     times.forEach( function(time, i) {
-        var value = raw_y_values[i];
+        var value = row[i];
 
         if (variances[time] === undefined) {
             variances[time] = 0;

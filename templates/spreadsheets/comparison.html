@@ -441,33 +441,6 @@
             }
         });
 
-        function compare(a,b, i,j) {
-            // Handle nans, putting them at the end
-            if (isNaN(a)) {
-                if (isNaN(b)) {
-                    // If both are Nans, then we preserve their order
-                    if (i > j) {
-                        return 1;
-                    } else if (i < j) {
-                        return -1;
-                    } else {
-                        return 0;
-                    }
-                } else {
-                    return 1;
-                }
-            } else if (isNaN(b)) {
-                return -1;
-            } else {
-                if (a > b) {
-                    return 1;
-                } else if (a < b) {
-                    return -1;
-                } else {
-                    return 0;
-                }
-            }
-        };
         var sorters = {
             "nitecap": function(i,j) {
                 var a = tds[number_comparisons[0]][i];
