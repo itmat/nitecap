@@ -14,7 +14,7 @@ import constants
 import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from models.users.decorators import requires_login
+from models.users.decorators import requires_login, requires_admin
 from models.users.user import User
 from timer_decorator import timeit
 
@@ -220,7 +220,7 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
     # delivered to the template.
     user_email = session['email'] if 'email' in session else None
     user = User.find_by_email(user_email) if user_email else None
-    anonymous = not user or user.is_annoymous_user()
+    anonymous = not user or user.is_anonymous_user()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                            data=data.to_json(orient='values'),
                            x_values=spreadsheet.x_values,
@@ -320,7 +320,7 @@ def display_spreadsheets():
     This method takes the logging in user to a listing of his/her spreadsheets.  The decorator assures that only logged
     in users may make such a request.
     """
-    current_app.logger.info(f"Displaing spreadsheets for user {session['email']}")
+    current_app.logger.info(f"Displaying spreadsheets for user {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
@@ -510,7 +510,7 @@ def edit_columns():
 def save_filters():
     """
     Response to ajax request to apply filters set on the graphs page.  Those filter values are also saved to the
-    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annoymous user).
+    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annonymous user).
     :return: A json string containing filtered values along with associated q values and p values.
     """
     json_data = request.get_json()
@@ -907,3 +907,24 @@ def save_note():
     spreadsheet.note = note
     spreadsheet.save_to_db()
     return '', 204
+
+
+@spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
+@requires_admin
+def display_visitor_spreadsheets():
+    user = User.find_by_username("annonymous")
+    return render_template('spreadsheets/display_visitor_spreadsheets.html', user=user)
+
+@spreadsheet_blueprint.route('/delete_visitor_spreadsheets', methods=['POST'])
+@requires_admin
+def delete_visitor_spreadsheets():
+    errors = []
+    spreadsheet_ids = json.loads(request.data).get('spreadsheet_list', None)
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+        if spreadsheet and not spreadsheet.owned():
+            error = spreadsheet.delete()
+            if error:
+                errors.append(error)
+    status_code = 500 if errors else 200
+    return jsonify({'errors': errors}), status_code
