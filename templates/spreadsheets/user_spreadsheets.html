@@ -51,7 +51,7 @@
                         nitecap_error_message.text(error_message);
                         nitecap_error.modal();
                     },
-                    complete: function(data) {
+                    complete: function() {
                         popovers.popover('hide');
                     }
                 });
@@ -254,7 +254,7 @@
                        data-container="body" data-toggle="popover" data-placement="left" data-trigger="click"
                        title="Add a Note" data-html=true
                        data-content="<div id='spreadsheet_notes_{{ spreadsheet.id }}' class='annotate_form'>
-                                       <textarea data-id='{{ spreadsheet.id }}' class='form-control' cols='30' rows='10'>{{ spreadsheet.note }}</textarea>
+                                       <textarea data-id='{{ spreadsheet.id }}' class='form-control' cols='30' rows='10'>{{ spreadsheet.note or '' }}</textarea>
                                        <div class='float-right'>
                                          <button class='btn-annotate btn btn-primary'>
                                            <i class='fas fa-check'></i>
