@@ -891,6 +891,13 @@ def save_cutoff():
 @spreadsheet_blueprint.route('/save_note', methods=['POST'])
 @requires_login
 def save_note():
+    """
+    REST function - accepts a json object { spreadsheet_id: spreadsheet id, note: note } and saves the contents
+    of that note to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be sure
+    that it represents a spreadsheet owned by this logged in user.  A successful save results in no content
+    returned.  Otherwise an error is returned with the appropriate status code.
+    :return: no content or { error: error } and a 400 or 404 code.
+    """
     errors = []
     user = User.find_by_email(session['email'])
     json_data = request.get_json()
@@ -912,12 +919,25 @@ def save_note():
 @spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
 @requires_admin
 def display_visitor_spreadsheets():
+    """
+    Administrative function only - lists the spreadsheets owned by the anonymous user.
+    """
     user = User.find_by_username("annonymous")
     return render_template('spreadsheets/display_visitor_spreadsheets.html', user=user)
+
 
 @spreadsheet_blueprint.route('/delete_visitor_spreadsheets', methods=['POST'])
 @requires_admin
 def delete_visitor_spreadsheets():
+    """
+    Administrative REST function only - deletes the database table entry and the files associated with each of the
+    spreadsheets whose ids are provided via a json object { spreadsheet_list: [spreadsheet ids].  That the
+    spreadsheet is NOT owned (i.e., belongs to the anonymous user) is checked before removal and only those
+    belonging to the anonymous user are removed.  If removal is incomplete, the error is noted but removals of other
+    spreadsheets continue.  If any problem occurred for any removal a 500 status code will be returned along with
+    an error message.
+    :return: json object - { errors: [error msgs] } with a status code of 500 if errors occurred and 200 otherwise.
+    """
     errors = []
     spreadsheet_ids = json.loads(request.data).get('spreadsheet_list', None)
     for spreadsheet_id in spreadsheet_ids:
