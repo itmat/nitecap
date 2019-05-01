@@ -764,6 +764,8 @@ def run_pca():
     args = json.loads(request.data)
     spreadsheet_ids = args['spreadsheet_ids']
     selected_genes = args['selected_genes']
+    take_zscore = args['take_zscore']
+    take_log_transform = args['take_logtransform']
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
     datasets = []
@@ -800,12 +802,13 @@ def run_pca():
                     for i in range(len(spreadsheets))
                     for column in spreadsheets[i].get_data_columns()]
 
-    # TODO: both z-scores and log(x) or log(1+x) should be options for normalization before PCA
-    #       and if both, z-scores should be done after log transform
-    # log(1+x) normalize data
-    df[data_columns] = numpy.log(1 + df[data_columns])
-    # Normalize to z-scored data across both datasets
-    # df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
+    if take_log_transform:
+        # log(1+x) transform data
+        df[data_columns] = numpy.log(1 + df[data_columns])
+
+    if take_zscore:
+        # Normalize to z-scored data across both datasets
+         df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
 
     # Extract individual datasets
     for i in [0, 1]:

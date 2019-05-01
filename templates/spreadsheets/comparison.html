@@ -596,7 +596,7 @@
 
         // PCA plot
         let pca_button = $('#run_pca');
-        pca_button.click( function() {
+        function runPCA() {
             // We only run PCA on unfiltered genes below the selected row
             var selected_genes = sort_order.filter( function(row,rank) {
                 if (rank > selected_row) {
@@ -635,7 +635,9 @@
             $.ajax({
                 url: "{{url_for('spreadsheets.run_pca')}}",
                 data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids,
-                                      'selected_genes': selected_genes}),
+                                      'selected_genes': selected_genes,
+                                      'take_logtransform': $('#pca_logtransform').is(':checked'),
+                                      'take_zscore': $('#pca_zscore').is(':checked')}),
                 dataType: 'json',
                 contentType: 'application/json',
                 type: 'POST',
@@ -677,6 +679,8 @@
                     };
 
                     Plotly.newPlot("pca_plot", traces, layout);
+
+                    $('#pca_controls').show();
                 },
                 error: function (error) {
                     console.log("Error running PCA");
@@ -688,8 +692,15 @@
                     pca_button.html('Run PCA');
                 }
             });
-        });
+        };
 
+        pca_button.click(runPCA);
+        $('#pca_zscore').change(function() {
+            runPCA();
+        });
+        $('#pca_logtransform').change(function() {
+            runPCA();
+        });
     });
 
 </script>
@@ -916,6 +927,21 @@
                 <button id="run_pca" class="btn btn-primary">Run PCA</button>
                 <span id="run_pca_alert" class="alert alert-error"></span>
                 <div id="pca_plot"></div>
+
+                <span id="pca_controls" class="col" style="display:none">
+                    <span style="vertical-align:center;padding-right:1rem">log(x+1) transform</span>
+                    <label class="switch">
+                        <input id="pca_logtransform" name="pca_logtransform" type="checkbox" />
+                        <span class="slider"></span>
+                    </label>
+
+                    <span style="vertical-align:center;padding-right:1rem">Z-Score Normalization</span>
+                    <label class="switch">
+                        <input id="pca_zscore" name="pca_zscore" type="checkbox" >
+                        <span class="slider"></span>
+                    </label>
+
+                </span>
             </div>
         </div>
     </div>
