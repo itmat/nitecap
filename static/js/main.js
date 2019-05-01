@@ -162,7 +162,7 @@ function padEnd(string, length, character) {
     if (string.length > length) {
             return string;
     } else {
-        return string + character.repeat(length - string.length);
+        return string + new Array(length - string.length + 1).join(character);
     }
 }
 
