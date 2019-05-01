@@ -926,4 +926,5 @@ def delete_visitor_spreadsheets():
             error = spreadsheet.delete()
             if error:
                 errors.append(error)
-    return jsonify({'errors': errors}), 500
+    status_code = 500 if errors else 200
+    return jsonify({'errors': errors}), status_code
