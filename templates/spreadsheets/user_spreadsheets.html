@@ -25,15 +25,26 @@
             "            </div>";
         {% endraw %}
 
+        // Note popover for each spreadsheet
         let popovers = $('.annotate_spreadsheet[data-toggle="popover"]');
+
+        // When the popover is shown (i.e., when the note icon is clicked)
         popovers.popover().on('shown.bs.popover', function() {
+
+            // When the check button is clicked inside the open note popover - when the user elects to save the note.
             $('.btn-annotate').on('click', function() {
+
+                // Locate the spreadsheet id and the note content
                 let parentElement = $(this).parent().parent();
                 let textareaElement = parentElement.find('textarea');
                 let spreadsheet_id = textareaElement.attr("data-id");
                 let note = textareaElement.val();
+
+                // Find the specific anchor tag that calls the popover
                 let anchorElement = $('a.annotate_spreadsheet[data-id="' + spreadsheet_id + '"]');
                 console.log(anchorElement);
+
+                // Send the data back to the server for saving.
                 $.ajax({
                     url: "{{url_for('spreadsheets.save_note')}}",
                     data: JSON.stringify({"spreadsheet_id": spreadsheet_id, "note": note}),
@@ -41,31 +52,44 @@
                     contentType: "application/json",
                     type: 'POST',
                     success: function () {
+
+                        // Add the new note content to the anchor tag that called the popover so that the
+                        // user will see the new content if s/he opens the note for editing again.
                         let new_data = {"spreadsheet_id": spreadsheet_id, "note": note};
                         let new_content = '"' + Mustache.to_html(template, new_data) + '"';
                         anchorElement.attr('data-content', new_content);
                         console.log(anchorElement.data('content'));
                     },
                     error: function (request) {
+
+                        // Inject the error message returned by the server into the error modal and display it.
                         let error_message = $.parseJSON(request.responseText).error;
                         nitecap_error_message.text(error_message);
                         nitecap_error.modal();
                     },
                     complete: function() {
+
+                        // Regardless of outcome, hide the popover
                         popovers.popover('hide');
                     }
                 });
             });
+
+            // When the x button is clicked inside the open note popover - the user is dismissing the popover without
+            // saving any new edits.
             $('.btn-annotate-dismiss').on('click', function() {
                 popovers.popover('hide');
             });
         });
 
+        // Note that these elements exist on the base.html page because they are commonly used.
         let nitecap_error = $("#error-modal");
         let nitecap_error_message = $("#error-modal-message");
 
         let spreadsheetTableElement = $('#spreadsheetTable');
 
+        // Data table - initial sort on spreadsheet install date descending.  ID column is hidden.  Actions
+        // column is not subject to sorting.  Multiple columns can be selected.
         let table = spreadsheetTableElement.DataTable({
                         aoColumnDefs: [
                             { 'bSortable': false, 'aTargets': [ 7 ] },
@@ -77,15 +101,21 @@
                         }
                     });
 
+        // Prevents user selection of any spreadsheet rows indicated as in error
         table.on('user-select', function(e, dt, type, cell, originalEvent) {
-            var tr = $(originalEvent.target).parent();
+            let tr = $(originalEvent.target).parent();
             if(!tr.hasClass('text-dark')) {
                 e.preventDefault();
             }
         });
 
+        // User clicks the share icon
         spreadsheetTableElement.on('click','.share_spreadsheet', function(event) {
-            spreadsheet_id = $(event.target).parent().attr('id').split("_")[2];
+
+            // Locate the id of the spreadsheet to share
+            let spreadsheet_id = $(event.target).parent().attr('id').split("_")[2];
+
+            // Call the server with the spreadsheet id so that the server may return a link that can be shared.
             $.ajax({
                 url: "{{url_for('spreadsheets.share')}}",
                 data: JSON.stringify({'spreadsheet_id': spreadsheet_id}),
@@ -93,11 +123,15 @@
                 contentType: "application/json",
                 type: 'POST',
                 success: function (response) {
-                    url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
+
+                    // Display a modal containing the share link
+                    let url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
                     $("#share_url").val(url);
                     $('#share_popup').modal()
                 },
                 error: function (request) {
+
+                    // Inject the error message returned by the server into the error modal and display it.
                     let error_message = $.parseJSON(request.responseText).error;
                     nitecap_error_message.text(error_message);
                     nitecap_error.modal();
@@ -150,7 +184,7 @@
 
         // Delete is confirmed - send AJAX call to delete spreadsheet
         $("#delete_confirmed").on('click', function() {
-            var spreadsheet_id = $(this).attr('data-id');
+            let spreadsheet_id = $(this).attr('data-id');
             $("#confirm_delete_modal").modal('toggle');
             $.ajax({
                 url: "{{url_for('spreadsheets.delete')}}",
@@ -159,6 +193,7 @@
                 contentType: "application/json",
                 type: 'POST',
                 success: function () {
+
                     // The parameter in draw is needed to keep the user on the current page
                     table.row("#spreadsheet_" + spreadsheet_id).remove().draw(false);
                 },
@@ -279,8 +314,8 @@
                 <td>Date Uploaded</td>
                 <td>Name</td>
                 <td>Days</td>
-                <td>Timepoints</td>
-                <td>Breakpoint</td>
+                <td>Time<br />points</td>
+                <td>Sig.<br />Cutoff</td>
                 <td>Last Update</td>
                 <td>Actions</td>
                 <td>IDS</td>
