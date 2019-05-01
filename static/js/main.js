@@ -83,7 +83,7 @@ function meanByTimepoints(data, times) {
                 reps_by_timepoint[time] = 0;
             }
 
-            if (isNaN(value)) {
+            if (isNaN(value) || value === null) {
                 return;
             }
 
@@ -110,7 +110,7 @@ function rowStatsByTimepoint(row, times) {
             sum_by_timepoint[time] = 0;
             reps_per_timepoint[time] = 0;
         }
-        if (!isNaN(value)) {
+        if (!isNaN(value) && value !== null) {
             // Skip nans entirely, count the rest
             sum_by_timepoint[time] += value;
             reps_per_timepoint[time] += 1;
@@ -129,7 +129,7 @@ function rowStatsByTimepoint(row, times) {
             variances[time] = 0;
         }
 
-        if (!isNaN(value)) {
+        if (!isNaN(value) && value !== null) {
             if (reps_per_timepoint[time] > 1) {
                 variances[time] += (value - means[time])*(value - means[time]) / (reps_per_timepoint[time]-1);
             } else {
