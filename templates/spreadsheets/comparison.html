@@ -701,6 +701,11 @@
         $('#pca_logtransform').change(function() {
             runPCA();
         });
+
+        $('#download_pca').click(function() {
+            var gd = document.getElementById('pca_plot');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'pca_' + (selected_row+1)});
+        });
     });
 
 </script>
@@ -915,7 +920,7 @@
                         <span class="slider"></span>
                     </label>
                 </span>
-                <span class='col-lg-2'>
+                <span>
                     <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
                 </span>
             </div>
@@ -941,6 +946,7 @@
                         <span class="slider"></span>
                     </label>
 
+                    <button id="download_pca" class="btn btn-primary">Download PCA</button>
                 </span>
             </div>
         </div>
