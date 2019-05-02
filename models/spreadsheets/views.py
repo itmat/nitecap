@@ -6,6 +6,8 @@ from pathlib import Path
 import magic
 import numpy
 import pandas as pd
+import pyarrow
+import pyarrow.parquet
 from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify
 from flask import current_app
 from sklearn.decomposition import PCA
@@ -690,6 +692,7 @@ def compare():
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
+@timeit
 def get_upside():
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
@@ -714,13 +717,13 @@ def get_upside():
 
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.txt")
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
-            comp_data = pd.read_table(file_path)
+            comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
             upside_ps.append(comp_data["upside_ps"].values.tolist())
             upside_qs.append(comp_data["upside_qs"].values.tolist())
             current_app.logger.info(f"Loaded upside values from file {file_path}")
-        except FileNotFoundError:
+        except OSError: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
                 dfs = []
                 for spreadsheet in spreadsheets:
@@ -748,10 +751,11 @@ def get_upside():
             comp_data = pd.DataFrame(index=df.index)
             comp_data["upside_ps"] = upside_p
             comp_data["upside_qs"] = upside_q
-            comp_data.to_csv(file_path, sep="\t")
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
+
             upside_ps.append(upside_p.tolist())
             upside_qs.append(upside_q.tolist())
-            current_app.logger.info("Compute upside values and saved them to file {file_path}")
+            current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
 
     return jsonify({
                 'upside_ps': upside_ps,
