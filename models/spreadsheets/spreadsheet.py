@@ -255,6 +255,7 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
         return [column for column, label in ordered_columns]
 
+    @timeit
     def get_ids(self, *args):
         """
         Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
@@ -267,8 +268,15 @@ class Spreadsheet(db.Model):
                           if column_label == Spreadsheet.ID_COLUMN]
         else:
             id_indices = args[0]
-        print(f"id_indices: {id_indices}")
-        return self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1)
+
+        if len(id_indices) == 1:
+            return self.df.iloc[:,id_indices[0]].astype(str).tolist()
+
+        # Concatenate the id columns using pandas.Series.str.cat() function
+        # convert to type string first since otherwise blank entries will result in float('NaN')
+        first_id = id_indices[0]
+        concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ')
+        return concats.tolist()
 
     def find_replicate_ids(self, *args):
         ids = list(self.get_ids(*args))

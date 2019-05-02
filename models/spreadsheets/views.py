@@ -194,6 +194,7 @@ def identify_spreadsheet_columns():
 
 
 @spreadsheet_blueprint.route('/set_spreadsheet_breakpoint/<int:spreadsheet_id>', methods=['GET'])
+@timeit
 def set_spreadsheet_breakpoint(spreadsheet_id):
     """
     Misnamed at this point.  Takes the user to the page which displays the processed data in a series of graphs and
@@ -214,7 +215,7 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
 
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
-    ids = list(spreadsheet.get_ids())
+    ids = json.dumps(spreadsheet.get_ids())
 
     # Certain functionality exists on the display page only if the user is not a visitor.  A logged in user is
     # recognized by his/her email address in the session cookie.  If there is no email in the cookie or if the
@@ -228,13 +229,13 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
                            x_values=spreadsheet.x_values,
                            x_labels=spreadsheet.x_labels,
                            x_label_values=spreadsheet.x_label_values,
-                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
+                           qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
+                           ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                           amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
+                           peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
+                           anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
+                           anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
+                           filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
                            ids=ids,
                            column_pairs=spreadsheet.column_pairs,
                            breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -247,6 +248,7 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
 
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
+@timeit
 def show_spreadsheet(spreadsheet_id):
     """
     This retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
@@ -279,27 +281,30 @@ def show_spreadsheet(spreadsheet_id):
     session["spreadsheet_id"] = spreadsheet.id
 
     data = spreadsheet.get_raw_data()
+
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
-    ids = list(spreadsheet.get_ids())
-    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
-                           data=data.to_json(orient='values'),
-                           x_values=spreadsheet.x_values,
-                           x_labels=spreadsheet.x_labels,
-                           x_label_values=spreadsheet.x_label_values,
-                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
-                           ids=ids,
-                           column_pairs=spreadsheet.column_pairs,
-                           breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                           descriptive_name=spreadsheet.descriptive_name,
-                           timepoints_per_day=spreadsheet.timepoints,
-                           spreadsheet_id=session['spreadsheet_id'],
-                           max_value_filter=max_value_filter)
+    ids = json.dumps(spreadsheet.get_ids())
+
+    args = dict( data=data.to_json(orient='values'),
+                 x_values=spreadsheet.x_values,
+                 x_labels=spreadsheet.x_labels,
+                 x_label_values=spreadsheet.x_label_values,
+                 qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
+                 ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                 amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
+                 peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
+                 anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
+                 anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
+                 filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
+                 ids=ids,
+                 column_pairs=spreadsheet.column_pairs,
+                 breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                 descriptive_name=spreadsheet.descriptive_name,
+                 timepoints_per_day=spreadsheet.timepoints,
+                 spreadsheet_id=session['spreadsheet_id'],
+                 max_value_filter=max_value_filter)
+
+    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',**args)
 
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])

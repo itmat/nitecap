@@ -109,23 +109,23 @@
 
             // Update the "statistics" card
             $('#p_value').html(toFixed(ps[number_comparisons[0]][row_index], 3));
-            $('#p_value').prop('title',ps[number_comparisons[0]][row_index].toString());
+            $('#p_value').prop('title', toString(ps[number_comparisons[0]][row_index]));
             $('#q_value').html(toFixed(qs[number_comparisons[0]][row_index], 3));
-            $('#q_value').prop('title',qs[number_comparisons[0]][row_index].toString());
+            $('#q_value').prop('title', toString(qs[number_comparisons[0]][row_index]));
             $('#amplitude').html(toFixed(amplitudes[number_comparisons[0]][row_index], 3));
-            $('#amplitude').prop('title',amplitudes[number_comparisons[0]][row_index].toString());
+            $('#amplitude').prop('title', toString(amplitudes[number_comparisons[0]][row_index]));
             $('#anova_p').html(toFixed(anova_ps[number_comparisons[0]][row_index], 3));
-            $('#anova_p').prop('title',anova_ps[number_comparisons[0]][row_index].toString());
+            $('#anova_p').prop('title', toString(anova_ps[number_comparisons[0]][row_index]));
             $('#anova_q').html(toFixed(anova_qs[number_comparisons[0]][row_index], 3));
-            $('#anova_q').prop('title', anova_qs[number_comparisons[0]][row_index].toString());
+            $('#anova_q').prop('title', toString(anova_qs[number_comparisons[0]][row_index]));
             $('#peak_time').html(toFixed(peak_times[number_comparisons[0]][row_index], 3));
-            $('#peak_time').prop('title', peak_times[number_comparisons[0]][row_index].toString());
+            $('#peak_time').prop('title', toString(peak_times[number_comparisons[0]][row_index]));
 
             if (jtk_ps[number_comparisons[0]] !== null && jtk_qs[number_comparisons[0]] !== null) {
                 $('#jtk_p').html(toFixed(jtk_ps[number_comparisons[0]][row_index], 3));
-                $('#jtk_p').prop('title', jtk_ps[number_comparisons[0]][row_index].toString());
+                $('#jtk_p').prop('title', toString(jtk_ps[number_comparisons[0]][row_index]));
                 $('#jtk_q').html(toFixed(jtk_qs[number_comparisons[0]][row_index], 3));
-                $('#jtk_q').prop('title', jtk_qs[number_comparisons[0]][row_index].toString());
+                $('#jtk_q').prop('title', toString(jtk_qs[number_comparisons[0]][row_index]));
             } else {
                 $('#jtk_p').html("loading");
                 $('#jtk_p').prop('title', "loading");
@@ -135,9 +135,9 @@
 
             if (upside_ps !== null && upside_qs !== null) {
                 $('#upside_p').html(toFixed(upside_ps[number_comparisons[0]][row_index], 3));
-                $('#upside_p').prop('title', upside_ps[number_comparisons[0]][row_index].toString());
+                $('#upside_p').prop('title', toString(upside_ps[number_comparisons[0]][row_index]));
                 $('#upside_q').html(toFixed(upside_qs[number_comparisons[0]][row_index], 3));
-                $('#upside_q').prop('title', upside_qs[number_comparisons[0]][row_index].toString());
+                $('#upside_q').prop('title', toString(upside_qs[number_comparisons[0]][row_index]));
             } else {
                 $('#upside_p').html("loading");
                 $('#upside_p').prop('title', "loading");
