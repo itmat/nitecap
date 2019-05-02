@@ -5,10 +5,12 @@ import uuid
 import subprocess
 from parser import ParserError
 from pathlib import Path
+import re
 
 import pandas as pd
 import numpy
-import re
+import pyarrow
+import pyarrow.parquet
 import constants
 
 from sqlalchemy import orm
@@ -117,12 +119,15 @@ class Spreadsheet(db.Model):
         if file_path is None:
             self.set_df()
             self.date_uploaded = datetime.datetime.utcnow()
-            self.file_path = uploaded_file_path + ".working.txt"
+            self.file_path = uploaded_file_path + ".working.parquet"
             self.update_dataframe()
 
         # TODO Do we ever get here?
         else:
-            self.df = pd.read_csv(self.file_path, sep="\t")
+            if self.file_path.endswith("txt"):
+                self.df = pd.read_csv(self.file_path, sep='\t')
+            else:
+                self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
 
     @timeit
     def init_on_load(self):
@@ -142,7 +147,10 @@ class Spreadsheet(db.Model):
         self.error = False
         try:
             if self.file_path:
-                self.df = pd.read_csv(self.file_path, sep="\t")
+                if self.file_path.endswith("txt"):
+                    self.df = pd.read_csv(self.file_path, sep='\t')
+                else:
+                    self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
         except Exception as e:
             # The parser failed...we may be able to recover.
             print(e)
@@ -247,6 +255,7 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
         return [column for column, label in ordered_columns]
 
+    @timeit
     def get_ids(self, *args):
         """
         Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
@@ -259,8 +268,15 @@ class Spreadsheet(db.Model):
                           if column_label == Spreadsheet.ID_COLUMN]
         else:
             id_indices = args[0]
-        print(f"id_indices: {id_indices}")
-        return self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1)
+
+        if len(id_indices) == 1:
+            return self.df.iloc[:,id_indices[0]].astype(str).tolist()
+
+        # Concatenate the id columns using pandas.Series.str.cat() function
+        # convert to type string first since otherwise blank entries will result in float('NaN')
+        first_id = id_indices[0]
+        concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ')
+        return concats.tolist()
 
     def find_replicate_ids(self, *args):
         ids = list(self.get_ids(*args))
@@ -329,7 +345,10 @@ class Spreadsheet(db.Model):
 
     @timeit
     def update_dataframe(self):
-        self.df.to_csv(self.file_path, sep="\t", index=False)
+        if self.file_path.endswith("txt"):
+            self.df.to_csv(self.file_path, sep="\t", index=False)
+        else:
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(self.df), self.file_path)
 
     def reduce_dataframe(self, breakpoint):
         above_breakpoint = self.df.iloc[:breakpoint+1]

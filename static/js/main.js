@@ -38,12 +38,19 @@ var toFixed = function(num, i) {
     }
     return num;
 };
+var toString = function(num) {
+    // Call num.toString unless num is undefined (eg: null)
+    if (typeof num === 'number') {
+        return num.toString();
+    }
+    return num + '';
+};
 
 // For sorting values with nans, returns -1,0,1 based off value and current index
 function compare(a,b, i,j) {
     // Handle nans, putting them at the end
-    if (isNaN(a)) {
-        if (isNaN(b)) {
+    if (isNaN(a) || a === null) {
+        if (isNaN(b) || b === null) {
             // If both are Nans, then we preserve their order
             if (i > j) {
                 return 1;
@@ -75,7 +82,7 @@ function computeZScores(ordering) {
             var row = data[i];
             var num_reps = 0;
             var sum = row.reduce( function(x,y) {
-                 if (isNaN(y)) {return x;}
+                 if (isNaN(y) || y === null) {return x;}
                 num_reps += 1;
                 return x+y;
             }, 0);
@@ -84,7 +91,7 @@ function computeZScores(ordering) {
             if (num_reps === 0) { mean = 0; }
 
             var variance = row.reduce( function(x,y) {
-                if (isNaN(y)) {return x;}
+                if (isNaN(y) || y === null) {return x;}
 
                 return x + (y - mean)*(y - mean);
             }, 0);
