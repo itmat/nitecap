@@ -5,10 +5,12 @@ import uuid
 import subprocess
 from parser import ParserError
 from pathlib import Path
+import re
 
 import pandas as pd
 import numpy
-import re
+import pyarrow
+import pyarrow.parquet
 import constants
 
 from sqlalchemy import orm
@@ -117,12 +119,15 @@ class Spreadsheet(db.Model):
         if file_path is None:
             self.set_df()
             self.date_uploaded = datetime.datetime.utcnow()
-            self.file_path = uploaded_file_path + ".working.txt"
+            self.file_path = uploaded_file_path + ".working.parquet"
             self.update_dataframe()
 
         # TODO Do we ever get here?
         else:
-            self.df = pd.read_csv(self.file_path, sep="\t")
+            if self.file_path.endswith("txt"):
+                self.df = pd.read_csv(self.file_path, sep='\t')
+            else:
+                self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
 
     @timeit
     def init_on_load(self):
@@ -142,7 +147,10 @@ class Spreadsheet(db.Model):
         self.error = False
         try:
             if self.file_path:
-                self.df = pd.read_csv(self.file_path, sep="\t")
+                if self.file_path.endswith("txt"):
+                    self.df = pd.read_csv(self.file_path, sep='\t')
+                else:
+                    self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
         except Exception as e:
             # The parser failed...we may be able to recover.
             print(e)
@@ -329,7 +337,10 @@ class Spreadsheet(db.Model):
 
     @timeit
     def update_dataframe(self):
-        self.df.to_csv(self.file_path, sep="\t", index=False)
+        if self.file_path.endswith("txt"):
+            self.df.to_csv(self.file_path, sep="\t", index=False)
+        else:
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(self.df), self.file_path)
 
     def reduce_dataframe(self, breakpoint):
         above_breakpoint = self.df.iloc[:breakpoint+1]
