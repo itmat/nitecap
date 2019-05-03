@@ -351,8 +351,8 @@ class Spreadsheet(db.Model):
             # in order to write out, we always need our non-numeric columns to be type string
             # otherwise parquet gives unpredictable results and errors
             str_columns = [col for col,typ in self.df.dtypes.items() if typ == object]
-            self.df[str_columns].astype('str', copy=False)
-            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(self.df), self.file_path)
+            df = self.df.astype({col: 'str' for col in str_columns})
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(df), self.file_path)
 
     def reduce_dataframe(self, breakpoint):
         above_breakpoint = self.df.iloc[:breakpoint+1]
