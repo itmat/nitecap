@@ -348,6 +348,10 @@ class Spreadsheet(db.Model):
         if self.file_path.endswith("txt"):
             self.df.to_csv(self.file_path, sep="\t", index=False)
         else:
+            # in order to write out, we always need our non-numeric columns to be type string
+            # otherwise parquet gives unpredictable results and errors
+            str_columns = [col for col,typ in self.df.dtypes.items() if typ == object]
+            self.df[str_columns].astype('str', copy=False)
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(self.df), self.file_path)
 
     def reduce_dataframe(self, breakpoint):
