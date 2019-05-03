@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 from pathlib import Path
+import io
 
 import magic
 import numpy
@@ -387,8 +388,14 @@ def download_spreadsheet():
             errors.append('You may only manage your own spreadsheets.')
             current_app.logger.warn(f"Visitor attempted to download spreadsheet {spreadsheet_id}")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
+    spreadsheet.init_on_load()
+    txt_data = io.StringIO()
+    spreadsheet.df.to_csv(txt_data, sep='\t')
+
     try:
-        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        return send_file(txt_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        #return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
@@ -413,8 +420,14 @@ def download(spreadsheet_id):
         errors.append('You may only manage your own spreadsheets.')
         current_app.logger.warn(f"User {user.id} attempted to download spreadsheet {spreadsheet_id}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    spreadsheet.init_on_load()
+    txt_data = io.StringIO()
+    spreadsheet.df.to_csv(txt_data, sep='\t')
+
     try:
-        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        return send_file(txt_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        #return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
