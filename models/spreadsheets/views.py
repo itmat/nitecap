@@ -392,10 +392,11 @@ def download_spreadsheet():
     spreadsheet.init_on_load()
     txt_data = io.StringIO()
     spreadsheet.df.to_csv(txt_data, sep='\t')
+    txt = txt_data.getvalue()
+    byte_data = io.BytesIO(str.encode(txt))
 
     try:
-        return send_file(txt_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
-        #return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
@@ -424,10 +425,11 @@ def download(spreadsheet_id):
     spreadsheet.init_on_load()
     txt_data = io.StringIO()
     spreadsheet.df.to_csv(txt_data, sep='\t')
+    txt = txt_data.getvalue()
+    byte_data = io.BytesIO(str.encode(txt))
 
     try:
-        return send_file(txt_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
-        #return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
