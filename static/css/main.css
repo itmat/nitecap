@@ -14,7 +14,7 @@
 .coarse-slider {
     -webkit-appearance: none;
     background: #BBB;
-    width: 1000px;
+    width: 100%;
     margin: 10px 0 10px 0;
     opacity: 2;
 }

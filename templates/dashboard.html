@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+
+    <div class="page-header">
+        <h1>Dashboard</h1>
+    </div>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div id="navbarNav" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{url_for('users.display_users')}}">Display Users</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('spreadsheets.display_visitor_spreadsheets') }}">
+                        Display Visitor Spreadsheets
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-content container">
+        {% block dashboard_content %}
+        {% endblock %}
+    </div>
+
+{% endblock %}

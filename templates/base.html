@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-138419827-1"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'UA-138419827-1');
-    </script>
+    <script>console.log("{{ config['ENV'] }}")</script>
+    {% if config['ENV'] == 'production' %}
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-138419827-1"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'UA-138419827-1');
+        </script>
+    {%  endif %}
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -31,6 +33,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/3.0.1/mustache.min.js"></script>
     <script src="{{ url_for('static', filename='js/moment.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </head>
@@ -60,10 +63,12 @@
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.register_user') }}">Register</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.login_user', next=request.path ) }}">Login</a></li>
                 {% else %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('users.update_profile') }}">Profile for {{ session['email'] }}</a></li>
+                    {% if session['email'] in config.ADMIN_LIST %}
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    {% endif %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('users.update_profile') }}">Profile for {{ session['email'] }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
                 {% endif %}
-                <li class="nav-item"><a class="nav-link" href="#"></a></li>
                 <li class="nav-item">
                     <a class="nav-link" href="http://www.itmat.upenn.edu">
                         <img src="{{ url_for('static', filename='images/itmat_logo.svg') }}" alt="ITMAT logo" height=75px>

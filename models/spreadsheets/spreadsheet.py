@@ -5,10 +5,12 @@ import uuid
 import subprocess
 from parser import ParserError
 from pathlib import Path
+import re
 
 import pandas as pd
 import numpy
-import re
+import pyarrow
+import pyarrow.parquet
 import constants
 
 from sqlalchemy import orm
@@ -45,6 +47,7 @@ class Spreadsheet(db.Model):
     max_value_filter = db.Column(db.FLOAT)
     last_access = db.Column(db.DateTime, nullable=False)
     ids_unique = db.Column(db.Boolean, nullable=False, default=0)
+    note = db.Column(db.String(5000))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
 
@@ -102,6 +105,7 @@ class Spreadsheet(db.Model):
         self.breakpoint = breakpoint
         self.last_access = last_access if last_access else datetime.datetime.utcnow()
         self.ids_unique = ids_unique
+        self.note = ''
 
         # The user id of the owner of the spreadsheet is part of the spreadsheet record.  But since visitors can upload
         # spreadsheets, we need to supply a generic user id in that case.  The generic user (the anonymous user) is
@@ -115,12 +119,15 @@ class Spreadsheet(db.Model):
         if file_path is None:
             self.set_df()
             self.date_uploaded = datetime.datetime.utcnow()
-            self.file_path = uploaded_file_path + ".working.txt"
+            self.file_path = uploaded_file_path + ".working.parquet"
             self.update_dataframe()
 
         # TODO Do we ever get here?
         else:
-            self.df = pd.read_csv(self.file_path, sep="\t")
+            if self.file_path.endswith("txt"):
+                self.df = pd.read_csv(self.file_path, sep='\t')
+            else:
+                self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
 
     @timeit
     def init_on_load(self):
@@ -140,7 +147,10 @@ class Spreadsheet(db.Model):
         self.error = False
         try:
             if self.file_path:
-                self.df = pd.read_csv(self.file_path, sep="\t")
+                if self.file_path.endswith("txt"):
+                    self.df = pd.read_csv(self.file_path, sep='\t')
+                else:
+                    self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
         except Exception as e:
             # The parser failed...we may be able to recover.
             print(e)
@@ -245,6 +255,7 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
         return [column for column, label in ordered_columns]
 
+    @timeit
     def get_ids(self, *args):
         """
         Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
@@ -257,8 +268,15 @@ class Spreadsheet(db.Model):
                           if column_label == Spreadsheet.ID_COLUMN]
         else:
             id_indices = args[0]
-        print(f"id_indices: {id_indices}")
-        return self.df.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1)
+
+        if len(id_indices) == 1:
+            return self.df.iloc[:,id_indices[0]].astype(str).tolist()
+
+        # Concatenate the id columns using pandas.Series.str.cat() function
+        # convert to type string first since otherwise blank entries will result in float('NaN')
+        first_id = id_indices[0]
+        concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ')
+        return concats.tolist()
 
     def find_replicate_ids(self, *args):
         ids = list(self.get_ids(*args))
@@ -327,7 +345,14 @@ class Spreadsheet(db.Model):
 
     @timeit
     def update_dataframe(self):
-        self.df.to_csv(self.file_path, sep="\t", index=False)
+        if self.file_path.endswith("txt"):
+            self.df.to_csv(self.file_path, sep="\t", index=False)
+        else:
+            # in order to write out, we always need our non-numeric columns to be type string
+            # otherwise parquet gives unpredictable results and errors
+            str_columns = [col for col,typ in self.df.dtypes.items() if typ == object]
+            df = self.df.astype({col: 'str' for col in str_columns})
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(df), self.file_path)
 
     def reduce_dataframe(self, breakpoint):
         above_breakpoint = self.df.iloc[:breakpoint+1]
@@ -461,6 +486,14 @@ class Spreadsheet(db.Model):
         else:
             return None
 
+    def get_total_diskspace_used(self):
+        """
+        Get the total size in MB of the disk space consumed by the original spreadsheet file and
+        its processed equivalent.
+        :return: total used diskspace in MB of this spreadsheet object.
+        """
+        return round((os.path.getsize(self.uploaded_file_path) + os.path.getsize(self.file_path))/1E6,3)
+
     @timeit
     def save_to_db(self):
         """
@@ -503,7 +536,24 @@ class Spreadsheet(db.Model):
         only by a visitor.
         :return: True if the spreadsheet belongs to a credentialed user and False otherwise.
         """
-        return not self.user.is_annoymous_user()
+        return not self.user.is_anonymous_user()
+
+    def delete(self):
+        """
+        Deletes this spreadsheet by removing it from the spreadsheets database table and removing its
+        file footprint.
+        :return: an error message or None in the case of no error
+        """
+        error = None
+        error_message = f"The data for spreadsheet {self.id} could not all be successfully expunged."
+        try:
+            self.delete_from_db()
+            os.remove(self.file_path)
+            os.remove(self.uploaded_file_path)
+        except Exception as e:
+            current_app.logger.error(error_message, e)
+            error = error_message
+        return error
 
     def apply_filters(self):
         self.df["filtered_out"] = False
@@ -550,7 +600,10 @@ class Spreadsheet(db.Model):
         share_filename = uuid.uuid4().hex + extension
         share_file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), share_filename)
         copyfile(spreadsheet.uploaded_file_path, share_file_path)
-        share_processed_file_path = share_file_path + ".working.txt"
+        if spreadsheet.file_path.endswith("txt"):
+            share_processed_file_path = share_file_path + ".working.txt"
+        else:
+            share_processed_file_path = share_file_path + ".working.parquet"
         copyfile(spreadsheet.file_path, share_processed_file_path)
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
                                   days=spreadsheet.days,

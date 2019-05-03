@@ -2,10 +2,13 @@ import json
 import os
 import uuid
 from pathlib import Path
+import io
 
 import magic
 import numpy
 import pandas as pd
+import pyarrow
+import pyarrow.parquet
 from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify
 from flask import current_app
 from sklearn.decomposition import PCA
@@ -14,7 +17,7 @@ import constants
 import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from models.users.decorators import requires_login
+from models.users.decorators import requires_login, requires_admin
 from models.users.user import User
 from timer_decorator import timeit
 
@@ -192,6 +195,7 @@ def identify_spreadsheet_columns():
 
 
 @spreadsheet_blueprint.route('/set_spreadsheet_breakpoint/<int:spreadsheet_id>', methods=['GET'])
+@timeit
 def set_spreadsheet_breakpoint(spreadsheet_id):
     """
     Misnamed at this point.  Takes the user to the page which displays the processed data in a series of graphs and
@@ -212,7 +216,7 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
 
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
-    ids = list(spreadsheet.get_ids())
+    ids = json.dumps(spreadsheet.get_ids())
 
     # Certain functionality exists on the display page only if the user is not a visitor.  A logged in user is
     # recognized by his/her email address in the session cookie.  If there is no email in the cookie or if the
@@ -220,19 +224,19 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
     # delivered to the template.
     user_email = session['email'] if 'email' in session else None
     user = User.find_by_email(user_email) if user_email else None
-    anonymous = not user or user.is_annoymous_user()
+    anonymous = not user or user.is_anonymous_user()
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
                            data=data.to_json(orient='values'),
                            x_values=spreadsheet.x_values,
                            x_labels=spreadsheet.x_labels,
                            x_label_values=spreadsheet.x_label_values,
-                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
+                           qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
+                           ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                           amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
+                           peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
+                           anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
+                           anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
+                           filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
                            ids=ids,
                            column_pairs=spreadsheet.column_pairs,
                            breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -245,6 +249,7 @@ def set_spreadsheet_breakpoint(spreadsheet_id):
 
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_login
+@timeit
 def show_spreadsheet(spreadsheet_id):
     """
     This retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
@@ -277,27 +282,30 @@ def show_spreadsheet(spreadsheet_id):
     session["spreadsheet_id"] = spreadsheet.id
 
     data = spreadsheet.get_raw_data()
+
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
-    ids = list(spreadsheet.get_ids())
-    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
-                           data=data.to_json(orient='values'),
-                           x_values=spreadsheet.x_values,
-                           x_labels=spreadsheet.x_labels,
-                           x_label_values=spreadsheet.x_label_values,
-                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
-                           ids=ids,
-                           column_pairs=spreadsheet.column_pairs,
-                           breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                           descriptive_name=spreadsheet.descriptive_name,
-                           timepoints_per_day=spreadsheet.timepoints,
-                           spreadsheet_id=session['spreadsheet_id'],
-                           max_value_filter=max_value_filter)
+    ids = json.dumps(spreadsheet.get_ids())
+
+    args = dict( data=data.to_json(orient='values'),
+                 x_values=spreadsheet.x_values,
+                 x_labels=spreadsheet.x_labels,
+                 x_label_values=spreadsheet.x_label_values,
+                 qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
+                 ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                 amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
+                 peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
+                 anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
+                 anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
+                 filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
+                 ids=ids,
+                 column_pairs=spreadsheet.column_pairs,
+                 breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                 descriptive_name=spreadsheet.descriptive_name,
+                 timepoints_per_day=spreadsheet.timepoints,
+                 spreadsheet_id=session['spreadsheet_id'],
+                 max_value_filter=max_value_filter)
+
+    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',**args)
 
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
@@ -320,7 +328,7 @@ def display_spreadsheets():
     This method takes the logging in user to a listing of his/her spreadsheets.  The decorator assures that only logged
     in users may make such a request.
     """
-    current_app.logger.info(f"Displaing spreadsheets for user {session['email']}")
+    current_app.logger.info(f"Displaying spreadsheets for user {session['email']}")
     user = User.find_by_email(session['email'])
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
@@ -380,8 +388,15 @@ def download_spreadsheet():
             errors.append('You may only manage your own spreadsheets.')
             current_app.logger.warn(f"Visitor attempted to download spreadsheet {spreadsheet_id}")
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
+    spreadsheet.init_on_load()
+    txt_data = io.StringIO()
+    spreadsheet.df.to_csv(txt_data, sep='\t')
+    txt = txt_data.getvalue()
+    byte_data = io.BytesIO(str.encode(txt))
+
     try:
-        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
@@ -406,8 +421,15 @@ def download(spreadsheet_id):
         errors.append('You may only manage your own spreadsheets.')
         current_app.logger.warn(f"User {user.id} attempted to download spreadsheet {spreadsheet_id}")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    spreadsheet.init_on_load()
+    txt_data = io.StringIO()
+    spreadsheet.df.to_csv(txt_data, sep='\t')
+    txt = txt_data.getvalue()
+    byte_data = io.BytesIO(str.encode(txt))
+
     try:
-        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
@@ -510,7 +532,7 @@ def edit_columns():
 def save_filters():
     """
     Response to ajax request to apply filters set on the graphs page.  Those filter values are also saved to the
-    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annoymous user).
+    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annonymous user).
     :return: A json string containing filtered values along with associated q values and p values.
     """
     json_data = request.get_json()
@@ -690,6 +712,7 @@ def compare():
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
+@timeit
 def get_upside():
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
@@ -714,13 +737,13 @@ def get_upside():
 
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.txt")
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
-            comp_data = pd.read_table(file_path)
+            comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
             upside_ps.append(comp_data["upside_ps"].values.tolist())
             upside_qs.append(comp_data["upside_qs"].values.tolist())
             current_app.logger.info(f"Loaded upside values from file {file_path}")
-        except FileNotFoundError:
+        except OSError: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
                 dfs = []
                 for spreadsheet in spreadsheets:
@@ -748,10 +771,11 @@ def get_upside():
             comp_data = pd.DataFrame(index=df.index)
             comp_data["upside_ps"] = upside_p
             comp_data["upside_qs"] = upside_q
-            comp_data.to_csv(file_path, sep="\t")
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
+
             upside_ps.append(upside_p.tolist())
             upside_qs.append(upside_q.tolist())
-            current_app.logger.info("Compute upside values and saved them to file {file_path}")
+            current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
 
     return jsonify({
                 'upside_ps': upside_ps,
@@ -764,6 +788,8 @@ def run_pca():
     args = json.loads(request.data)
     spreadsheet_ids = args['spreadsheet_ids']
     selected_genes = args['selected_genes']
+    take_zscore = args['take_zscore']
+    take_log_transform = args['take_logtransform']
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
     datasets = []
@@ -800,12 +826,13 @@ def run_pca():
                     for i in range(len(spreadsheets))
                     for column in spreadsheets[i].get_data_columns()]
 
-    # TODO: both z-scores and log(x) or log(1+x) should be options for normalization before PCA
-    #       and if both, z-scores should be done after log transform
-    # log(1+x) normalize data
-    df[data_columns] = numpy.log(1 + df[data_columns])
-    # Normalize to z-scored data across both datasets
-    # df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
+    if take_log_transform:
+        # log(1+x) transform data
+        df[data_columns] = numpy.log(1 + df[data_columns])
+
+    if take_zscore:
+        # Normalize to z-scored data across both datasets
+         df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
 
     # Extract individual datasets
     for i in [0, 1]:
@@ -874,9 +901,7 @@ def save_cutoff():
     errors = []
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
-    cutoff = json_data.get('cutoff', None)
-    if not cutoff:
-        cutoff = 0
+    cutoff = json_data.get('cutoff', 0)
     if not spreadsheet_id:
         errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
         return jsonify({'error': errors}), 400
@@ -888,3 +913,65 @@ def save_cutoff():
     spreadsheet.breakpoint = cutoff
     spreadsheet.save_to_db()
     return '', 204
+
+
+@spreadsheet_blueprint.route('/save_note', methods=['POST'])
+@requires_login
+def save_note():
+    """
+    REST function - accepts a json object { spreadsheet_id: spreadsheet id, note: note } and saves the contents
+    of that note to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be sure
+    that it represents a spreadsheet owned by this logged in user.  A successful save results in no content
+    returned.  Otherwise an error is returned with the appropriate status code.
+    :return: no content or { error: error } and a 400 or 404 code.
+    """
+    errors = []
+    user = User.find_by_email(session['email'])
+    json_data = request.get_json()
+    note = json_data.get('note', '')
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+    if not spreadsheet_id:
+        errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
+        return jsonify({'error': errors}), 400
+    else:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        errors.append('The spreadsheet being requested could not be found.')
+        return jsonify({'error': errors}), 404
+    spreadsheet.note = note
+    spreadsheet.save_to_db()
+    return '', 204
+
+
+@spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
+@requires_admin
+def display_visitor_spreadsheets():
+    """
+    Administrative function only - lists the spreadsheets owned by the anonymous user.
+    """
+    user = User.find_by_username("annonymous")
+    return render_template('spreadsheets/display_visitor_spreadsheets.html', user=user)
+
+
+@spreadsheet_blueprint.route('/delete_visitor_spreadsheets', methods=['POST'])
+@requires_admin
+def delete_visitor_spreadsheets():
+    """
+    Administrative REST function only - deletes the database table entry and the files associated with each of the
+    spreadsheets whose ids are provided via a json object { spreadsheet_list: [spreadsheet ids].  That the
+    spreadsheet is NOT owned (i.e., belongs to the anonymous user) is checked before removal and only those
+    belonging to the anonymous user are removed.  If removal is incomplete, the error is noted but removals of other
+    spreadsheets continue.  If any problem occurred for any removal a 500 status code will be returned along with
+    an error message.
+    :return: json object - { errors: [error msgs] } with a status code of 500 if errors occurred and 200 otherwise.
+    """
+    errors = []
+    spreadsheet_ids = json.loads(request.data).get('spreadsheet_list', None)
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+        if spreadsheet and not spreadsheet.owned():
+            error = spreadsheet.delete()
+            if error:
+                errors.append(error)
+    status_code = 500 if errors else 200
+    return jsonify({'errors': errors}), status_code

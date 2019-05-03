@@ -165,12 +165,13 @@ class User(db.Model):
         errors = []
         subject = 'User registration confirmation for Nitecap access'
         sender = os.environ.get('EMAIL_SENDER')
-        link = request.url_root[:-1] + url_for("confirmations.confirm_user", confirmation_id=self.most_recent_confirmation.id)
+        link = request.url_root[:-1] + url_for("confirmations.confirm_user",
+                                               confirmation_id=self.most_recent_confirmation.id)
         content = f'Please click on this link to confirm your registration. {link}'
         error = self.send_email(subject, sender, content)
         if error:
             errors.append("A confirmation email could not be sent at this time.  "
-                      "Please attempt a registration later or notify us of the problem.")
+                          "Please attempt a registration later or notify us of the problem.")
         return errors
 
     def send_reset_email(self):
@@ -221,7 +222,7 @@ class User(db.Model):
             error = True
         return error
 
-    def get_reset_token(self, expires_sec = 1800):
+    def get_reset_token(self, expires_sec=1800):
         """
         Uses the SECRET_KEY to fashion a token which contains the user's id.  The token is emailed to the user when a
         password reset request is made.  The user is recognized by the token's contents and allowed then to update his/
@@ -274,6 +275,23 @@ class User(db.Model):
         db.session.delete(self)
         db.session.commit()
 
+    @classmethod
+    def find_all_users(cls):
+        return cls.query.all()
+
+    @staticmethod
+    def spreadsheet_counts():
+        """
+        Finds the number of spreadsheets owned by each user
+        :return: a map of user_id to spreadsheet count.  The absense of a user_id indicates the the user owns no
+        spreadsheets
+        """
+        from sqlalchemy import func
+        from models.spreadsheets.spreadsheet import Spreadsheet
+        results = db.session.query(User.id, func.count(Spreadsheet.id)).join(User.spreadsheet).group_by(User.id).all()
+        user_counts_map = {user_id : spreadsheet_count for user_id, spreadsheet_count in results}
+        return user_counts_map
+
     @staticmethod
     def check_existence(email, password):
         """
@@ -306,7 +324,7 @@ class User(db.Model):
         user.save_to_db()
         return user
 
-    def is_annoymous_user(self):
+    def is_anonymous_user(self):
         return self.username == 'annonymous'
 
     def get_share_token(self, spreadsheet_id, row_index=0):
@@ -334,12 +352,24 @@ class User(db.Model):
         try:
             user_id = s.loads(token)['user_id']
             user = User.find_by_id(user_id)
-            if(not user):
+            if not user:
                 return None
             return user, s.loads(token)['spreadsheet_id'], s.loads(token)['row_index']
         except:
             return None
 
-
-
+    def delete(self):
+        """
+        Removes this user from the database and discards any spreadsheets belonging to this user.  Spreadsheets that
+        are unsuccessfully removed from the disk are noted in the log only.
+        """
+        for spreadsheet in self.spreadsheets:
+            try:
+                spreadsheet.delete_from_db()
+                os.remove(spreadsheet.file_path)
+                os.remove(spreadsheet.uploaded_file_path)
+            except Exception as e:
+                current_app.logger.error(f"The data for spreadsheet {spreadsheet.id} could not all be successfully "
+                                         f"expunged. It may be orphaned.", e)
+        self.delete_from_db()
 
