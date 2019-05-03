@@ -600,7 +600,10 @@ class Spreadsheet(db.Model):
         share_filename = uuid.uuid4().hex + extension
         share_file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), share_filename)
         copyfile(spreadsheet.uploaded_file_path, share_file_path)
-        share_processed_file_path = share_file_path + ".working.txt"
+        if spreadsheet.file_path.endswith("txt"):
+            share_processed_file_path = share_file_path + ".working.txt"
+        else:
+            share_processed_file_path = share_file_path + ".working.parquet"
         copyfile(spreadsheet.file_path, share_processed_file_path)
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
                                   days=spreadsheet.days,
