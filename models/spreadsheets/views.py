@@ -20,10 +20,16 @@ from timer_decorator import timeit
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
+MANAGE_OWN_SPREADSHEETS_ERROR = "You may only manage your own spreadsheets."
+MISSING_SPREADSHEET_ID_ERROR = "No spreadsheet id was provided."
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET', 'POST'])
 @timeit
 def load_spreadsheet():
+    """
+    Endpoint for uploading a new spreadsheet.  Extensive validation and evaluation of mime types.  If the user
+    uploading the spreadsheet is not logged in, a visitor account is assigned to the user.
+    """
     current_app.logger.info('Loading spreadsheet')
     if request.method == 'POST':
 
@@ -98,6 +104,7 @@ def load_spreadsheet():
         # Save the spreadsheet metadata to the database.
         spreadsheet.save_to_db()
 
+        # Continue to form that labels the spreadsheet columns.
         return redirect(url_for('.label_columns', spreadsheet_id=spreadsheet.id))
 
     return render_template('spreadsheets/spreadsheet_upload_form.html')
@@ -182,7 +189,7 @@ def validate_mime_type(file_path):
 
 def access_not_permitted(endpoint, user, visitor, spreadsheet_id):
     """
-    Common code for situation where user attempts to access a spreadsheet that does not belong to him/her.
+    Helper method for situation where user attempts to access a spreadsheet that does not belong to him/her.
     :param user: object of user attempting the access
     :param visitor: whether or not the user is a visitor (the page a visitor is dropped into is different from
     that of a logged in user
@@ -190,7 +197,7 @@ def access_not_permitted(endpoint, user, visitor, spreadsheet_id):
     :return: an appropriate page to which to return the user.
     """
     errors = []
-    errors.append('You may only manage your own spreadsheets.')
+    errors.append(MANAGE_OWN_SPREADSHEETS_ERROR)
     current_app.logger.warn(f"User {user.id} attempted to apply the endpoint {endpoint} to "
                             f"spreadsheet {spreadsheet_id}")
     if visitor:
@@ -249,7 +256,6 @@ def show_spreadsheet(spreadsheet_id, **kwargs):
     :param spreadsheet_id: the id of the spreadsheet whose results are to be displayed.
     :param kwargs: the decorator returns the user object here
     """
-    errors = []
     user = kwargs['user']
     visitor = session['visitor']
 
@@ -298,8 +304,18 @@ def show_spreadsheet(spreadsheet_id, **kwargs):
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
 @timeit
-def get_jtk():
+@requires_account
+def get_jtk(**kwargs):
+
+    user = kwargs['user']
+    visitor = session['visitor']
+
+
     spreadsheet_id = json.loads(request.data)['spreadsheet_id']
+
+    if not spreadsheet_id:
+        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
+
     spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
 
     # Populate
@@ -311,33 +327,38 @@ def get_jtk():
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
 @requires_login
-def display_spreadsheets():
+def display_spreadsheets(**kwargs):
     """
     This method takes the logged in user to a listing of his/her spreadsheets.  The decorator assures that only logged
     in users may make such a request.
     """
-    current_app.logger.info(f"Displaying spreadsheets for user {session['email']}")
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
+    current_app.logger.info(f"Displaying spreadsheets for user {user.username}")
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
 
 @spreadsheet_blueprint.route('/delete', methods=['POST'])
 @requires_login
-def delete():
+def delete(**kargs):
     """
-    Rest call to delete the user's spreadsheet data and its metadata.  The user must own the spreadsheet given by the
-    id provided.  The reference to the spreadsheet is first removed from the database and then the associated files
-    are removed.  Any incomplete removal is reported to the user and logged.
+    Ajax call to delete the user's spreadsheet data and its metadata.  The user must be logged in and own the
+    spreadsheet given by the id provided.  The reference to the spreadsheet is first removed from the database and then
+    the associated files are removed.  Any incomplete removal is reported to the user and logged.
     :return: A successful ajax call returns nothing (just a 204 status code).
     """
+
+    user = kargs['user']
+
     spreadsheet_id = json.loads(request.data).get('spreadsheet_id', None)
+
     if not spreadsheet_id:
-        return jsonify({"error": "No spreadsheet id provided."}), 400
-    user = User.find_by_email(session['email'])
+        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
+
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
         current_app.logger.warn(f"User {user.id} attempted to delete spreadsheet {spreadsheet_id}")
-        return jsonify({"error": "You may only manage your own spreadsheets"}), 403
+        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_ERROR}), 403
+
     try:
         spreadsheet.delete_from_db()
         os.remove(spreadsheet.file_path)
@@ -351,7 +372,7 @@ def delete():
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
 @requires_account
-def download(spreadsheet_id):
+def download(spreadsheet_id, **kwargs):
     """
     Response to a request from the graphs page to download the spreadsheet whose id is in the session.  In this case,
     the user need not be logged in.  Nevertheless, the requested spreadsheet must be in the user's inventory.  In the
@@ -360,17 +381,12 @@ def download(spreadsheet_id):
     spreadsheet is delivered as an attachment.
     """
     errors = []
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
     visitor = session['visitor']
-    spreadsheet = None
-    if user:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        if not spreadsheet:
-            errors.append('You may only manage your own spreadsheets.')
-            current_app.logger.warn(f"User {user.id} attempted to download spreadsheet {spreadsheet_id}")
-            if visitor:
-                render_template('spreadsheets/spreadsheet_upload_form.html', user=user, errors=errors)
-            return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+    if not spreadsheet:
+            return access_not_permitted(download.__name__, user, visitor, spreadsheet_id)
     try:
         return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
@@ -391,6 +407,8 @@ def edit_details(spreadsheet_id, **kwargs):
     errors = []
     user = kwargs['user']
     visitor = session['visitor']
+
+    # Insure user owns spreadsheet
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
         access_not_permitted(edit_details.__name__, user, visitor, spreadsheet_id)
@@ -445,16 +463,19 @@ def save_filters(**kwargs):
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet_id = json_data.get('spreadsheet_id', None)
 
+    # Bad data
     if not spreadsheet_id:
-        return jsonify({"error": "No spreadsheet id was provided."}), 400
+        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
 
+    # Collect spreadsheet owned by user
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
+    # Attempt to access spreadsheet not owned.
     if not spreadsheet:
         current_app.logger.warn(f"User {user.id} attempted to save spreadsheet filters {spreadsheet_id}")
-        return jsonify({"error": "You may only manage your own spreadsheets"}), 403
+        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_ERROR}), 403
 
-    # Populate
+    # Populate spreadsheet with raw data
     spreadsheet.init_on_load()
 
     spreadsheet.max_value_filter = float(max_value_filter) if max_value_filter else None
@@ -477,20 +498,22 @@ def share(**kwargs):
     :param kwargs: the decorator returns the user object here
     :return: json {'share': <token>}
     """
-    errors = []
+
+    # Presumed spreadsheet owner
     user = kwargs['user']
+
+    # Collect json data
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     row_index = json_data.get('row_index', 0)
 
     # Bad data
     if not spreadsheet_id:
-        return jsonify({"error": "No spreadsheet id was provided."}), 400
+        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
 
     # Attempt to access spreadsheet not owned.
     if not user.find_user_spreadsheet_by_id(spreadsheet_id):
-        errors.append('You may only manage your own spreadsheets.')
-        return jsonify({"errors": errors}, 401)
+        return jsonify({"errors": MANAGE_OWN_SPREADSHEETS_ERROR}, 401)
 
     current_app.logger.info(f"Sharing spreadsheet {spreadsheet_id} and row index {row_index}")
     return jsonify({'share': user.get_share_token(spreadsheet_id, row_index)})
@@ -504,11 +527,7 @@ def consume_share(token):
     by the sharing user.  If either the sharing user does not exist or the spreadsheet to be shared does not exist in
     the sharing user's inventory, the receiving user is directed to the upload spreadsheet page and informed that the
     token was not comprehensible.  Otherwise a copy of all facets of the spreadsheet is made and assigned to the
-    receiving user (if logged in) or to a visitor account.  The logged in receiving user is taken to the show
-    spreadsheet method while the non-logged in user is taken to the set spreadsheet breakpoint method since logged
-    in users and visitors are handled differently.  If a visitor chooses to login before abandoning the spreadsheet, the
-    spreadsheet will be added to that receiving user's inventory.  The sharing user has no control over further
-    dissemination.
+    receiving user.  If the current user is not logged in, the user is assigned a visitor account.
     :param token: the share token given to the receiving user
     """
     errors = []
@@ -821,36 +840,40 @@ def check_id_uniqueness():
 
 
 @spreadsheet_blueprint.route('/save_cutoff', methods=['POST'])
-def save_cutoff():
+@requires_account
+def save_cutoff(**kwargs):
     """
     When the user selects a significance cutoff, in addition to showing the heatmap, the cutoff value is saved to the
     spreadsheet database record.
     :return: Nothing is return in the event of a successful save.  Otherwise an error message is returned.
     """
-    if 'email' in session:
-        user = User.find_by_email(session['email'])
-    else:
-        user = User.find_by_username("annonymous")
+
     errors = []
+    user = kwargs['user']
+
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     cutoff = json_data.get('cutoff', 0)
+
+    # Spreadsheet id is required.
     if not spreadsheet_id:
-        errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
-        return jsonify({'error': errors}), 400
-    else:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
+
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+
     if not spreadsheet:
         errors.append('The spreadsheet being requested could not be found.')
         return jsonify({'error': errors}), 404
+
     spreadsheet.breakpoint = cutoff
     spreadsheet.save_to_db()
     return '', 204
 
 
 @spreadsheet_blueprint.route('/save_note', methods=['POST'])
-@requires_login
-def save_note():
+@requires_account
+def save_note(**kwargs):
     """
     REST function - accepts a json object { spreadsheet_id: spreadsheet id, note: note } and saves the contents
     of that note to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be sure
@@ -859,15 +882,19 @@ def save_note():
     :return: no content or { error: error } and a 400 or 404 code.
     """
     errors = []
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
+
+    # Gather json data
     json_data = request.get_json()
     note = json_data.get('note', '')
     spreadsheet_id = json_data.get('spreadsheet_id', None)
+
+    # Spreadsheet id is required.
     if not spreadsheet_id:
-        errors.append("No spreadsheet was identified. Make sure you are selecting one you are displaying.")
-        return jsonify({'error': errors}), 400
-    else:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
+
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
     if not spreadsheet:
         errors.append('The spreadsheet being requested could not be found.')
         return jsonify({'error': errors}), 404
