@@ -29,6 +29,11 @@ def requires_login(func):
            'email' not in session.keys() or session['email'] is None:
             flash("You must either be logged in to perform this activity.")
             return redirect(url_for('users.login_user', next=request.path))
+        user = User.find_by_email(session['email'])
+        if not user:
+            flash("You must be logged in to perform this activity.")
+            return redirect(url_for('users.login_user', next=request.path))
+        kwargs['user'] = user
         return func(*args, **kwargs)
     return decorated_function
 

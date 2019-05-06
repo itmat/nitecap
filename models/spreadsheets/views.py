@@ -469,22 +469,30 @@ def save_filters(**kwargs):
 
 @spreadsheet_blueprint.route('/share', methods=['POST'])
 @requires_login
-def share():
+def share(**kwargs):
     """
     Response to ajax request by logged in user to share one of the user's spreadsheets.  Incoming json specifies the
-    spreadsheet to share.  Confirm that it indeed belongs to the user and if so, returns a token which encrypts the
-    spreadsheet id.
+    spreadsheet and the cutoff to share.  Confirms that it indeed belongs to the user and if so, returns a token which
+    encrypts the spreadsheet id and cutoff.
+    :param kwargs: the decorator returns the user object here
     :return: json {'share': <token>}
     """
     errors = []
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     row_index = json_data.get('row_index', 0)
-    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_id} and row index {row_index}")
+
+    # Bad data
+    if not spreadsheet_id:
+        return jsonify({"error": "No spreadsheet id was provided."}), 400
+
+    # Attempt to access spreadsheet not owned.
     if not user.find_user_spreadsheet_by_id(spreadsheet_id):
         errors.append('You may only manage your own spreadsheets.')
         return jsonify({"errors": errors}, 401)
+
+    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_id} and row index {row_index}")
     return jsonify({'share': user.get_share_token(spreadsheet_id, row_index)})
 
 
@@ -493,10 +501,10 @@ def consume_share(token):
     """
     Response to a standard get request to obtain a shared spreadsheet.  The token is verified and the spreadsheet is
     checked against the sharing user's inventory to be sure that the spreadsheet still exists and is in fact, owned
-    by the sharing user.  If either the sharing user does not exist or the spreadsheet to be sharing does not exist in
+    by the sharing user.  If either the sharing user does not exist or the spreadsheet to be shared does not exist in
     the sharing user's inventory, the receiving user is directed to the upload spreadsheet page and informed that the
     token was not comprehensible.  Otherwise a copy of all facets of the spreadsheet is made and assigned to the
-    receiving user (if logged in) or to the annonymous user.  The logged in receiving user is taken to the show
+    receiving user (if logged in) or to a visitor account.  The logged in receiving user is taken to the show
     spreadsheet method while the non-logged in user is taken to the set spreadsheet breakpoint method since logged
     in users and visitors are handled differently.  If a visitor chooses to login before abandoning the spreadsheet, the
     spreadsheet will be added to that receiving user's inventory.  The sharing user has no control over further
@@ -513,7 +521,7 @@ def consume_share(token):
                       "another share")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
-
+    # Identify the account of the current user.  If no account exists, create a visitor account.
     user = None
     if 'email' in session:
         user = User.find_by_email(session['email'])
@@ -531,14 +539,15 @@ def consume_share(token):
         current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
+    # Create a copy of the sharing user's spreadsheet for the current user.
     shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
     if shared_spreadsheet:
-
         if row_index:
             shared_spreadsheet.breakpoint = row_index
             shared_spreadsheet.save_to_db()
-        return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint', spreadsheet_id=spreadsheet.id))
-    errors.append("The spreadsheetscould not be shared.")
+        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+
+    errors.append("The spreadsheet could not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
 
