@@ -81,8 +81,8 @@ class Spreadsheet(db.Model):
         :param num_replicates_str: A comma delimited listing of the number of replicates identified for each timepoint.
         :param max_value_filter: A value below which rows having smaller maximum values are filter out.
         :param last_access: A timestamp indicating when the spreadsheet was last accessed (actually last updated)
-        :param user_id: The id of the spreadsheet's owner.  For visitor spreadsheets, the owner is the anonymous
-        user.
+        :param user_id: The id of the spreadsheet's owner.  Visitors have individual (although more transitory)
+        accounts and consequently a user id.
         :param date_uploaded:  The timestamp at which the original spreadsheet was uploaded.
         :param ids_unique:  Flag indicating whether the ids are unique given the columns selected as ids
         """
@@ -104,14 +104,7 @@ class Spreadsheet(db.Model):
         self.last_access = last_access if last_access else datetime.datetime.utcnow()
         self.ids_unique = ids_unique
         self.note = ''
-
-        # The user id of the owner of the spreadsheet is part of the spreadsheet record.  But since visitors can upload
-        # spreadsheets, we need to supply a generic user id in that case.  The generic user (the anonymous user) is
-        # created here if it doesn't already exist.
-        annonymous_user = User.find_by_username('annonymous')
-        if not annonymous_user:
-            annonymous_user = User.create_annonymous_user()
-        self.user_id = user_id if user_id else annonymous_user.id
+        self.user_id = user_id
 
         # TODO This is a new spreadsheet.  I think the file_path will always be None.
         if file_path is None:
@@ -500,20 +493,12 @@ class Spreadsheet(db.Model):
     def update_user(self, user_id):
         """
         Change ownership of this spreadsheet to the user identified by the given id.  This happens when
-        a visitor who has been working on a spreadsheet, decides to log in.  This spreadsheet should have
-        previously been owned by the anonymous user (i.e., a visitor)
+        a visitor who has been working on one or more spreadsheets, decides to log in.  This spreadsheets should have
+        previously been owned visitor account.
         :param user_id: id of new owner of this spreadsheet
         """
         self.user_id = user_id
         self.save_to_db()
-
-    def owned(self):
-        """
-        Whether this spreadsheet belongs to a credentialed user or is a spreadsheet uploaded and used
-        only by a visitor.
-        :return: True if the spreadsheet belongs to a credentialed user and False otherwise.
-        """
-        return not self.user.is_anonymous_user()
 
     def delete(self):
         """

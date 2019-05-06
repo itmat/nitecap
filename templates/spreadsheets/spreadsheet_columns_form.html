@@ -117,7 +117,7 @@
     </div>
 {% endif %}
 
-<form method="post" action="{{ url_for('spreadsheets.identify_spreadsheet_columns') }}">
+<form method="post" action="{{ url_for('spreadsheets.label_columns', spreadsheet_id = spreadsheet.id) }}">
     <div class="topScroll">
         <div></div>
     </div>

@@ -1,5 +1,7 @@
 import datetime
+import random
 import smtplib
+import string
 
 from flask import url_for, request
 
@@ -12,6 +14,9 @@ from itsdangerous import TimedJSONWebSignatureSerializer as TimedSerializer
 from itsdangerous import JSONWebSignatureSerializer as Serializer
 from flask import current_app
 
+PASSWORD_CHAR_SET = string.ascii_letters + string.digits + string.punctuation
+PASSWORD_LENGTH = 12
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -20,6 +25,7 @@ class User(db.Model):
     email = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(100), nullable=False)
     last_access = db.Column(db.DateTime)
+    visitor = db.Column(db.Boolean)
 
     confirmation = db.relationship("Confirmation", lazy="dynamic", cascade="all, delete-orphan")
     spreadsheet = db.relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan")
@@ -32,7 +38,7 @@ class User(db.Model):
     def spreadsheets(self):
         return self.spreadsheet
 
-    def __init__(self, username, email, password, last_access=None):
+    def __init__(self, username, email, password, visitor=True, last_access=None):
         """
         This method initializes a new user.  SQLAlchemy does not run this method when recovering a user from the
         database (it uses __new__ only).
@@ -41,12 +47,14 @@ class User(db.Model):
         :param email: The user's email.  Also the address where registration confirmation and password reset emails
         are sent.
         :param password:  The user's password.  Saved in the database in pbkdf2_sha256 encrypted hash.
+        :param visitor: Indicates a visitor's account.
         :param last_access: The timepoint indicating the user's last access.  Not sure this is useful here since a
         user recovered from the database does not pass this way.
         """
         self.username = username
         self.email = email
         self.password = password
+        self.visitor = visitor
         self.last_access = last_access if last_access else datetime.datetime.utcnow()
 
     def __repr__(self):
@@ -87,7 +95,8 @@ class User(db.Model):
             # confirmation email and deliver it.
             else:
                 password = encrypt_password(password)
-                user = User(username, email, password)
+                # Flag this user as NOT a visitor
+                user = User(username, email, password, False)
                 user.save_to_db()
                 confirmation = Confirmation(user.id)
                 confirmation.save_to_db()
@@ -123,6 +132,12 @@ class User(db.Model):
         # correct, verify that the user has confirmed his/her registration and if so, update the user's last access.
         # Otherwise inform the user of invalid credentials or lack of confirmation.
         if user:
+            # visitor accounts cannot 'log in'
+            if user.visitor:
+                errors.append("Not a valid user.  Please register.")
+                current_app.logger.warn(f"Attempt made to log in with visitor account {user.username}")
+                return user, errors, messages
+
             if not check_encrypted_password(password, user.password):
                 errors.append("Invalid credentials.  Try again.")
                 user = None
@@ -279,6 +294,10 @@ class User(db.Model):
     def find_all_users(cls):
         return cls.query.all()
 
+    @classmethod
+    def find_visitors(cls):
+        return cls.query.filter_by(visitor=True)
+
     @staticmethod
     def spreadsheet_counts():
         """
@@ -324,8 +343,28 @@ class User(db.Model):
         user.save_to_db()
         return user
 
+    @classmethod
+    def create_visitor(cls):
+        """
+        Creates a visitor account with a unique data using the password to start with.  Then revising the
+        database entry for username and email based on the user id returned by the database.  The password
+        is temporariliy used as the username and email address only to avoid a violation of the uniqueness
+        constraint.
+        :return: visiting user
+        """
+        password = encrypt_password(User.generate_password())
+        user = cls(password, f'{password}@nitecap.org', password)
+        user.save_to_db()
+        user.username = f'user_{user.id}'
+        user.email = f'{user.username}@nitecap.org'
+        user.save_to_db()
+        return user
+
     def is_anonymous_user(self):
         return self.username == 'annonymous'
+
+    def is_visitor(self):
+        return self.visitor
 
     def get_share_token(self, spreadsheet_id, row_index=0):
         """
@@ -372,4 +411,12 @@ class User(db.Model):
                 current_app.logger.error(f"The data for spreadsheet {spreadsheet.id} could not all be successfully "
                                          f"expunged. It may be orphaned.", e)
         self.delete_from_db()
+
+    @staticmethod
+    def generate_password():
+        """
+        Generates a password for use with visitor accounts.
+        :return: random string of PASSWORD_LENGTH characters
+        """
+        return ''.join(random.choice(PASSWORD_CHAR_SET) for _ in range(PASSWORD_LENGTH))
 

@@ -1,4 +1,5 @@
 import sched
+from datetime import timedelta
 
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv, find_dotenv
@@ -28,11 +29,13 @@ handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 logger.addHandler(handler)
 
-
 @app.before_first_request
 def create_tables():
     db.create_all()
 
+#@app.before_request
+#def check_session():
+#    print(session)
 
 @app.route('/', methods=['GET'])
 def home():

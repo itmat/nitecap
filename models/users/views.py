@@ -107,12 +107,17 @@ def login_user():
 
         # Log in user and redirect to the user spreadsheets form.
         if user:
+            # A visitor session means that the logged in user created spreadsheets prior to logging in and we
+            # should re-point them to his/her logged in account.
+            if 'visitor' in session and session['visitor']:
+                visitor = User.find_by_email(session['email'])
+                if visitor:
+                    for spreadsheet in visitor.spreadsheets:
+                        spreadsheet.update_user(user.id)
+
+            #session.permanent=False
             session['email'] = user.email
-            if 'spreadsheet_id' in session and session['spreadsheet_id']:
-                spreadsheet_id = session['spreadsheet_id']
-                spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
-                if spreadsheet.user.is_anonymous_user():
-                    spreadsheet.update_user(user.id)
+            session['visitor'] = user.is_visitor()
 
         # If the user logged in from a different page on this website, return to that page with the exception of
         # the logout route or the home page.
@@ -132,8 +137,7 @@ def logout_user():
     :return: Returning user to spreadsheet upload form in lieu of a home page
     """
 
-    session['email'] = None
-    session['spreadsheet_id'] = None
+    session.clear()
     return render_template('spreadsheets/spreadsheet_upload_form.html')
 
 

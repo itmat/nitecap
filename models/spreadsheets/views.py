@@ -14,7 +14,7 @@ import constants
 import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from models.users.decorators import requires_login, requires_admin
+from models.users.decorators import requires_login, requires_admin, requires_account
 from models.users.user import User
 from timer_decorator import timeit
 
@@ -49,12 +49,31 @@ def load_spreadsheet():
                                    descriptive_name=descriptive_name, days=days,
                                    timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
-        # Identify any logged in user so that ownership of the spreadsheet is established.
+        # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
         user_id = None
         user_email = session['email'] if 'email' in session else None
         if user_email:
             user = User.find_by_email(user_email)
             user_id = user.id if user else None
+        # If user is not logged in or has a current visitor accout, assign a visitor account to protect user's
+        # spreadsheet ownership.
+        else:
+            user = User.create_visitor()
+            if user:
+                # Visitor's session has a fixed expiry date.
+                #session.permanent = True
+                session['email'] = user.email
+                session['visitor'] = user.is_visitor()
+                user_id = user.id
+
+        # If we have no logged in user and a visitor account could not be generated, we have an internal
+        # problem.
+        if not user:
+            errors.append("We are unable to load your spreadsheet at the present time.  Please try again later")
+            current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
+            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
+                                   descriptive_name=descriptive_name, days=days,
+                                   timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
 
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
@@ -76,11 +95,10 @@ def load_spreadsheet():
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
                                    days=days, timepoints=timepoints)
 
-        # Save the spreadsheet metadata to the database and add the spreadsheet id to the session.
+        # Save the spreadsheet metadata to the database.
         spreadsheet.save_to_db()
-        session['spreadsheet_id'] = spreadsheet.id
 
-        return redirect(url_for('.identify_spreadsheet_columns'))
+        return redirect(url_for('.label_columns', spreadsheet_id=spreadsheet.id))
 
     return render_template('spreadsheets/spreadsheet_upload_form.html')
 
@@ -162,22 +180,53 @@ def validate_mime_type(file_path):
     return file_mime_type, errors
 
 
-@spreadsheet_blueprint.route('identify_spreadsheet_columns', methods=['GET', 'POST'])
-@timeit
-def identify_spreadsheet_columns():
+def access_not_permitted(endpoint, user, visitor, spreadsheet_id):
+    """
+    Common code for situation where user attempts to access a spreadsheet that does not belong to him/her.
+    :param user: object of user attempting the access
+    :param visitor: whether or not the user is a visitor (the page a visitor is dropped into is different from
+    that of a logged in user
+    :param spreadsheet_id: the id of the spreadsheet the user is attempting to access.
+    :return: an appropriate page to which to return the user.
+    """
     errors = []
+    errors.append('You may only manage your own spreadsheets.')
+    current_app.logger.warn(f"User {user.id} attempted to apply the endpoint {endpoint} to "
+                            f"spreadsheet {spreadsheet_id}")
+    if visitor:
+        return render_template('spreadsheets/spreadsheet_upload_form.html', user=user, error=errors)
+    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
-    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
-        errors.append("You may only work with your own spreadsheet.")
-        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
 
-    # Populate
+@spreadsheet_blueprint.route('label_columns/<int:spreadsheet_id>', methods=['GET', 'POST'])
+@timeit
+@requires_account
+def label_columns(spreadsheet_id, **kwargs):
+    """
+    Endpoint for labelling spreadsheet columns appropriately.  This method is available to any user with an
+    account (standard user or visitor).
+    :param spreadsheet_id: id of spreadsheet having columns to be labelled.
+    :param kwargs: the decorator returns the user object here
+    """
+
+    errors = []
+    user = kwargs['user']
+    visitor = session['visitor']
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+    # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
+    # spreadsheet list (in the case of a logged in user) or to the upload form (in the case of a visitor).
+    if not spreadsheet:
+        return access_not_permitted(label_columns.__name__, user, visitor, spreadsheet_id)
+
+    # Populate the spreadsheet object with additional data
     spreadsheet.init_on_load()
 
+    # Column label form submitted.
     if request.method == 'POST':
         column_labels = list(request.form.values())
 
+        # If label assignments are improper, the user is returned to the column label form and invited to edit.
         error, messages = spreadsheet.validate(column_labels)
         errors.extend(messages)
         if error:
@@ -187,81 +236,27 @@ def identify_spreadsheet_columns():
         spreadsheet.set_ids_unique()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
-        return redirect(url_for('.set_spreadsheet_breakpoint', spreadsheet_id=spreadsheet.id))
+        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+
     return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
-
-@spreadsheet_blueprint.route('/set_spreadsheet_breakpoint/<int:spreadsheet_id>', methods=['GET'])
-def set_spreadsheet_breakpoint(spreadsheet_id):
-    """
-    Misnamed at this point.  Takes the user to the page which displays the processed data in a series of graphs and
-    tables.  The spreadsheet_id may be in the url but it is not used here because our visitors share a user id.  I
-    need to protect the spreadsheet of one visiting user from another visiting user.  I can establish ownership for
-    the spreadsheets of logged in users only.  So I use the spreadsheet id found in the session object.  To change
-    this, we would need to assign each visiting user his/her own account, even if just temporary.
-    :param spreadsheet_id: id of spreadsheet used to display graphs/tables (not used - see above)
-    """
-    errors = []
-    if 'spreadsheet_id' not in session or not session['spreadsheet_id']:
-        errors.append("You may only work with your own spreadsheet.")
-        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
-
-    # Populate
-    spreadsheet.init_on_load()
-
-    data = spreadsheet.get_raw_data()
-    max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
-    ids = list(spreadsheet.get_ids())
-
-    # Certain functionality exists on the display page only if the user is not a visitor.  A logged in user is
-    # recognized by his/her email address in the session cookie.  If there is no email in the cookie or if the
-    # email does not result in a user or if the user returned is the anonymous user, indicate such in the parameters
-    # delivered to the template.
-    user_email = session['email'] if 'email' in session else None
-    user = User.find_by_email(user_email) if user_email else None
-    anonymous = not user or user.is_anonymous_user()
-    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
-                           data=data.to_json(orient='values'),
-                           x_values=spreadsheet.x_values,
-                           x_labels=spreadsheet.x_labels,
-                           x_label_values=spreadsheet.x_label_values,
-                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
-                           ids=ids,
-                           column_pairs=spreadsheet.column_pairs,
-                           breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                           descriptive_name=spreadsheet.descriptive_name,
-                           timepoints_per_day=spreadsheet.timepoints,
-                           spreadsheet_id=session['spreadsheet_id'],
-                           max_value_filter=max_value_filter,
-                           anonymous=anonymous)
-
-
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
-@requires_login
-def show_spreadsheet(spreadsheet_id):
+@requires_account
+def show_spreadsheet(spreadsheet_id, **kwargs):
     """
     This retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
-    request is expected from the spreadsheet listing and therefore the request should be made by a logged in user.  Any
-    user not logged in is prevented from making this request via the decorator.  A logged in user is identified by the
-    email address stored in the session cookie.  A logged in user is prevented from viewing any but his/her own
-    spreadsheets.
-    :param spreadsheet_id:  the id of the spreadsheet whose results are to be displayed.
+    method is available to any user with an account (standard user or visitor).
+    :param spreadsheet_id: the id of the spreadsheet whose results are to be displayed.
+    :param kwargs: the decorator returns the user object here
     """
     errors = []
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
+    visitor = session['visitor']
+
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     if not spreadsheet:
-        errors.append('You may only manage your own spreadsheets.')
-        current_app.warn(f"User {user.id} attempted to display result for spreadsheet {spreadsheet_id}")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+        return access_not_permitted(show_spreadsheet.__name__, user, visitor, spreadsheet_id)
 
     # Populate
     spreadsheet.init_on_load()
@@ -272,9 +267,9 @@ def show_spreadsheet(spreadsheet_id):
     if not spreadsheet.column_labels:
         errors = [f"Days/timepoint were not yet matched to columns for spreadsheet '{spreadsheet.descriptive_name}'.  "
                   f"You may have skipped a step.  Please re-edit your data."]
+        if visitor:
+            render_template('spreadsheets/spreadsheet_columns_form.html', errors=errors)
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-    session["spreadsheet_id"] = spreadsheet.id
 
     data = spreadsheet.get_raw_data()
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
@@ -296,7 +291,8 @@ def show_spreadsheet(spreadsheet_id):
                            breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                            descriptive_name=spreadsheet.descriptive_name,
                            timepoints_per_day=spreadsheet.timepoints,
-                           spreadsheet_id=session['spreadsheet_id'],
+                           spreadsheet_id=spreadsheet_id,
+                           visitor=visitor,
                            max_value_filter=max_value_filter)
 
 
@@ -317,7 +313,7 @@ def get_jtk():
 @requires_login
 def display_spreadsheets():
     """
-    This method takes the logging in user to a listing of his/her spreadsheets.  The decorator assures that only logged
+    This method takes the logged in user to a listing of his/her spreadsheets.  The decorator assures that only logged
     in users may make such a request.
     """
     current_app.logger.info(f"Displaying spreadsheets for user {session['email']}")
@@ -329,7 +325,7 @@ def display_spreadsheets():
 @requires_login
 def delete():
     """
-    Rest call to delete the user's spreadsheet data and its metadata.  The user most own the spreadsheet given by the
+    Rest call to delete the user's spreadsheet data and its metadata.  The user must own the spreadsheet given by the
     id provided.  The reference to the spreadsheet is first removed from the database and then the associated files
     are removed.  Any incomplete removal is reported to the user and logged.
     :return: A successful ajax call returns nothing (just a 204 status code).
@@ -353,8 +349,9 @@ def delete():
     return '', 204
 
 
-@spreadsheet_blueprint.route('/download', methods=['GET'])
-def download_spreadsheet():
+@spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
+@requires_account
+def download(spreadsheet_id):
     """
     Response to a request from the graphs page to download the spreadsheet whose id is in the session.  In this case,
     the user need not be logged in.  Nevertheless, the requested spreadsheet must be in the user's inventory.  In the
@@ -363,23 +360,17 @@ def download_spreadsheet():
     spreadsheet is delivered as an attachment.
     """
     errors = []
-    spreadsheet_id = session['spreadsheet_id']
     user = User.find_by_email(session['email'])
+    visitor = session['visitor']
+    spreadsheet = None
     if user:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
             errors.append('You may only manage your own spreadsheets.')
             current_app.logger.warn(f"User {user.id} attempted to download spreadsheet {spreadsheet_id}")
+            if visitor:
+                render_template('spreadsheets/spreadsheet_upload_form.html', user=user, errors=errors)
             return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-    else:
-        spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
-        if not spreadsheet:
-            errors.append('The requested spreadsheet could not be found')
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
-        if spreadsheet.owned():
-            errors.append('You may only manage your own spreadsheets.')
-            current_app.logger.warn(f"Visitor attempted to download spreadsheet {spreadsheet_id}")
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
     try:
         return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
@@ -388,36 +379,9 @@ def download_spreadsheet():
                                  f"downloaded.", e)
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
-
-@spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
-@requires_login
-def download(spreadsheet_id):
-    """
-    Response to a request from the spreadsheet listing page to download the spreadsheet whose id is given in the url.
-    The user must be logged in.  Additionally, the requested spreadsheet must be in the logged in user's inventory.  If
-    it is and the file is available, the file representing the fully processed version of the spreadsheet is delivered
-    as an attachment.
-    :param spreadsheet_id: the id of the spreadsheet to download
-    """
-    errors = []
-    user = User.find_by_email(session['email'])
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-    if not spreadsheet:
-        errors.append('You may only manage your own spreadsheets.')
-        current_app.logger.warn(f"User {user.id} attempted to download spreadsheet {spreadsheet_id}")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-    try:
-        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
-    except Exception as e:
-        errors.append("The processed spreadsheet data could not be downloaded.")
-        current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
-                                 f"downloaded.", e)
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-
 @spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET', 'POST'])
-@requires_login
-def edit_details(spreadsheet_id):
+@requires_account
+def edit_details(spreadsheet_id, **kwargs):
     """
     Allows a logged in user to edit the details of an existing spreadsheet (e.g., name, # days, # timepoints, etc).  A
     check is made to insure that the spreadsheet id sent in the url identifies a spreadsheet in the logged in user's
@@ -425,13 +389,12 @@ def edit_details(spreadsheet_id):
     :param spreadsheet_id:  id to the spreadsheet whose details the logged in user wishes to edit.
     """
     errors = []
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
+    visitor = session['visitor']
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        errors.append('You may only manage your own spreadsheets.')
-        current_app.logger.warn(f"User {user.id} attempted to edit details for spreadsheet {spreadsheet_id}")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-    session['spreadsheet_id'] = spreadsheet_id
+        access_not_permitted(edit_details.__name__, user, visitor, spreadsheet_id)
+
     if request.method == "POST":
         descriptive_name = request.form['descriptive_name']
         days = request.form['days']
@@ -461,7 +424,7 @@ def edit_details(spreadsheet_id):
         spreadsheet.repeated_measures = repeated_measures
         spreadsheet.header_row = header_row
         spreadsheet.save_to_db()
-        return redirect(url_for('.edit_columns'))
+        return redirect(url_for('.label_columns', spreadsheet_id=spreadsheet_id))
     return render_template('spreadsheets/edit_form.html', spreadsheet_id=spreadsheet_id,
                            descriptive_name=spreadsheet.descriptive_name,
                            days=spreadsheet.days,
@@ -469,53 +432,27 @@ def edit_details(spreadsheet_id):
                            repeated_measures=spreadsheet.repeated_measures,
                            header_row=spreadsheet.header_row)
 
-
-@spreadsheet_blueprint.route('/edit', methods=['GET', 'POST'])
-@requires_login
-def edit_columns():
-    """
-    Allows a logged in user to edit the columns of an existing spreadsheet.  The spreadsheet in the session is
-    verified first as belonging to the user making this request.  The column labels selected by the user are
-    validated.  The user is returned to the column edit form with error messages should validation fail.  Otherwise,
-    nitecap calculations are re-done in accordance with the modified column labels and the user is redirected to the
-    show spreadsheet method.
-    """
-    errors = []
-    user = User.find_by_email(session['email'])
-    spreadsheet = user.find_user_spreadsheet_by_id(session['spreadsheet_id'])
-    if not spreadsheet:
-        errors.append('You may only manage your own spreadsheets.')
-        current_app.logger.warn(f"User {user.id} attempted to edit the column labels of spreadsheet "
-                                f"{session['spreadsheet_id']}")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-    # Populate
-    spreadsheet.init_on_load()
-
-    if request.method == 'POST':
-        column_labels = list(request.form.values())
-        error, messages = spreadsheet.validate(column_labels)
-        errors.extend(messages)
-        if errors:
-            return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet, errors=errors)
-        spreadsheet.identify_columns(column_labels)
-        spreadsheet.set_ids_unique()
-        spreadsheet.compute_nitecap()
-        spreadsheet.save_to_db()
-        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
-    return render_template('spreadsheets/edit_columns_form.html', spreadsheet=spreadsheet)
-
-
 @spreadsheet_blueprint.route('/save_filters', methods=['POST'])
-def save_filters():
+@requires_account
+def save_filters(**kwargs):
     """
     Response to ajax request to apply filters set on the graphs page.  Those filter values are also saved to the
     spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annonymous user).
     :return: A json string containing filtered values along with associated q values and p values.
     """
+    user = kwargs['user']
     json_data = request.get_json()
     max_value_filter = json_data.get('max_value_filter', None)
-    spreadsheet = Spreadsheet.find_by_id(session['spreadsheet_id'])
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+
+    if not spreadsheet_id:
+        return jsonify({"error": "No spreadsheet id was provided."}), 400
+
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+    if not spreadsheet:
+        current_app.logger.warn(f"User {user.id} attempted to save spreadsheet filters {spreadsheet_id}")
+        return jsonify({"error": "You may only manage your own spreadsheets"}), 403
 
     # Populate
     spreadsheet.init_on_load()
@@ -575,19 +512,33 @@ def consume_share(token):
         errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
                       "another share")
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
+
     user = None
     if 'email' in session:
         user = User.find_by_email(session['email'])
+    else:
+        user = User.create_visitor()
+        if user:
+            # Visitor's session has a fixed expiry date.
+            # session.permanent = True
+            session['email'] = user.email
+            session['visitor'] = user.is_visitor()
 
-    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id if user else None)
+    # This should not happen ever - indicates a software bug
+    if not user:
+        errors.append("We are unable to create your share at the present time.  Please try again later")
+        current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
+        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
+    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
     if shared_spreadsheet:
 
         if row_index:
             shared_spreadsheet.breakpoint = row_index
             shared_spreadsheet.save_to_db()
-        session['spreadsheet_id'] = shared_spreadsheet.id
         return redirect(url_for('spreadsheets.set_spreadsheet_breakpoint', spreadsheet_id=spreadsheet.id))
-    errors.append("The spreadsheets could not be shared.")
+    errors.append("The spreadsheetscould not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
 
@@ -920,10 +871,10 @@ def save_note():
 @requires_admin
 def display_visitor_spreadsheets():
     """
-    Administrative function only - lists the spreadsheets owned by the anonymous user.
+    Administrative function only - lists the spreadsheets belonging to visiting users.
     """
-    user = User.find_by_username("annonymous")
-    return render_template('spreadsheets/display_visitor_spreadsheets.html', user=user)
+    users = User.find_visitors()
+    return render_template('spreadsheets/display_visitor_spreadsheets.html', users=users)
 
 
 @spreadsheet_blueprint.route('/delete_visitor_spreadsheets', methods=['POST'])
@@ -932,17 +883,16 @@ def delete_visitor_spreadsheets():
     """
     Administrative REST function only - deletes the database table entry and the files associated with each of the
     spreadsheets whose ids are provided via a json object { spreadsheet_list: [spreadsheet ids].  That the
-    spreadsheet is NOT owned (i.e., belongs to the anonymous user) is checked before removal and only those
-    belonging to the anonymous user are removed.  If removal is incomplete, the error is noted but removals of other
-    spreadsheets continue.  If any problem occurred for any removal a 500 status code will be returned along with
-    an error message.
+    spreadsheet belongs to a visiting user, is checked before removal and only those belonging to the visiting user
+    are removed.  If removal is incomplete, the error is noted but removals of other spreadsheets continue.  If any
+    problem occurred for any removal a 500 status code will be returned along with an error message.
     :return: json object - { errors: [error msgs] } with a status code of 500 if errors occurred and 200 otherwise.
     """
     errors = []
     spreadsheet_ids = json.loads(request.data).get('spreadsheet_list', None)
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
-        if spreadsheet and not spreadsheet.owned():
+        if spreadsheet and spreadsheet.user.visitor:
             error = spreadsheet.delete()
             if error:
                 errors.append(error)
