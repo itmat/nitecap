@@ -810,15 +810,15 @@ def run_pca():
 
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
-def check_id_uniqueness():
-    if 'email' in session:
-        user = User.find_by_email(session['email'])
-    else:
-        user = User.find_by_username("annonymous")
+@requires_account
+def check_id_uniqueness(**kwargs):
     errors = []
+    user = kwargs['user']
+
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     id_columns = json_data.get('id_columns', None)
+
     if not id_columns:
         errors.append("No id columns were selected. Please select at least one id column.")
         return jsonify({'error': errors}), 400
