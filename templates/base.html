@@ -80,13 +80,12 @@
     </nav>
 </div>
 
-{# Maintenance Banner - set display:block to show banner #}
-<div class="alert alert-warning" style="display:none" role="alert">
-    We will be doing maintenance on the Nitecap site between 6 pm and 7 pm on Wednesday, April 24th.  You may experience
-    interruptions in the site during that period.
-</div>
-
 <div class="content container">
+    {# Maintenance Banner - set display:block to show banner #}
+    <div id="nitecap_banner" class='alert-warning alert' role="alert"
+         style={{ "display:block" if config.banner_visible else "display:none" }}>
+        {{ config.banner_content }}
+    </div>
     {% block content %}
     {% endblock %}
 </div>

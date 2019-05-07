@@ -1,0 +1,74 @@
+{% extends "dashboard.html" %}
+{% block dashboard_content %}
+    <script>
+
+        $(document).ready(function() {
+
+            // Show banner content in textarea
+            let content_input = $("textarea#banner_content");
+            content_input.val("{{ config.banner_content | safe }}");
+
+            // Check the visible checkbox only if the banner is currently visible
+            let visible_check = $("#visible_check");
+            visible_check.prop('checked', false);
+            let visible = "{{ config.banner_visible | safe }}" !== 'False';
+            if(visible) {
+               visible_check.prop('checked', true);
+            }
+
+            // The div containing the banner content
+            let nitecap_banner_div = $("#nitecap_banner");
+
+            // The banner form
+            let banner_form = $("form");
+
+            // Stop event propagation
+            banner_form.on('submit', function (e) {
+                e.preventDefault();
+
+                // Ajax call to alter config dictionary for banner_content and banner_visible
+                let visible = visible_check.is(":checked");
+                $.ajax({
+                    url: "{{ url_for('update_banner') }}",
+                    data: JSON.stringify({'content': content_input.val(), 'visible': visible}),
+                    dataType: "json",
+                    contentType: "application/json",
+                    type: 'POST',
+                    success: function (response) {
+
+                        // Reflect the changes on this page without refreshing
+                        nitecap_banner_div.fadeOut();
+                        nitecap_banner_div.html(content_input.val());
+                        if(visible) {
+                            nitecap_banner_div.fadeIn();
+                        }
+                    }
+                });
+            });
+
+        });
+
+    </script>
+
+    <div class="page-header">
+        <h2>Banner</h2>
+    </div>
+
+    <form action="">
+        <div class="form-group">
+            <label for="banner_content">Content:</label>
+            <textarea class="p-3" id="banner_content" cols="100" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <input class="form-check-input" type="checkbox" value="" id="visible_check">
+            <label class="form-check-label" for="visible_check">
+                Visible?
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            Submit
+        </button>
+    </form>
+
+
+{%  endblock %}

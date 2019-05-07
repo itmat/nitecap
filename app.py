@@ -20,6 +20,8 @@ app = Flask(__name__)
 load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
+app.config['banner_content'] = ''
+app.config['banner_visible'] = False
 app.jinja_env.globals['momentjs'] = momentjs
 
 handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
@@ -62,6 +64,22 @@ def about():
 @requires_admin
 def dashboard():
     return redirect(url_for('users.display_users'))
+
+@app.route('/manage_banner', methods=['GET'])
+@requires_admin
+def manage_banner():
+    return render_template("banner.html")
+
+@app.route('/update_banner', methods=['POST'])
+@requires_admin
+def update_banner():
+    json_data = request.get_json()
+    content = json_data.get('content', '')
+    visible = json_data.get('visible', False)
+    app.config['banner_content'] = content
+    app.config['banner_visible'] = visible
+    return '', 204
+
 
 
 @app.errorhandler(413)
