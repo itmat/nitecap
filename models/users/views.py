@@ -9,6 +9,7 @@ from flask import current_app
 
 user_blueprint = Blueprint('users', __name__)
 
+MISSING_USER_ID_ERROR = "No user id was provided."
 
 @user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
@@ -236,9 +237,9 @@ def reset_password(token):
 
 @user_blueprint.route('/update_profile', methods=['GET', 'POST'])
 @requires_login
-def update_profile():
+def update_profile(**kwargs):
 
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
 
     if request.method == 'POST':
 
@@ -271,12 +272,13 @@ def display_users():
 @requires_admin
 def delete():
     """
-    Adminstrative function only - deletes the user provided and all of that user's spreadsheets.
+    Administrative ajax endpoint only - deletes the user provided and all of that user's spreadsheets.
     :param user_id: id of the user to delete
     """
     user_id = json.loads(request.data).get('user_id', None)
     if not user_id:
-        return jsonify({"error": "No user id provided."}), 400
+        return jsonify({"error": MISSING_USER_ID_ERROR}), 400
+
     user = User.find_by_id(user_id)
     if user:
         user.delete()
@@ -292,9 +294,11 @@ def confirm():
     """
     user_id = json.loads(request.data).get('user_id', None)
     if not user_id:
-        return jsonify({"error": "No user id provided."}), 400
+        return jsonify({"error": MISSING_USER_ID_ERROR}), 400
+
+    # Visitors do need confirmations as they do not log in.
     user = User.find_by_id(user_id)
-    if user and user.confirmation and not user.most_recent_confirmation.confirmed:
+    if user and not user.is_visitor() and user.confirmation and not user.most_recent_confirmation.confirmed:
         user.most_recent_confirmation.confirmed = True
         user.most_recent_confirmation.save_to_db()
         return jsonify({'confirmed': True})

@@ -51,7 +51,7 @@
 
             let table = userTableElement.DataTable({
                 aoColumnDefs: [
-                    { 'bSortable': false, 'aTargets': [ 6 ] },
+                    { 'bSortable': false, 'aTargets': [ 7 ] },
                 ],
                 order: [[ 5, 'desc' ]],
             });
@@ -114,6 +114,7 @@
                 <th>ID</th>
                 <th>Username</th>
                 <th>Email</th>
+                <th>Visitor</th>
                 <th>Activated</th>
                 <th>Number of Spreadsheets</th>
                 <th>Last Access</th>
@@ -126,6 +127,7 @@
                 <td>{{user.id}}</td>
                 <td>{{user.username}}</td>
                 <td>{{user.email}}</td>
+                <td>{{user.is_visitor() }}</td>
                 <td class="confirmed">{{user.most_recent_confirmation.confirmed}}</td>
                 <td>
                     {% if user.id in user_counts_map %}
@@ -138,7 +140,7 @@
                     {{ momentjs(user.last_access).format('LLL') }}
                 </td>
                 <td class="actions">
-                    {% if not user.is_anonymous_user() %}
+                    {% if not user.is_admin() %}
                         <a data-id="{{ user.id }}" class="delete_user text-primary" rel="popover"
                                data-container="body" data-toggle="popover" data-placement="left" data-trigger="click"
                                title="Confirm Delete" data-html=true
@@ -156,7 +158,7 @@
                         >
                             <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                         </a>
-                        {% if not user.most_recent_confirmation.confirmed %}
+                        {% if not user.is_visitor() and not user.most_recent_confirmation.confirmed %}
                             <a data-id="{{ user.id }}" class="confirm_user text-primary">
                                 <i class="fas fa-clipboard" data-toggle="tooltip" data-placement="top"
                                    title="Confirm"></i>
@@ -173,6 +175,7 @@
                 <td>ID</td>
                 <td>Username</td>
                 <td>Email</td>
+                <td>Visitor</td>
                 <td>Activated</td>
                 <td>Number of Spreadsheets</td>
                 <td>Last Access</td>

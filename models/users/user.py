@@ -296,7 +296,18 @@ class User(db.Model):
 
     @classmethod
     def find_visitors(cls):
+        """
+        Finds all visitor accounts.
+        :return: list of visitor accounts
+        """
         return cls.query.filter_by(visitor=True)
+
+    def is_admin(self):
+        """
+        Identifies whether this user is an admin
+        :return: true if user is an admin and false otherwise
+        """
+        return self.email in current_app.config['ADMIN_LIST']
 
     @staticmethod
     def spreadsheet_counts():
