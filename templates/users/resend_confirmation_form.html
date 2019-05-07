@@ -24,10 +24,10 @@
     </div>
 {% endif %}
 
-<form method="post" id="resend-confirmation-form" action="{{ url_for('confirmations.resend_confirmation') }}">
+<form method="post" id="resend-confirmation-form" action="{{ url_for('users.resend_confirmation') }}">
     <p>You may resend a confirmation email to the email address we have for you on file, <em>{{ email }}</em>,
         by clicking on the button below.  Please note that any prior links we sent you will be expired.</p>
-    <input type="hidden" name="confirmation_id" id="confirmation_id"  value="{{ confirmation_id }}">
+    <input type="hidden" name="email" id="email"  value="{{ email }}">
     <button type="submit" class="btn btn-primary">Resend Confirmation</button>
 </form>
 

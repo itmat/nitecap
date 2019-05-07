@@ -5,7 +5,6 @@ import string
 
 from flask import url_for, request
 
-from models.confirmations.confirmation import Confirmation
 from security import check_encrypted_password, encrypt_password
 from db import db
 import os
@@ -14,6 +13,8 @@ from itsdangerous import TimedJSONWebSignatureSerializer as TimedSerializer
 from itsdangerous import JSONWebSignatureSerializer as Serializer
 from flask import current_app
 
+CONFIRMATION_EXPIRATION_DELTA = 6 * 60 * 60
+PASSWORD_RESET_EXPIRATION_DELTA = 30 * 60
 PASSWORD_CHAR_SET = string.ascii_letters + string.digits + string.punctuation
 PASSWORD_LENGTH = 12
 
@@ -25,14 +26,10 @@ class User(db.Model):
     email = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(100), nullable=False)
     last_access = db.Column(db.DateTime)
-    visitor = db.Column(db.Boolean)
+    visitor = db.Column(db.Boolean, default=True)
+    activated=db.Column(db.Boolean, nullable=False, default=False)
 
-    confirmation = db.relationship("Confirmation", lazy="dynamic", cascade="all, delete-orphan")
     spreadsheet = db.relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan")
-
-    @property
-    def most_recent_confirmation(self):
-        return self.confirmation.order_by(db.desc(Confirmation.expire_at)).first()
 
     @property
     def spreadsheets(self):
@@ -98,8 +95,6 @@ class User(db.Model):
                 # Flag this user as NOT a visitor
                 user = User(username, email, password, False)
                 user.save_to_db()
-                confirmation = Confirmation(user.id)
-                confirmation.save_to_db()
                 email_errors = user.send_confirmation_email()
                 if email_errors:
                     errors.extend(email_errors)
@@ -142,9 +137,7 @@ class User(db.Model):
                 errors.append("Invalid credentials.  Try again.")
                 user = None
             else:
-                confirmation = user.most_recent_confirmation
-
-                if confirmation and confirmation.confirmed:
+                if user.activated:
                     user.last_access = datetime.datetime.utcnow()
                     user.save_to_db()
                 else:
@@ -176,12 +169,11 @@ class User(db.Model):
         :return: Any errors that occur in the process of delivering the email.
         """
 
-        # TODO the confirmation system is unecessarily complex.  The password reset token works better.  Try that.
+        token = self.get_confirmation_token()
         errors = []
         subject = 'User registration confirmation for Nitecap access'
         sender = os.environ.get('EMAIL_SENDER')
-        link = request.url_root[:-1] + url_for("confirmations.confirm_user",
-                                               confirmation_id=self.most_recent_confirmation.id)
+        link = request.url_root[:-1] + url_for("users.confirm_user", token=token)
         content = f'Please click on this link to confirm your registration. {link}'
         error = self.send_email(subject, sender, content)
         if error:
@@ -237,7 +229,11 @@ class User(db.Model):
             error = True
         return error
 
-    def get_reset_token(self, expires_sec=1800):
+    def get_confirmation_token(self, expires_sec=CONFIRMATION_EXPIRATION_DELTA):
+        s = TimedSerializer(os.environ['SECRET_KEY'], expires_sec)
+        return s.dumps({'user_id': self.id}).decode('utf-8')
+
+    def get_reset_token(self, expires_sec=PASSWORD_RESET_EXPIRATION_DELTA):
         """
         Uses the SECRET_KEY to fashion a token which contains the user's id.  The token is emailed to the user when a
         password reset request is made.  The user is recognized by the token's contents and allowed then to update his/
@@ -247,7 +243,7 @@ class User(db.Model):
         return s.dumps({'user_id': self.id}).decode('utf-8')
 
     @staticmethod
-    def verify_reset_token(token):
+    def verify_user_token(token):
         s = TimedSerializer(os.environ['SECRET_KEY'])
         try:
             user_id = s.loads(token)['user_id']
@@ -338,7 +334,7 @@ class User(db.Model):
         user = User.find_by_email(email)
         if user:
             if check_encrypted_password(password, user.password):
-                if not user.most_recent_confirmation.confirmed:
+                if not user.activated:
                     status = 'unconfirmed'
                 else:
                     status = 'confirmed'
@@ -347,12 +343,6 @@ class User(db.Model):
                 user = None
         return user, errors, status
 
-    @classmethod
-    def create_annonymous_user(cls):
-        password = encrypt_password(os.environ['ANNONYMOUS_PWD'])
-        user = cls('annonymous', os.environ['ANNONYMOUS_EMAIL'], password)
-        user.save_to_db()
-        return user
 
     @classmethod
     def create_visitor(cls):

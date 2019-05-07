@@ -71,10 +71,8 @@ def file_too_large(e):
 
 
 from models.users.views import user_blueprint
-from models.confirmations.views import confirmation_blueprint
 from models.spreadsheets.views import spreadsheet_blueprint
 app.register_blueprint(user_blueprint, url_prefix='/users')
-app.register_blueprint(confirmation_blueprint, url_prefix='/confirmations')
 app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 

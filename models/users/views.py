@@ -45,9 +45,7 @@ def register_user():
         if status == 'unconfirmed':
             flash("You are already registered but have not activated "
                   "your account by clicking on the email confirmation link sent to you.")
-            return render_template('confirmations/resend_confirmation_form.html',
-                                   confirmation_id=user.most_recent_confirmation.id,
-                                   email=user.email)
+            return render_template('users/resend_confirmation_form.html', email=user.email)
 
         # User already registered and activated.  Send user to login page.
         if status == 'confirmed':
@@ -102,9 +100,7 @@ def login_user():
         # Invite user to resend confirmation email.
         if messages:
             [flash(message) for message in messages]
-            return render_template('confirmations/resend_confirmation_form.html',
-                                   email=user.email,
-                                   confirmation_id=user.most_recent_confirmation.id)
+            return render_template('users/resend_confirmation_form.html', email=user.email)
 
         # Log in user and redirect to the user spreadsheets form.
         if user:
@@ -206,7 +202,7 @@ def reset_password(token):
         return render_template('users/request_reset_form.html')
 
     # The token must be valid and not yet expired.
-    user = User.verify_reset_token(token)
+    user = User.verify_user_token(token)
     if not user:
         errors.append("Your reset request is either invalid or expired.  Please try again.")
         return render_template('users/request_reset_form.html', errors=errors)
@@ -298,7 +294,61 @@ def confirm():
 
     # Visitors do need confirmations as they do not log in.
     user = User.find_by_id(user_id)
-    if user and not user.is_visitor() and user.confirmation and not user.most_recent_confirmation.confirmed:
-        user.most_recent_confirmation.confirmed = True
-        user.most_recent_confirmation.save_to_db()
+    if user and not user.is_visitor() and not user.activated:
+        user.activated = True
+        user.save_to_db()
         return jsonify({'confirmed': True})
+
+@user_blueprint.route('/confirm_user/<string:token>', methods=['GET'])
+def confirm_user(token):
+
+    errors = []
+
+    # The token must be valid and not yet expired.
+    user = User.verify_user_token(token)
+    if not user:
+        errors.append("Your confirmation request is either invalid or expired.  Please reconfirm.")
+        return render_template('users/resend_confirmation_form.html', errors=errors)
+
+    # Confirmation request redundant - user already activated.
+    if user.activated:
+        flash("You are already activated.  If you are still unable to log in, please communicate with us.")
+        return redirect(url_for('users.login_user'))
+
+    # Confirmation email accepted - activate and log in user.
+    user.activated = True
+    user.save_to_db()
+    session['email'] = user.email
+    session['visitor'] = False
+    flash(f"Your registration as '{user.username}' has been confirmed through your email { user.email }.")
+    return redirect(url_for('spreadsheets.load_spreadsheet'))
+
+@user_blueprint.route('/resend_confirmation', methods=['POST'])
+def resend_confirmation():
+    """
+    This POSt method is called when a user, invited to resend a confirmation email, elects to do just that.
+    """
+
+    errors = []
+    email = request.form['email']
+    user = User.find_by_email(email)
+
+    # Bogus request - possibly a hacker exploring
+    if not user:
+        errors.append("No such account was found.  Please register.")
+        return render_template('users/registration_form.html', errors = errors)
+
+    # Redundant confirmation request - user may have gotten to resend page and then found and clicked the email
+    # link before making this request.
+    if user.activated:
+        flash("Your account is already activated.  Please communicate with us if you still unable to log in.")
+        return render_template('users/login_form.html')
+
+    # If unable to send an email - user is invited to register at a later date.
+    errors = user.send_confirmation_email()
+    if errors:
+        return render_template('users/registration_form.html', errors = errors)
+
+    # Confirmation sent
+    flash(f"Your confirmation email has been sent.  Click on the link it contains to activate your account.")
+    return redirect(url_for('spreadsheets.load_spreadsheet'))
