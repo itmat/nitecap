@@ -12,7 +12,7 @@ import logging
 import os
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
-from models.users.decorators import requires_admin
+from models.users.decorators import requires_admin, ajax_requires_admin
 
 logger = logging.getLogger("")
 
@@ -68,11 +68,19 @@ def dashboard():
 @app.route('/manage_banner', methods=['GET'])
 @requires_admin
 def manage_banner():
+    """
+    Endpoint - provides a form by which an admin may edit banner content and visibility.
+    :return: the banner form or the user login page if user is not an admin
+    """
     return render_template("banner.html")
 
 @app.route('/update_banner', methods=['POST'])
-@requires_admin
+@ajax_requires_admin
 def update_banner():
+    """
+    AJAX endpoint - updates the nitecap (maintenance) banner with content and visibility supplied by json input.
+    :return: 204 unless user is not an admin
+    """
     json_data = request.get_json()
     content = json_data.get('content', '')
     visible = json_data.get('visible', False)

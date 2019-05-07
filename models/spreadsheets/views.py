@@ -14,7 +14,7 @@ import constants
 import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from models.users.decorators import requires_login, requires_admin, requires_account
+from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login
 from models.users.user import User
 from timer_decorator import timeit
 
@@ -489,7 +489,7 @@ def save_filters(**kwargs):
 
 
 @spreadsheet_blueprint.route('/share', methods=['POST'])
-@requires_login
+@ajax_requires_login
 def share(**kwargs):
     """
     Response to ajax request by logged in user to share one of the user's spreadsheets.  Incoming json specifies the

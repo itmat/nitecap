@@ -22,7 +22,11 @@
             // The banner form
             let banner_form = $("form");
 
-            // Stop event propagation
+            // Note that these elements exist on the base.html page because they are commonly used.
+            let nitecap_error = $("#error-modal");
+            let nitecap_error_message = $("#error-modal-message");
+
+            // Form submitted - stop event propagation
             banner_form.on('submit', function (e) {
                 e.preventDefault();
 
@@ -34,7 +38,7 @@
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',
-                    success: function (response) {
+                    success: function(response) {
 
                         // Reflect the changes on this page without refreshing
                         nitecap_banner_div.fadeOut();
@@ -42,6 +46,11 @@
                         if(visible) {
                             nitecap_banner_div.fadeIn();
                         }
+                    },
+                    error: function(request) {
+                        let error_message = $.parseJSON(request.responseText).error;
+                        nitecap_error_message.text(error_message);
+                        nitecap_error.modal();
                     }
                 });
             });
