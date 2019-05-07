@@ -665,6 +665,43 @@
             })
         });
 
+        let note_popover = $('#annotate');
+        note_popover.popover().on('shown.bs.popover', function() {
+            $('.btn-annotate').on('click', function() {
+
+                // Locate the note content
+                let parentElement = $(this).parent().parent();
+                let popoverTextareaElement = parentElement.find('textarea');
+                let note = popoverTextareaElement.val();
+                $.ajax({
+                    url: "{{url_for('spreadsheets.save_note')}}",
+                    data: JSON.stringify({"spreadsheet_id": spreadsheet_id, "note": note}),
+                        dataType: "json",
+                        contentType: "application/json",
+                        type: 'POST',
+                        success: function () {
+
+                            // Add the new note content to the anchor tag that called the popover so that the
+                            // user will see the new content if s/he opens the note for editing again.
+                            let new_content = note_popover.attr('data-content')
+                                .replace(/>.*<\/textarea/, ">" + note + "</textarea>");
+                            note_popover.attr('data-content', new_content);
+                        },
+                        error: function (request) {
+                            let error_message = $.parseJSON(request.responseText).error;
+                            nitecap_error_message.text(error_message);
+                            nitecap_error.modal();
+                        },
+                        complete: function(data) {
+                            note_popover.popover('hide');
+                        }
+                    });
+                });
+                $('.btn-annotate-dismiss').on('click', function() {
+                    note_popover.popover('hide');
+                });
+            });
+
     });
 
 
@@ -688,6 +725,22 @@
             <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
         </a>
         {% endif %}
+        <a id="annotate" href="#" rel="popover" data-container="body" data-toggle="popover" data-placement="right"
+           data-trigger="click" title="Add a Note" data-html=true
+           data-content="<div id='spreadsheet_notes' class='annotate_form'>
+                            <textarea class='form-control' cols='30' rows='10'>{{ spreadsheet_note or '' }}</textarea>
+                            <div class='float-right'>
+                                <button class='btn-annotate btn btn-primary'>
+                                    <i class='fas fa-check'></i>
+                                </button>
+                                <button class='btn-annotate-dismiss btn btn-white'>
+                                    <i class='fas fa-times'></i>
+                                </button>
+                            </div>
+                        </div>"
+        >
+            <i class="fas fa-sticky-note" data-toggle="tooltip" data-placement="top" title="Annotate"></i>
+        </a>
     </p>
 </div>
 

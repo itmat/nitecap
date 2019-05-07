@@ -299,6 +299,7 @@ def show_spreadsheet(spreadsheet_id, **kwargs):
                            descriptive_name=spreadsheet.descriptive_name,
                            timepoints_per_day=spreadsheet.timepoints,
                            spreadsheet_id=spreadsheet_id,
+                           spreadsheet_note=spreadsheet.note,
                            visitor=visitor,
                            max_value_filter=max_value_filter)
 
