@@ -10,6 +10,8 @@ from flask import current_app
 user_blueprint = Blueprint('users', __name__)
 
 MISSING_USER_ID_ERROR = "No user id was provided."
+ALREADY_LOGGED_IN_MESSAGE = "You are already logged in.  You must be logged out to request a password reset."
+ALREADY_ACTIVATED_MESSAGE = "You are already activated.  If you are still unable to log in, please communicate with us."
 
 @user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
@@ -87,7 +89,7 @@ def login_user():
         if not password:
             errors.append("Password is required.")
 
-        # The user is either not activated or has submitted invalid creds.
+        # The user is either not activated or has submitted invalid credentials.
         if username and password:
             user, errors, messages = User.login_user(username, password)
 
@@ -152,7 +154,7 @@ def request_password_reset():
 
     # Should be no need for a password reset if the user is already logged in.
     if 'email' in session and session['email']:
-        flash("You are already logged in.  You must be logged out to request a password reset")
+        flash(ALREADY_LOGGED_IN_MESSAGE)
 
     # User submits password reset request form
     if request.method == 'POST':
@@ -198,7 +200,7 @@ def reset_password(token):
 
     # Should be no need for a password reset if the user is already logged in.
     if 'email' in session and session['email']:
-        flash("You are already logged in.  You must be logged out to reset your password")
+        flash(ALREADY_LOGGED_IN_MESSAGE)
         return render_template('users/request_reset_form.html')
 
     # The token must be valid and not yet expired.
@@ -312,7 +314,7 @@ def confirm_user(token):
 
     # Confirmation request redundant - user already activated.
     if user.activated:
-        flash("You are already activated.  If you are still unable to log in, please communicate with us.")
+        flash(ALREADY_ACTIVATED_MESSAGE)
         return redirect(url_for('users.login_user'))
 
     # Confirmation email accepted - activate and log in user.
@@ -326,7 +328,8 @@ def confirm_user(token):
 @user_blueprint.route('/resend_confirmation', methods=['POST'])
 def resend_confirmation():
     """
-    This POSt method is called when a user, invited to resend a confirmation email, elects to do just that.
+    This POST method is called when a user, invited to resend a confirmation email, elects to do just that.  The
+    user's email is returned as a hidden form field.
     """
 
     errors = []
