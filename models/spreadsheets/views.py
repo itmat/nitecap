@@ -572,7 +572,7 @@ def consume_share(token):
 
 @spreadsheet_blueprint.route('/compare', methods=['GET'])
 @requires_login
-def compare():
+def compare(**kwargs):
     errors = []
     spreadsheets = []
     non_unique_id_counts = []
@@ -583,12 +583,12 @@ def compare():
     columns = []
     datasets = []
     timepoints_per_day = []
-    user = User.find_by_email(session['email'])
+    user = kwargs['user']
     spreadsheet_ids = request.args.get('spreadsheet_ids').split(",")
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            errors.append('You may only manage your own spreadsheets.')
+            errors.append(MANAGE_OWN_SPREADSHEETS_ERROR)
             return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
         # Populate
