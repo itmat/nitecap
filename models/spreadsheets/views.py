@@ -564,7 +564,7 @@ def consume_share(token):
         if row_index:
             shared_spreadsheet.breakpoint = row_index
             shared_spreadsheet.save_to_db()
-        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=shared_spreadsheet.id))
 
     errors.append("The spreadsheet could not be shared.")
     return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
