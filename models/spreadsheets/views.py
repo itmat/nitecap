@@ -23,6 +23,7 @@ spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
 MANAGE_OWN_SPREADSHEETS_MESSAGE = "You may only manage your own spreadsheets."
 MISSING_SPREADSHEET_ID_ERROR = "No spreadsheet was provided."
+SPREADSHEET_NOT_FOUND_MESSAGE = "No such spreadsheet can be found."
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET', 'POST'])
 @timeit
@@ -68,9 +69,9 @@ def load_spreadsheet():
             user = User.create_visitor()
             if user:
                 # Visitor's session has a fixed expiry date.
-                #session.permanent = True
+                # session.permanent = True
                 session['email'] = user.email
-                session['visitor'] = user.is_visitor()
+                session['visitor'] = True
                 user_id = user.id
 
         # If we have no logged in user and a visitor account could not be generated, we have an internal
@@ -188,7 +189,7 @@ def validate_mime_type(file_path):
     return file_mime_type, errors
 
 
-def access_not_permitted(endpoint, user, visitor, spreadsheet_id):
+def access_not_permitted(endpoint, user, spreadsheet_id):
     """
     Helper method for situation where user attempts to access a spreadsheet that does not belong to him/her.
     :param user: object of user attempting the access
@@ -200,7 +201,7 @@ def access_not_permitted(endpoint, user, visitor, spreadsheet_id):
     flash(MANAGE_OWN_SPREADSHEETS_MESSAGE)
     current_app.logger.warn(f"User {user.id} attempted to apply the endpoint {endpoint} to "
                             f"spreadsheet {spreadsheet_id}")
-    if visitor:
+    if user.is_visitor():
         return render_template(url_for('.load_spreadsheet'))
     return redirect(url_for('.display_spreadsheets'))
 
@@ -217,13 +218,12 @@ def label_columns(spreadsheet_id, user=None):
     """
 
     errors = []
-    visitor = session['visitor']
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
     # spreadsheet list (in the case of a logged in user) or to the upload form (in the case of a visitor).
     if not spreadsheet:
-        return access_not_permitted(label_columns.__name__, user, visitor, spreadsheet_id)
+        return access_not_permitted(label_columns.__name__, user, spreadsheet_id)
 
     # Populate the spreadsheet object with additional data
     spreadsheet.init_on_load()
@@ -256,12 +256,10 @@ def show_spreadsheet(spreadsheet_id, user=None):
     :param user:  Returned by the decorator.  Account bearing user is required.
     """
 
-    visitor = session['visitor']
-
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     if not spreadsheet:
-        return access_not_permitted(show_spreadsheet.__name__, user, visitor, spreadsheet_id)
+        return access_not_permitted(show_spreadsheet.__name__, user, spreadsheet_id)
 
     # Populate
     spreadsheet.init_on_load()
@@ -272,7 +270,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
     if not spreadsheet.column_labels:
         errors = [f"Days/timepoint were not yet matched to columns for spreadsheet '{spreadsheet.descriptive_name}'.  "
                   f"You may have skipped a step.  Please re-edit your data."]
-        if visitor:
+        if user.is_visitor():
             render_template('spreadsheets/spreadsheet_columns_form.html', errors=errors)
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
@@ -298,7 +296,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
                            timepoints_per_day=spreadsheet.timepoints,
                            spreadsheet_id=spreadsheet_id,
                            spreadsheet_note=spreadsheet.note,
-                           visitor=visitor,
+                           visitor=user.is_visitor(),
                            max_value_filter=max_value_filter)
 
 
@@ -306,8 +304,6 @@ def show_spreadsheet(spreadsheet_id, user=None):
 @timeit
 @ajax_requires_account
 def get_jtk(user=None):
-
-    visitor = session['visitor']
 
     spreadsheet_id = json.loads(request.data)['spreadsheet_id']
 
@@ -380,11 +376,10 @@ def download(spreadsheet_id, user=None):
     :param user:  Returned by the decorator.  Account bearing user is required.
     """
     errors = []
-    visitor = session['visitor']
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     if not spreadsheet:
-            return access_not_permitted(download.__name__, user, visitor, spreadsheet_id)
+            return access_not_permitted(download.__name__, user, spreadsheet_id)
     try:
         return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
@@ -404,12 +399,11 @@ def edit_details(spreadsheet_id, user=None):
     :param user:  Returned by the decorator.  Account bearing user is required.
     """
     errors = []
-    visitor = session['visitor']
 
     # Insure user owns spreadsheet
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        return access_not_permitted(edit_details.__name__, user, visitor, spreadsheet_id)
+        return access_not_permitted(edit_details.__name__, user, spreadsheet_id)
 
     if request.method == "POST":
         descriptive_name = request.form['descriptive_name']
@@ -575,7 +569,6 @@ def compare(user=None):
     """
 
     errors = []
-    visitor = session['visitor']
 
     spreadsheets = []
     non_unique_id_counts = []
@@ -596,7 +589,7 @@ def compare(user=None):
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            return access_not_permitted(compare.__name__, user, visitor, spreadsheet_id)
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
 
         # Populate
         spreadsheet.init_on_load()
@@ -860,8 +853,6 @@ def save_cutoff(user=None):
     :return: Nothing is returned in the event of a successful save.  Otherwise an error message is returned.
     """
 
-    errors = []
-
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     cutoff = json_data.get('cutoff', 0)
@@ -873,8 +864,7 @@ def save_cutoff(user=None):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     if not spreadsheet:
-        errors.append('The spreadsheet being requested could not be found.')
-        return jsonify({'error': errors}), 404
+        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
 
     spreadsheet.breakpoint = cutoff
     spreadsheet.save_to_db()
@@ -904,10 +894,9 @@ def save_note(user=None):
         return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
 
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-
     if not spreadsheet:
-        errors.append('The spreadsheet being requested could not be found.')
-        return jsonify({'error': errors}), 404
+        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
+
     spreadsheet.note = note
     spreadsheet.save_to_db()
     return '', 204

@@ -2,7 +2,6 @@ import json
 
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, jsonify
 
-from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
 from models.users.decorators import requires_login, requires_admin
 from flask import current_app
@@ -12,6 +11,7 @@ user_blueprint = Blueprint('users', __name__)
 MISSING_USER_ID_ERROR = "No user id was provided."
 ALREADY_LOGGED_IN_MESSAGE = "You are already logged in.  You must be logged out to request a password reset."
 ALREADY_ACTIVATED_MESSAGE = "You are already activated.  If you are still unable to log in, please communicate with us."
+
 
 @user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
@@ -106,17 +106,18 @@ def login_user():
 
         # Log in user and redirect to the user spreadsheets form.
         if user:
-            # A visitor session means that the logged in user created spreadsheets prior to logging in and we
-            # should re-point them to his/her logged in account.
-            if 'visitor' in session and session['visitor']:
-                visitor = User.find_by_email(session['email'])
-                if visitor:
-                    for spreadsheet in visitor.spreadsheets:
+
+            # A prior user session suggests that the newly logged in user was a originally visitor and that he/she
+            # created spreadsheets prior to logging in and we should re-point them to his/her logged in account.
+            if 'email' in session:
+                prior_user = User.find_by_email(session['email'])
+                if prior_user and prior_user.is_visitor():
+                    for spreadsheet in prior_user.spreadsheets:
                         spreadsheet.update_user(user.id)
 
-            #session.permanent=False
+            # session.permanent=False
             session['email'] = user.email
-            session['visitor'] = user.is_visitor()
+            session['visitor'] = False
 
         # If the user logged in from a different page on this website, return to that page with the exception of
         # the logout route or the home page.
@@ -235,9 +236,7 @@ def reset_password(token):
 
 @user_blueprint.route('/update_profile', methods=['GET', 'POST'])
 @requires_login
-def update_profile(**kwargs):
-
-    user = kwargs['user']
+def update_profile(user=None):
 
     if request.method == 'POST':
 
@@ -249,7 +248,7 @@ def update_profile(**kwargs):
             session['email'] = email
 
         flash("Your user profile has been updated.")
-        return render_template("spreadsheets/spreadsheet_upload_form.html")
+        return redirect(url_for("spreadsheets.display_spreadsheets"))
 
     return render_template('users/profile_form.html', username=user.username, email=user.email)
 
@@ -271,7 +270,6 @@ def display_users():
 def delete():
     """
     Administrative ajax endpoint only - deletes the user provided and all of that user's spreadsheets.
-    :param user_id: id of the user to delete
     """
     user_id = json.loads(request.data).get('user_id', None)
     if not user_id:
@@ -288,7 +286,6 @@ def delete():
 def confirm():
     """
     Administrative function only - confirms the user provided, expiration notwithstanding
-    :param user_id: id of the user to confirm
     """
     user_id = json.loads(request.data).get('user_id', None)
     if not user_id:
@@ -300,6 +297,7 @@ def confirm():
         user.activated = True
         user.save_to_db()
         return jsonify({'confirmed': True})
+
 
 @user_blueprint.route('/confirm_user/<string:token>', methods=['GET'])
 def confirm_user(token):
@@ -321,9 +319,10 @@ def confirm_user(token):
     user.activated = True
     user.save_to_db()
     session['email'] = user.email
-    session['visitor'] = False
+    session['visitor'] = user.is_visitor()
     flash(f"Your registration as '{user.username}' has been confirmed through your email { user.email }.")
     return redirect(url_for('spreadsheets.load_spreadsheet'))
+
 
 @user_blueprint.route('/resend_confirmation', methods=['POST'])
 def resend_confirmation():
@@ -339,18 +338,18 @@ def resend_confirmation():
     # Bogus request - possibly a hacker exploring
     if not user:
         errors.append("No such account was found.  Please register.")
-        return render_template('users/registration_form.html', errors = errors)
+        return render_template('users/registration_form.html', errors=errors)
 
     # Redundant confirmation request - user may have gotten to resend page and then found and clicked the email
     # link before making this request.
     if user.activated:
-        flash("Your account is already activated.  Please communicate with us if you still unable to log in.")
-        return render_template('users/login_form.html')
+        flash(ALREADY_ACTIVATED_MESSAGE)
+        return redirect(url_for('users/login_form.html'))
 
     # If unable to send an email - user is invited to register at a later date.
     errors = user.send_confirmation_email()
     if errors:
-        return render_template('users/registration_form.html', errors = errors)
+        return render_template('users/registration_form.html', errors=errors)
 
     # Confirmation sent
     flash(f"Your confirmation email has been sent.  Click on the link it contains to activate your account.")
