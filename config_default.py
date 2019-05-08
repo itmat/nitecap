@@ -16,4 +16,4 @@ MAX_CONTENT_LENGTH = 40 * 1024 * 1024
 SECRET_KEY = os.environ["SECRET_KEY"]
 SMTP_SERVER_HOST = os.environ['SMTP_SERVER_HOST']
 ADMIN_LIST = os.environ.get('ADMINS','').split(",")
-PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
+PERMANENT_SESSION_LIFETIME = timedelta(minutes=300)

@@ -208,16 +208,15 @@ def access_not_permitted(endpoint, user, visitor, spreadsheet_id):
 @spreadsheet_blueprint.route('label_columns/<int:spreadsheet_id>', methods=['GET', 'POST'])
 @timeit
 @requires_account
-def label_columns(spreadsheet_id, **kwargs):
+def label_columns(spreadsheet_id, user=None):
     """
     Standard endpoint - labels spreadsheet columns appropriately.  This method is available to any user with an
     account (standard user or visitor).
     :param spreadsheet_id: id of spreadsheet having columns to be labelled.
-    :param kwargs: the decorator returns the user object here
+    :param user:  Returned by the decorator.  Account bearing user is required.
     """
 
     errors = []
-    user = kwargs['user']
     visitor = session['visitor']
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
@@ -249,14 +248,14 @@ def label_columns(spreadsheet_id, **kwargs):
 
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_account
-def show_spreadsheet(spreadsheet_id, **kwargs):
+def show_spreadsheet(spreadsheet_id, user=None):
     """
     Standard endpoint - retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
     method is available to any user with an account (standard user or visitor).
     :param spreadsheet_id: the id of the spreadsheet whose results are to be displayed.
-    :param kwargs: the decorator returns the user object here
+    :param user:  Returned by the decorator.  Account bearing user is required.
     """
-    user = kwargs['user']
+
     visitor = session['visitor']
 
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
@@ -306,9 +305,8 @@ def show_spreadsheet(spreadsheet_id, **kwargs):
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
 @timeit
 @ajax_requires_account
-def get_jtk(**kwargs):
+def get_jtk(user=None):
 
-    user = kwargs['user']
     visitor = session['visitor']
 
     spreadsheet_id = json.loads(request.data)['spreadsheet_id']
@@ -327,27 +325,27 @@ def get_jtk(**kwargs):
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
 @requires_login
-def display_spreadsheets(**kwargs):
+def display_spreadsheets(user=None):
     """
     Standard endpoint - takes the logged in user to a listing of his/her spreadsheets.  The decorator assures that only
     logged in users may make such a request.
+    :param user:  Returned by the decorator.  Logged in user is required.
     """
-    user = kwargs['user']
+
     current_app.logger.info(f"Displaying spreadsheets for user {user.username}")
     return render_template('spreadsheets/user_spreadsheets.html', user=user)
 
 
 @spreadsheet_blueprint.route('/delete', methods=['POST'])
 @ajax_requires_login
-def delete(**kargs):
+def delete(user=None):
     """
     AJAX endpoint - delete the user's spreadsheet data and its metadata.  The user must be logged in and own the
     spreadsheet given by the id provided.  The reference to the spreadsheet is first removed from the database and then
     the associated files are removed.  Any incomplete removal is reported to the user and logged.
+    :param user:  Returned by the decorator.  Logged in user is required.
     :return: A successful ajax call returns nothing (just a 204 status code).
     """
-
-    user = kargs['user']
 
     spreadsheet_id = json.loads(request.data).get('spreadsheet_id', None)
 
@@ -372,16 +370,16 @@ def delete(**kargs):
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
 @requires_account
-def download(spreadsheet_id, **kwargs):
+def download(spreadsheet_id, user=None):
     """
     Response to a request from the graphs page to download the spreadsheet whose id is in the session.  In this case,
     the user need not be logged in.  Nevertheless, the requested spreadsheet must be in the user's inventory.  In the
     case of a visitor, the spreadsheet must not be in the inventory of any logged in user.  If the user is authorized
     to download the spreadsheet and the file is available, the file representing the fully processed version of the
     spreadsheet is delivered as an attachment.
+    :param user:  Returned by the decorator.  Account bearing user is required.
     """
     errors = []
-    user = kwargs['user']
     visitor = session['visitor']
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
@@ -397,15 +395,15 @@ def download(spreadsheet_id, **kwargs):
 
 @spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET', 'POST'])
 @requires_account
-def edit_details(spreadsheet_id, **kwargs):
+def edit_details(spreadsheet_id, user=None):
     """
     Standard endpoint - allows a logged in user to edit the details of an existing spreadsheet (e.g., name, # days, # timepoints, etc).  A
     check is made to insure that the spreadsheet id sent in the url identifies a spreadsheet in the logged in user's
     inventory.
     :param spreadsheet_id:  id to the spreadsheet whose details the logged in user wishes to edit.
+    :param user:  Returned by the decorator.  Account bearing user is required.
     """
     errors = []
-    user = kwargs['user']
     visitor = session['visitor']
 
     # Insure user owns spreadsheet
@@ -452,13 +450,14 @@ def edit_details(spreadsheet_id, **kwargs):
 
 @spreadsheet_blueprint.route('/save_filters', methods=['POST'])
 @ajax_requires_account
-def save_filters(**kwargs):
+def save_filters(user=None):
     """
     AJAX endpoint - apply filters set on the graphs page.  Those filter values are also saved to the
     spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annonymous user).
+    :param user:  Returned by the decorator.  Account bearing user is required.
     :return: A json string containing filtered values along with associated q values and p values.
     """
-    user = kwargs['user']
+
     json_data = request.get_json()
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet_id = json_data.get('spreadsheet_id', None)
@@ -490,17 +489,14 @@ def save_filters(**kwargs):
 
 @spreadsheet_blueprint.route('/share', methods=['POST'])
 @ajax_requires_login
-def share(**kwargs):
+def share(user=None):
     """
     AJAX endpoint - shares one of the user's spreadsheets.  Incoming json specifies the spreadsheet id and the cutoff
     to share.  Confirms that spreadsheet indeed belongs to the user and if so, returns a token which encrypts the
     spreadsheet id and cutoff.
-    :param kwargs: the decorator returns the user object here
+    :param user:  Returned by the decorator.  Logged in user is required.
     :return: json {'share': <token>} unless the user's privileges are inadequate.
     """
-
-    # Presumed spreadsheet owner
-    user = kwargs['user']
 
     # Collect json data
     json_data = request.get_json()
@@ -572,9 +568,14 @@ def consume_share(token):
 
 @spreadsheet_blueprint.route('/compare', methods=['GET'])
 @requires_login
-def compare(**kwargs):
+def compare(user=None):
+    """
+    Standard endpoint - compares two spreadsheets based upon the column ids they have in common.
+    :param user: Returned by the decorator.  Logged in user is required.
+    """
+
     errors = []
-    user = kwargs['user']
+    visitor = session['visitor']
 
     spreadsheets = []
     non_unique_id_counts = []
@@ -595,7 +596,7 @@ def compare(**kwargs):
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            return access_not_permitted(compare.__name__, user, user.is_visitor(), spreadsheet_id)
+            return access_not_permitted(compare.__name__, user, visitor, spreadsheet_id)
 
         # Populate
         spreadsheet.init_on_load()
@@ -817,9 +818,15 @@ def run_pca():
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 @requires_account
-def check_id_uniqueness(**kwargs):
+def check_id_uniqueness(user=None):
+    """
+    AJAX endpoint - determines whether the id columns selected by the user, in combination, form a unique identifier.
+    Non unique identifier will be left out of comparisons.
+    :param user:  Returned by the decorator.  Logged in user is required.
+    :return: {'non-unique_ids': <non unique ids} or {'error': <error>}
+    """
+
     errors = []
-    user = kwargs['user']
 
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
@@ -829,13 +836,11 @@ def check_id_uniqueness(**kwargs):
         errors.append("No id columns were selected. Please select at least one id column.")
         return jsonify({'error': errors}), 400
     if not spreadsheet_id:
-        errors.append("No spreadsheet was identified. Make sure you are selecting one you uploaded.")
-        return jsonify({'error': errors}), 400
+        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
     else:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        errors.append('The spreadsheet being edited could not be found.')
-        return jsonify({'error': errors}), 404
+        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
 
     # Populate
     spreadsheet.init_on_load()
@@ -847,15 +852,15 @@ def check_id_uniqueness(**kwargs):
 
 @spreadsheet_blueprint.route('/save_cutoff', methods=['POST'])
 @ajax_requires_account
-def save_cutoff(**kwargs):
+def save_cutoff(user=None):
     """
     AJAX endpoint - when the user selects a significance cutoff, in addition to showing the heatmap, the cutoff value
     is saved to the spreadsheet database record.
+    :param user:  Returned by the decorator.  Account bearing user is required.
     :return: Nothing is returned in the event of a successful save.  Otherwise an error message is returned.
     """
 
     errors = []
-    user = kwargs['user']
 
     json_data = request.get_json()
     spreadsheet_id = json_data.get('spreadsheet_id', None)
@@ -866,7 +871,6 @@ def save_cutoff(**kwargs):
         return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
 
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-
 
     if not spreadsheet:
         errors.append('The spreadsheet being requested could not be found.')
@@ -879,16 +883,16 @@ def save_cutoff(**kwargs):
 
 @spreadsheet_blueprint.route('/save_note', methods=['POST'])
 @ajax_requires_account
-def save_note(**kwargs):
+def save_note(user=None):
     """
     AJAX endpoint - accepts a json object { spreadsheet_id: spreadsheet id, note: note } and saves the contents
     of that note to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be sure
     that it represents a spreadsheet owned by this logged in user.  A successful save results in no content
     returned.  Otherwise an error is returned with the appropriate status code.
+    :param user:  Returned by the decorator.  Account bearing user is required.
     :return: no content or { error: error } and a 400 or 404 code.
     """
     errors = []
-    user = kwargs['user']
 
     # Gather json data
     json_data = request.get_json()
