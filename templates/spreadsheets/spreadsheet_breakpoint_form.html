@@ -390,7 +390,17 @@
             $('#download_heatmap').show();
             $('#heatmap_controls').show();
         };
-        $('#set_breakpoint').click(computeHeatmap);
+
+        let set_cutoff_button = $("#set_breakpoint");
+        set_cutoff_button.click(function() {
+            set_cutoff_button.prop('disabled', true);
+            set_cutoff_button.html(
+                "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                "</span>Computing...");
+            computeHeatmap();
+            set_cutoff_button.prop('disabled', false);
+            set_cutoff_button.html('Generate Heatmap')
+        });
 
         $('#download_heatmap').click(function() {
             var gd = document.getElementById('heatmap');
