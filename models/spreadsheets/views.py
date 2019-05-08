@@ -6,7 +6,7 @@ from pathlib import Path
 import magic
 import numpy
 import pandas as pd
-from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify
+from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify, flash
 from flask import current_app
 from sklearn.decomposition import PCA
 
@@ -21,8 +21,8 @@ from timer_decorator import timeit
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
-MANAGE_OWN_SPREADSHEETS_ERROR = "You may only manage your own spreadsheets."
-MISSING_SPREADSHEET_ID_ERROR = "No spreadsheet id was provided."
+MANAGE_OWN_SPREADSHEETS_MESSAGE = "You may only manage your own spreadsheets."
+MISSING_SPREADSHEET_ID_ERROR = "No spreadsheet was provided."
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET', 'POST'])
 @timeit
@@ -197,13 +197,12 @@ def access_not_permitted(endpoint, user, visitor, spreadsheet_id):
     :param spreadsheet_id: the id of the spreadsheet the user is attempting to access.
     :return: an appropriate page to which to return the user.
     """
-    errors = []
-    errors.append(MANAGE_OWN_SPREADSHEETS_ERROR)
+    flash(MANAGE_OWN_SPREADSHEETS_MESSAGE)
     current_app.logger.warn(f"User {user.id} attempted to apply the endpoint {endpoint} to "
                             f"spreadsheet {spreadsheet_id}")
     if visitor:
-        return render_template('spreadsheets/spreadsheet_upload_form.html', user=user, error=errors)
-    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+        return render_template(url_for('.load_spreadsheet'))
+    return redirect(url_for('.display_spreadsheets'))
 
 
 @spreadsheet_blueprint.route('label_columns/<int:spreadsheet_id>', methods=['GET', 'POST'])
@@ -358,7 +357,7 @@ def delete(**kargs):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
         current_app.logger.warn(f"User {user.id} attempted to delete spreadsheet {spreadsheet_id}")
-        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_ERROR}), 403
+        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
 
     try:
         spreadsheet.delete_from_db()
@@ -474,7 +473,7 @@ def save_filters(**kwargs):
     # Attempt to access spreadsheet not owned.
     if not spreadsheet:
         current_app.logger.warn(f"User {user.id} attempted to save spreadsheet filters {spreadsheet_id}")
-        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_ERROR}), 403
+        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
 
     # Populate spreadsheet with raw data
     spreadsheet.init_on_load()
@@ -514,7 +513,7 @@ def share(**kwargs):
 
     # Attempt to access spreadsheet not owned.
     if not user.find_user_spreadsheet_by_id(spreadsheet_id):
-        return jsonify({"errors": MANAGE_OWN_SPREADSHEETS_ERROR}, 401)
+        return jsonify({"errors": MANAGE_OWN_SPREADSHEETS_MESSAGE}, 401)
 
     current_app.logger.info(f"Sharing spreadsheet {spreadsheet_id} and row index {row_index}")
     return jsonify({'share': user.get_share_token(spreadsheet_id, row_index)})
@@ -575,6 +574,8 @@ def consume_share(token):
 @requires_login
 def compare(**kwargs):
     errors = []
+    user = kwargs['user']
+
     spreadsheets = []
     non_unique_id_counts = []
     x_values = []
@@ -584,13 +585,17 @@ def compare(**kwargs):
     columns = []
     datasets = []
     timepoints_per_day = []
-    user = kwargs['user']
-    spreadsheet_ids = request.args.get('spreadsheet_ids').split(",")
+
+    spreadsheet_ids = request.args.get('spreadsheet_ids', None)
+    if not spreadsheet_ids or len(spreadsheet_ids.split(",")) != 2:
+        errors.append("No spreadsheets were provided")
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    spreadsheet_ids = spreadsheet_ids.split(",")
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            errors.append(MANAGE_OWN_SPREADSHEETS_ERROR)
-            return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+            return access_not_permitted(compare.__name__, user, user.is_visitor(), spreadsheet_id)
 
         # Populate
         spreadsheet.init_on_load()
