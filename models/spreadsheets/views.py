@@ -412,7 +412,7 @@ def edit_details(spreadsheet_id, **kwargs):
     # Insure user owns spreadsheet
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        access_not_permitted(edit_details.__name__, user, visitor, spreadsheet_id)
+        return access_not_permitted(edit_details.__name__, user, visitor, spreadsheet_id)
 
     if request.method == "POST":
         descriptive_name = request.form['descriptive_name']
