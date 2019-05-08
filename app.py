@@ -1,9 +1,6 @@
-import sched
-from datetime import timedelta
-
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv, find_dotenv
-from flask import Flask, render_template, request, session, flash, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
 import backup
@@ -31,13 +28,15 @@ handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 logger.addHandler(handler)
 
+
 @app.before_first_request
 def create_tables():
     db.create_all()
 
-#@app.before_request
-#def check_session():
-#    print(session)
+# @app.before_request
+# def check_session():
+#     print(session)
+
 
 @app.route('/', methods=['GET'])
 def home():
@@ -65,6 +64,7 @@ def about():
 def dashboard():
     return redirect(url_for('users.display_users'))
 
+
 @app.route('/manage_banner', methods=['GET'])
 @requires_admin
 def manage_banner():
@@ -73,6 +73,7 @@ def manage_banner():
     :return: the banner form or the user login page if user is not an admin
     """
     return render_template("banner.html")
+
 
 @app.route('/update_banner', methods=['POST'])
 @ajax_requires_admin
@@ -87,7 +88,6 @@ def update_banner():
     app.config['banner_content'] = content
     app.config['banner_visible'] = visible
     return '', 204
-
 
 
 @app.errorhandler(413)
