@@ -25,7 +25,7 @@ CONFIRMATION_TOKEN_EXPIRED = "Your confirmation request is either invalid or exp
 @user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
     """
-    Handles user registration.  The GET method requests the form.  The POST method attempts to process the user's
+    Standard endpoint - handles user registration.  The GET method requests the form.  The POST method attempts to process the user's
     input.  A successful registration takes the user to a page acknowledging the delivery of a confirmation email.
     A rendundant registration forwards the user to a login page if the user account is activated and to a resend
     confirmation page otherwise.  A unsuccessful registration returns the users to the registration form with the
@@ -313,7 +313,8 @@ def confirm():
 @user_blueprint.route('/confirm_user/<string:token>', methods=['GET'])
 def confirm_user(token):
 
-    # The token must be valid and not yet expired.
+    # The token must be valid and not yet expired.  Cannot directly send user to resend confirmation page because
+    # we don't have the user's email.  So he/she will need to log in to be invited to resend a confirmation email.
     user = User.verify_user_token(token)
     if not user:
         flash(CONFIRMATION_TOKEN_EXPIRED)
