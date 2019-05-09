@@ -8,9 +8,18 @@ from flask import current_app
 
 user_blueprint = Blueprint('users', __name__)
 
+ACCOUNT_NOT_FOUND_MESSAGE = "No such account was found.  Please register."
+PROFILE_UPDATED_MESSAGE = "Your user profile has been updated."
 MISSING_USER_ID_ERROR = "No user id was provided."
-ALREADY_LOGGED_IN_MESSAGE = "You are already logged in.  You must be logged out to request a password reset."
+PASSWORD_RESET_MESSAGE = "Your password has been reset"
+PASSWORD_RESET_SENT_MESSAGE = "An email has been sent with instructions for reseting your password"
+PASSWORD_RESET_TOKEN_EXPIRED = "Your reset request is either invalid or expired.  Please try again."
+ALREADY_LOGGED_IN_MESSAGE = "You are already logged in.  Log out first to resent password."
 ALREADY_ACTIVATED_MESSAGE = "You are already activated.  If you are still unable to log in, please communicate with us."
+CONFIRMATION_SENT_MESSAGE = "Your confirmation email has been sent.  Click on the link it contains to activate your" \
+                            " account."
+CONFIRMATION_TOKEN_EXPIRED = "Your confirmation request is either invalid or expired.  Please reconfirm by attempting" \
+                             "to log in.  You will be re-directed to the resend confirmation page."
 
 
 @user_blueprint.route('/register', methods=['GET', 'POST'])
@@ -45,18 +54,18 @@ def register_user():
         # User already registered but not activated.  May have ignored or not received confirmation email.
         # Invited user to check email or resend the confirmation email.
         if status == 'unconfirmed':
-            flash("You are already registered but have not activated "
+            flash("You are already registered but have not activated.  Activate "
                   "your account by clicking on the email confirmation link sent to you.")
-            return render_template('users/resend_confirmation_form.html', email=user.email)
+            return redirect(url_for('.resend_confirmation'))
 
         # User already registered and activated.  Send user to login page.
         if status == 'confirmed':
-            flash("You are already registered and your account is activated.  Just log in.")
-            return render_template('users/login_form.html', username=user.username)
+            flash(ALREADY_ACTIVATED_MESSAGE)
+            return redirect(url_for('.login_user'))
 
         # User successfully registered and email sent.
         current_app.logger.info(f"user {username} - {email} just registered.")
-        flash("A confirmation email has been sent.")
+        flash(CONFIRMATION_SENT_MESSAGE)
         return redirect(url_for('spreadsheets.load_spreadsheet'))
 
     else:
@@ -102,7 +111,7 @@ def login_user():
         # Invite user to resend confirmation email.
         if messages:
             [flash(message) for message in messages]
-            return render_template('users/resend_confirmation_form.html', email=user.email)
+            return redirect(url_for('.resend_confirmation', email=user.email))
 
         # Log in user and redirect to the user spreadsheets form.
         if user:
@@ -144,18 +153,19 @@ def logout_user():
 @user_blueprint.route('/reset_password', methods=['GET', 'POST'])
 def request_password_reset():
     """
-    Handles request for a password reset.  The link to this URL is found on the login form under the
-    password input.  The GET requests the request form.  The POST will validate the email provided an
-    attempt to issue a password reset to that email address.  A successful POST will return the user
-    to the login page to await the password reset email.  An unsuccessful POST will take the user to
-    the registration form if the email provided is not associated with any current account.
+    Standard endpoint - handles request for a password reset.  The link to this URL is found on the login form under
+    the password input.  The GET requests the request form.  The POST will validate the email provided an attempt to
+    issue a password reset to that email address.  A successful POST will return the user to the login page to await
+    the password reset email.  An unsuccessful POST will take the user to the registration form if the email provided
+    is not associated with any current account.
     """
 
-    errors = []
-
-    # Should be no need for a password reset if the user is already logged in.
+    # Should be no need for a password reset if the user is already logged in and is not a visitor.
     if 'email' in session and session['email']:
-        flash(ALREADY_LOGGED_IN_MESSAGE)
+        user = User.find_by_email(session['email'])
+        if user and not user.is_visitor():
+            flash(ALREADY_LOGGED_IN_MESSAGE)
+            return redirect(url_for('spreadsheets.display_spreadsheets'))
 
     # User submits password reset request form
     if request.method == 'POST':
@@ -163,14 +173,13 @@ def request_password_reset():
         # The email input is required
         email = request.form['email']
         if not email:
-            errors.append("You must provide your email.")
-            return render_template('users/request_reset_form.html', errors=errors)
+            return render_template('users/request_reset_form.html', errors="You must provide your email.")
 
         # The email provided must be associated with an existing account.
         user = User.find_by_email(email)
         if not user:
-            errors.append("There is no account with that email.  Please register.")
-            return render_template('users/registration_form.html', email=email, errors=errors)
+            flash(ACCOUNT_NOT_FOUND_MESSAGE)
+            return redirect(url_for('.register_user'))
 
         # If email delivery was not successful take the user to the spreadsheet load page with
         # an error
@@ -179,8 +188,8 @@ def request_password_reset():
             return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
 
         # Notify user the an email has been sent.
-        flash("An email has been sent with instructions for reseting your password")
-        return redirect(url_for('users.login_user'))
+        flash(PASSWORD_RESET_SENT_MESSAGE)
+        return redirect(url_for('.login_user'))
 
     # User requests password reset request form
     return render_template('users/request_reset_form.html')
@@ -199,16 +208,18 @@ def reset_password(token):
 
     errors = []
 
-    # Should be no need for a password reset if the user is already logged in.
+    # Should be no need for a password reset if the user is already logged in and not a visitor.
     if 'email' in session and session['email']:
-        flash(ALREADY_LOGGED_IN_MESSAGE)
-        return render_template('users/request_reset_form.html')
+        user = User.find_by_email(session['email'])
+        if user and not user.is_visitor():
+            flash(ALREADY_LOGGED_IN_MESSAGE)
+            return redirect(url_for('spreadsheets.display_spreadsheets'))
 
     # The token must be valid and not yet expired.
     user = User.verify_user_token(token)
     if not user:
-        errors.append("Your reset request is either invalid or expired.  Please try again.")
-        return render_template('users/request_reset_form.html', errors=errors)
+        flash(PASSWORD_RESET_TOKEN_EXPIRED)
+        return redirect(url_for('.request_password_reset'))
 
     # User submits password reset form
     if request.method == 'POST':
@@ -227,8 +238,8 @@ def reset_password(token):
 
         # Reset the user's password
         user.reset_password(password)
-        flash("Your password has been reset.")
-        return redirect(url_for('users.login_user'))
+        flash(PASSWORD_RESET_MESSAGE)
+        return redirect(url_for('.login_user'))
 
     # User requests password reset form.
     return render_template('users/reset_password_form.html', token=token)
@@ -247,7 +258,7 @@ def update_profile(user=None):
         if email:
             session['email'] = email
 
-        flash("Your user profile has been updated.")
+        flash(PROFILE_UPDATED_MESSAGE)
         return redirect(url_for("spreadsheets.display_spreadsheets"))
 
     return render_template('users/profile_form.html', username=user.username, email=user.email)
@@ -302,18 +313,16 @@ def confirm():
 @user_blueprint.route('/confirm_user/<string:token>', methods=['GET'])
 def confirm_user(token):
 
-    errors = []
-
     # The token must be valid and not yet expired.
     user = User.verify_user_token(token)
     if not user:
-        errors.append("Your confirmation request is either invalid or expired.  Please reconfirm.")
-        return render_template('users/resend_confirmation_form.html', errors=errors)
+        flash(CONFIRMATION_TOKEN_EXPIRED)
+        return redirect(url_for('.login_user'))
 
     # Confirmation request redundant - user already activated.
     if user.activated:
         flash(ALREADY_ACTIVATED_MESSAGE)
-        return redirect(url_for('users.login_user'))
+        return redirect(url_for('.login_user'))
 
     # Confirmation email accepted - activate and log in user.
     user.activated = True
@@ -324,33 +333,38 @@ def confirm_user(token):
     return redirect(url_for('spreadsheets.load_spreadsheet'))
 
 
-@user_blueprint.route('/resend_confirmation', methods=['POST'])
+@user_blueprint.route('/resend_confirmation', methods=['GET','POST'])
 def resend_confirmation():
     """
-    This POST method is called when a user, invited to resend a confirmation email, elects to do just that.  The
+    Standard endpoint - method is called when a user, invited to resend a confirmation email, elects to do just that.  The
     user's email is returned as a hidden form field.
     """
 
-    errors = []
-    email = request.form['email']
-    user = User.find_by_email(email)
+    if request.method == 'POST':
 
-    # Bogus request - possibly a hacker exploring
-    if not user:
-        errors.append("No such account was found.  Please register.")
-        return render_template('users/registration_form.html', errors=errors)
+        email = request.form['email']
+        user = User.find_by_email(email)
 
-    # Redundant confirmation request - user may have gotten to resend page and then found and clicked the email
-    # link before making this request.
-    if user.activated:
-        flash(ALREADY_ACTIVATED_MESSAGE)
-        return redirect(url_for('users/login_form.html'))
+        # Bogus request - possibly a hacker exploring
+        if not user:
+            flash(ACCOUNT_NOT_FOUND_MESSAGE)
+            return redirect(url_for('.register_user'))
 
-    # If unable to send an email - user is invited to register at a later date.
-    errors = user.send_confirmation_email()
-    if errors:
-        return render_template('users/registration_form.html', errors=errors)
+        # Redundant confirmation request - user may have gotten to resend page and then found and clicked the email
+        # link before making this request.
+        if user.activated:
+            flash(ALREADY_ACTIVATED_MESSAGE)
+            return redirect(url_for('.login_user'))
 
-    # Confirmation sent
-    flash(f"Your confirmation email has been sent.  Click on the link it contains to activate your account.")
-    return redirect(url_for('spreadsheets.load_spreadsheet'))
+        # If unable to send an email - user is invited to register at a later date.
+        errors = user.send_confirmation_email()
+        if errors:
+            flash(errors)
+            return redirect(url_for('.register_user'))
+
+        # Confirmation sent
+        flash(CONFIRMATION_SENT_MESSAGE)
+        return redirect(url_for('spreadsheets.load_spreadsheet'))
+
+    email = request.args['email']
+    return render_template('users/resend_confirmation_form.html', email=email)
