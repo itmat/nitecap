@@ -447,7 +447,7 @@ def edit_details(spreadsheet_id, user=None):
         spreadsheet.repeated_measures = repeated_measures
         spreadsheet.header_row = header_row
         spreadsheet.save_to_db()
-        return redirect(url_for('.edit_columns'))
+        return redirect(url_for('.label_columns', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/edit_form.html', spreadsheet_id=spreadsheet_id,
                            descriptive_name=spreadsheet.descriptive_name,
                            days=spreadsheet.days,
