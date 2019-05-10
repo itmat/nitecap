@@ -371,6 +371,71 @@ def delete(user=None):
         return jsonify({"error": 'The spreadsheet data may not have been all successfully removed'}), 500
     return '', 204
 
+@spreadsheet_blueprint.route('/download_comparison/<int:id1>,<int:id2>', methods=['GET'])
+@requires_account
+def download_comparison(id1, id2, user=None):
+    """
+    Response to a request from the graphs page to download the spreadsheet whose id is in the session.  In this case,
+    the user need not be logged in.  Nevertheless, the requested spreadsheet must be in the user's inventory.  In the
+    case of a visitor, the spreadsheet must not be in the inventory of any logged in user.  If the user is authorized
+    to download the spreadsheet and the file is available, the file representing the fully processed version of the
+    spreadsheet is delivered as an attachment.
+    :param user:  Returned by the decorator.  Account bearing user is required.
+    """
+
+    spreadsheet_ids = [id1, id2]
+
+    spreadsheets = []
+    comparison_data = []
+    dfs = []
+
+    # Check user ownership over these spreadsheets
+    user = User.find_by_email(session['email'])
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
+            return jsonify("spreadsheets not found"), 404
+
+        # Populate
+        spreadsheet.init_on_load()
+
+        spreadsheets.append(spreadsheet)
+
+        data = spreadsheet.df
+        data["compare_ids"] = list(spreadsheet.get_ids())
+        data = data.set_index("compare_ids")
+        data = data[~data.index.duplicated()]
+        dfs.append(data)
+
+    # joined dataframe
+    common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
+    df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
+    df = df.sort_values(by=['total_delta_0'])
+    compare_ids = df.index.tolist()
+
+    for primary, secondary in [(0, 1), (1, 0)]:
+        primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
+        try:
+            comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
+            current_app.logger.info(f"Loaded upside values from file {file_path}")
+            comparison_data.append(comp_data)
+        except OSError: # Parquet file could not be read (hasn't been written yet)
+            current_app.logger.info(f"Failed to download comparison spreadsheet since we can't load the file {primary_id}v{secondary_id}.comparison.parquet")
+
+            # TODO: user should be able to try to re-download at a later point
+            #       so 404 is a bad error code to give here, but what should it be?
+            return jsonif("Computations not finished yet"), 404
+
+    df = df.join(comparison_data[0])
+
+    txt_data = io.StringIO()
+    df.to_csv(txt_data, sep='\t')
+    txt = txt_data.getvalue()
+    byte_data = io.BytesIO(str.encode(txt))
+
+    return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
 
 @spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
 @requires_account
@@ -678,7 +743,7 @@ def compare(user=None):
                            tds=json.dumps(tds),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            timepoints_per_day=timepoints_per_day,
-                           spreadsheet_ids=json.dumps(spreadsheet_ids))
+                           spreadsheet_ids=spreadsheet_ids)
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
