@@ -38,6 +38,42 @@ var toFixed = function(num, i) {
     }
     return num;
 };
+var toString = function(num) {
+    // Call num.toString unless num is undefined (eg: null)
+    if (typeof num === 'number') {
+        return num.toString();
+    }
+    return num + '';
+};
+
+// For sorting values with nans, returns -1,0,1 based off value and current index
+function compare(a,b, i,j) {
+    // Handle nans, putting them at the end
+    if (isNaN(a) || a === null) {
+        if (isNaN(b) || b === null) {
+            // If both are Nans, then we preserve their order
+            if (i > j) {
+                return 1;
+            } else if (i < j) {
+                return -1;
+            } else {
+                return 0;
+            }
+        } else {
+            return 1;
+        }
+    } else if (isNaN(b)) {
+        return -1;
+    } else {
+        if (a > b) {
+            return 1;
+        } else if (a < b) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+}
 
 //// COMPUTATIONAL UTILS ////
 function computeZScores(ordering) {
@@ -46,7 +82,7 @@ function computeZScores(ordering) {
             var row = data[i];
             var num_reps = 0;
             var sum = row.reduce( function(x,y) {
-                 if (isNaN(y)) {return x;}
+                 if (isNaN(y) || y === null) {return x;}
                 num_reps += 1;
                 return x+y;
             }, 0);
@@ -55,7 +91,7 @@ function computeZScores(ordering) {
             if (num_reps === 0) { mean = 0; }
 
             var variance = row.reduce( function(x,y) {
-                if (isNaN(y)) {return x;}
+                if (isNaN(y) || y === null) {return x;}
 
                 return x + (y - mean)*(y - mean);
             }, 0);
@@ -83,7 +119,7 @@ function meanByTimepoints(data, times) {
                 reps_by_timepoint[time] = 0;
             }
 
-            if (isNaN(value)) {
+            if (isNaN(value) || value === null) {
                 return;
             }
 
@@ -110,7 +146,7 @@ function rowStatsByTimepoint(row, times) {
             sum_by_timepoint[time] = 0;
             reps_per_timepoint[time] = 0;
         }
-        if (!isNaN(value)) {
+        if (!isNaN(value) && value !== null) {
             // Skip nans entirely, count the rest
             sum_by_timepoint[time] += value;
             reps_per_timepoint[time] += 1;
@@ -123,13 +159,13 @@ function rowStatsByTimepoint(row, times) {
 
     var variances = [];
     times.forEach( function(time, i) {
-        var value = raw_y_values[i];
+        var value = row[i];
 
         if (variances[time] === undefined) {
             variances[time] = 0;
         }
 
-        if (!isNaN(value)) {
+        if (!isNaN(value) && value !== null) {
             if (reps_per_timepoint[time] > 1) {
                 variances[time] += (value - means[time])*(value - means[time]) / (reps_per_timepoint[time]-1);
             } else {
@@ -168,12 +204,14 @@ function padEnd(string, length, character) {
 
 //// Row selector object ////
 function makeRowSelector(element, labels, q_values, filtered, sort_order, num_row_selections, onSelect) {
-    var rowSelector = {
+    let rowSelector = {
         top: 0, // Top row visible
         options: [], // List of all the option elements inside of the row selector
         labels: labels, // list of strings used to label the rows
+        full_labels: labels, // the labels not shortened (incase they exceed the maximum length) for hovertext
         sort_order: sort_order, // List of indexes to use to reorder the rows
         filtered_rows: filtered, // Boolean list with 1 meaning corresponding row is filtered out (disabled)
+        label_length_maximum: 30, // longest label to ever make
 
         // Event callbacks
         onSelect: onSelect,
@@ -181,10 +219,15 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
         // Methods
         makeRowLabels: function(labels, q_values) {
             // Make labels that include q values in them, for the selector
-            var max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
+            let max_label_length = Math.max.apply(0, labels.map( function (x) {return x.length;}));
+            max_label_length = Math.min(max_label_length, rowSelector.label_length_maximum);
+
             rowSelector.labels = labels.map( function(label, i) {
-                return padEnd(String(label), max_label_length, ' ') + ' Q: ' + toFixed(q_values[i], 2);
+                label = String(label).slice(0,rowSelector.label_length_maximum);
+                return padEnd(label, max_label_length, ' ') + ' Q: ' + toFixed(q_values[i], 2);
             } );
+
+            rowSelector.full_labels = labels;
             rowSelector.update();
         },
 
@@ -215,10 +258,13 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
                 var current_index = rowSelector.top + i;
                 if (current_index < 0) {
                     rowSelector.options[i].textContent = "-";
+                    rowSelector.options[i].title = "-";
                 } else if (current_index >= rowSelector.labels.length) {
                     rowSelector.options[i].textContent = "-";
+                    rowSelector.options[i].title = "-";
                 } else {
                     rowSelector.options[i].textContent = rowSelector.labels[rowSelector.sort_order[current_index]];
+                    rowSelector.options[i].title = rowSelector.full_labels[rowSelector.sort_order[current_index]];
                 }
 
                 if (current_index === rowSelector.selectedRow) {

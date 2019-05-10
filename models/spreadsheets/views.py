@@ -2,10 +2,14 @@ import json
 import os
 import uuid
 from pathlib import Path
+import io
 
 import magic
 import numpy
 import pandas as pd
+import pyarrow
+import pyarrow.parquet
+from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify
 from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify, flash
 from flask import current_app
 from sklearn.decomposition import PCA
@@ -248,6 +252,7 @@ def label_columns(spreadsheet_id, user=None):
 
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_account
+@timeit
 def show_spreadsheet(spreadsheet_id, user=None):
     """
     Standard endpoint - retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
@@ -275,29 +280,32 @@ def show_spreadsheet(spreadsheet_id, user=None):
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
     data = spreadsheet.get_raw_data()
+
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
-    ids = list(spreadsheet.get_ids())
-    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',
-                           data=data.to_json(orient='values'),
-                           x_values=spreadsheet.x_values,
-                           x_labels=spreadsheet.x_labels,
-                           x_label_values=spreadsheet.x_label_values,
-                           qs=json.dumps(list(spreadsheet.df.nitecap_q.values)),
-                           ps=json.dumps(list(spreadsheet.df.nitecap_p.values)),
-                           amplitudes=json.dumps(list(spreadsheet.df.amplitude.values)),
-                           peak_times=json.dumps(list(spreadsheet.df.peak_time.values)),
-                           anova_ps=json.dumps(spreadsheet.df.anova_p.tolist()),
-                           anova_qs=json.dumps(spreadsheet.df.anova_q.tolist()),
-                           filtered=json.dumps(spreadsheet.df.filtered_out.tolist()),
-                           ids=ids,
-                           column_pairs=spreadsheet.column_pairs,
-                           breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                           descriptive_name=spreadsheet.descriptive_name,
-                           timepoints_per_day=spreadsheet.timepoints,
-                           spreadsheet_id=spreadsheet_id,
-                           spreadsheet_note=spreadsheet.note,
-                           visitor=user.is_visitor(),
-                           max_value_filter=max_value_filter)
+    ids = json.dumps(spreadsheet.get_ids())
+
+    args = dict( data=data.to_json(orient='values'),
+                 x_values=spreadsheet.x_values,
+                 x_labels=spreadsheet.x_labels,
+                 x_label_values=spreadsheet.x_label_values,
+                 qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
+                 ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                 amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
+                 peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
+                 anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
+                 anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
+                 filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
+                 ids=ids,
+                 column_pairs=spreadsheet.column_pairs,
+                 breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                 descriptive_name=spreadsheet.descriptive_name,
+                 timepoints_per_day=spreadsheet.timepoints,
+                 spreadsheet_id=spreadsheet_id,
+                 spreadsheet_note=spreadsheet.note,
+                 vistor=user.is_visitor(),
+                 max_value_filter=max_value_filter)
+
+    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',**args)
 
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
@@ -380,8 +388,13 @@ def download(spreadsheet_id, user=None):
 
     if not spreadsheet:
             return access_not_permitted(download.__name__, user, spreadsheet_id)
+    spreadsheet.init_on_load()
+    txt_data = io.StringIO()
+    spreadsheet.df.to_csv(txt_data, sep='\t')
+    txt = txt_data.getvalue()
+    byte_data = io.BytesIO(str.encode(txt))
     try:
-        return send_file(spreadsheet.file_path, as_attachment=True, attachment_filename='processed_spreadsheet.txt')
+        return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
@@ -434,7 +447,7 @@ def edit_details(spreadsheet_id, user=None):
         spreadsheet.repeated_measures = repeated_measures
         spreadsheet.header_row = header_row
         spreadsheet.save_to_db()
-        return redirect(url_for('.label_columns', spreadsheet_id=spreadsheet_id))
+        return redirect(url_for('.edit_columns'))
     return render_template('spreadsheets/edit_form.html', spreadsheet_id=spreadsheet_id,
                            descriptive_name=spreadsheet.descriptive_name,
                            days=spreadsheet.days,
@@ -669,6 +682,7 @@ def compare(user=None):
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
+@timeit
 def get_upside():
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
@@ -693,13 +707,13 @@ def get_upside():
 
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.txt")
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
-            comp_data = pd.read_table(file_path)
+            comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
             upside_ps.append(comp_data["upside_ps"].values.tolist())
             upside_qs.append(comp_data["upside_qs"].values.tolist())
             current_app.logger.info(f"Loaded upside values from file {file_path}")
-        except FileNotFoundError:
+        except OSError: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
                 dfs = []
                 for spreadsheet in spreadsheets:
@@ -727,10 +741,11 @@ def get_upside():
             comp_data = pd.DataFrame(index=df.index)
             comp_data["upside_ps"] = upside_p
             comp_data["upside_qs"] = upside_q
-            comp_data.to_csv(file_path, sep="\t")
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
+
             upside_ps.append(upside_p.tolist())
             upside_qs.append(upside_q.tolist())
-            current_app.logger.info("Compute upside values and saved them to file {file_path}")
+            current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
 
     return jsonify({
                 'upside_ps': upside_ps,
@@ -743,6 +758,8 @@ def run_pca():
     args = json.loads(request.data)
     spreadsheet_ids = args['spreadsheet_ids']
     selected_genes = args['selected_genes']
+    take_zscore = args['take_zscore']
+    take_log_transform = args['take_logtransform']
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
     datasets = []
@@ -779,12 +796,13 @@ def run_pca():
                     for i in range(len(spreadsheets))
                     for column in spreadsheets[i].get_data_columns()]
 
-    # TODO: both z-scores and log(x) or log(1+x) should be options for normalization before PCA
-    #       and if both, z-scores should be done after log transform
-    # log(1+x) normalize data
-    df[data_columns] = numpy.log(1 + df[data_columns])
-    # Normalize to z-scored data across both datasets
-    # df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
+    if take_log_transform:
+        # log(1+x) transform data
+        df[data_columns] = numpy.log(1 + df[data_columns])
+
+    if take_zscore:
+        # Normalize to z-scored data across both datasets
+         df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
 
     # Extract individual datasets
     for i in [0, 1]:

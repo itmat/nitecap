@@ -69,7 +69,6 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('users.update_profile') }}">Profile for {{ session['email'] }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
                 {% endif %}
-                <li class="nav-item"><a class="nav-link" href="#"></a></li>
                 <li class="nav-item">
                     <a class="nav-link" href="http://www.itmat.upenn.edu">
                         <img src="{{ url_for('static', filename='images/itmat_logo.svg') }}" alt="ITMAT logo" height=75px>
