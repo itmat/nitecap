@@ -302,7 +302,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
                  timepoints_per_day=spreadsheet.timepoints,
                  spreadsheet_id=spreadsheet_id,
                  spreadsheet_note=spreadsheet.note,
-                 vistor=user.is_visitor(),
+                 visitor=user.is_visitor(),
                  max_value_filter=max_value_filter)
 
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',**args)
