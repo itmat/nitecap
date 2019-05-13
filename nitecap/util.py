@@ -188,3 +188,12 @@ def anova(data):
         p = scipy.stats.f_oneway(*row)[1]
         anova_p[i] = p
     return anova_p
+
+def two_way_anova(data, condition_A, condition_B):
+    '''
+    Perform a two-way ANOVA test for interaction effects
+
+    data is assumed to be an array of shape (N_SAMPLES, N_GENES)
+    condition_A and condition_B are the two factors specified arrays of shape (N_SAMPLES,)
+    with integer values 0,1,2,.. up to the number of components in the factor
+    '''
