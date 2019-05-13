@@ -1,5 +1,6 @@
 import numpy
 import scipy.stats
+import statsmodels.api as sm
 
 def BH_FDR(ps):
     ''' Benjamini-Hochberg FDR control
@@ -188,3 +189,42 @@ def anova(data):
         p = scipy.stats.f_oneway(*row)[1]
         anova_p[i] = p
     return anova_p
+
+def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
+    '''
+    Perform two-way ANOVA between two conditions, A and B
+
+    `num_replicates_A` is a list of integers indicating how many replicates there are from each timepoint in dataset A
+    `data_A` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_A)
+            containing the values of the condition A
+    `num_replicates_B` is a list of integers indicating how many replicates there are from each timepoint in dataset B
+    `data_B` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_B)
+            containing the values of the condition B
+    '''
+
+    assert len(num_reps_A) == len(num_reps_B)
+    assert data_A.shape[0] == data_B.shape[0]
+
+    # Factor variables for the two replicates
+    timepoints_A = [i for i, num_reps in enumerate(num_reps_A) for j in range(num_reps)]
+    timepoints_B = [i for i, num_reps in enumerate(num_reps_B) for j in range(num_reps)]
+
+    # Condition variables for the concatenated datasets
+    timepoints = sm.tools.categorical(numpy.array(timepoints_A + timepoints_B), drop=True).T
+    dataset = [0 for _ in timepoints_A] + [1 for _ in timepoints_B]
+    intercept = [1 for _ in dataset]
+    interaction = numpy.array(dataset)*timepoints
+    full_model = numpy.vstack( (timepoints, dataset, interaction, intercept) )
+    restricted_model = numpy.vstack( (timepoints, dataset, intercept) )
+
+    combined_datasets = numpy.concatenate((data_A, data_B), axis=1)
+
+    p_values = numpy.empty(combined_datasets.shape[0])
+    for i in range(combined_datasets.shape[0]):
+        full_fit = sm.OLS(combined_datasets[i], full_model.T).fit()
+        restricted_fit = sm.OLS(combined_datasets[i], restricted_model.T).fit()
+
+        f, p, df = full_fit.compare_f_test(restricted_fit)
+        p_values[i] = p
+
+    return p_values
