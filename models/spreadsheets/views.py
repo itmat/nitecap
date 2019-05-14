@@ -812,7 +812,7 @@ def get_upside():
                 # Run two-way anova
                 anova_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates, datasets[primary],
                                                      spreadsheets[secondary].num_replicates, datasets[secondary])
-                anova_q = nitecap.util.BH_FDR(upside_q)
+                anova_q = nitecap.util.BH_FDR(anova_p)
 
             comp_data = pd.DataFrame(index=df.index)
             comp_data["upside_ps"] = upside_p
