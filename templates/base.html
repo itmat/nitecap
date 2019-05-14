@@ -82,8 +82,8 @@
 <div class="content container">
     {# Maintenance Banner - set display:block to show banner #}
     <div id="nitecap_banner" class='alert-warning alert' role="alert"
-         style={{ "display:block" if config.banner_visible else "display:none" }}>
-        {{ config.banner_content }}
+         style={{ "display:block" if config['BANNER_VISIBLE'] else "display:none" }}>
+        {{ config['BANNER_CONTENT'] }}
     </div>
     {% block content %}
     {% endblock %}
