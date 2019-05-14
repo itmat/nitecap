@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script>
+    $(document).ready(function () {
+        let form = $('form');
+        let button = $("button");
+        button.prop('disabled', false);
+        button.html('Submit');
+        form.submit(function (e) {
+            e.preventDefault();
+            button.prop('disabled', true);
+            button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                        "</span>Loading...");
+            e.currentTarget.submit();
+        });
+    });
+</script>
+
+<div class="page-header">
+    <h1>Load Spreadsheet File <small>Expecting csv, tsv, txt, xls or xlsx fomats only</small></h1>
+</div>
+
+
+<p>We first need your spreadsheet file</p>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form action="{{ url_for('spreadsheets.upload_file') }}" method="post" enctype="multipart/form-data">
+    <div class="form-group">
+        <input type="file" id="upload_file" name="upload_file" required>
+    </div>
+    <button type="submit" class="btn btn-primary">
+        Submit
+    </button>
+</form>
+
+{% endblock %}

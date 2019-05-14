@@ -779,7 +779,7 @@
         <a href="{{ url_for('spreadsheets.download', spreadsheet_id=spreadsheet_id) }}" class="mx-3" download="processed_file.txt">
             <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
         </a>
-        <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet_id) }}">
+        <a href="{{ url_for('spreadsheets.collect_data', spreadsheet_id = spreadsheet_id) }}">
             <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
         </a>
         {% if not visitor %}
