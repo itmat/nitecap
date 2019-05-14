@@ -9,7 +9,6 @@ import numpy
 import pandas as pd
 import pyarrow
 import pyarrow.parquet
-from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify
 from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify, flash
 from flask import current_app
 from sklearn.decomposition import PCA
@@ -28,6 +27,156 @@ spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 MANAGE_OWN_SPREADSHEETS_MESSAGE = "You may only manage your own spreadsheets."
 MISSING_SPREADSHEET_ID_ERROR = "No spreadsheet was provided."
 SPREADSHEET_NOT_FOUND_MESSAGE = "No such spreadsheet can be found."
+FILE_EXTENSION_ERROR = f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}"
+FILE_UPLOAD_ERROR = "We are unable to load your spreadsheet at the present time.  Please try again later."
+
+
+@spreadsheet_blueprint.route('/upload_file', methods=['GET', 'POST'])
+@timeit
+def upload_file():
+    current_app.logger.info('Uploading spreadsheet')
+
+    # Spreadsheet file form submitted
+    if request.method == 'POST':
+        upload_file = request.files.get('upload_file', None)
+        if not upload_file or not len(upload_file.filename):
+            return render_template('spreadsheets/upload_file.html', errors=[MISSING_SPREADSHEET_ID_ERROR])
+        if not allowed_file(upload_file.filename):
+            return render_template('spreadsheets/upload_file.html', errors=[FILE_EXTENSION_ERROR])
+
+        # Rename the uploaded file to avoid any naming collisions and save it
+        extension = Path(upload_file.filename).suffix
+        new_filename = uuid.uuid4().hex + extension
+        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
+        upload_file.save(file_path)
+
+        # If the mime type validation fails, remove the uploaded file from the disk
+        file_mime_type, errors = validate_mime_type(file_path)
+        if errors:
+            os.remove(file_path)
+            return render_template('spreadsheets/upload_file.html', errors=errors)
+
+        # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
+        user_id = None
+        user_email = session['email'] if 'email' in session else None
+        if user_email:
+            user = User.find_by_email(user_email)
+            user_id = user.id if user else None
+
+        # If user is not logged in or has a current visitor accout, assign a visitor account to protect user's
+        # spreadsheet ownership.
+        else:
+            user = User.create_visitor()
+            if user:
+                # Visitor's session has a fixed expiry date.
+                # session.permanent = True
+                session['email'] = user.email
+                session['visitor'] = True
+                user_id = user.id
+
+        # If we have no logged in user and a visitor account could not be generated, we have an internal
+        # problem.
+        if not user:
+            current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
+            return render_template('spreadsheets/upload_file.html', errors=[FILE_UPLOAD_ERROR])
+
+        # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
+        # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
+        # We throw the file away and report the error.
+        try:
+            spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
+                                      days=None,
+                                      timepoints=None,
+                                      repeated_measures=False,
+                                      header_row=1,
+                                      original_filename=upload_file.filename,
+                                      file_mime_type=file_mime_type,
+                                      uploaded_file_path=file_path,
+                                      user_id=user_id)
+        except NitecapException as ne:
+            current_app.logger.error(f"NitecapException {ne}")
+            os.remove(file_path)
+            return render_template('spreadsheets/upload_file.html', errors=[FILE_UPLOAD_ERROR])
+
+        # Save the spreadsheet file to the database
+        spreadsheet.save_to_db()
+
+        return redirect(url_for('.collect_data', spreadsheet_id=spreadsheet.id))
+
+    # Display spreadsheet file form
+    return render_template('spreadsheets/upload_file.html')
+
+
+@spreadsheet_blueprint.route('/collect_data/<spreadsheet_id>', methods=['GET', 'POST'])
+@requires_account
+def collect_data(spreadsheet_id, user=None):
+
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+    # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
+    # spreadsheet list (in the case of a logged in user) or to the upload form (in the case of a visitor).
+    if not spreadsheet:
+        return access_not_permitted(collect_data.__name__, user, spreadsheet_id)
+
+    # Set up the dataframe
+    spreadsheet.set_df()
+
+    # Spreadsheet data form submitted.
+    if request.method == 'POST':
+        descriptive_name, days, timepoints, repeated_measures, header_row, column_labels, errors = \
+            validate_spreadsheet_data(request.form)
+
+        if errors:
+            return render_template('spreadsheets/collect_data.html', errors=errors, spreadsheet=spreadsheet)
+        spreadsheet.descriptive_name = descriptive_name
+        spreadsheet.days = int(days)
+        spreadsheet.timepoints = int(timepoints)
+        spreadsheet.repeated_measures = repeated_measures
+        spreadsheet.header_row = header_row
+
+        # If label assignments are improper, the user is returned to the column label form and invited to edit.
+        errors = spreadsheet.validate(column_labels)
+        if errors:
+            return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet, errors=errors)
+
+        spreadsheet.identify_columns(column_labels)
+        spreadsheet.set_ids_unique()
+        spreadsheet.save_to_db()
+        spreadsheet.init_on_load()
+        spreadsheet.compute_nitecap()
+        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+    return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet)
+
+
+@timeit
+def validate_spreadsheet_data(form_data):
+    """
+    Helper method to collect form data and validate it
+    :param form_data: the form dictionary from requests
+    :return: a tuplbe consisting of the form data and an array of error msgs.  An empty array indicates no errors
+    """
+
+    # Gather data
+    descriptive_name = form_data.get('descriptive_name', None)
+    days = form_data.get('days', None)
+    timepoints = form_data.get('timepoints', None)
+    repeated_measures = form_data.get('repeated_measures', 'n')
+    repeated_measures = True if repeated_measures == 'y' else False
+    header_row = form_data.get('header_row', None)
+    column_labels = [value for key, value in form_data.items() if key.startswith('col')]
+
+    # Check data for errors
+    errors = []
+    if not descriptive_name or len(descriptive_name) > 250:
+        errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
+    if not days or not days.isdigit():
+        errors.append(f"The value for days is required and must be a positve integer.")
+    if not timepoints or not timepoints.isdigit():
+        errors.append(f"The value for timepoints is required and must be a positve integer.")
+    if not header_row or not header_row.isdigit():
+        errors.append(f"The value of the header row is required and must be a positive integer.")
+    return descriptive_name, days, timepoints, repeated_measures, header_row, column_labels, errors
+
 
 @spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET', 'POST'])
 @timeit
@@ -250,6 +399,7 @@ def label_columns(spreadsheet_id, user=None):
 
     return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
+
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_account
 @timeit
@@ -276,7 +426,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
         errors = [f"Days/timepoint were not yet matched to columns for spreadsheet '{spreadsheet.descriptive_name}'.  "
                   f"You may have skipped a step.  Please re-edit your data."]
         if user.is_visitor():
-            render_template('spreadsheets/spreadsheet_columns_form.html', errors=errors)
+            render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet, errors=errors)
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
     data = spreadsheet.get_raw_data()
@@ -371,6 +521,7 @@ def delete(user=None):
         return jsonify({"error": 'The spreadsheet data may not have been all successfully removed'}), 500
     return '', 204
 
+
 @spreadsheet_blueprint.route('/download_comparison/<int:id1>,<int:id2>', methods=['GET'])
 @requires_account
 def download_comparison(id1, id2, user=None):
@@ -426,7 +577,7 @@ def download_comparison(id1, id2, user=None):
 
             # TODO: user should be able to try to re-download at a later point
             #       so 404 is a bad error code to give here, but what should it be?
-            return jsonif("Computations not finished yet"), 404
+            return jsonify("Computations not finished yet"), 404
 
     df = df.join(comparison_data[0])
 
@@ -465,6 +616,7 @@ def download(spreadsheet_id, user=None):
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
                                  f"downloaded.", e)
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
 
 @spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET', 'POST'])
 @requires_account
@@ -936,7 +1088,7 @@ def check_id_uniqueness(user=None):
         return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
 
     # Populate
-    spreadsheet.init_on_load()
+    spreadsheet.set_df()
 
     non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
     current_app.logger.debug(f"Non-unique ids {non_unique_ids}")

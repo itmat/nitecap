@@ -3,6 +3,7 @@ import datetime
 import os
 import uuid
 import subprocess
+from itertools import zip_longest
 from parser import ParserError
 from pathlib import Path
 import re
@@ -32,8 +33,8 @@ class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id = db.Column(db.Integer, primary_key=True)
     descriptive_name = db.Column(db.String(250), nullable=False)
-    days = db.Column(db.Integer, nullable=False)
-    timepoints = db.Column(db.Integer, nullable=False)
+    days = db.Column(db.Integer)
+    timepoints = db.Column(db.Integer)
     repeated_measures = db.Column(db.Boolean, nullable=False, default=False)
     header_row = db.Column(db.Integer, nullable=False, default=1)
     original_filename = db.Column(db.String(250), nullable=False)
@@ -90,8 +91,8 @@ class Spreadsheet(db.Model):
         """
         current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
-        self.days = int(days)
-        self.timepoints = int(timepoints)
+        self.days = days
+        self.timepoints = timepoints
         self.repeated_measures = repeated_measures
         self.header_row = int(header_row)
         self.original_filename = original_filename
@@ -121,6 +122,7 @@ class Spreadsheet(db.Model):
                 self.df = pd.read_csv(self.file_path, sep='\t')
             else:
                 self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
+
 
     @timeit
     def init_on_load(self):
@@ -162,7 +164,7 @@ class Spreadsheet(db.Model):
             self.df["filtered_out"] = False
 
         self.num_replicates = None if not self.num_replicates_str \
-            else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
+             else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
         if self.column_labels_str:
             self.identify_columns(self.column_labels)
@@ -201,9 +203,16 @@ class Spreadsheet(db.Model):
             raise NitecapException("The file provided could not be parsed.")
 
     def column_defaults(self):
-        # Try to guess the columns by looking for CT/ZT labels
+        """
+        Try to guess the columns by looking for CT/ZT labels only if days and timepoints are populated.
+        :return: a list of tuples having header and guess or ignore column depending on whether days and
+        timepoints are set.
+        """
+        if not self.days or not self.timepoints:
+            return list(zip(self.df.columns, Spreadsheet.IGNORE_COLUMN * len(self.df.columns)))
         selections = guess_column_labels(self.df.columns, self.timepoints, self.days)
         return list(zip(self.df.columns, selections))
+
 
     def identify_columns(self, column_labels):
 
@@ -422,20 +431,17 @@ class Spreadsheet(db.Model):
         In particular, need the column identifies to match what NITECAP can support.
         Every timepoint must have the same number of columns and every day must have all of its timepoints"""
 
-        messages = []
-        error = False
+        errors = []
 
         if Spreadsheet.ID_COLUMN not in column_labels:
-            messages.append(f"There should be at least one ID column.")
-            error = True
+            errors.append(f"There should be at least one ID column.")
 
         retained_columns = [column for column, label in zip(self.df.columns, column_labels) if label != 'Ignore']
         type_pattern = re.compile(r"^([a-zA-Z]+)\d*$")
         for retained_column in retained_columns:
             type_match = re.match(type_pattern, str(self.df[retained_column].dtype))
             if not Spreadsheet.ID_COLUMN and (not type_match or type_match.group(1) not in ['int', 'uint', 'float']):
-                error = True
-                messages.append(f"Column '{retained_column}' must contain only numerical data to be employed as a timepoint.")
+                errors.append(f"Column '{retained_column}' must contain only numerical data to be employed as a timepoint.")
 
         daytimes = [self.label_to_daytime(column_daytime) for column_daytime in column_labels]
         daytimes = [daytime for daytime in daytimes if daytime is not None]
@@ -448,19 +454,24 @@ class Spreadsheet(db.Model):
             times_in_day = set([time for day, time in daytimes if day == i + 1])
             if times_in_day != all_times:
                 missing = all_times.difference(times_in_day)
-                error = True
-                messages.append(f"Day {i + 1} does not have data for all timepoints."
+                errors.append(f"Day {i + 1} does not have data for all timepoints."
                                 f" Missing timepoint {', '.join(str(time) for time in missing)}")
-        return error, messages
+        return errors
 
     def get_sample_dataframe(self):
         mini_df = self.df[:10]
         return mini_df.values.tolist()
 
     def get_selection_options(self):
+
+        # If days or timepoints are not set, just provide an ignore column option.
+        if not self.days or not self.timepoints:
+            return [Spreadsheet.IGNORE_COLUMN]
+
         return ['Ignore'] + ['ID'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
-                                      for day in range(self.days)
-                                      for timepoint in range(self.timepoints)]
+                                    for day in range(self.days)
+                                    for timepoint in range(self.timepoints)]
+
 
     def label_to_daytime(self, label):
         """ returns the day and time of column label """
