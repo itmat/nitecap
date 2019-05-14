@@ -147,7 +147,7 @@ def logout_user():
     """
 
     session.clear()
-    return render_template('spreadsheets/spreadsheet_upload_form.html')
+    return render_template('spreadsheets/upload_file.html')
 
 
 @user_blueprint.route('/reset_password', methods=['GET', 'POST'])
@@ -185,7 +185,7 @@ def request_password_reset():
         # an error
         errors = user.send_reset_email()
         if errors:
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+            return render_template('spreadsheets/upload_file.html', errors=errors)
 
         # Notify user the an email has been sent.
         flash(PASSWORD_RESET_SENT_MESSAGE)

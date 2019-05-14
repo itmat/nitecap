@@ -84,7 +84,7 @@ def dashboard():
 @app.errorhandler(413)
 def file_too_large(e):
     messages = ["The file you are attempting to upload is too large for the site to accommodate."]
-    return render_template('spreadsheets/spreadsheet_upload_form.html', messages=messages), 413
+    return render_template('spreadsheets/upload_file.html', messages=messages), 413
 
 
 from models.users.views import user_blueprint

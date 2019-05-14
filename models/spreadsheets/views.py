@@ -178,131 +178,6 @@ def validate_spreadsheet_data(form_data):
     return descriptive_name, days, timepoints, repeated_measures, header_row, column_labels, errors
 
 
-@spreadsheet_blueprint.route('/load_spreadsheet', methods=['GET', 'POST'])
-@timeit
-def load_spreadsheet():
-    """
-    Standard endpoint - uploads a new spreadsheet.  Extensive validation and evaluation of mime types.  If the user
-    uploading the spreadsheet is not logged in, a visitor account is assigned to the user.
-    """
-    current_app.logger.info('Loading spreadsheet')
-    if request.method == 'POST':
-
-        # Collect and validate the form data
-        descriptive_name, days, timepoints, repeated_measures, header_row, upload_file, errors =\
-            validate_spreadsheet_upload_form(request.form, request.files)
-        if errors:
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
-                                   descriptive_name=descriptive_name, days=days,
-                                   timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
-
-        # Rename the uploaded file to avoid any naming collisions and save it
-        extension = Path(upload_file.filename).suffix
-        new_filename = uuid.uuid4().hex + extension
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
-        upload_file.save(file_path)
-
-        # If the mime type validation fails, remove the uploaded file from the disk
-        file_mime_type, errors = validate_mime_type(file_path)
-        if errors:
-            os.remove(file_path)
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
-                                   descriptive_name=descriptive_name, days=days,
-                                   timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
-
-        # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
-        user_id = None
-        user_email = session['email'] if 'email' in session else None
-        if user_email:
-            user = User.find_by_email(user_email)
-            user_id = user.id if user else None
-        # If user is not logged in or has a current visitor accout, assign a visitor account to protect user's
-        # spreadsheet ownership.
-        else:
-            user = User.create_visitor()
-            if user:
-                # Visitor's session has a fixed expiry date.
-                # session.permanent = True
-                session['email'] = user.email
-                session['visitor'] = True
-                user_id = user.id
-
-        # If we have no logged in user and a visitor account could not be generated, we have an internal
-        # problem.
-        if not user:
-            errors.append("We are unable to load your spreadsheet at the present time.  Please try again later")
-            current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
-                                   descriptive_name=descriptive_name, days=days,
-                                   timepoints=timepoints, repeated_measures=repeated_measures, header_row=header_row)
-
-        # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
-        # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
-        # We throw the file away and report the error.
-        try:
-            spreadsheet = Spreadsheet(descriptive_name=descriptive_name,
-                                      days=days,
-                                      timepoints=timepoints,
-                                      repeated_measures=repeated_measures,
-                                      header_row=header_row,
-                                      original_filename=upload_file.filename,
-                                      file_mime_type=file_mime_type,
-                                      uploaded_file_path=file_path,
-                                      user_id=user_id)
-        except NitecapException as ne:
-            current_app.logger.error(f"NitecapException {ne}")
-            os.remove(file_path)
-            errors.append(ne.message)
-            return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors,
-                                   days=days, timepoints=timepoints)
-
-        # Save the spreadsheet metadata to the database.
-        spreadsheet.save_to_db()
-
-        # Continue to form that labels the spreadsheet columns.
-        return redirect(url_for('.label_columns', spreadsheet_id=spreadsheet.id))
-
-    return render_template('spreadsheets/spreadsheet_upload_form.html')
-
-
-@timeit
-def validate_spreadsheet_upload_form(form_data, files):
-    """
-    Helper method to collect form data and validate it
-    :param form_data: the form dictionary from requests
-    :param files: the files dictionary from requests
-    :return: a tuplbe consisting of the form data and an array of error msgs.  An empty array indicates no errors
-    """
-
-    # Gather data
-    descriptive_name = form_data.get('descriptive_name', None)
-    days = form_data.get('days', None)
-    timepoints = form_data.get('timepoints', None)
-    repeated_measures = form_data.get('repeated_measures', 'n')
-    repeated_measures = True if repeated_measures == 'y' else False
-    header_row = form_data.get('header_row', None)
-    upload_file = files.get('upload_file', None)
-
-    # Check data for errors
-    errors = []
-    if not descriptive_name or len(descriptive_name) > 250:
-        errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
-    if not days or not days.isdigit():
-        errors.append(f"The value for days is required and must be a positve integer.")
-    if not timepoints or not timepoints.isdigit():
-        errors.append(f"The value for timepoints is required and must be a positve integer.")
-    if not header_row or not header_row.isdigit():
-        errors.append(f"The value of the header row is required and must be a positive integer.")
-    if not upload_file:
-        errors.append(f'No spreadsheet file was provided.')
-    else:
-        if not len(upload_file.filename):
-            errors.append('No spreadsheet file was provided.')
-        if not allowed_file(upload_file.filename):
-            errors.append(f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}")
-    return descriptive_name, days, timepoints, repeated_measures, header_row, upload_file, errors
-
-
 def allowed_file(filename):
     """
     Helper method to establish whether the filename of the uploaded file contains an acceptable suffix.
@@ -357,47 +232,6 @@ def access_not_permitted(endpoint, user, spreadsheet_id):
     if user.is_visitor():
         return render_template(url_for('.load_spreadsheet'))
     return redirect(url_for('.display_spreadsheets'))
-
-
-@spreadsheet_blueprint.route('label_columns/<int:spreadsheet_id>', methods=['GET', 'POST'])
-@timeit
-@requires_account
-def label_columns(spreadsheet_id, user=None):
-    """
-    Standard endpoint - labels spreadsheet columns appropriately.  This method is available to any user with an
-    account (standard user or visitor).
-    :param spreadsheet_id: id of spreadsheet having columns to be labelled.
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    """
-
-    errors = []
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-
-    # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
-    # spreadsheet list (in the case of a logged in user) or to the upload form (in the case of a visitor).
-    if not spreadsheet:
-        return access_not_permitted(label_columns.__name__, user, spreadsheet_id)
-
-    # Populate the spreadsheet object with additional data
-    spreadsheet.init_on_load()
-
-    # Column label form submitted.
-    if request.method == 'POST':
-        column_labels = list(request.form.values())
-
-        # If label assignments are improper, the user is returned to the column label form and invited to edit.
-        error, messages = spreadsheet.validate(column_labels)
-        errors.extend(messages)
-        if error:
-            return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
-
-        spreadsheet.identify_columns(column_labels)
-        spreadsheet.set_ids_unique()
-        spreadsheet.compute_nitecap()
-        spreadsheet.save_to_db()
-        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
-
-    return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
 
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
@@ -615,62 +449,8 @@ def download(spreadsheet_id, user=None):
         errors.append("The processed spreadsheet data could not be downloaded.")
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
                                  f"downloaded.", e)
-        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+        return render_template('spreadsheets/upload_file.html', errors=errors)
 
-
-@spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET', 'POST'])
-@requires_account
-def edit_details(spreadsheet_id, user=None):
-    """
-    Standard endpoint - allows a logged in user to edit the details of an existing spreadsheet (e.g., name, # days, # timepoints, etc).  A
-    check is made to insure that the spreadsheet id sent in the url identifies a spreadsheet in the logged in user's
-    inventory.
-    :param spreadsheet_id:  id to the spreadsheet whose details the logged in user wishes to edit.
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    """
-    errors = []
-
-    # Insure user owns spreadsheet
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-    if not spreadsheet:
-        return access_not_permitted(edit_details.__name__, user, spreadsheet_id)
-
-    if request.method == "POST":
-        descriptive_name = request.form['descriptive_name']
-        days = request.form['days']
-        timepoints = request.form['timepoints']
-        repeated_measures = request.form['repeated_measures']
-        repeated_measures = True if repeated_measures == 'y' else False
-        header_row = request.form['header_row']
-
-        if not descriptive_name or len(descriptive_name) > 250:
-            errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
-        if not days.isdigit():
-            errors.append(f"The value for days is required and must be a positve integer.")
-        if not timepoints.isdigit():
-            errors.append(f"The value for timepoints is required and must be a positve integer.")
-        if not header_row or not header_row.isdigit():
-            errors.append(f"The value of the header row is required and must be a positive integer.")
-        if errors:
-            return render_template('spreadsheets/edit_form.html', errors=errors,
-                                   descriptive_name=descriptive_name,
-                                   days=days,
-                                   timepoints=timepoints,
-                                   repeated_measures=repeated_measures,
-                                   header_row=header_row)
-        spreadsheet.descriptive_name = descriptive_name
-        spreadsheet.days = days
-        spreadsheet.timepoints = timepoints
-        spreadsheet.repeated_measures = repeated_measures
-        spreadsheet.header_row = header_row
-        spreadsheet.save_to_db()
-        return redirect(url_for('.label_columns', spreadsheet_id=spreadsheet.id))
-    return render_template('spreadsheets/edit_form.html', spreadsheet_id=spreadsheet_id,
-                           descriptive_name=spreadsheet.descriptive_name,
-                           days=spreadsheet.days,
-                           timepoints=spreadsheet.timepoints,
-                           repeated_measures=spreadsheet.repeated_measures,
-                           header_row=spreadsheet.header_row)
 
 @spreadsheet_blueprint.route('/save_filters', methods=['POST'])
 @ajax_requires_account
@@ -758,7 +538,7 @@ def consume_share(token):
     if not spreadsheet or not sharing_user:
         errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
                       "another share")
-        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+        return render_template('spreadsheets/upload_file.html', errors=errors)
 
     # Identify the account of the current user.  If no account exists, create a visitor account.
     user = None
@@ -776,7 +556,7 @@ def consume_share(token):
     if not user:
         errors.append("We are unable to create your share at the present time.  Please try again later")
         current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
-        return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+        return render_template('spreadsheets/upload_file.html', errors=errors)
 
     # Create a copy of the sharing user's spreadsheet for the current user.
     shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
@@ -787,7 +567,7 @@ def consume_share(token):
         return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=shared_spreadsheet.id))
 
     errors.append("The spreadsheet could not be shared.")
-    return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+    return render_template('spreadsheets/upload_file.html', errors=errors)
 
 
 @spreadsheet_blueprint.route('/compare', methods=['GET'])
