@@ -17,9 +17,8 @@ app = Flask(__name__)
 load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
-app.config['banner_content'] = ''
-app.config['banner_visible'] = False
 app.jinja_env.globals['momentjs'] = momentjs
+app.jinja_env.globals['environ'] = os.environ
 
 # Log format for both file and email logging.
 formatter = logging.Formatter('%(asctime)s \t%(levelname)s\t%(module)s\t%(process)d\t%(thread)d\t%(message)s')
@@ -102,8 +101,8 @@ def update_banner():
     json_data = request.get_json()
     content = json_data.get('content', '')
     visible = json_data.get('visible', False)
-    app.config['banner_content'] = content
-    app.config['banner_visible'] = visible
+    os.environ['BANNER_CONTENT'] = content
+    os.environ['BANNER_VISIBLE'] = visible
     return '', 204
 
 
