@@ -258,7 +258,7 @@
                 return (i <= selected_row) & (!filtered[sort_order[i]]);
             } );
             var phase_sorted_order = selected_indexes.sort( function (i,j) {
-                return compare(peak_times[sort_order[i]], peak_times[sort_order[j]], i,j);
+                return compare(peak_times[i], peak_times[j], i,j);
             } );
 
             var zScoreData = computeZScores(phase_sorted_order)(data);
@@ -267,7 +267,7 @@
             heatmap_data = zScoreData;
             heatmap_combined_data = meanZScores;
             heatmap_labels = phase_sorted_order.map( function(i) {
-                return labels[sort_order[i]];
+                return labels[i];
             } );
 
 
