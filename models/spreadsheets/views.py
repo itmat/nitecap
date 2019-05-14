@@ -30,14 +30,14 @@ SPREADSHEET_NOT_FOUND_MESSAGE = "No such spreadsheet can be found."
 FILE_EXTENSION_ERROR = f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}"
 FILE_UPLOAD_ERROR = "We are unable to load your spreadsheet at the present time.  Please try again later."
 
-@spreadsheet_blueprint.route('/upload_file', methods=['GET','POST'])
+
+@spreadsheet_blueprint.route('/upload_file', methods=['GET', 'POST'])
 @timeit
 def upload_file():
     current_app.logger.info('Uploading spreadsheet')
 
     # Spreadsheet file form submitted
     if request.method == 'POST':
-        errors = []
         upload_file = request.files.get('upload_file', None)
         if not upload_file or not len(upload_file.filename):
             return render_template('spreadsheets/upload_file.html', errors=[MISSING_SPREADSHEET_ID_ERROR])
@@ -85,14 +85,14 @@ def upload_file():
         # We throw the file away and report the error.
         try:
             spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
-                                          days=None,
-                                          timepoints=None,
-                                          repeated_measures=False,
-                                          header_row=1,
-                                          original_filename=upload_file.filename,
-                                          file_mime_type=file_mime_type,
-                                          uploaded_file_path=file_path,
-                                          user_id=user_id)
+                                      days=None,
+                                      timepoints=None,
+                                      repeated_measures=False,
+                                      header_row=1,
+                                      original_filename=upload_file.filename,
+                                      file_mime_type=file_mime_type,
+                                      uploaded_file_path=file_path,
+                                      user_id=user_id)
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
             os.remove(file_path)
@@ -106,10 +106,11 @@ def upload_file():
     # Display spreadsheet file form
     return render_template('spreadsheets/upload_file.html')
 
-@spreadsheet_blueprint.route('/collect_data/<spreadsheet_id>', methods=['GET','POST'])
+
+@spreadsheet_blueprint.route('/collect_data/<spreadsheet_id>', methods=['GET', 'POST'])
 @requires_account
 def collect_data(spreadsheet_id, user=None):
-    errors = []
+
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
@@ -147,75 +148,6 @@ def collect_data(spreadsheet_id, user=None):
     return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet)
 
 
-@spreadsheet_blueprint.route('/set_days', methods=['POST'])
-@requires_account
-def set_days(user=None):
-
-    # Gather json data
-    json_data = request.get_json()
-    days = json_data.get('days', None)
-    spreadsheet_id = json_data.get('spreadsheet_id', None)
-
-    # Insure that the days value exists and can be cast as an integer.
-    if not days or not days.isdigit():
-        return jsonify({'error': "Days must be an integer value."}), 400
-
-    # Spreadsheet id is required.
-    if not spreadsheet_id:
-        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
-
-    # Insure that the requested spreadsheet is owned by the requesting account.
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-    if not spreadsheet:
-        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
-
-    # Persist to the db.
-    spreadsheet.days = int(days)
-    spreadsheet.save_to_db()
-    options = None
-    defaults = None
-    if spreadsheet.days and spreadsheet.timepoints:
-        spreadsheet.set_df()
-        options = spreadsheet.get_selection_options()
-        defaults = spreadsheet.column_defaults()
-    return jsonify({'options': options, 'defaults': defaults})
-
-@spreadsheet_blueprint.route('/set_timepoints', methods=['POST'])
-@requires_account
-def set_timepoints(user=None):
-
-    # Gather json data
-    json_data = request.get_json()
-    timepoints = json_data.get('timepoints', None)
-    spreadsheet_id = json_data.get('spreadsheet_id', None)
-
-    # Insure that the days value exists and can be cast as an integer.
-    if not timepoints or not timepoints.isdigit():
-        return jsonify({'error': "Timepoints must be an integer value."}), 400
-
-    # Spreadsheet id is required.
-    if not spreadsheet_id:
-        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
-
-    # Insure that the requested spreadsheet is owned by the requesting account.
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-    if not spreadsheet:
-        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
-
-    # Persist to the db.
-    spreadsheet.timepoints = int(timepoints)
-    spreadsheet.save_to_db()
-
-    options = None
-    defaults = None
-    print(spreadsheet.days, spreadsheet.timepoints)
-    if spreadsheet.days and spreadsheet.timepoints:
-        spreadsheet.set_df()
-        options = spreadsheet.get_selection_options()
-        defaults = spreadsheet.column_defaults()
-    return jsonify({'options': options, 'defaults': defaults})
-
-
 @timeit
 def validate_spreadsheet_data(form_data):
     """
@@ -231,7 +163,6 @@ def validate_spreadsheet_data(form_data):
     repeated_measures = form_data.get('repeated_measures', 'n')
     repeated_measures = True if repeated_measures == 'y' else False
     header_row = form_data.get('header_row', None)
-    print(form_data)
     column_labels = [value for key, value in form_data.items() if key.startswith('col')]
 
     # Check data for errors
@@ -468,6 +399,7 @@ def label_columns(spreadsheet_id, user=None):
 
     return render_template('spreadsheets/spreadsheet_columns_form.html', spreadsheet=spreadsheet, errors=errors)
 
+
 @spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
 @requires_account
 @timeit
@@ -589,6 +521,7 @@ def delete(user=None):
         return jsonify({"error": 'The spreadsheet data may not have been all successfully removed'}), 500
     return '', 204
 
+
 @spreadsheet_blueprint.route('/download_comparison/<int:id1>,<int:id2>', methods=['GET'])
 @requires_account
 def download_comparison(id1, id2, user=None):
@@ -644,7 +577,7 @@ def download_comparison(id1, id2, user=None):
 
             # TODO: user should be able to try to re-download at a later point
             #       so 404 is a bad error code to give here, but what should it be?
-            return jsonif("Computations not finished yet"), 404
+            return jsonify("Computations not finished yet"), 404
 
     df = df.join(comparison_data[0])
 
@@ -683,6 +616,7 @@ def download(spreadsheet_id, user=None):
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
                                  f"downloaded.", e)
         return render_template('spreadsheets/spreadsheet_upload_form.html', errors=errors)
+
 
 @spreadsheet_blueprint.route('/edit/<int:spreadsheet_id>', methods=['GET', 'POST'])
 @requires_account

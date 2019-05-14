@@ -269,7 +269,7 @@
                     {{ momentjs(spreadsheet.last_access).format('LLL') }}
                 </td>
                 <td class="actions">
-                     <a href="{{ url_for('spreadsheets.edit_details', spreadsheet_id = spreadsheet.id) }}">
+                     <a href="{{ url_for('spreadsheets.collect_data', spreadsheet_id = spreadsheet.id) }}">
                         <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
                     </a>
                     <a href="{{ url_for('spreadsheets.show_spreadsheet', spreadsheet_id = spreadsheet.id) }}">
