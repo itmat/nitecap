@@ -39,7 +39,7 @@ data = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all 
 # B-condition which is the same as A except that some are dampened (amplitude multiplied by a random number 0 to 0.75)
 DAMPENED_AMPLITUDES = AMPLITUDES.copy()
 DAMPENED_AMPLITUDES[:,:,:N_DAMPENED] *= numpy.random.random(N_DAMPENED) * 0.75
-MEAN_RATIOS =  numpy.exp(numpy.random.uniform(-0.3,0.3))
+MEAN_RATIOS =  1#numpy.exp(numpy.random.uniform(-0.3,0.3))
 DAMPENED_DATA_MEANS = (WAVEFORM * DAMPENED_AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS * MEAN_RATIOS
 data_B = numpy.random.poisson(DAMPENED_DATA_MEANS, size=(N_TIMEPOINTS,  N_REPS, N_GENES))
 data_B = data_B.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all replicates in a timepoint

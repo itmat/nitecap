@@ -673,7 +673,7 @@ def compare(user=None):
         spreadsheet.init_on_load()
 
         spreadsheets.append(spreadsheet)
-        
+
     errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
@@ -770,6 +770,8 @@ def get_upside():
 
         spreadsheets.append(spreadsheet)
 
+    anova_p = None
+    anova_q = None
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
         file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
@@ -777,6 +779,8 @@ def get_upside():
             comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
             upside_ps.append(comp_data["upside_ps"].values.tolist())
             upside_qs.append(comp_data["upside_qs"].values.tolist())
+            anova_p = comp_data["two_way_anova_ps"]
+            anova_q = comp_data["two_way_anova_qs"]
             current_app.logger.info(f"Loaded upside values from file {file_path}")
         except OSError: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
@@ -803,9 +807,20 @@ def get_upside():
             upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates, datasets[primary],
                                            spreadsheets[secondary].num_replicates, datasets[secondary])
             upside_q = nitecap.util.BH_FDR(upside_p)
+
+            if anova_p is None:
+                # Run two-way anova
+                anova_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates, datasets[primary],
+                                                     spreadsheets[secondary].num_replicates, datasets[secondary])
+                anova_q = nitecap.util.BH_FDR(upside_q)
+
             comp_data = pd.DataFrame(index=df.index)
             comp_data["upside_ps"] = upside_p
             comp_data["upside_qs"] = upside_q
+            comp_data["two_way_anova_ps"] = anova_p
+            comp_data["two_way_anova_qs"] = anova_q
+
+            # Save to disk
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
 
             upside_ps.append(upside_p.tolist())
@@ -814,7 +829,9 @@ def get_upside():
 
     return jsonify({
                 'upside_ps': upside_ps,
-                'upside_qs': upside_qs
+                'upside_qs': upside_qs,
+                'two_way_anova_ps': anova_p.tolist(),
+                'two_way_anova_qs': anova_q.tolist()
             })
 
 

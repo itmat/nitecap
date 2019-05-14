@@ -38,6 +38,8 @@
         jtk_qs = [null,null];
         upside_ps = null;
         upside_qs = null;
+        two_way_anova_ps = null;
+        two_way_anova_qs = null;
 
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
@@ -143,6 +145,18 @@
                 $('#upside_p').prop('title', "loading");
                 $('#upside_q').html("loading");
                 $('#upside_q').prop('title', "loading");
+            }
+
+            if (two_way_anova_ps !== null && two_way_anova_qs !== null) {
+                $('#two_way_anova_p').html(toFixed(two_way_anova_ps[number_comparisons[0]][row_index], 3));
+                $('#two_way_anova_p').prop('title', toString(two_way_anova_ps[number_comparisons[0]][row_index]));
+                $('#two_way_anova_q').html(toFixed(two_way_anova_qs[number_comparisons[0]][row_index], 3));
+                $('#two_way_anova_q').prop('title', toString(two_way_anova_qs[number_comparisons[0]][row_index]));
+            } else {
+                $('#two_way_anova_p').html("loading");
+                $('#two_way_anova_p').prop('title', "loading");
+                $('#two_way_anova_q').html("loading");
+                $('#two_way_anova_q').prop('title', "loading");
             }
         }
 
@@ -543,6 +557,9 @@
             success: function(response) {
                 upside_ps = response['upside_ps'];
                 upside_qs = response['upside_qs'];
+                two_way_anova_ps = response['two_way_anova_ps'];
+                two_way_anova_qs = response['two_way_anova_qs'];
+                console.log(two_way_anova_qs);
 
                 $('#sort_select option[value="upside"]').removeAttr("disabled");
 
@@ -819,6 +836,17 @@
                                 </td> <td>p: <span id="upside_p"></span></td>
                             </tr>
                             <tr> <td>q: <span id="upside_q"></span></td></tr>
+
+                            <tr> <td rowspan="2">Two-way ANOVA
+                                <a class="text-primary help-pointer float-right"
+                                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                   title="Damping"
+                                   data-content="Two-way ANOVA test for difference in timepoint-effects across datasets">
+                                    <i class="fas fa-info-circle ml-3"></i>
+                                </a>
+                                </td> <td>p: <span id="two_way_anova_p"></span></td>
+                            </tr>
+                            <tr> <td>q: <span id="two_way_anova_q"></span></td></tr>
 
                             <tr> <td>Amplitude
                                 <a class="text-primary help-pointer float-right"
