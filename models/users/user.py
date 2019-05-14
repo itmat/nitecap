@@ -163,9 +163,9 @@ class User(db.Model):
     def send_confirmation_email(self):
         """
         Sends a registration confirmation email to the user's provided email address.  The email contains a link to a
-        confirmation page along with a uuid confirmation id to protect against hacking.  When the user clicks the
-        link, his/her registration will be confirmed as long as it is done within the elapsed time given in minutes
-        by the CONFIRMATION_EXPIRATION_DELTA of the confirmation class.
+        confirmation page along with a short-lived encrypted token to protect against hacking.  When the user clicks
+        the link, his/her registration will be confirmed as long as it is done within the elapsed time given in minutes
+        by the CONFIRMATION_EXPIRATION_DELTA of this class.
         :return: Any errors that occur in the process of delivering the email.
         """
 
@@ -230,6 +230,13 @@ class User(db.Model):
         return error
 
     def get_confirmation_token(self, expires_sec=CONFIRMATION_EXPIRATION_DELTA):
+        """
+        User the SECRET_KEY to fashion a token which contains the user's id.  The token is emailed to the user when a
+        prospective new user registers for an account.  The user is recognized by the token's contents and allowed to
+        log in.
+        :param expires_sec: The number of seconds until the token expires
+        :return: a short-lived, encrypted token
+        """
         s = TimedSerializer(os.environ['SECRET_KEY'], expires_sec)
         return s.dumps({'user_id': self.id}).decode('utf-8')
 
@@ -237,13 +244,21 @@ class User(db.Model):
         """
         Uses the SECRET_KEY to fashion a token which contains the user's id.  The token is emailed to the user when a
         password reset request is made.  The user is recognized by the token's contents and allowed then to update his/
-        her password.  Note that by default, the token expires in 30 min.
+        her password.
+        :param expires_sec: The number of seconds until the token expires
+        :return: a short-lived, encrypted token
         """
         s = TimedSerializer(os.environ['SECRET_KEY'], expires_sec)
         return s.dumps({'user_id': self.id}).decode('utf-8')
 
     @staticmethod
     def verify_user_token(token):
+        """
+        Validates the freshness and content of a token.  The user identified by the user id in the token must be
+        findable.
+        :param token: token used for user confirmation or password reset.
+        :return: The user identified in the token or None
+        """
         s = TimedSerializer(os.environ['SECRET_KEY'])
         try:
             user_id = s.loads(token)['user_id']
@@ -257,6 +272,12 @@ class User(db.Model):
 
     @classmethod
     def confirm_user(cls, _id):
+        """
+        Confirms a user by setting the activated flag for that user record to true in the database.  This allows the
+        user to log in with their credentials going forward.
+        :param _id: user id
+        :return: The user object now with the activated flag set.
+        """
         user = User.find_by_id(_id)
         if user:
             user.activated = True
@@ -361,10 +382,11 @@ class User(db.Model):
         user.save_to_db()
         return user
 
-    def is_anonymous_user(self):
-        return self.username == 'annonymous'
-
     def is_visitor(self):
+        """
+        Returns account status - whether or not the account belongs to a visitor.
+        :return: true if visitor account and false otherwise.
+        """
         return self.visitor
 
     def get_share_token(self, spreadsheet_id, row_index=0):
