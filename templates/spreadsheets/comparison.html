@@ -484,6 +484,12 @@
                 var a = upside_ps[number_comparisons[0]][i];
                 var b = upside_ps[number_comparisons[0]][j];
                 return compare(a,b,i,j);
+            },
+            "two_way_anova": function (i,j) {
+                // Sort by ascending order
+                var a = two_way_anova_ps[i];
+                var b = two_way_anova_ps[j];
+                return compare(a,b,i,j);
             }
         };
 
@@ -497,6 +503,8 @@
                 rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
             } else if (sorter === 'upside') {
                 rowSelector.makeRowLabels(labels, upside_qs[number_comparisons[0]]);
+            } else if (sorter === 'two_way_anova') {
+                rowSelector.makeRowLabels(labels, two_way_anova_qs);
             } else if (sorter === 'anova') {
                 rowSelector.makeRowLabels(labels, anova_qs[number_comparisons[0]]);
             } else {
@@ -504,7 +512,6 @@
             }
 
             rowSelector.setSortOrder(sort_order);
-            // TODO: this will change what gene is selected
             rowSelector.selectRow(selected_row);
         };
         $('#sort_select').change( sortRows );
@@ -559,9 +566,9 @@
                 upside_qs = response['upside_qs'];
                 two_way_anova_ps = response['two_way_anova_ps'];
                 two_way_anova_qs = response['two_way_anova_qs'];
-                console.log(two_way_anova_qs);
 
                 $('#sort_select option[value="upside"]').removeAttr("disabled");
+                $('#sort_select option[value="two_way_anova"]').removeAttr("disabled");
 
                 updateStatsBox();
             },
@@ -791,6 +798,7 @@
                          <option value="anova">ANOVA</option>
                          <option value="amplitude">Amplitude</option>
                          <option value="upside" disabled>Damping</option>
+                         <option value="two_way_anova" disabled>Two-way ANOVA</option>
                     </select>
                     <table class="table table-sm">
                         <tbody>
