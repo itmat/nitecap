@@ -245,3 +245,59 @@ To restart the server after a code change run
 ```python
 sudo service apache2 restart
 ```
+
+# Database Issues
+
+sqlite3 is a lightweight database and as such, does not support all DDL commands typical of more
+full-featured databases.  ALTER TABLE is limited to renaming a table or add a column.  If you need to
+change the definition of a column, the procedure is a bit involved.
+
+If just a column definition needs to change do the following (using the current schema for the
+spreadsheets table as an example):
+
+```sqlite
+PRAGMA foreign_keys=off;
+ 
+BEGIN TRANSACTION;
+ 
+ALTER TABLE spreadsheets RENAME TO orig_spreadsheets;
+ 
+create table spreadsheets
+(
+    id                 INTEGER      not null
+        primary key,
+    descriptive_name   VARCHAR(250) not null,
+    days               INTEGER,
+    timepoints         INTEGER,
+    repeated_measures  BOOLEAN      not null,
+    header_row         INTEGER      not null,
+    original_filename  VARCHAR(250) not null,
+    file_mime_type     VARCHAR(250) not null,
+    breakpoint         INTEGER,
+    file_path          VARCHAR(250),
+    uploaded_file_path VARCHAR(250) not null,
+    date_uploaded      DATETIME     not null,
+    num_replicates_str VARCHAR(250),
+    column_labels_str  VARCHAR(2500),
+    max_value_filter   FLOAT,
+    last_access        DATETIME     not null,
+    user_id            INTEGER      not null
+        references users,
+    ids_unique         integer default 0,
+    note               varchar(5000)
+);
+ 
+INSERT INTO spreadsheets 
+  SELECT *
+  FROM orig_spreadsheets;
+ 
+--DROP TABLE orig_spreadsheets;
+ 
+COMMIT;
+ 
+PRAGMA foreign_keys=on;
+```
+
+If you feel brave, you can uncomment the command to drop the renamed table.  If you intend to delete
+a column, you will need to replace the asterisk with the columns you intend to keep and also add the
+same columns in the same order parenthetically after the INSERT INTO <table> line.
