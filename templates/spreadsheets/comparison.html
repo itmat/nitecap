@@ -300,7 +300,7 @@
             heatmap_data = zScoreData;
             heatmap_combined_data = meanZScores;
             heatmap_labels = phase_sorted_order.map( function(i) {
-                return labels[sort_order[i]];
+                return labels[i];
             } );
 
             var rep_counts = [];
@@ -682,6 +682,8 @@
                 error: function (error) {
                     console.log("Error running PCA");
                     console.log(error);
+                    alert.text(error.responseText);
+                    alert.show();
                 },
                 complete: function() {
                     // Restore PCA button function
@@ -941,6 +943,7 @@
             </div>
         </div>
     </div>
+
     <div class="row">
         <div class="col card">
             <div class="card-body">
