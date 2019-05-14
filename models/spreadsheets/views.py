@@ -138,7 +138,7 @@ def collect_data(spreadsheet_id, user=None):
         if errors:
             return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet, errors=errors)
 
-        spreadsheet.identify_columns(column_lab
+        spreadsheet.identify_columns(column_labels)
         spreadsheet.set_ids_unique()
         spreadsheet.save_to_db()
         spreadsheet.init_on_load()
