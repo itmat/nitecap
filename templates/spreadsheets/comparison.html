@@ -682,6 +682,8 @@
                 error: function (error) {
                     console.log("Error running PCA");
                     console.log(error);
+                    alert.text(error.responseText);
+                    alert.show();
                 },
                 complete: function() {
                     // Restore PCA button function
@@ -941,6 +943,7 @@
             </div>
         </div>
     </div>
+
     <div class="row">
         <div class="col card">
             <div class="card-body">

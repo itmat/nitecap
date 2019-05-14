@@ -12,6 +12,7 @@
         x_label_values = {{ x_label_values | safe }};
         data = {{ data | safe }};
         column_pairs = {{ column_pairs | safe }};
+        descriptive_name = '{{ descriptive_name | safe }}'
         breakpoint = {{ breakpoint | safe }};
         qs = {{ qs | safe }};
         ps = {{ ps | safe }};
@@ -355,6 +356,119 @@
             $('#download_heatmap').show();
             $('#heatmap_controls').show();
         };
+
+        // PCA plot
+        let pca_button = $('#run_pca');
+        function runPCA() {
+            // We only run PCA on unfiltered genes below the selected row
+            var selected_genes = sort_order.filter( function(row,rank) {
+                if (rank > selected_row) {
+                    return false;
+                }
+                if (filtered[row]) {
+                    return false;
+                }
+                return true;
+            });
+
+            var alert = $('#run_pca_alert');
+            if (selected_genes.length <  3) {
+                alert.text("Too few rows selected, need at least 3 for PCA.");
+                alert.show();
+                return;
+            } else {
+                alert.hide();
+            }
+
+            var rep_counts = [];
+            var pt_labels = x_values.map( function(time) {
+                if (rep_counts[time] === undefined) {
+                    rep_counts[time] = 0;
+                }
+                rep_counts[time] += 1;
+                var day = Math.floor(time / timepoints_per_day) + 1;
+                var time_of_day = time % timepoints_per_day + 1;
+                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            });
+
+            pca_button.prop('disabled', true);
+            pca_button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                        "</span>Processing...");
+
+            $.ajax({
+                url: "{{url_for('spreadsheets.run_pca')}}",
+                data: JSON.stringify({'spreadsheet_ids': [spreadsheet_id],
+                                      'selected_genes': selected_genes,
+                                      'take_logtransform': $('#pca_logtransform').is(':checked'),
+                                      'take_zscore': $('#pca_zscore').is(':checked')}),
+                dataType: 'json',
+                contentType: 'application/json',
+                type: 'POST',
+                success: function (response) {
+                    pca_coords = response['pca_coords'];
+                    explained_variance = response['explained_variance'];
+
+                    var traces = [{
+                            x: pca_coords[0],
+                            y: pca_coords[1],
+                            mode: 'markers',
+                            name: descriptive_name,
+                            text: pt_labels,
+                            marker: {
+                                size: 25,
+                                opacity: x_values.map( function (x) {
+                                    return (x+1) / (1+Math.max.apply(null, x_values));
+                                })
+                            }
+                        }];
+
+                    var layout = {
+                        height:800,
+                        width:800,
+                        xaxis: {
+                            title: "PC1 (" + toFixed(explained_variance[0]*100,1) + "%)"
+                        },
+                        yaxis: {
+                            title: "PC2 (" + toFixed(explained_variance[1]*100,1) + "%)"
+                        },
+                        hovermode: 'closest',
+                        legend: {
+                            x:0,
+                            y:1,
+                            bgcolor: '#EEEEEE'
+                        }
+                    };
+
+                    Plotly.newPlot("pca_plot", traces, layout);
+
+                    $('#pca_controls').show();
+                },
+                error: function (error) {
+                    console.log("Error running PCA");
+                    console.log(error);
+                    alert.text(error.responseText);
+                    alert.show();
+                },
+                complete: function() {
+                    // Restore PCA button function
+                    pca_button.prop('disabled', false);
+                    pca_button.html('Run PCA');
+                }
+            });
+        };
+
+        pca_button.click(runPCA);
+        $('#pca_zscore').change(function() {
+            runPCA();
+        });
+        $('#pca_logtransform').change(function() {
+            runPCA();
+        });
+
+        $('#download_pca').click(function() {
+            var gd = document.getElementById('pca_plot');
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'pca_' + (selected_row+1)});
+        });
 
         let set_cutoff_button = $("#set_breakpoint");
         set_cutoff_button.click(function() {
@@ -895,6 +1009,32 @@
 
             </div>
 
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col card">
+        <div class="card-body">
+            <button id="run_pca" class="btn btn-primary">Run PCA</button>
+            <span id="run_pca_alert" class="alert alert-error"></span>
+            <div id="pca_plot"></div>
+
+            <span id="pca_controls" class="col" style="display:none">
+                <span>log(x+1) Transform</span>
+                <label class="switch">
+                    <input id="pca_logtransform" name="pca_logtransform" type="checkbox" />
+                    <span class="slider"></span>
+                </label>
+
+                <span for="pca_zscore">Z-Score Normalization</span>
+                <label class="switch">
+                    <input id="pca_zscore" name="pca_zscore" type="checkbox" >
+                    <span class="slider"></span>
+                </label>
+
+                <button id="download_pca" class="btn btn-primary">Download PCA</button>
+            </span>
         </div>
     </div>
 </div>

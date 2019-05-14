@@ -843,7 +843,6 @@ def run_pca():
     take_zscore = args['take_zscore']
     take_log_transform = args['take_logtransform']
 
-    # Run Upside dampening analysis, if it hasn't already been stored to disk
     datasets = []
     spreadsheets = []
 
@@ -868,46 +867,77 @@ def run_pca():
         data = data[~data.index.duplicated()]
         dfs.append(data)
 
-    common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
-    df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
-    df = df.sort_values(by=['total_delta_0'])
-    df = df.iloc[selected_genes]
-    compare_ids = df.index.tolist()
+    if len(dfs) == 2:
+        # PCA on two different datasets
+        common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
+        df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
+        df = df.sort_values(by=['total_delta_0'])
+        df = df.iloc[selected_genes]
+        compare_ids = df.index.tolist()
 
-    data_columns = [column + f"_{i}" if column in common_columns else column
-                    for i in range(len(spreadsheets))
-                    for column in spreadsheets[i].get_data_columns()]
+        data_columns = [column + f"_{i}" if column in common_columns else column
+                        for i in range(len(spreadsheets))
+                        for column in spreadsheets[i].get_data_columns()]
 
-    if take_log_transform:
-        # log(1+x) transform data
-        df[data_columns] = numpy.log(1 + df[data_columns])
+        if take_log_transform:
+            # log(1+x) transform data
+            df[data_columns] = numpy.log(1 + df[data_columns])
 
-    if take_zscore:
-        # Normalize to z-scored data across both datasets
-         df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
+        if take_zscore:
+            # Normalize to z-scored data across both datasets
+             df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
 
-    # Extract individual datasets
-    for i in [0, 1]:
-        columns = [column + f"_{i}" if column in common_columns else column
-                            for column in spreadsheets[i].get_data_columns()]
-        datasets.append(df[columns].values)
+        # Extract individual datasets
+        for i in [0, 1]:
+            columns = [column + f"_{i}" if column in common_columns else column
+                                for column in spreadsheets[i].get_data_columns()]
+            datasets.append(df[columns].values)
 
-    # Run the PCA
-    pca = PCA(n_components=2)
-    coords = pca.fit_transform(numpy.concatenate(datasets, axis=1).T)
+        # Run the PCA
+        pca = PCA(n_components=2)
+        try:
+            coords = pca.fit_transform(numpy.concatenate(datasets, axis=1).T)
+        except ValueError:
+            return "NaN value encountered - PCA must be run on only non-NaN, non-empty values", 500
 
-    # Separate the coords into the two datasets
-    pca_coords = []
-    start = 0
-    for dataset in datasets:
-        num_cols = dataset.shape[1]
-        pca_coords.append(coords[start:start + num_cols].T.tolist())
-        start += num_cols
-    return jsonify({
-                'pca_coords': pca_coords,
-                'explained_variance': pca.explained_variance_ratio_.tolist()
-            })
+        # Separate the coords into the two datasets
+        pca_coords = []
+        start = 0
+        for dataset in datasets:
+            num_cols = dataset.shape[1]
+            pca_coords.append(coords[start:start + num_cols].T.tolist())
+            start += num_cols
+        return jsonify({
+                    'pca_coords': pca_coords,
+                    'explained_variance': pca.explained_variance_ratio_.tolist()
+                })
+    elif len(dfs) == 1:
+        # PCA on just one dataset
+        df = dfs[0]
+        df = df.iloc[selected_genes]
+        data_columns = spreadsheets[0].get_data_columns()
+        data = df[data_columns].values
 
+        if take_log_transform:
+            # log(1+x) transform data
+            data = numpy.log(1 + data)
+
+        if take_zscore:
+            # Normalize to z-scored data across both datasets
+             data = (data - data.mean(axis=0)) / data.std(axis=0)
+
+        pca = PCA(n_components=2)
+        try:
+            coords = pca.fit_transform(data.T)
+        except ValueError:
+            return "NaN value encountered - PCA must be run on only non-NaN, non-empty values", 500
+
+        return jsonify({
+                        'pca_coords': coords.T.tolist(),
+                        'explained_variance': pca.explained_variance_ratio_.tolist()
+                    })
+    else:
+        raise NotImplementedError("Require either 1 or 2 datasets for PCA analysis")
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 @requires_account
