@@ -148,10 +148,10 @@
             }
 
             if (two_way_anova_ps !== null && two_way_anova_qs !== null) {
-                $('#two_way_anova_p').html(toFixed(two_way_anova_ps[number_comparisons[0]][row_index], 3));
-                $('#two_way_anova_p').prop('title', toString(two_way_anova_ps[number_comparisons[0]][row_index]));
-                $('#two_way_anova_q').html(toFixed(two_way_anova_qs[number_comparisons[0]][row_index], 3));
-                $('#two_way_anova_q').prop('title', toString(two_way_anova_qs[number_comparisons[0]][row_index]));
+                $('#two_way_anova_p').html(toFixed(two_way_anova_ps[row_index], 3));
+                $('#two_way_anova_p').prop('title', toString(two_way_anova_ps[row_index]));
+                $('#two_way_anova_q').html(toFixed(two_way_anova_qs[row_index], 3));
+                $('#two_way_anova_q').prop('title', toString(two_way_anova_qs[row_index]));
             } else {
                 $('#two_way_anova_p').html("loading");
                 $('#two_way_anova_p').prop('title', "loading");
