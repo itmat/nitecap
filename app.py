@@ -3,7 +3,7 @@ from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv, find_dotenv
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
 import backup
@@ -88,6 +88,7 @@ def send_feedback():
     json_data = request.get_json()
     comments = json_data.get('comments', None)
     if comments:
+        print(comments)
         email = EmailMessage()
         email['Subject'] = 'Nitecap Feedback'
         email['From'] = os.environ.get('EMAIL_SENDER')
@@ -99,7 +100,7 @@ def send_feedback():
             s.quit()
         except Exception as e:
             app.logger.error(f"Email delivery failed: {e}")
-            return {'error': 'Unable to deliver feedback.  Please try again later.'}
+            return jsonify({'error': 'Unable to deliver feedback.  Please try again later.'}), 500
     return '', 204
 
 

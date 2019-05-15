@@ -96,6 +96,7 @@
          let feedback_form = $("#feedback_form");
          let feedback_submit = $("#feedback_submit");
          let feedback_acknowledgement = $("#feedback_acknowledgement");
+         let feedback_failure = $("#feedback_failure");
          let comments = $("#comments");
 
          feedback_link.on('click', function() {
@@ -103,6 +104,7 @@
              comments.val("");
              feedback_submit.show();
              feedback_acknowledgement.hide();
+             feedback_failure.hide();
              feedback_modal.modal();
          });
 
@@ -125,8 +127,12 @@
                         feedback_modal.modal("hide");
                     }
                 },
-                completed: function() {
-
+                error: function(request) {
+                    let error_message = $.parseJSON(request.responseText).error;
+                    feedback_form.hide();
+                    feedback_submit.hide();
+                    feedback_failure.html(error_message);
+                    feedback_failure.show();
                 },
             });
          });
@@ -153,8 +159,8 @@
                     </label>
                     <textarea id="comments" name="comments" class="form-control" rows="5" cols="50"></textarea>
                 </div>
-
                 <div id="feedback_acknowledgement">Thank you for your feedback!</div>
+                <div id="feedback_failure" class="text-danger"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" id="feedback_submit" class="btn btn-primary">
