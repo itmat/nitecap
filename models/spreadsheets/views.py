@@ -143,6 +143,7 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.set_ids_unique()
         spreadsheet.save_to_db()
         spreadsheet.init_on_load()
+        spreadsheet.clear_jtk()
         spreadsheet.compute_nitecap()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet)

@@ -411,6 +411,17 @@ class Spreadsheet(db.Model):
             os.remove(results_file_path)
         return self.df.jtk_p.tolist(), self.df.jtk_q.tolist()
 
+    def clear_jtk(self):
+        ''' Clear JTK computations so that it will be recomputed
+
+        For example if the spreadsheet days/timepoints changed '''
+
+        if "jtk_p" in self.df.columns:
+            self.df.drop(columns="jtk_p", inplace=True)
+        if "jtk_q" in self.df.columns:
+            self.df.drop(columns="jtk_q", inplace=True)
+        self.update_dataframe()
+
     @staticmethod
     def normalize_data(raw_data):
         means = raw_data.mean(axis=1)

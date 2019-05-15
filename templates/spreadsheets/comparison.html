@@ -592,6 +592,32 @@
 
 
         // PCA plot
+        function setPCAPointStyles() {
+            let pca_plot = Plotly.d3.select("#pca_plot");
+            let points = pca_plot.selectAll(".scatter").selectAll("path");
+
+            // remove any existing background circles
+            pca_plot.selectAll(".scatter").selectAll("circle").remove();
+            // Add in background circles
+            points.each(function(x,i,j) {
+
+                let t = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                t.setAttributeNS(null, "r", "13");
+                t.setAttributeNS(null, "transform", this.getAttributeNS(null,"transform"));
+                t.setAttributeNS(null, "fill", "white");
+                this.parentNode.insertBefore(t, this);
+            });
+
+            // Set the shape of the points to be the "colored wedge" shape
+            points.attr("d", "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0");
+            // Rotate the colored wedge by the time (x-value)
+            points.attr("transform", function(x,i,j) {
+                translates[j][i] = this.getAttribute("transform");
+                let rotation = (x_values[j][i] % timepoints_per_day[j] - 0.5) / timepoints_per_day[j] * 360;
+                return this.getAttribute("transform") + " rotate(" + rotation + ")";
+            });
+        }
+
         let pca_button = $('#run_pca');
         function runPCA() {
             // We only run PCA on unfiltered genes below the selected row
@@ -651,9 +677,7 @@
                             text: pt_labels,
                             marker: {
                                 size: 25,
-                                opacity: x_values[spreadsheet_num].map( function (x) {
-                                    return (x+1) / (1+Math.max.apply(null, x_values[spreadsheet_num]));
-                                })
+                                opacity: 1 //x_values[spreadsheet_num].map( function (x) { return (x+1) / (1+Math.max.apply(null, x_values[spreadsheet_num])); })
                             }
                         };
                     });
@@ -675,7 +699,12 @@
                         }
                     };
 
-                    Plotly.newPlot("pca_plot", traces, layout);
+                    let pca_plot = document.getElementById('pca_plot');
+                    Plotly.newPlot(pca_plot, traces, layout);
+
+                    pca_plot.on('plotly_relayout', setPCAPointStyles);
+
+                    setPCAPointStyles();
 
                     $('#pca_controls').show();
                 },
