@@ -147,7 +147,7 @@ def logout_user():
     """
 
     session.clear()
-    return render_template('spreadsheets/upload_file.html')
+    return redirect(url_for('spreadsheets.upload_file'))
 
 
 @user_blueprint.route('/reset_password', methods=['GET', 'POST'])

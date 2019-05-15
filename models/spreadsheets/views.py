@@ -3,6 +3,7 @@ import os
 import uuid
 from pathlib import Path
 import io
+from string import Template
 
 import magic
 import numpy
@@ -24,12 +25,13 @@ from timer_decorator import timeit
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
-MANAGE_OWN_SPREADSHEETS_MESSAGE = "You may only manage your own spreadsheets."
-MISSING_SPREADSHEET_ID_ERROR = "No spreadsheet was provided."
-SPREADSHEET_NOT_FOUND_MESSAGE = "No such spreadsheet can be found."
+MISSING_SPREADSHEET_MESSAGE = "No spreadsheet was provided."
+SPREADSHEET_NOT_FOUND_MESSAGE = "No such spreadsheet could be found."
 FILE_EXTENSION_ERROR = f"File must be one of the following types: {', '.join(constants.ALLOWED_EXTENSIONS)}"
 FILE_UPLOAD_ERROR = "We are unable to load your spreadsheet at the present time.  Please try again later."
 
+IMPROPER_ACCESS_TEMPLATE = Template('User $user_id attempted to apply the endpoint $endpoint to '
+                                    'spreadsheet $spreadsheet_id.')
 
 @spreadsheet_blueprint.route('/upload_file', methods=['GET', 'POST'])
 @timeit
@@ -40,7 +42,7 @@ def upload_file():
     if request.method == 'POST':
         upload_file = request.files.get('upload_file', None)
         if not upload_file or not len(upload_file.filename):
-            return render_template('spreadsheets/upload_file.html', errors=[MISSING_SPREADSHEET_ID_ERROR])
+            return render_template('spreadsheets/upload_file.html', errors=[MISSING_SPREADSHEET_MESSAGE])
         if not allowed_file(upload_file.filename):
             return render_template('spreadsheets/upload_file.html', errors=[FILE_EXTENSION_ERROR])
 
@@ -220,18 +222,20 @@ def validate_mime_type(file_path):
 
 def access_not_permitted(endpoint, user, spreadsheet_id):
     """
-    Helper method for situation where user attempts to access a spreadsheet that does not belong to him/her.
+    Helper method for situation where user attempts to access a spreadsheet that does not belong to him/her.  This
+    could also be the case of a user attempting to access a spreadsheet that does not exist (e.g., a out of date
+    bookmark).
     :param user: object of user attempting the access
     :param visitor: whether or not the user is a visitor (the page a visitor is dropped into is different from
     that of a logged in user
     :param spreadsheet_id: the id of the spreadsheet the user is attempting to access.
     :return: an appropriate page to which to return the user.
     """
-    flash(MANAGE_OWN_SPREADSHEETS_MESSAGE)
-    current_app.logger.warn(f"User {user.id} attempted to apply the endpoint {endpoint} to "
-                            f"spreadsheet {spreadsheet_id}")
+    flash(SPREADSHEET_NOT_FOUND_MESSAGE)
+    current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                            .substitute(user_id=user.id, endpoint=endpoint, spreadsheet_id=spreadsheet_id))
     if user.is_visitor():
-        return render_template(url_for('.load_spreadsheet'))
+        return render_template(url_for('.upload_file'))
     return redirect(url_for('.display_spreadsheets'))
 
 
@@ -301,7 +305,7 @@ def get_jtk(user=None):
     spreadsheet_id = json.loads(request.data)['spreadsheet_id']
 
     if not spreadsheet_id:
-        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
     spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
 
@@ -339,12 +343,13 @@ def delete(user=None):
     spreadsheet_id = json.loads(request.data).get('spreadsheet_id', None)
 
     if not spreadsheet_id:
-        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        current_app.logger.warn(f"User {user.id} attempted to delete spreadsheet {spreadsheet_id}")
-        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+        return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     try:
         spreadsheet.delete_from_db()
@@ -380,7 +385,7 @@ def download_comparison(id1, id2, user=None):
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
+            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user.id, request.path, spreadsheet_id))
             return jsonify("spreadsheets not found"), 404
 
         # Populate
@@ -438,7 +443,7 @@ def download(spreadsheet_id, user=None):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     if not spreadsheet:
-            return access_not_permitted(download.__name__, user, spreadsheet_id)
+            return access_not_permitted(request.path, user, spreadsheet_id)
     spreadsheet.init_on_load()
     txt_data = io.StringIO()
     spreadsheet.df.to_csv(txt_data, sep='\t')
@@ -469,15 +474,16 @@ def save_filters(user=None):
 
     # Bad data
     if not spreadsheet_id:
-        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
     # Collect spreadsheet owned by user
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     # Attempt to access spreadsheet not owned.
     if not spreadsheet:
-        current_app.logger.warn(f"User {user.id} attempted to save spreadsheet filters {spreadsheet_id}")
-        return jsonify({"error": MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+        return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     # Populate spreadsheet with raw data
     spreadsheet.init_on_load()
@@ -510,11 +516,12 @@ def share(user=None):
 
     # Bad data
     if not spreadsheet_id:
-        return jsonify({"error": MISSING_SPREADSHEET_ID_ERROR}), 400
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
     # Attempt to access spreadsheet not owned.
     if not user.find_user_spreadsheet_by_id(spreadsheet_id):
-        return jsonify({"errors": MANAGE_OWN_SPREADSHEETS_MESSAGE}, 401)
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user.id, request.path, spreadsheet_id))
+        return jsonify({"errors": SPREADSHEET_NOT_FOUND_MESSAGE}, 404)
 
     current_app.logger.info(f"Sharing spreadsheet {spreadsheet_id} and row index {row_index}")
     return jsonify({'share': user.get_share_token(spreadsheet_id, row_index)})
@@ -888,10 +895,13 @@ def run_pca():
 @requires_account
 def check_id_uniqueness(user=None):
     """
-    AJAX endpoint - determines whether the id columns selected by the user, in combination, form a unique identifier.
-    Non unique identifier will be left out of comparisons.
-    :param user:  Returned by the decorator.  Logged in user is required.
-    :return: {'non-unique_ids': <non unique ids} or {'error': <error>}
+    AJAX endpoint - accepts a json object ( id_columns: id_columns, spreadsheet_id: spreadsheet_id } and determines
+    whether the id columns selected by the user, in combination, form a unique identifier.  Non unique ids will be left
+    out of comparisons.  The spreadsheet id is checked to be sure that it represents a spreadsheet owned by this user
+    account.  A successful save results in a list of non unique ids returned, if any.  Otherwise an error is returned
+    with the appropriate status code.
+    :param user:  Returned by the decorator.   Account bearing user is required.
+    :return: { non-unique_ids: non unique ids } or { error: error } and a 400 or 404 code.
     """
 
     errors = []
@@ -904,11 +914,13 @@ def check_id_uniqueness(user=None):
         errors.append("No id columns were selected. Please select at least one id column.")
         return jsonify({'error': errors}), 400
     if not spreadsheet_id:
-        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
+        return jsonify({'error': MISSING_SPREADSHEET_MESSAGE}), 400
     else:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+        return jsonify({'error': SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     # Populate
     spreadsheet.set_df()
@@ -922,10 +934,12 @@ def check_id_uniqueness(user=None):
 @ajax_requires_account
 def save_cutoff(user=None):
     """
-    AJAX endpoint - when the user selects a significance cutoff, in addition to showing the heatmap, the cutoff value
-    is saved to the spreadsheet database record.
+    AJAX endpoint - accepts a json object ( spreadsheet_id: spreadsheet_id, cutoff: cutoff value } and saves the
+    significance cutoff value to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be
+    sure that it represents a spreadsheet owned by this user account.  A successful save results in no content
+    returned.  Otherwise an error is returned with the appropriate status code.
     :param user:  Returned by the decorator.  Account bearing user is required.
-    :return: Nothing is returned in the event of a successful save.  Otherwise an error message is returned.
+    :return: no content (204) or { error: error } and a 400 or 404 code.
     """
 
     json_data = request.get_json()
@@ -934,12 +948,14 @@ def save_cutoff(user=None):
 
     # Spreadsheet id is required.
     if not spreadsheet_id:
-        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
+        return jsonify({'error': [MISSING_SPREADSHEET_MESSAGE]}), 400
 
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     if not spreadsheet:
-        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+        return jsonify({'error': SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     spreadsheet.breakpoint = cutoff
     spreadsheet.save_to_db()
@@ -952,10 +968,10 @@ def save_note(user=None):
     """
     AJAX endpoint - accepts a json object { spreadsheet_id: spreadsheet id, note: note } and saves the contents
     of that note to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be sure
-    that it represents a spreadsheet owned by this logged in user.  A successful save results in no content
+    that it represents a spreadsheet owned by this user account.  A successful save results in no content
     returned.  Otherwise an error is returned with the appropriate status code.
     :param user:  Returned by the decorator.  Account bearing user is required.
-    :return: no content or { error: error } and a 400 or 404 code.
+    :return: no content (204) or { error: error } and a 400 or 404 code.
     """
     errors = []
 
@@ -966,11 +982,13 @@ def save_note(user=None):
 
     # Spreadsheet id is required.
     if not spreadsheet_id:
-        return jsonify({'error': MISSING_SPREADSHEET_ID_ERROR}), 400
+        return jsonify({'error': MISSING_SPREADSHEET_MESSAGE}), 400
 
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     if not spreadsheet:
-        return jsonify({'error': MANAGE_OWN_SPREADSHEETS_MESSAGE}), 403
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+        return jsonify({'error': SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     spreadsheet.note = note
     spreadsheet.save_to_db()
