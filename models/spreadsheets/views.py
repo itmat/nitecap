@@ -811,24 +811,31 @@ def run_pca():
                         for i in range(len(spreadsheets))
                         for column in spreadsheets[i].get_data_columns()]
 
-        if take_log_transform:
-            # log(1+x) transform data
-            df[data_columns] = numpy.log(1 + df[data_columns])
-
-        if take_zscore:
-            # Normalize to z-scored data across both datasets
-             df[data_columns] = (df[data_columns] - df[data_columns].mean(axis=0)) / df[data_columns].std(axis=0)
-
         # Extract individual datasets
         for i in [0, 1]:
             columns = [column + f"_{i}" if column in common_columns else column
                                 for column in spreadsheets[i].get_data_columns()]
             datasets.append(df[columns].values)
 
+        data = numpy.concatenate(datasets, axis=1)
+
+        # Drop rows that contain NaNs
+        data = data[numpy.isfinite(data).all(axis=1)]
+        if data.shape[0] < 3:
+            return "Insufficient non-NaN rows selected. Need at least 3", 500
+
+        if take_log_transform:
+            # log(1+x) transform data
+            data = numpy.log(1 + data)
+
+        if take_zscore:
+            # Normalize to z-scored data across both datasets
+             data = (data - data.mean(axis=0)) / data.std(axis=0)
+
         # Run the PCA
         pca = PCA(n_components=2)
         try:
-            coords = pca.fit_transform(numpy.concatenate(datasets, axis=1).T)
+            coords = pca.fit_transform(data.T)
         except ValueError:
             return "NaN value encountered - PCA must be run on only non-NaN, non-empty values", 500
 
@@ -849,6 +856,11 @@ def run_pca():
         df = df.iloc[selected_genes]
         data_columns = spreadsheets[0].get_data_columns()
         data = df[data_columns].values
+
+        # Drop rows that contain NaNs
+        data = data[numpy.isfinite(data).all(axis=1)]
+        if data.shape[0] < 3:
+            return "Insufficient non-NaN rows selected. Need at least 3", 500
 
         if take_log_transform:
             # log(1+x) transform data
