@@ -701,7 +701,7 @@
                     let pca_plot = document.getElementById('pca_plot');
                     Plotly.newPlot(pca_plot, traces, layout);
 
-                    pca_plot.on('plotly_relayout', setPCAPointStyles);
+                    pca_plot.on('plotly_afterplot', setPCAPointStyles);
 
                     setPCAPointStyles();
 
