@@ -612,7 +612,6 @@
             points.attr("d", "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0");
             // Rotate the colored wedge by the time (x-value)
             points.attr("transform", function(x,i,j) {
-                translates[j][i] = this.getAttribute("transform");
                 let rotation = (x_values[j][i] % timepoints_per_day[j] - 0.5) / timepoints_per_day[j] * 360;
                 return this.getAttribute("transform") + " rotate(" + rotation + ")";
             });
