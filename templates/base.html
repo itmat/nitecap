@@ -89,6 +89,91 @@
     {% endblock %}
 </div>
 
+<script>
+     $(document).ready(function() {
+         let feedback_link = $("#feedback_link");
+         let feedback_modal = $("#feedback-modal");
+         let feedback_form = $("#feedback_form");
+         let feedback_submit = $("#feedback_submit");
+         let feedback_acknowledgement = $("#feedback_acknowledgement");
+         let feedback_failure = $("#feedback_failure");
+         let comments = $("#comments");
+
+         feedback_link.on('click', function() {
+             feedback_form.show();
+             comments.val("");
+             feedback_submit.show();
+             feedback_acknowledgement.hide();
+             feedback_failure.hide();
+             feedback_modal.modal();
+         });
+
+         feedback_submit.on('click', function() {
+
+            $.ajax({
+                type: 'POST',
+                url: "{{ url_for('send_feedback') }}",
+                data: JSON.stringify({"comments": comments.val()}),
+                dataType: "json",
+                contentType: "application/json",
+                success: function(response) {
+                    console.log($.trim(comments.val()).length);
+                    if($.trim(comments.val()).length > 0) {
+                        feedback_form.hide();
+                        feedback_submit.hide();
+                        feedback_acknowledgement.show();
+                    }
+                    else {
+                        feedback_modal.modal("hide");
+                    }
+                },
+                error: function(request) {
+                    let error_message = $.parseJSON(request.responseText).error;
+                    feedback_form.hide();
+                    feedback_submit.hide();
+                    feedback_failure.html(error_message);
+                    feedback_failure.show();
+                },
+            });
+         });
+
+     });
+</script>
+
+<!-- Feedback Modal -->
+<div class="modal fade" id="feedback-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary">
+                <h5 class="model-title text-white">Feedback</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span class="text-white" aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                <div id="feedback_form" class="form-group">
+                    <label for="comments">
+                        Please inform us of any issues you have and/or how we might improve your experience with
+                        our website:
+                    </label>
+                    <textarea id="comments" name="comments" class="form-control" rows="5" cols="50"></textarea>
+                </div>
+                <div id="feedback_acknowledgement">Thank you for your feedback!</div>
+                <div id="feedback_failure" class="text-danger"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="feedback_submit" class="btn btn-primary">
+                    <span aria-hidden="true">Submit</span>
+                </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">Dismiss</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Error Modal -->
 <div class="modal fade" id="error-modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -114,19 +199,22 @@
 <footer class="footer">
       <div class="container">
           <div class="row">
-              <span class="col-lg-6 text-muted">
+              <div class="col-lg-5 text-muted">
                   <small>Copyright
-                    <span id="copyrightYear"></span>&copy;
+                    <span class="px-1" id="copyrightYear"></span>&copy;
                     <a href="http://www.itmat.upenn.edu/" target="_blank">ITMAT</a>
                     All rights reserved
                   </small>
-              </span>
-              <span class="col-lg-6 text-muted text-right">
+              </div>
+              <div class="col-lg-2 text-muted">
+                  <a id="feedback_link" class="text-primary" style="cursor:pointer"><small>Feedback?</small></a>
+              </div>
+              <div class="col-lg-5 text-muted text-right">
                   <a href="mailto:admin@nitecap.org">
                       <i class="fa fa-envelope" aria-hidden="true"></i>
                       <small class="pl-2">admin@nitecap.org</small>
                   </a>
-              </span>
+              </div>
           </div>
       </div>
 </footer>
