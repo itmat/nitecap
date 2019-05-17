@@ -193,7 +193,7 @@ class Spreadsheet(db.Model):
             if self.file_mime_type in constants.EXCEL_MIME_TYPES:
                 self.df = pd.read_excel(self.uploaded_file_path,
                                         header=self.header_row - 1,
-                                        index_col=None)
+                                        index_col=False)
             else:
                 extension = Path(self.original_filename).suffix
                 sep = "\t"
