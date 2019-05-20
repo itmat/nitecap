@@ -46,6 +46,11 @@
 
 <form action="{{ url_for('spreadsheets.upload_file') }}" method="post" enctype="multipart/form-data">
     <div class="form-group">
+        <label for="header_row">The Spreadsheet Header is on Row:</label>
+        <input type="number" id="header_row" name="header_row" class="form-control" value="{{header_row or 1}}"
+               style="width:15rem" required />
+    </div>
+    <div class="form-group">
         <input type="file" id="upload_file" name="upload_file" required>
     </div>
     <button type="submit" class="btn btn-primary">

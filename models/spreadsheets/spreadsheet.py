@@ -400,7 +400,7 @@ class Spreadsheet(db.Model):
             if res.returncode != 0:
                 raise RuntimeError(f"Error running JTK: \n {res.argsedecode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
-            results = pd.read_table(results_file_path)
+            results = pd.read_csv(results_file_path, sep='\t')
             self.df["jtk_p"] = results.JTK_P
             self.df["jtk_q"] = results.JTK_Q
 

@@ -38,13 +38,20 @@ IMPROPER_ACCESS_TEMPLATE = Template('User $user_id attempted to apply the endpoi
 def upload_file():
     current_app.logger.info('Uploading spreadsheet')
 
+    errors = []
+
     # Spreadsheet file form submitted
     if request.method == 'POST':
+        header_row = request.form.get('header_row', None)
+        if not header_row or not header_row.isdigit():
+            errors.append(f"The value of the header row is required and must be a positive integer.")
         upload_file = request.files.get('upload_file', None)
         if not upload_file or not len(upload_file.filename):
-            return render_template('spreadsheets/upload_file.html', errors=[MISSING_SPREADSHEET_MESSAGE])
+            errors.append(MISSING_SPREADSHEET_MESSAGE)
         if not allowed_file(upload_file.filename):
-            return render_template('spreadsheets/upload_file.html', errors=[FILE_EXTENSION_ERROR])
+            errors.append(FILE_EXTENSION_ERROR)
+        if errors:
+            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=errors)
 
         # Rename the uploaded file to avoid any naming collisions and save it
         extension = Path(upload_file.filename).suffix
@@ -56,7 +63,7 @@ def upload_file():
         file_mime_type, errors = validate_mime_type(file_path)
         if errors:
             os.remove(file_path)
-            return render_template('spreadsheets/upload_file.html', errors=errors)
+            return render_template('spreadsheets/upload_file.html', header_row=header_row ,errors=errors)
 
         # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
         user_id = None
@@ -80,7 +87,7 @@ def upload_file():
         # problem.
         if not user:
             current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
-            return render_template('spreadsheets/upload_file.html', errors=[FILE_UPLOAD_ERROR])
+            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
 
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
@@ -90,7 +97,7 @@ def upload_file():
                                       days=None,
                                       timepoints=None,
                                       repeated_measures=False,
-                                      header_row=1,
+                                      header_row=header_row,
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_path,
@@ -98,7 +105,7 @@ def upload_file():
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
             os.remove(file_path)
-            return render_template('spreadsheets/upload_file.html', errors=[FILE_UPLOAD_ERROR])
+            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
 
         # Save the spreadsheet file to the database
         spreadsheet.save_to_db()
@@ -125,7 +132,7 @@ def collect_data(spreadsheet_id, user=None):
 
     # Spreadsheet data form submitted.
     if request.method == 'POST':
-        descriptive_name, days, timepoints, repeated_measures, header_row, column_labels, errors = \
+        descriptive_name, days, timepoints, repeated_measures, column_labels, errors = \
             validate_spreadsheet_data(request.form)
 
         if errors:
@@ -134,7 +141,6 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.days = int(days)
         spreadsheet.timepoints = int(timepoints)
         spreadsheet.repeated_measures = repeated_measures
-        spreadsheet.header_row = header_row
 
         # If label assignments are improper, the user is returned to the column label form and invited to edit.
         errors = spreadsheet.validate(column_labels)
@@ -165,7 +171,6 @@ def validate_spreadsheet_data(form_data):
     timepoints = form_data.get('timepoints', None)
     repeated_measures = form_data.get('repeated_measures', 'n')
     repeated_measures = True if repeated_measures == 'y' else False
-    header_row = form_data.get('header_row', None)
     column_labels = [value for key, value in form_data.items() if key.startswith('col')]
 
     # Check data for errors
@@ -176,9 +181,7 @@ def validate_spreadsheet_data(form_data):
         errors.append(f"The value for days is required and must be a positve integer.")
     if not timepoints or not timepoints.isdigit():
         errors.append(f"The value for timepoints is required and must be a positve integer.")
-    if not header_row or not header_row.isdigit():
-        errors.append(f"The value of the header row is required and must be a positive integer.")
-    return descriptive_name, days, timepoints, repeated_measures, header_row, column_labels, errors
+    return descriptive_name, days, timepoints, repeated_measures, column_labels, errors
 
 
 def allowed_file(filename):
