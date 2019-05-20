@@ -43,7 +43,7 @@ def upload_file():
     # Spreadsheet file form submitted
     if request.method == 'POST':
         header_row = request.form.get('header_row', None)
-        if not header_row or not header_row.isdigit():
+        if not header_row or not header_row.isdigit() or int(header_row) < 1:
             errors.append(f"The value of the header row is required and must be a positive integer.")
         upload_file = request.files.get('upload_file', None)
         if not upload_file or not len(upload_file.filename):
