@@ -4,6 +4,9 @@ from email.message import EmailMessage
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+# Uncomment to allow CORS
+#from flask_cors import CORS
+
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
 import backup
@@ -21,7 +24,7 @@ load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
-
+CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
 
 # Log format for both file and email logging.
 formatter = logging.Formatter('%(asctime)s \t%(levelname)s\t%(module)s\t%(process)d\t%(thread)d\t%(message)s')
