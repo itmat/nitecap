@@ -787,7 +787,11 @@ def run_pca():
     spreadsheets = []
 
     # Check user ownership over these spreadsheets
-    user = User.find_by_email(session['email'])
+    try:
+        user = User.find_by_email(session['email'])
+    except KeyError:
+        return "Must log in to run PCA", 404
+
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
@@ -796,7 +800,7 @@ def run_pca():
 
         if not spreadsheet:
             current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
-            return jsonify({'upside_ps': None})
+            return "Spreadsheet not found", 404
         spreadsheets.append(spreadsheet)
 
     dfs = []
