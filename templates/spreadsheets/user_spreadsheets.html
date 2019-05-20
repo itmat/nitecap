@@ -107,9 +107,14 @@
             }
         });
 
+        let inline_edit = '\n<div class="float-right text-primary" style="cursor:pointer">\n' +
+            '                <i class="fas fa-pencil-alt"></i>\n' +
+            '              </div>\n';
+
         spreadsheetTableElement.on('click','.rename_spreadsheet', function(event) {
-           console.log("Rename " + $(event.target).data('id'));
-           let cell = $(event.target);
+           event.stopPropagation();
+           let cell = $(event.target).parents("td > div");
+           console.log(cell);
            cell.removeClass('rename_spreadsheet');
            let current_name = cell.text().trim();
            let input_form = "<input type='text' value='" + current_name + "' />" +
@@ -121,6 +126,7 @@
                "                 <i class='fas fa-times'></i>\n" +
                "               </button>\n" +
                "             </div>\n";
+           console.log(cell);
            cell.html(input_form);
         });
 
@@ -129,7 +135,7 @@
             let cell = $(event.target).parents("td > div");
             let current_name = cell.data("name");
             cell.addClass('rename_spreadsheet');
-            cell.html(current_name);
+            cell.html(current_name + inline_edit);
         });
 
         spreadsheetTableElement.on('click', '.btn-rename', function(event) {
@@ -144,13 +150,13 @@
                 contentType: "application/json",
                 type: 'POST',
                 success: function (response) {
-                    new_name = response['name']
+                    new_name = response['name'];
                     cell.data("name", new_name);
-                    cell.html(new_name);
+                    cell.html(new_name + inline_edit);
                 },
                 error: function (request) {
 
-                    cell.html(cell.data("name"));
+                    cell.html(cell.data("name") + inline_edit);
 
                     // Inject the error message returned by the server into the error modal and display it.
                     let error_message = $.parseJSON(request.responseText).error;
@@ -316,8 +322,9 @@
                 </td>
                 <td>
                     <div data-id="{{ spreadsheet.id }}" data-name="{{ spreadsheet.descriptive_name }}"
-                         class="rename_spreadsheet text-primary" style="cursor:pointer">
+                         class="rename_spreadsheet" style="cursor:pointer">
                         {{spreadsheet.descriptive_name}}
+                        <div class="float-right text-primary"><i class="fas fa-pencil-alt"></i></div>
                     </div>
                 </td>
                 <td>{{spreadsheet.days}}</td>
