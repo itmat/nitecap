@@ -3,8 +3,7 @@ import datetime
 import os
 import uuid
 import subprocess
-from itertools import zip_longest
-from parser import ParserError
+from pandas.errors import ParserError
 from pathlib import Path
 import re
 
