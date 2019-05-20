@@ -107,13 +107,17 @@
             }
         });
 
-        let inline_edit = '\n<div class="float-right text-primary" style="cursor:pointer">\n' +
+        let inline_edit = '\n' +
+            '              <div class="float-right text-primary">\n' +
             '                <i class="fas fa-pencil-alt"></i>\n' +
             '              </div>\n';
 
         spreadsheetTableElement.on('click','.rename_spreadsheet', function(event) {
-           event.stopPropagation();
-           let cell = $(event.target).parents("td > div");
+           //let cell = $(event.target).parents("td > div");
+           let cell = $(event.target);
+           if(!cell.hasClass("rename_spreadsheet")) {
+               cell = cell.parents("td > div")
+           }
            console.log(cell);
            cell.removeClass('rename_spreadsheet');
            let current_name = cell.text().trim();
@@ -126,7 +130,6 @@
                "                 <i class='fas fa-times'></i>\n" +
                "               </button>\n" +
                "             </div>\n";
-           console.log(cell);
            cell.html(input_form);
         });
 
