@@ -977,7 +977,6 @@ def save_note(user=None):
     :param user:  Returned by the decorator.  Account bearing user is required.
     :return: no content (204) or { error: error } and a 400 or 404 code.
     """
-    errors = []
 
     # Gather json data
     json_data = request.get_json()
@@ -997,6 +996,40 @@ def save_note(user=None):
     spreadsheet.note = note
     spreadsheet.save_to_db()
     return '', 204
+
+@spreadsheet_blueprint.route('/rename', methods=['POST'])
+@ajax_requires_account
+def rename(user=None):
+    """
+    AJAX endpoint - accepts a json object {spreadsheet_id: spreadsheet id, name: name } and saves the new name (if
+    one is provided) to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be sure
+    that it represents a spreadsheet owned by this user account.  A successful save results in a json object containing
+    the current descriptive name {name: spreadsheet.descriptive_name } being returned.  Otherwise an error is returned
+    with the appropriate status code.
+    :param user: Returned by the decorator.  Account bearing user is required.
+    :return: {name: descriptive_name} or { error: error } and a 400 or 404 code.
+    """
+
+    # Gather json data
+    json_data = request.get_json()
+    name = json_data.get('name', None)
+    spreadsheet_id = json_data.get('spreadsheet_id', None)
+
+    # Spreadsheet id is required.
+    if not spreadsheet_id:
+        return jsonify({'error': MISSING_SPREADSHEET_MESSAGE}), 400
+
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+        return jsonify({'error': SPREADSHEET_NOT_FOUND_MESSAGE}), 404
+
+    # If no name was provided, do not alter the existing descriptive name
+    if name:
+        spreadsheet.descriptive_name = name
+        spreadsheet.save_to_db()
+    return jsonify({'name': spreadsheet.descriptive_name})
 
 
 @spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])

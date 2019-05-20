@@ -42,7 +42,6 @@
 
                 // Find the specific anchor tag that calls the popover
                 let anchorElement = $('a.annotate_spreadsheet[data-id="' + spreadsheet_id + '"]');
-                console.log(anchorElement);
 
                 // Send the data back to the server for saving.
                 $.ajax({
@@ -58,7 +57,6 @@
                         let new_data = {"spreadsheet_id": spreadsheet_id, "note": note};
                         let new_content = '"' + Mustache.to_html(template, new_data) + '"';
                         anchorElement.attr('data-content', new_content);
-                        console.log(anchorElement.data('content'));
                     },
                     error: function (request) {
 
@@ -108,6 +106,63 @@
                 e.preventDefault();
             }
         });
+
+        spreadsheetTableElement.on('click','.rename_spreadsheet', function(event) {
+           console.log("Rename " + $(event.target).data('id'));
+           let cell = $(event.target);
+           cell.removeClass('rename_spreadsheet');
+           let current_name = cell.text().trim();
+           let input_form = "<input type='text' value='" + current_name + "' />" +
+               "             <div class='float-right'>\n" +
+               "               <button class='btn-rename btn btn-primary'>\n" +
+               "                 <i class='fas fa-check'></i>\n" +
+               "               </button>\n" +
+               "               <button class='btn-rename-dismiss btn btn-white'>\n" +
+               "                 <i class='fas fa-times'></i>\n" +
+               "               </button>\n" +
+               "             </div>\n";
+           cell.html(input_form);
+        });
+
+        spreadsheetTableElement.on('click', '.btn-rename-dismiss', function(event) {
+            event.stopPropagation();
+            let cell = $(event.target).parents("td > div");
+            let current_name = cell.data("name");
+            cell.addClass('rename_spreadsheet');
+            cell.html(current_name);
+        });
+
+        spreadsheetTableElement.on('click', '.btn-rename', function(event) {
+            event.stopPropagation();
+            let cell = $(event.target).parents("td > div");
+            console.log(cell);
+            let new_name = cell.find("input").val();
+            $.ajax({
+                url: "{{url_for('spreadsheets.rename')}}",
+                data: JSON.stringify({'spreadsheet_id': cell.data("id"), 'name': new_name}),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function (response) {
+                    new_name = response['name']
+                    cell.data("name", new_name);
+                    cell.html(new_name);
+                },
+                error: function (request) {
+
+                    cell.html(cell.data("name"));
+
+                    // Inject the error message returned by the server into the error modal and display it.
+                    let error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
+                },
+                complete: function() {
+                    cell.addClass('rename_spreadsheet');
+                }
+            });
+        });
+
 
         // User clicks the share icon
         spreadsheetTableElement.on('click','.share_spreadsheet', function(event) {
@@ -260,7 +315,10 @@
                     {{ momentjs(spreadsheet.date_uploaded).format('LLL') }}
                 </td>
                 <td>
-                    {{spreadsheet.descriptive_name}}
+                    <div data-id="{{ spreadsheet.id }}" data-name="{{ spreadsheet.descriptive_name }}"
+                         class="rename_spreadsheet text-primary" style="cursor:pointer">
+                        {{spreadsheet.descriptive_name}}
+                    </div>
                 </td>
                 <td>{{spreadsheet.days}}</td>
                 <td>{{spreadsheet.timepoints}}</td>
