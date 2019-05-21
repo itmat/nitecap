@@ -569,7 +569,7 @@ def consume_share(token):
         current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
         return render_template('spreadsheets/upload_file.html', errors=errors)
 
-    # Create a copy of the sharing user's spreadsheet for the current user.
+    # Create a copy of the sharing user's spreadsheet for the current user.nitecap
     shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
     if shared_spreadsheet:
         if row_index:
@@ -1033,6 +1033,36 @@ def rename(user=None):
         spreadsheet.descriptive_name = name
         spreadsheet.save_to_db()
     return jsonify({'name': spreadsheet.descriptive_name})
+
+@spreadsheet_blueprint.route('/bulk_delete', methods=['POST'])
+@requires_login
+def bulk_delete(user=None):
+    """
+    AJAX endpoint - deletes the database table entry and the files associated with each of the
+    spreadsheets whose ids are provided via a json object { spreadsheet_ids: [spreadsheet ids] }. The spreadsheet id
+    is checked to be sure that it represents a spreadsheet owned by this user account.
+    :param user: Returned by the decorator.  Account bearing user is required.
+    :return: { spreadsheet_removed_ids: [spreadsheet_removed_ids], errors: [errors] } returned with an array of errors
+     a and status code of 200 regardless.  The only difference between the input list of spreadsheet ids and the output
+     list of id removed is the possibly that one or more spreadsheet ids represents spreadsheet not belonging to the
+     user.  Those will not appear in the list of ids removed.
+    """
+
+    errors = []
+    spreadsheet_removed_ids = []
+    spreadsheet_ids = json.loads(request.data).get('spreadsheet_ids', None)
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                    .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+            errors.append(SPREADSHEET_NOT_FOUND_MESSAGE)
+            continue
+        error = spreadsheet.delete()
+        if error:
+            errors.append(error)
+        spreadsheet_removed_ids.append(spreadsheet_id)
+    return jsonify({'spreadsheet_removed_ids': spreadsheet_removed_ids, 'errors': errors})
 
 
 @spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
