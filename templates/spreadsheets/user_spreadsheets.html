@@ -118,57 +118,69 @@
             }
         });
 
-         spreadsheetTableElement.on('click', '.select-checkbox', function(event) {
-             setTimeout(setButtons, 500)
-         });
+        // We can't just piggyback on this event to read how many rows are selected because the same event is used
+        // by the data tables event handler.  So as a klug, we can delay the check by 0.5 sec.
+        spreadsheetTableElement.on('click', '.select-checkbox', function(event) {
+            setTimeout(setButtons, 500)
+        });
 
-          function setButtons() {
-              let number_rows_selected = table.rows({selected: true}).count();
-              console.log("Number rows: " + number_rows_selected);
-              switch(number_rows_selected) {
-                  case 0:
-                      compare_button.prop('disabled', true);
-                      delete_button.prop('disabled', true);
-                      break;
+        // Enable/disable Compare and Delete buttons according to the number of rows selected.
+        function setButtons() {
+            let number_rows_selected = table.rows({selected: true}).count();
+            console.log("Number rows: " + number_rows_selected);
+            switch(number_rows_selected) {
+                case 0:
+                    compare_button.prop('disabled', true);
+                    delete_button.prop('disabled', true);
+                    break;
 
-                  case 1:
-                      compare_button.prop('disabled', true);
-                      delete_button.prop('disabled', false);
-                      break;
-                  case 2:
-                      compare_button.prop('disabled', false);
-                      delete_button.prop('disabled', false);
-                      break;
-                  default:
-                      compare_button.prop('disabled', true);
-                      delete_button.prop('disabled', false);
-              }
-          }
+                case 1:
+                    compare_button.prop('disabled', true);
+                    delete_button.prop('disabled', false);
+                    break;
+                case 2:
+                    compare_button.prop('disabled', false);
+                    delete_button.prop('disabled', false);
+                    break;
+                default:
+                    compare_button.prop('disabled', true);
+                    delete_button.prop('disabled', false);
+            }
+        }
 
+        // Using the pencil icon to identify the lone inline editable column.
         let inline_edit = '\n' +
             '              <div class="float-right text-primary">\n' +
             '                <i class="fas fa-pencil-alt"></i>\n' +
             '              </div>\n';
 
+
+        // When the user clicks on a cell with a pencil icon, we provide and inline input field and allow the user
+        // to change the spreadsheet name in line.
         spreadsheetTableElement.on('click','.rename_spreadsheet', function(event) {
-           let cell = $(event.target);
-           if(!cell.hasClass("rename_spreadsheet")) {
-               cell = cell.parents("td > div")
-           }
-           cell.removeClass('rename_spreadsheet');
-           let current_name = cell.text().trim();
-           let input_form = "<input type='text' value='" + current_name + "' />" +
-               "             <div class='float-right'>\n" +
-               "               <button class='btn-rename btn btn-primary'>\n" +
-               "                 <i class='fas fa-check'></i>\n" +
-               "               </button>\n" +
-               "               <button class='btn-rename-dismiss btn btn-white'>\n" +
-               "                 <i class='fas fa-times'></i>\n" +
-               "               </button>\n" +
-               "             </div>\n";
-           cell.html(input_form);
+            let cell = $(event.target);
+            if(!cell.hasClass("rename_spreadsheet")) {
+                cell = cell.parents("td > div")
+            }
+
+            // Remove the rename spreadsheet class to avoid calling this function while the user clicks inside the
+            // cell.
+            cell.removeClass('rename_spreadsheet');
+            let current_name = cell.text().trim();
+            let input_form = "<input type='text' value='" + current_name + "' />" +
+                "             <div class='float-right'>\n" +
+                "               <button class='btn-rename btn btn-primary'>\n" +
+                "                 <i class='fas fa-check'></i>\n" +
+                "               </button>\n" +
+                "               <button class='btn-rename-dismiss btn btn-white'>\n" +
+                "                 <i class='fas fa-times'></i>\n" +
+                "               </button>\n" +
+                "             </div>\n";
+            cell.html(input_form);
         });
 
+        // If the user aborts an inline edit, we return the original spreadsheet name and add the pencil icon back.
+        // Put the rename_spreadsheet class back so that the listener will work again.
         spreadsheetTableElement.on('click', '.btn-rename-dismiss', function(event) {
             event.stopPropagation();
             let cell = $(event.target).parents("td > div");
@@ -177,6 +189,9 @@
             cell.html(current_name + inline_edit);
         });
 
+        // When the user submits an inline edit, we issue an ajax call with the new name for this spreadsheet and
+        // update the prior name with the new name if one is returned from the ajax cell.  Otherwise, the prior name
+        // is kept.  Again the rename_spreadsheet class is put back so that the listener will work again.
         spreadsheetTableElement.on('click', '.btn-rename', function(event) {
             event.stopPropagation();
             let cell = $(event.target).parents("td > div");
