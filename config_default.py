@@ -18,4 +18,4 @@ SMTP_SERVER_HOST = os.environ['SMTP_SERVER_HOST']
 ADMIN_LIST = os.environ.get('ADMINS', '').split(",")
 PERMANENT_SESSION_LIFETIME = timedelta(minutes=300)
 BANNER_CONTENT = os.environ.get('BANNER_CONTENT', '')
-BANNER_VISIBLE = bool(os.environ.get('BANNER_VISIBLE', 'False'))
+BANNER_VISIBLE = bool(os.environ.get('BANNER_VISIBLE', ''))
