@@ -186,3 +186,14 @@ body {
   transform: translate(-50%, -50%);
 }
 
+
+#spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {
+    font-family: "Font Awesome 5 Free";
+    content: "\f14a";
+    display: inline-block;
+    color: blue;
+    padding-right: 3px;
+    vertical-align: middle;
+    font-weight: 900;
+}
+

@@ -44,13 +44,20 @@ dumps = json_encoder.encode
 def upload_file():
     current_app.logger.info('Uploading spreadsheet')
 
+    errors = []
+
     # Spreadsheet file form submitted
     if request.method == 'POST':
+        header_row = request.form.get('header_row', None)
+        if not header_row or not header_row.isdigit() or int(header_row) < 1:
+            errors.append(f"The value of the header row is required and must be a positive integer.")
         upload_file = request.files.get('upload_file', None)
         if not upload_file or not len(upload_file.filename):
-            return render_template('spreadsheets/upload_file.html', errors=[MISSING_SPREADSHEET_MESSAGE])
+            errors.append(MISSING_SPREADSHEET_MESSAGE)
         if not allowed_file(upload_file.filename):
-            return render_template('spreadsheets/upload_file.html', errors=[FILE_EXTENSION_ERROR])
+            errors.append(FILE_EXTENSION_ERROR)
+        if errors:
+            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=errors)
 
         # Rename the uploaded file to avoid any naming collisions and save it
         extension = Path(upload_file.filename).suffix
@@ -62,7 +69,7 @@ def upload_file():
         file_mime_type, errors = validate_mime_type(file_path)
         if errors:
             os.remove(file_path)
-            return render_template('spreadsheets/upload_file.html', errors=errors)
+            return render_template('spreadsheets/upload_file.html', header_row=header_row ,errors=errors)
 
         # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
         user_id = None
@@ -86,7 +93,7 @@ def upload_file():
         # problem.
         if not user:
             current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
-            return render_template('spreadsheets/upload_file.html', errors=[FILE_UPLOAD_ERROR])
+            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
 
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
@@ -96,7 +103,7 @@ def upload_file():
                                       days=None,
                                       timepoints=None,
                                       repeated_measures=False,
-                                      header_row=1,
+                                      header_row=header_row,
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_path,
@@ -104,7 +111,7 @@ def upload_file():
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
             os.remove(file_path)
-            return render_template('spreadsheets/upload_file.html', errors=[FILE_UPLOAD_ERROR])
+            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
 
         # Save the spreadsheet file to the database
         spreadsheet.save_to_db()
@@ -131,7 +138,7 @@ def collect_data(spreadsheet_id, user=None):
 
     # Spreadsheet data form submitted.
     if request.method == 'POST':
-        descriptive_name, days, timepoints, repeated_measures, header_row, column_labels, errors = \
+        descriptive_name, days, timepoints, repeated_measures, column_labels, errors = \
             validate_spreadsheet_data(request.form)
 
         if errors:
@@ -140,7 +147,6 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.days = int(days)
         spreadsheet.timepoints = int(timepoints)
         spreadsheet.repeated_measures = repeated_measures
-        spreadsheet.header_row = header_row
 
         # If label assignments are improper, the user is returned to the column label form and invited to edit.
         errors = spreadsheet.validate(column_labels)
@@ -171,7 +177,6 @@ def validate_spreadsheet_data(form_data):
     timepoints = form_data.get('timepoints', None)
     repeated_measures = form_data.get('repeated_measures', 'n')
     repeated_measures = True if repeated_measures == 'y' else False
-    header_row = form_data.get('header_row', None)
     column_labels = [value for key, value in form_data.items() if key.startswith('col')]
 
     # Check data for errors
@@ -182,9 +187,7 @@ def validate_spreadsheet_data(form_data):
         errors.append(f"The value for days is required and must be a positve integer.")
     if not timepoints or not timepoints.isdigit():
         errors.append(f"The value for timepoints is required and must be a positve integer.")
-    if not header_row or not header_row.isdigit():
-        errors.append(f"The value of the header row is required and must be a positive integer.")
-    return descriptive_name, days, timepoints, repeated_measures, header_row, column_labels, errors
+    return descriptive_name, days, timepoints, repeated_measures, column_labels, errors
 
 
 def allowed_file(filename):
@@ -572,7 +575,7 @@ def consume_share(token):
         current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
         return render_template('spreadsheets/upload_file.html', errors=errors)
 
-    # Create a copy of the sharing user's spreadsheet for the current user.
+    # Create a copy of the sharing user's spreadsheet for the current user.nitecap
     shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
     if shared_spreadsheet:
         if row_index:
@@ -1054,6 +1057,36 @@ def rename(user=None):
         spreadsheet.descriptive_name = name
         spreadsheet.save_to_db()
     return jsonify({'name': spreadsheet.descriptive_name})
+
+@spreadsheet_blueprint.route('/bulk_delete', methods=['POST'])
+@requires_login
+def bulk_delete(user=None):
+    """
+    AJAX endpoint - deletes the database table entry and the files associated with each of the
+    spreadsheets whose ids are provided via a json object { spreadsheet_ids: [spreadsheet ids] }. The spreadsheet id
+    is checked to be sure that it represents a spreadsheet owned by this user account.
+    :param user: Returned by the decorator.  Account bearing user is required.
+    :return: { spreadsheet_removed_ids: [spreadsheet_removed_ids], errors: [errors] } returned with an array of errors
+     a and status code of 200 regardless.  The only difference between the input list of spreadsheet ids and the output
+     list of id removed is the possibly that one or more spreadsheet ids represents spreadsheet not belonging to the
+     user.  Those will not appear in the list of ids removed.
+    """
+
+    errors = []
+    spreadsheet_removed_ids = []
+    spreadsheet_ids = json.loads(request.data).get('spreadsheet_ids', None)
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                    .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+            errors.append(SPREADSHEET_NOT_FOUND_MESSAGE)
+            continue
+        error = spreadsheet.delete()
+        if error:
+            errors.append(error)
+        spreadsheet_removed_ids.append(spreadsheet_id)
+    return jsonify({'spreadsheet_removed_ids': spreadsheet_removed_ids, 'errors': errors})
 
 
 @spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
