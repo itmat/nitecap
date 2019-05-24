@@ -1,6 +1,7 @@
 import numpy
 import scipy.stats
 import statsmodels.api as sm
+from numpy import cos, sin
 
 def BH_FDR(ps):
     ''' Benjamini-Hochberg FDR control
@@ -170,13 +171,13 @@ def anova(data):
 
     if N_REPS == 1:
         raise ValueError("Cannot perform ANOVA on datasets without any replicates")
-    
+
     anova_p = numpy.empty(N_GENES)
 
     # Check for nans
     finite_mask = numpy.isfinite(data)
     contains_nans = not numpy.all(finite_mask)
-    
+
     # Unfortunately, no built-in better way to do ANOVA on repeated experiments in Scipy
     for i in range(N_GENES):
         row = data[:,:,i]
@@ -228,3 +229,128 @@ def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
         p_values[i] = p
 
     return p_values
+
+def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
+    '''
+    Perform tests using a Cosinor (sinusoidal least-squares fit) method.
+
+    `num_replicates_A` is a list of integers indicating how many replicates there are from each timepoint in dataset A
+    `data_A` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_A)
+            containing the values of the condition A
+    `num_replicates_B` is a list of integers indicating how many replicates there are from each timepoint in dataset B
+    `data_B` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_B)
+            containing the values of the condition B
+
+    returns:
+        p-values for equality of amplitude between data sets
+        p-values for equality of acrophase (peak time)
+
+    Tests performed in this method are based off the following publication:
+    Bingham, Arbogast, Cornelissen Guillaume, Lee, Halberg "Cosinor Parameter Estimation and Comparison" 1982
+    In particular, see equations 49 and 50, in the case where k=2 using the t-test versions
+
+    Assumes equality of variances in data_A and data_B
+    If the design is balanced (same # replicates in boths data_A and data_B) then equality of
+    variances is somewhat less important.
+    '''
+
+    assert data_A.shape[0] == data_B.shape[0]
+    num_features = data_A.shape[0]
+
+    # Number of samples in each dataset
+    N_A = data_A.shape[1]
+    N_B = data_B.shape[1]
+    N = N_A + N_B
+    DoF = N - 6
+
+    # Factor variables for the two replicates
+    timepoints_A = numpy.array([i for i, num_reps in enumerate(num_reps_A) for j in range(num_reps)])
+    timepoints_B = numpy.array([i for i, num_reps in enumerate(num_reps_B) for j in range(num_reps)])
+
+    # Predictors, cos/sin values
+    c_A = numpy.cos(timepoints_A*2*numpy.pi/len(num_reps_A))
+    c_B = numpy.cos(timepoints_B*2*numpy.pi/len(num_reps_B))
+    s_A = numpy.sin(timepoints_A*2*numpy.pi/len(num_reps_A))
+    s_B = numpy.sin(timepoints_B*2*numpy.pi/len(num_reps_B))
+    const_A = numpy.ones(c_A.shape)
+    const_B = numpy.ones(c_B.shape)
+    predictor_A = numpy.vstack([c_A,s_A,const_A]).T
+    predictor_B = numpy.vstack([c_B,s_B,const_B]).T
+
+    # Variances of predictor values (cos, sin)
+    X_A = numpy.sum( (c_A - numpy.mean(c_A))**2 )
+    Z_A = numpy.sum( (s_A - numpy.mean(s_A))**2 )
+    T_A = numpy.sum( (s_A - numpy.mean(s_A))*(c_A - numpy.mean(c_A)) ) # covariance
+    X_B = numpy.sum( (c_B - numpy.mean(c_B))**2 )
+    Z_B = numpy.sum( (s_B - numpy.mean(s_B))**2 )
+    T_B = numpy.sum( (s_B - numpy.mean(s_B))*(c_B - numpy.mean(c_B)) ) # covariance
+
+    # Used for estimates of covariances of beta and gamma as matrix [[c22, c23], [c23, c33]]
+    c22_A =  Z_A / (X_A * Z_A - T_A**2)
+    c23_A = -T_A / (X_A * Z_A - T_A**2)
+    c33_A =  X_A / (X_A * Z_A - T_A**2)
+    c22_B =  Z_B / (X_B * Z_B - T_B**2)
+    c23_B = -T_B / (X_B * Z_B - T_B**2)
+    c33_B =  X_B / (X_B * Z_B - T_B**2)
+
+    # Fitting to the model
+    # y ~ beta * cos(t) + gamma * sin(t) + M + epsilon
+    # solving for beta, gamma, M with residual epsilon being normally distributed
+
+    p_amplitude = numpy.ones(num_features)
+    p_phase = numpy.ones(num_features)
+    for i in range(num_features):
+        # For each feature, perform Least-Squares fits
+
+        # TODO: if no missing values, can actually compute all of these at once by passing in all of data_A (or maybe data_A.T)
+        x_A, resid_A, rank_A, sing_A = numpy.linalg.lstsq(predictor_A, data_A[i], rcond=None)
+        x_B, resid_B, rank_B, sing_B = numpy.linalg.lstsq(predictor_B, data_B[i], rcond=None)
+
+        # Best-fit parameters
+        beta_A, gamma_A, M_A = x_A
+        beta_B, gamma_B, M_B = x_B
+
+        # Amplitudes
+        amp_A = numpy.sqrt(beta_A**2 + gamma_A**2)
+        amp_B = numpy.sqrt(beta_B**2 + gamma_B**2)
+
+        # Acrophases (peak times)
+        # so model will be y ~ amp * cos(t - phi_A) + M + epsilon
+        phi_A = numpy.arctan2(gamma_A, beta_A)
+        phi_B = numpy.arctan2(gamma_B, beta_B)
+
+        # Unexplained variances
+        # 3 DoF used by the model
+        sigma_sq_A = resid_A / (N_A - 3)
+        sigma_sq_B = resid_B / (N_B - 3)
+        sigma = numpy.sqrt( ((N_A - 3) * resid_A + (N_B - 3) * resid_B)/DoF )
+
+        # For estimated variances of amplitude and phase variables
+        c22_phi_A = c22_A * cos(phi_A)**2 - 2*c23_A*cos(phi_A)*sin(phi_A) + c33_A*sin(phi_A)**2
+        c33_phi_A = c22_A * sin(phi_A)**2 + 2*c23_A*cos(phi_A)*sin(phi_A) + c33_A*cos(phi_A)**2
+        c22_phi_B = c22_B * cos(phi_B)**2 - 2*c23_B*cos(phi_B)*sin(phi_B) + c33_B*sin(phi_B)**2
+        c33_phi_B = c22_B * sin(phi_B)**2 + 2*c23_B*cos(phi_B)*sin(phi_B) + c33_B*cos(phi_B)**2
+
+        ## EQUAL VARIANCES BETWEEN DATA_A AND DATA_B case:
+        # # Approximate test for equality of amplitudes
+        # t_amplitude = numpy.abs(amp_A - amp_B) / (sigma * numpy.sqrt(c22_phi_A + c22_phi_B))
+        # p_amplitude[i] = 2*scipy.stats.t.sf(t_amplitude, DoF)
+
+        # # Approximate test for equality of phases
+        # t_phase = numpy.abs(beta_A*gamma_B - beta_B*gamma_A) / (sigma * numpy.sqrt(amp_B**2*c33_phi_A + amp_A**2*c33_phi_B))
+        # p_phase[i] = 2*scipy.stats.t.sf(t_phase, DoF)
+
+        ## Unequal variances allowed (with approximate DoF calculated)
+        # Approximate test for equality of amplitudes
+        t_amplitude = numpy.abs(amp_A - amp_B) / numpy.sqrt(c22_phi_A*sigma_sq_A + c22_phi_B*sigma_sq_B)
+        rho = c22_phi_B*sigma_sq_B/(c22_phi_A*sigma_sq_A)
+        dof = (1 + rho)**2/(1/(N_A-3) + rho**2/(N_B-3))
+        p_amplitude[i] = 2*scipy.stats.t.sf(t_amplitude, dof)
+
+        # Approximate test for equality of amplitudes
+        t_phase = numpy.abs(beta_A*gamma_B - beta_B*gamma_A) / numpy.sqrt(amp_B**2*c33_phi_A*sigma_sq_A + amp_A**2*c33_phi_B*sigma_sq_B)
+        rho = (amp_A**2*c33_phi_B*sigma_sq_B) / (amp_B**2*c33_phi_A*sigma_sq_A**2)
+        dof = (1 + rho)**2/(1/(N_A-3) + rho**2/(N_B-3))
+        p_phase[i] = 2*scipy.stats.t.sf(t_phase, dof)
+
+    return p_amplitude, p_phase
