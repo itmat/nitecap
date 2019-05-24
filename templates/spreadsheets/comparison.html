@@ -44,6 +44,10 @@
         upside_qs = null;
         two_way_anova_ps = null;
         two_way_anova_qs = null;
+        phase_ps = null;
+        phase_qs = null;
+        amplitude_ps = null;
+        amplitude_qs = null;
 
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
@@ -161,6 +165,30 @@
                 $('#two_way_anova_p').prop('title', "loading");
                 $('#two_way_anova_q').html("loading");
                 $('#two_way_anova_q').prop('title', "loading");
+            }
+
+            if (phase_ps !== null && phase_qs !== null) {
+                $('#phase_p').html(toFixed(phase_ps[row_index], 3));
+                $('#phase_p').prop('title', toString(phase_ps[row_index]));
+                $('#phase_q').html(toFixed(phase_qs[row_index], 3));
+                $('#phase_q').prop('title', toString(phase_qs[row_index]));
+            } else {
+                $('#phase_p').html("loading");
+                $('#phase_p').prop('title', "loading");
+                $('#phase_q').html("loading");
+                $('#phase_q').prop('title', "loading");
+            }
+
+            if (amplitude_ps !== null && amplitude_qs !== null) {
+                $('#amplitude_p').html(toFixed(amplitude_ps[row_index], 3));
+                $('#amplitude_p').prop('title', toString(amplitude_ps[row_index]));
+                $('#amplitude_q').html(toFixed(amplitude_qs[row_index], 3));
+                $('#amplitude_q').prop('title', toString(amplitude_qs[row_index]));
+            } else {
+                $('#amplitude_p').html("loading");
+                $('#amplitude_p').prop('title', "loading");
+                $('#amplitude_q').html("loading");
+                $('#amplitude_q').prop('title', "loading");
             }
         }
 
@@ -494,6 +522,18 @@
                 var a = two_way_anova_ps[i];
                 var b = two_way_anova_ps[j];
                 return compare(a,b,i,j);
+            },
+            "amplitude": function (i,j) {
+                // Sort by ascending order
+                var a = amplitude_ps[i];
+                var b = amplitude_ps[j];
+                return compare(a,b,i,j);
+            },
+            "phase_change": function (i,j) {
+                // Sort by ascending order
+                var a = phase_ps[i];
+                var b = phase_ps[j];
+                return compare(a,b,i,j);
             }
         };
 
@@ -562,7 +602,7 @@
         $.ajax({
             url: "{{url_for('spreadsheets.get_upside')}}",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
-            dataType: 'json',
+            dataType: 'text json',
             contentType: 'application/json',
             type: 'POST',
             success: function(response) {
@@ -570,15 +610,22 @@
                 upside_qs = response['upside_qs'];
                 two_way_anova_ps = response['two_way_anova_ps'];
                 two_way_anova_qs = response['two_way_anova_qs'];
+                phase_ps = response['phase_ps'];
+                phase_qs = response['phase_qs'];
+                amplitude_ps = response['amplitude_ps'];
+                amplitude_qs = response['amplitude_qs'];
 
                 $('#sort_select option[value="upside"]').removeAttr("disabled");
                 $('#sort_select option[value="two_way_anova"]').removeAttr("disabled");
+                $('#sort_select option[value="phase_change"]').removeAttr("disabled");
+                $('#sort_select option[value="amplitude"]').removeAttr("disabled");
 
                 updateStatsBox();
             },
             error: function(error) {
                 console.log("Error loading upside values");
                 console.log(error);
+                response = error.responseText;
             }
         });
 
@@ -905,6 +952,8 @@
                          <option value="amplitude">Amplitude</option>
                          <option value="upside" disabled>Damping</option>
                          <option value="two_way_anova" disabled>Two-way ANOVA</option>
+                         <option value="phase_change" disabled>Phase Change</option>
+                         <option value="amplitude" disabled>Amplitude Change</option>
                     </select>
                     <table class="table table-sm">
                         <tbody>
@@ -961,6 +1010,28 @@
                                 </td> <td>p: <span id="two_way_anova_p"></span></td>
                             </tr>
                             <tr> <td>q: <span id="two_way_anova_q"></span></td></tr>
+
+                            <tr> <td rowspan="2">Phase Change
+                                <a class="text-primary help-pointer float-right"
+                                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                   title="Damping"
+                                   data-content="Test for equality of phase between datasets through cosinor analysis (least squares fit)">
+                                    <i class="fas fa-info-circle ml-3"></i>
+                                </a>
+                                </td> <td>p: <span id="phase_p"></span></td>
+                            </tr>
+                            <tr> <td>q: <span id="phase_q"></span></td></tr>
+
+                            <tr> <td rowspan="2">Amplitude Change
+                                <a class="text-primary help-pointer float-right"
+                                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                   title="Damping"
+                                   data-content="Test for equality of amplitudes between datasets through cosinor analysis (least squares fit)">
+                                    <i class="fas fa-info-circle ml-3"></i>
+                                </a>
+                                </td> <td>p: <span id="amplitude_p"></span></td>
+                            </tr>
+                            <tr> <td>q: <span id="amplitude_q"></span></td></tr>
 
                             <tr> <td>Amplitude
                                 <a class="text-primary help-pointer float-right"

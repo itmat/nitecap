@@ -246,7 +246,7 @@ def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
         p-values for equality of acrophase (peak time)
 
     Tests performed in this method are based off the following publication:
-    Bingham, Arbogast, Cornelissen Guillaume, Lee, Halberg "Cosinor Parameter Estimation and Comparison" 1982
+    Bingham, Arbogast, Cornelissen Guillaume, Lee, Halberg "Inferential Statistical Methods for Estimating and Comparing Cosinor Parameters" 1982
     In particular, see equations 49 and 50, in the case where k=2 using the t-test versions
 
     Assumes equality of variances in data_A and data_B

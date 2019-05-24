@@ -10,7 +10,7 @@ import numpy
 import pandas as pd
 import pyarrow
 import pyarrow.parquet
-from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, jsonify, flash
+from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, flash, json, jsonify
 from flask import current_app
 from sklearn.decomposition import PCA
 
@@ -32,6 +32,12 @@ FILE_UPLOAD_ERROR = "We are unable to load your spreadsheet at the present time.
 
 IMPROPER_ACCESS_TEMPLATE = Template('User $user_id attempted to apply the endpoint $endpoint to '
                                     'spreadsheet $spreadsheet_id.')
+
+# JSON cannot contain NaN or Inf but Python will happily encode those values by default
+# Create a new JSONEncoder using the simplejson library (used by flask if available) that
+# will replace NaN and Inf with null which isn't ideal but at least can be parsed by the browser
+json_encoder = json.JSONEncoder(ignore_nan=True)
+dumps = json_encoder.encode
 
 @spreadsheet_blueprint.route('/upload_file', methods=['GET', 'POST'])
 @timeit
@@ -721,6 +727,10 @@ def get_upside():
             upside_qs.append(comp_data["upside_qs"].values.tolist())
             anova_p = comp_data["two_way_anova_ps"]
             anova_q = comp_data["two_way_anova_qs"]
+            phase_p = comp_data["phase_ps"]
+            phase_q = comp_data["phase_qs"]
+            amplitude_p = comp_data["amplitude_ps"]
+            amplitude_q = comp_data["amplitude_qs"]
             current_app.logger.info(f"Loaded upside values from file {file_path}")
         except OSError: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
@@ -754,11 +764,21 @@ def get_upside():
                                                      spreadsheets[secondary].num_replicates, datasets[secondary])
                 anova_q = nitecap.util.BH_FDR(anova_p)
 
+                # Run Cosinor analysis
+                amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].num_replicates, datasets[primary],
+                                                                     spreadsheets[secondary].num_replicates, datasets[secondary])
+                phase_q = nitecap.util.BH_FDR(phase_p)
+                amplitude_q = nitecap.util.BH_FDR(amplitude_p)
+
             comp_data = pd.DataFrame(index=df.index)
             comp_data["upside_ps"] = upside_p
             comp_data["upside_qs"] = upside_q
             comp_data["two_way_anova_ps"] = anova_p
             comp_data["two_way_anova_qs"] = anova_q
+            comp_data["phase_ps"] = phase_p
+            comp_data["phase_qs"] = phase_q
+            comp_data["amplitude_ps"] = amplitude_p
+            comp_data["amplitude_qs"] = amplitude_q
 
             # Save to disk
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
@@ -767,11 +787,15 @@ def get_upside():
             upside_qs.append(upside_q.tolist())
             current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
 
-    return jsonify({
+    return dumps({
                 'upside_ps': upside_ps,
                 'upside_qs': upside_qs,
                 'two_way_anova_ps': anova_p.tolist(),
-                'two_way_anova_qs': anova_q.tolist()
+                'two_way_anova_qs': anova_q.tolist(),
+                'phase_ps': phase_p.tolist(),
+                'phase_qs': phase_q.tolist(),
+                'amplitude_ps': amplitude_p.tolist(),
+                'amplitude_qs': amplitude_q.tolist()
             })
 
 

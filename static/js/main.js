@@ -62,7 +62,7 @@ function compare(a,b, i,j) {
         } else {
             return 1;
         }
-    } else if (isNaN(b)) {
+    } else if (isNaN(b) || b === null) {
         return -1;
     } else {
         if (a > b) {
