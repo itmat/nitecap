@@ -587,6 +587,9 @@
             document.body.appendChild(anchor);
             anchor.click();
             document.body.removeChild(anchor);
+
+            // Cleanup after 60s, they've presumably successfully downloaded the small svg
+            setTimeout(function () { URL.revokeObjectURL(url) }, 60000);
         });
 
         let set_cutoff_button = $("#set_breakpoint");
