@@ -120,12 +120,6 @@
             }
         });
 
-        // We can't just piggyback on this event to read how many rows are selected because the same event is used
-        // by the data tables event handler.  So as a klug, we can delay the check by 0.5 sec.
-        spreadsheetTableElement.on('click', '.select-checkbox', function(event) {
-            setTimeout(setButtons, 500)
-        });
-
         // Enable/disable Compare and Delete buttons according to the number of rows selected.
         function setButtons() {
             let number_rows_selected = table.rows({selected: true}).count();
@@ -153,6 +147,8 @@
                     delete_button.prop('disabled', false);
             }
         }
+        table.on('select', setButtons);
+        table.on('deselect', setButtons);
 
         // Using the pencil icon to identify the lone inline editable column.
         let inline_edit = '\n' +
