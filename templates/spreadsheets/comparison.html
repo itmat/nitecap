@@ -853,8 +853,25 @@
         });
 
         $('#download_pca').click(function() {
-            var gd = document.getElementById('pca_plot');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'pca_' + (selected_row+1)});
+            // NOTE: we cannot use Plotly.downloadImage() since we have modified the plot
+            // after its creation and the downloadImage() won't reflect those changes
+            // So instead we just directly grab its SVG structure by toSVG() and then download that
+
+            // Gather the plot as an SVG
+            let pca_plot = document.getElementById('pca_plot');
+            let svg_data = Plotly.Snapshot.toSVG(pca_plot, {format: 'svg'});
+
+            // Create a URL for it
+            let blob = new Blob([svg_data]);
+            let url = URL.createObjectURL(blob);
+
+            // Trigger downloading of the URL by making an <a href ...> to it and clicking it
+            var anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = "pca.svg";
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
         });
     });
 
