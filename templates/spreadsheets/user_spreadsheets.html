@@ -9,7 +9,9 @@
 
     $(document).ready(function() {
 
-         let compare_button = $("#compare");
+         let show_button = $("#show-button");
+         show_button.prop('disabled', true);
+         let compare_button = $("#compare-button");
          compare_button.prop('disabled', true);
          let delete_button = $("#delete-button");
          delete_button.prop('disabled', true);
@@ -130,19 +132,23 @@
             console.log("Number rows: " + number_rows_selected);
             switch(number_rows_selected) {
                 case 0:
+                    show_button.prop('disabled', true);
                     compare_button.prop('disabled', true);
                     delete_button.prop('disabled', true);
                     break;
 
                 case 1:
+                    show_button.prop('disabled', false);
                     compare_button.prop('disabled', true);
                     delete_button.prop('disabled', false);
                     break;
                 case 2:
+                    show_button.prop('disabled', true);
                     compare_button.prop('disabled', false);
                     delete_button.prop('disabled', false);
                     break;
                 default:
+                    show_button.prop('disabled', true);
                     compare_button.prop('disabled', true);
                     delete_button.prop('disabled', false);
             }
@@ -263,6 +269,36 @@
             delete_confirmed_button.attr('data-source', 'icon');
             confirm_delete_message.text("Please confirm deletion...");
             confirm_delete_modal.modal();
+        });
+
+
+        // Button to show a spreadsheet
+        show_button.click(function() {
+            let row_data = table.row( {selected:true} ).nodes();
+            let spreadsheet_ids = [];
+            $.map($(row_data), function(item) {
+                spreadsheet_ids.push($(item).data("id"))
+            });
+            console.log(spreadsheet_ids);
+
+            if (spreadsheet_ids.length !== 1) {
+                let error_message = "Can only show one spreadsheet at a time";
+                nitecap_error_message.text(error_message);
+                nitecap_error.modal();
+                return;
+            }
+
+            // Disable the compare button and display the spinner
+            compare_button.prop('disabled', true);
+            compare_button.html("" +
+                "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                "</span>Processing...");
+
+            // Go to show_spreadsheet page for the selected spreadsheet
+            // Frustrantingly, the url_for() function is run on the server but requires the spreadsheet_id argument
+            // which is not known until run-time, hence we have to just give it a dummy-value and then replace as necessary
+            let target_url = "{{ url_for('spreadsheets.show_spreadsheet',spreadsheet_id='999')}}";
+            window.location.href = target_url.replace('999', '' + spreadsheet_ids[0]);
         });
 
         // Insure compare button initially labeled properly.
@@ -493,7 +529,8 @@
         -->
     </table>
 
-    <button type="button" class="btn btn-primary" id="compare">Compare</button>
+    <button type="button" class="btn btn-primary selectedSignle" id="show-button">Show</button>
+    <button type="button" class="btn btn-primary" id="compare-button">Compare</button>
     <button type="button" class="btn btn-primary" id="delete-button">
         Delete
         <i class="fas fa-trash"></i>
