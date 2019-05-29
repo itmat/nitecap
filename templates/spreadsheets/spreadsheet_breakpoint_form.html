@@ -647,6 +647,13 @@
 
             filtered = filtered_out;
 
+            computeNumSignificantBelow();
+
+            // Update row selector display to reflect the new filtering
+            rowSelector.filterRows(filtered);
+        }
+
+        function computeNumSignificantBelow() {
             // Recompute the number of signifcant items below a cutoff
             var ctr = 0;
             var set_significant_items = false;
@@ -664,10 +671,8 @@
                     set_significant_items = true;
                 }
             });
-
-            // Update row selector display to reflect the new filtering
-            rowSelector.filterRows(filtered);
         }
+        computeNumSignificantBelow();
 
         apply_filters_button.click(function() {
             apply_filters();
@@ -837,8 +842,13 @@
         $('#sort_select').change( sortRows );
 
         $('#significant_items').change( function () {
-            let row = Math.round(this.value) -1;
-            console.log("Significant items changed to " + row);
+            let target = Math.round(this.value);
+            let row = target-1;
+            for(; row < labels.length; row++) {
+                if (num_significant_below[row] >= target) {
+                    break;
+                }
+            }
 
             if (row < 0) {
                 row = 0;
