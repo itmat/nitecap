@@ -326,8 +326,7 @@
             $('#heatmap_controls').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
 
-            var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
-            selected_indexes = sort_order.filter( function(row_num,rank) {
+            let selected_indexes = sort_order.filter( function(row_num,rank) {
                 return (rank <= selected_row) & (!filtered[row_num]);
             } );
             var phase_sorted_order = selected_indexes.sort( function (i,j) {
