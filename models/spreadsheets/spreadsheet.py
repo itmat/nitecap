@@ -596,17 +596,16 @@ class Spreadsheet(db.Model):
             self.df["nitecap_p"] = p
             self.df["nitecap_q"] = q
 
-        # TODO: recompute the BH FDR q-value for
-        #  JTK and ANOVA
-        jtk_q = numpy.empty(td.shape)
-        jtk_q[~filtered_out] = nitecap.util.BH_FDR(self.df["jtk_p"][~filtered_out])
-        jtk_q[filtered_out] = float("NaN")
-        self.df["jtk_q"] = jtk_q
+            # Recompute BH q-values, too
+            jtk_q = numpy.empty(self.df["jtk_p"].shape)
+            jtk_q[~filtered_out] = nitecap.util.BH_FDR(self.df["jtk_p"][~filtered_out])
+            jtk_q[filtered_out] = float("NaN")
+            self.df["jtk_q"] = jtk_q
 
-        anova_q = numpy.empty(td.shape)
-        anova_q[~filtered_out] = nitecap.util.BH_FDR(self.df["anova_p"][~filtered_out])
-        anova_q[filtered_out] = float("NaN")
-        self.df["anova_q"] = anova_q
+            anova_q = numpy.empty(self.df["anova_p"].shape)
+            anova_q[~filtered_out] = nitecap.util.BH_FDR(self.df["anova_p"][~filtered_out])
+            anova_q[filtered_out] = float("NaN")
+            self.df["anova_q"] = anova_q
 
         self.update_dataframe()
 
