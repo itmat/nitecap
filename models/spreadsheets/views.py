@@ -288,6 +288,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
                  x_label_values=spreadsheet.x_label_values,
                  qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
                  ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                 tds=spreadsheet.df.total_delta.to_json(orient="values"),
                  amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
                  peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
                  anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
