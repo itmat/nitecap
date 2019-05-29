@@ -364,6 +364,14 @@
             $('#heatmap_controls').show();
         };
 
+        $('#combine_replicates').change(function() {
+            updateHeatmap()
+        });
+
+        $('#heatmap_show_labels').change(function() {
+            updateHeatmap()
+        });
+
         // PCA plot
         function setPCAPointStyles() {
             let pca_plot = Plotly.d3.select("#pca_plot");
@@ -717,7 +725,7 @@
                     qs = response["qs"];
                     ps = response["ps"];
 
-                    update_row_labels();
+                    updateRowLabels();
                 },
 
                 // If an error is returned notify the user.
@@ -736,14 +744,6 @@
                     rerun_qvalues_button.html('Set q-value background');
                 }
             });
-        });
-
-        $('#combine_replicates').change(function() {
-            updateHeatmap()
-        });
-
-        $('#heatmap_show_labels').change(function() {
-            updateHeatmap()
         });
 
         var searchRows = function() {
@@ -806,38 +806,28 @@
             }
         };
 
-        $('#sort_select').change(function (evt) {
-            update_row_labels();
-
-            // TODO: this will change what gene is selected
-            rowSelector.selectRow(selected_row);
-        });
-
-        function update_row_labels() {
+        function updateRowLabels() {
             var sorter = $('#sort_select').val();
-
-            if (sorter === "nitecap") {
-                // Nitecap order is default, sort_order is then just 0,1,2,3...
-                sort_order = labels.map( function(x,i) {return i;} );
-
-                rowSelector.setSortOrder(sort_order);
-                rowSelector.makeRowLabels(labels, qs);
+            if (sorter === 'jtk') {
+                rowSelector.makeRowLabels(labels, jtk_qs);
+            } else if (sorter === 'anova') {
+                rowSelector.makeRowLabels(labels, anova_qs);
             } else {
-                sort_order = labels.map( function(x,i) {return i;} );
-                sort_order = sort_order.sort( sorters[this.value] );
-
-                rowSelector.setSortOrder(sort_order);
-                if (sorter === 'jtk') {
-                    rowSelector.makeRowLabels(labels, jtk_qs);
-                } else if (sorter === 'upside') {
-                    rowSelector.makeRowLabels(labels, upside_qs);
-                } else if (sorter === 'anova') {
-                    rowSelector.makeRowLabels(labels, anova_qs);
-                } else {
-                    rowSelector.makeRowLabels(labels, qs);
-                }
+                rowSelector.makeRowLabels(labels, qs);
             }
+        }
+
+        var sortRows = function () {
+            var sorter = $('#sort_select').val();
+            sort_order = labels.map( function(x,i) {return i;} );
+            sort_order = sort_order.sort( sorters[sorter] );
+
+            updateRowLabels();
+
+            rowSelector.setSortOrder(sort_order);
+            rowSelector.selectRow(selected_row);
         };
+        $('#sort_select').change( sortRows );
 
         $('#significant_items').change( function () {
             let row = Math.round(this.value) -1;

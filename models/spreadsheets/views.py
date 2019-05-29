@@ -681,6 +681,8 @@ def compare(user=None):
         anova_qs.append(df[f"anova_q_{i}"].values.tolist())
         tds.append(df[f"total_delta_{i}"].tolist())
 
+    max_value_filter = [spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
+                            for spreadsheet in spreadsheets]
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
                            x_values=x_values,
@@ -699,7 +701,8 @@ def compare(user=None):
                            tds=json.dumps(tds),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            timepoints_per_day=timepoints_per_day,
-                           spreadsheet_ids=spreadsheet_ids)
+                           spreadsheet_ids=spreadsheet_ids,
+                            max_value_filter=max_value_filter)
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
