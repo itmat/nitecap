@@ -562,6 +562,8 @@
                 success: function (response) {
                     qs[number_comparisons[0]] = response["qs"];
                     ps[number_comparisons[0]] = response["ps"];
+                    jtk_qs[number_comparisons[0]] = response["jtk_qs"];
+                    anova_qs[number_comparisons[0]] = response["anova_qs"];
 
                     updateRowLabels();
                 },

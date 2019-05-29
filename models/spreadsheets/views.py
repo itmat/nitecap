@@ -322,7 +322,7 @@ def get_jtk(user=None):
     spreadsheet.init_on_load()
 
     jtk_ps, jtk_qs = spreadsheet.get_jtk()
-    return jsonify({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
+    return dumps({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
 
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
@@ -510,7 +510,9 @@ def save_filters(user=None):
     spreadsheet.save_to_db()
 
     response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
-                        'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)]})
+                        'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
+                        'jtk_qs': [x if x == x else None for x in list(spreadsheet.df.jtk_q.values)],
+                        'anova_qs': [x if x == x else None for x in list(spreadsheet.df.anova_q.values)]})
     return response
 
 
