@@ -36,8 +36,9 @@ var toFixed = function(num, i) {
     if (typeof num === 'number') {
         return num.toFixed(i);
     }
-    return num;
+    return num + '';
 };
+
 var toString = function(num) {
     // Call num.toString unless num is undefined (eg: null)
     if (typeof num === 'number') {
