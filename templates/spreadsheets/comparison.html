@@ -698,7 +698,7 @@
                 var b = two_way_anova_ps[j];
                 return compare(a,b,i,j);
             },
-            "amplitude": function (i,j) {
+            "amplitude_change": function (i,j) {
                 // Sort by ascending order
                 var a = amplitude_ps[i];
                 var b = amplitude_ps[j];
@@ -722,6 +722,10 @@
                 rowSelector.makeRowLabels(labels, two_way_anova_qs);
             } else if (sorter === 'anova') {
                 rowSelector.makeRowLabels(labels, anova_qs[number_comparisons[0]]);
+            } else if (sorter === 'amplitude_change') {
+                rowSelector.makeRowLabels(labels, amplitude_qs);
+            } else if (sorter === 'phase_change') {
+                rowSelector.makeRowLabels(labels, phase_qs);
             } else {
                 rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
             }
@@ -797,7 +801,7 @@
                 $('#sort_select option[value="upside"]').removeAttr("disabled");
                 $('#sort_select option[value="two_way_anova"]').removeAttr("disabled");
                 $('#sort_select option[value="phase_change"]').removeAttr("disabled");
-                $('#sort_select option[value="amplitude"]').removeAttr("disabled");
+                $('#sort_select option[value="amplitude_change"]').removeAttr("disabled");
 
                 updateStatsBox();
             },
@@ -1152,7 +1156,7 @@
                          <option value="upside" disabled>Damping</option>
                          <option value="two_way_anova" disabled>Two-way ANOVA</option>
                          <option value="phase_change" disabled>Phase Change</option>
-                         <option value="amplitude" disabled>Amplitude Change</option>
+                         <option value="amplitude_change" disabled>Amplitude Change</option>
                     </select>
                     <table class="table table-sm">
                         <tbody>
