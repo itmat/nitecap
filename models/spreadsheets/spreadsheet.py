@@ -561,42 +561,43 @@ class Spreadsheet(db.Model):
             error = error_message
         return error
 
-    def apply_filters(self):
-        self.df["filtered_out"] = False
+    def apply_filters(self, filtered_out, rerun_qvalues=False):
+        filtered_out = numpy.array(filtered_out, dtype=bool)
+        self.df["filtered_out"] = filtered_out
 
-        if self.max_value_filter is not None:
-            maxes = self.get_raw_data().max(axis=1)
-            self.df["filtered_out"] = numpy.logical_or(self.df["filtered_out"],  maxes <= self.max_value_filter)
+        if rerun_qvalues:
+            # Must recalculate q-values on the filtered part
+            # TODO: ideally we wouldn't have to recompute all of this
+            #       only really want to recompute the q-values but then
+            #       we need the permutation values too and we don't store that
+            # TODO: this code is copy-and-pasted from compute_nitecap(), shouldn't be duplicated
+            data = self.get_raw_data().values
+            data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
 
-        # Must recalculate q-values on the filtered part
-        # TODO: ideally we wouldn't have to recompute all of this
-        #       only really want to recompute the q-values but then
-        #       we need the permutation values too and we don't store that
-        # TODO: this code is copy-and-pasted from compute_nitecap(), shouldn't be duplicated
-        data = self.get_raw_data().values
-        filtered_out = self.df.filtered_out.values.astype("bool") #Ensure bool and not 0,1, should be unnecessary
-        data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
+            # Seed the computation so that results are reproducible
+            numpy.random.seed(1)
 
-        # Seed the computation so that results are reproducible
-        numpy.random.seed(1)
+            # Main nitecap computation
+            # Perform on all the features for sorting purposes
+            td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days)
 
-        # Main nitecap computation
-        td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days)
+            # Apply q-value computation but just for the features surviving filtering
+            good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
+            good_q, good_p = nitecap.FDR(good_td, good_perm_td)
 
-        # Apply q-value computation but just for the features surviving filtering
-        good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
-        good_q, good_p = nitecap.FDR(good_td, good_perm_td)
+            q = numpy.empty(td.shape)
+            q[~filtered_out] = good_q
+            q[filtered_out] = float("NaN")
 
-        q = numpy.empty(td.shape)
-        q[~filtered_out] = good_q
-        q[filtered_out] = float("NaN")
+            p = numpy.empty(td.shape)
+            p[~filtered_out] = good_p
+            p[filtered_out] = float("NaN")
 
-        p = numpy.empty(td.shape)
-        p[~filtered_out] = good_p
-        p[filtered_out] = float("NaN")
+            self.df["nitecap_p"] = p
+            self.df["nitecap_q"] = q
 
-        self.df["nitecap_p"] = p
-        self.df["nitecap_q"] = q
+        # TODO: recompute the BH FDR q-value for
+        #  JTK and ANOVA
 
         self.update_dataframe()
 

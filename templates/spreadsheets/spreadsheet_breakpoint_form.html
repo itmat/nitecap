@@ -37,6 +37,7 @@
 
         // Handles to the filter panel features
         apply_filters_button = $('#applyFilters');
+        rerun_qvalues_button = $('#rerun_qvalues');
         max_value_filter_input = $('#max_value_filter');
         empty_filters_list_msg = $('#EmptyFiltersList');
 
@@ -622,60 +623,62 @@
         }
 
         // Applying Filters
-        apply_filters_button.click(function() {
-            let row_index = $('input[name="row_index"]').val();
+        function apply_filters() {
+            let filtered_out = data.map( function (x) {return false;} );
+
+            // Compute max-value filter if non-empty
             let max_value_filter = max_value_filter_input.val();
-            if (isNaN(max_value_filter) && max_value_filter.length > 0) {
-                max_value_filter_input.val('');
-                empty_filters_list_msg.css({"visibility": "visible"});
-                $('#significant_items')[0].value = row_index;
-                return
+            if (max_value_filter !== '') {
+                max_value_filter = parseFloat(max_value_filter);
+
+                let max_values = maximums(data);
+                filtered_out = filtered_out.map( function (x,i) {
+                    return x || (max_values[i] <= max_value_filter);
+                });
             }
-            empty_filters_list_msg.css({"visibility": "hidden"});
-            apply_filters_button.prop('disabled', true);
-            apply_filters_button.html(
-                "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
-                "</span>Filtering...");
+
+            filtered = filtered_out;
+
+            // Recompute the number of signifcant items below a cutoff
+            var ctr = 0;
+            var set_significant_items = false;
+            var significant_items = $('#significant_items')[0];
+            $.each(data, function (index, row) {
+                if (!filtered[index]) {
+                    ctr++;
+                }
+
+                num_significant_below[index] = ctr;
+
+                // Update number of significant items
+                if (index >= row_index && !set_significant_items) {
+                    significant_items.value  = ctr;
+                    set_significant_items = true;
+                }
+            });
+
+            // Update row selector display to reflect the new filtering
+            rowSelector.filterRows(filtered);
+        }
+
+        apply_filters_button.click(function() {
+            apply_filters();
+
+            let max_value_filter = max_value_filter_input.val();
+
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
                     'max_value_filter': max_value_filter,
                     'spreadsheet_id': spreadsheet_id,
-                    'filtered': filtered
+                    'filtered_out': filtered,
+                    'rerun_qvalues': false
                 }),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
                 success: function (response) {
-                    qs = response["qs"];
-                    ps = response["ps"];
-                    filtered = response["filtered"];
-
-                    var ctr = 0;
-                    var set_significant_items = false;
-                    var significant_items = $('#significant_items')[0];
-                    $.each(data, function (index, row) {
-                        if (!filtered[index]) {
-                            ctr++;
-                        }
-
-                        num_significant_below[index] = ctr;
-
-                        // Update number of significant items
-                        if (index >= row_index && !set_significant_items) {
-                            significant_items.value  = ctr;
-                            set_significant_items = true;
-                        }
-                    });
-
-                    rowSelector.filterRows(filtered);
-
-                    // Update row labels with new q-values
-                    if ($('#sort_select').val() === 'jtk') {
-                        rowSelector.makeRowLabels(labels, jtk_qs);
-                    } else {
-                        rowSelector.makeRowLabels(labels, qs);
-                    }
+                    // Nothing to do
                 },
 
                 // If an error is returned notify the user.
@@ -685,12 +688,52 @@
                     nitecap_error_message.text(error_message);
                     nitecap_error.modal();
                 },
+            });
+        });
+
+        rerun_qvalues_button.click(function() {
+            rerun_qvalues_button.prop('disabled', true);
+            rerun_qvalues_button.html(
+                "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                "</span>Computing...");
+
+            apply_filters();
+
+            let max_value_filter = max_value_filter_input.val();
+
+            $.ajax({
+                url: "{{url_for('spreadsheets.save_filters')}}",
+                data: JSON.stringify({
+                    'max_value_filter': max_value_filter,
+                    'spreadsheet_id': spreadsheet_id,
+                    'filtered_out': filtered,
+                    'rerun_qvalues': true
+                }),
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+
+                success: function (response) {
+                    qs = response["qs"];
+                    ps = response["ps"];
+
+                    update_row_labels();
+                },
+
+                // If an error is returned notify the user.
+                error: function (request) {
+                    max_value_filter_input.val('');
+                    error_message = $.parseJSON(request.responseText).error;
+                    nitecap_error_message.text(error_message);
+                    nitecap_error.modal();
+                },
+
                 complete: function () {
                     if (max_value_filter_input.val().trim().length === 0) {
                         empty_filters_list_msg.css({"visibility": "visible"});
                     }
-                    apply_filters_button.prop('disabled', false);
-                    apply_filters_button.html('Submit');
+                    rerun_qvalues_button.prop('disabled', false);
+                    rerun_qvalues_button.html('Set q-value background');
                 }
             });
         });
@@ -764,6 +807,13 @@
         };
 
         $('#sort_select').change(function (evt) {
+            update_row_labels();
+
+            // TODO: this will change what gene is selected
+            rowSelector.selectRow(selected_row);
+        });
+
+        function update_row_labels() {
             var sorter = $('#sort_select').val();
 
             if (sorter === "nitecap") {
@@ -787,10 +837,7 @@
                     rowSelector.makeRowLabels(labels, qs);
                 }
             }
-
-            // TODO: this will change what gene is selected
-            rowSelector.selectRow(selected_row);
-        });
+        };
 
         $('#significant_items').change( function () {
             let row = Math.round(this.value) -1;
@@ -1082,10 +1129,11 @@
                     <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
                     <div class="form-group form-inline">
                         <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
-                        <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
+                        <input class="form-control form-control-sm" type="number" id="max_value_filter" name="max_value_filter" style='width: 60px' />
                     </div>
                     <div>
                         <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
+                        <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Set q-value background</button>
                     </div>
                 </div>
             </div>

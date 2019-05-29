@@ -67,11 +67,6 @@
     white-space: nowrap;
 }
 
-#row_selector {
-    font-family: monospace;
-}
-
-
 .switch {
   position: relative;
   display: inline-block;
@@ -132,11 +127,6 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
-/* Row selector for breakpoint page */
-#row_selector div.disabled {
-    background-color: #CCCCCC;
-}
-
 /* Puts spacing around action icons */
 
 td.actions a {
@@ -186,6 +176,19 @@ body {
   transform: translate(-50%, -50%);
 }
 
+/* Row Selector styling */
+#row_selector {
+    font-family: monospace;
+}
+
+.row-disabled {
+    color: #555;
+    background-color: #CCC;
+}
+
+.row-disabled:hover{
+    background-color: #BFBFBF;
+}
 
 #spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {
     font-family: "Font Awesome 5 Free";
