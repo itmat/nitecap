@@ -376,7 +376,8 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
         rowSelector.update();
 
         event.preventDefault();
-    });
+    }, {passive: false}); // indicate that we will prevent default, true may later become the default
+    
 
     // add the options to the row_selector list
     for(var i = 0; i < num_row_selections; i++) {
