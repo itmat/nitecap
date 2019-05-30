@@ -239,7 +239,6 @@
         rowSelector = makeRowSelector($('#row_selector')[0],  labels, qs, filtered, sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(breakpoint);
         $("#hide_filtered").change( function() {
-            //rowSelector.setHideFiltered(this.checked);
             sortRows();
         });
 
@@ -636,6 +635,17 @@
             empty_filters_list_msg.css({"visibility":"visible"});
         }
 
+        let filter_values = {
+            "nitecap_p": function () { return ps; },
+            "nitecap_q": function () { return qs; },
+            "jtk_p": function () { return jtk_ps; },
+            "jtk_q": function () { return jtk_qs; },
+            "anova_p": function () { return anova_ps; },
+            "anova_q": function () { return anova_qs; },
+            "amplitude": function () { return amplitudes; },
+            "peak_time": function () { return peak_times; }
+        };
+
         // Applying Filters
         function applyFilters() {
             let filtered_out = data.map( function (x) {return false;} );
@@ -651,12 +661,34 @@
                 });
             }
 
+            // Selectable Filters
+            let filter_value = $('#filter_feature_selector').val();
+            if (filter_value !== '') {
+                let lower_bound = $('#filter_lower_bound').val();
+                if (lower_bound === '') { lower_bound = -Infinity;}
+                let upper_bound = $('#filter_upper_bound').val();
+                if (upper_bound === '') { upper_bound = Infinity;}
+
+                let values = filter_values[filter_value]();
+                filtered_out = filtered_out.map( function (x,i) {
+                    return x || (values[i] < lower_bound) || (values[i] > upper_bound);
+                });
+            }
+
             filtered = filtered_out;
+
+            if (hide_filtered_checkbox.checked) {
+                // Move filtered items from the sort_order to the back of the list  to hide them
+                let head = sort_order.filter( function(x) {return !filtered[x];});
+                let tail = sort_order.filter( function(x) {return filtered[x];});
+                sort_order = head.concat(tail);
+            }
 
             computeNumSignificantBelow();
 
             // Update row selector display to reflect the new filtering
             rowSelector.filterRows(filtered);
+            rowSelector.update();
         }
 
         function computeNumSignificantBelow() {
@@ -840,17 +872,12 @@
             sort_order = labels.map( function(x,i) {return i;} );
             sort_order = sort_order.sort( sorters[sorter] );
 
-            if (hide_filtered_checkbox.checked) {
-                let head = sort_order.filter( function(x) {return !filtered[x];});
-                let tail = sort_order.filter( function(x) {return filtered[x];});
-                sort_order = head.concat(tail);
-            }
+            updateRowLabels();
+            applyFilters();
 
             rowSelector.setSortOrder(sort_order);
             rowSelector.selectRow(selected_row);
 
-            updateRowLabels();
-            applyFilters();
         };
         $('#sort_select').change( sortRows );
 
@@ -1126,7 +1153,7 @@
                             <a class="text-primary help-pointer float-right"
                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                                title="Peak-time"
-                               data-content="Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.">
+                               data-content="Time the peak value occurs at (the 'acrophase'). The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.">
                                 <i class="fas fa-info-circle ml-3"></i>
                             </a>
                              </td> <td id="peak_time"></td>
@@ -1145,7 +1172,7 @@
                     <a id="filtersHelp" class="text-primary help-pointer"
                        data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                        title="Filter Help"
-                       data-content="Keep only rows matching the criteria provided. Please note that filter application can take some time to process.">
+                       data-content="Keep only rows matching the criteria provided. Please note that rerunnign the q-values can take some time to process.">
                         <i class="fas fa-info-circle ml-3"></i>
                     </a>
                 </div>
@@ -1153,7 +1180,23 @@
                     <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
                     <div class="form-group form-inline">
                         <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
-                        <input class="form-control form-control-sm" type="number" id="max_value_filter" name="max_value_filter" style='width: 60px' />
+                        <input class="form-control form-control-sm" type="number" id="max_value_filter" name="max_value_filter" style='width: 85px' />
+                    </div>
+                    <div class="form-group form-inline">
+                        <input class="form-control form-control-sm m-1" type="number" id="filter_lower_bound" style='width: 85px' />
+                        &le;
+                        <select id="filter_feature_selector" class="form-control form-control-sm m-1">
+                            <option value="nitecap_p">Nitecap p</option>
+                            <option value="nitecap_q">Nitecap q</option>
+                            <option value="jtk_p">JTK p</option>
+                            <option value="jtk_q">JTK q</option>
+                            <option value="anova_p">ANOVA p</option>
+                            <option value="anova_q">ANOVA q</option>
+                            <option value="amplitude">Amplitude</option>
+                            <option value="peak_time">Peak-time</option>
+                        </select>
+                        &le;
+                        <input class="form-control form-control-sm m-1" type="number" id="filter_upper_bound" style='width: 85px' />
                     </div>
                     <div>
                         <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
