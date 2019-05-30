@@ -44,7 +44,6 @@
 
         // Handles to the filter panel features
         apply_filters_button = $('#applyFilters');
-        rerun_qvalues_button = $('#rerun_qvalues');
         max_value_filter_input = $('#max_value_filter');
         empty_filters_list_msg = $('#EmptyFiltersList');
 
@@ -515,79 +514,6 @@
             applyFilters();
 
             let max_value_filter = max_value_filter_input.val();
-
-            $.ajax({
-                url: "{{url_for('spreadsheets.save_filters')}}",
-                data: JSON.stringify({
-                    'max_value_filter': max_value_filter,
-                    'spreadsheet_id': spreadsheet_ids[number_comparisons[0]],
-                    'filtered_out': filtered,
-                    'rerun_qvalues': false
-                }),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function (response) {
-                    // Nothing to do
-                },
-
-                // If an error is returned notify the user.
-                error: function (request) {
-                    max_value_filter_input.val('');
-                    error_message = $.parseJSON(request.responseText).error;
-                    nitecap_error_message.text(error_message);
-                    nitecap_error.modal();
-                },
-            });
-        });
-
-        rerun_qvalues_button.click(function() {
-            rerun_qvalues_button.prop('disabled', true);
-            rerun_qvalues_button.html(
-                "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
-                "</span>Computing...");
-
-            applyFilters();
-
-            let max_value_filter = max_value_filter_input.val();
-
-            $.ajax({
-                url: "{{url_for('spreadsheets.save_filters')}}",
-                data: JSON.stringify({
-                    'max_value_filter': max_value_filter,
-                    'spreadsheet_id': spreadsheet_ids[number_comparisons[0]],
-                    'filtered_out': filtered,
-                    'rerun_qvalues': true
-                }),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-
-                success: function (response) {
-                    qs[number_comparisons[0]] = response["qs"];
-                    ps[number_comparisons[0]] = response["ps"];
-                    jtk_qs[number_comparisons[0]] = response["jtk_qs"];
-                    anova_qs[number_comparisons[0]] = response["anova_qs"];
-
-                    updateRowLabels();
-                },
-
-                // If an error is returned notify the user.
-                error: function (request) {
-                    max_value_filter_input.val('');
-                    error_message = $.parseJSON(request.responseText).error;
-                    nitecap_error_message.text(error_message);
-                    nitecap_error.modal();
-                },
-
-                complete: function () {
-                    if (max_value_filter_input.val().trim().length === 0) {
-                        empty_filters_list_msg.css({"visibility": "visible"});
-                    }
-                    rerun_qvalues_button.prop('disabled', false);
-                    rerun_qvalues_button.html('Set q-value background');
-                }
-            });
         });
 
         var searchRows = function() {
@@ -1289,7 +1215,6 @@
                         </div>
                         <div>
                             <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
-                            <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Set q-value background</button>
                         </div>
                     </div>
                 </div>
