@@ -468,7 +468,7 @@
         }
 
         // Applying Filters
-        function apply_filters() {
+        function applyFilters() {
             let filtered_out = data[number_comparisons[0]].map( function (x) {return false;} );
 
             // Compute max-value filter if non-empty
@@ -496,7 +496,7 @@
             var set_significant_items = false;
             var significant_items = $('#significant_items')[0];
             $.each(data[number_comparisons[0]], function (index, row) {
-                if (!filtered[index]) {
+                if (!filtered[sort_order[index]]) {
                     ctr++;
                 }
 
@@ -512,7 +512,7 @@
         computeNumSignificantBelow();
 
         apply_filters_button.click(function() {
-            apply_filters();
+            applyFilters();
 
             let max_value_filter = max_value_filter_input.val();
 
@@ -547,7 +547,7 @@
                 "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
                 "</span>Computing...");
 
-            apply_filters();
+            applyFilters();
 
             let max_value_filter = max_value_filter_input.val();
 
@@ -742,10 +742,11 @@
             sort_order = labels.map( function(x,i) {return i;} );
             sort_order = sort_order.sort( sorters[sorter] );
 
-            updateRowLabels();
-
             rowSelector.setSortOrder(sort_order);
             rowSelector.selectRow(selected_row);
+
+            updateRowLabels();
+            applyFilters();
         };
         $('#sort_select').change( sortRows );
 
