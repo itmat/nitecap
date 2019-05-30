@@ -45,6 +45,8 @@
         // Handles for the slider
         coarse_slider = $("#coarse_slider");
 
+        hide_filtered_checkbox = document.getElementById("hide_filtered");
+
         // To be loaded later by ajax
         jtk_ps = null;
         jtk_qs = null;
@@ -236,6 +238,10 @@
         var num_row_selections = 21; // Show this many rows at once
         rowSelector = makeRowSelector($('#row_selector')[0],  labels, qs, filtered, sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(breakpoint);
+        $("#hide_filtered").change( function() {
+            //rowSelector.setHideFiltered(this.checked);
+            sortRows();
+        });
 
         var computeHeatmap = function() {
             $('#heatmap_block').hide();
@@ -834,6 +840,12 @@
             sort_order = labels.map( function(x,i) {return i;} );
             sort_order = sort_order.sort( sorters[sorter] );
 
+            if (hide_filtered_checkbox.checked) {
+                let head = sort_order.filter( function(x) {return !filtered[x];});
+                let tail = sort_order.filter( function(x) {return filtered[x];});
+                sort_order = head.concat(tail);
+            }
+
             rowSelector.setSortOrder(sort_order);
             rowSelector.selectRow(selected_row);
 
@@ -1021,6 +1033,10 @@
             <div class='col-auto'>
                 <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
                 <div id="row_selector" class="list-group" tabindex="0" style="white-space:pre">
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" id="hide_filtered" type="checkbox" value="">
+                    <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>
                 </div>
             </div>
         </div>
