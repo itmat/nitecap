@@ -46,6 +46,19 @@ def FWER(tds, perm_tds):
         p_hats[gene] = p_hats[sort_order[:i+1]].max() # make monotone
     return p_hats
 
+def permutation_ps(tds, perm_tds, comparison="less"):
+    '''
+    Compute p-values for a given statistic and permutation values of that statistic
+
+    If `comparison` is `less` then we count occurances where permutations are smaller than (or equal to)
+    the non-permuted statistic. Otherwise, we check for permutations that are larger than (or equal to).
+    '''
+
+    if comparison == "less":
+        return (numpy.sum(perm_tds <= tds, axis=0) + 1)/ (perm_tds.shape[0]+1)
+    else:
+        return (numpy.sum(perm_tds >= tds, axis=0) + 1)/ (perm_tds.shape[0]+1)
+
 def zero_nans(array):
     ''' Sets all nans in a numpy array to zero, works in-place
 

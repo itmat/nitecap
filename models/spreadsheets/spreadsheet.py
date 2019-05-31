@@ -318,9 +318,8 @@ class Spreadsheet(db.Model):
         q[~filtered_out] = good_q
         q[filtered_out] = float("NaN")
 
-        p = numpy.empty(td.shape)
-        p[~filtered_out] = good_p
-        p[filtered_out] = float("NaN")
+        # Compute p-values for ALL features not just the un-filtered ones
+        p = nitecap.util.permutation_ps(td, perm_td)
 
         self.df["nitecap_p"] = p
         self.df["nitecap_q"] = q
@@ -590,11 +589,6 @@ class Spreadsheet(db.Model):
             q[~filtered_out] = good_q
             q[filtered_out] = float("NaN")
 
-            p = numpy.empty(td.shape)
-            p[~filtered_out] = good_p
-            p[filtered_out] = float("NaN")
-
-            self.df["nitecap_p"] = p
             self.df["nitecap_q"] = q
 
             # Recompute BH q-values, too

@@ -84,7 +84,7 @@ def FDR(td, perm_td, single_tailed=True):
     sort_order = numpy.argsort(td)
 
     # p-values of the (non-permuted) data
-    ps = (numpy.sum(perm_td <= td, axis=0) + 1)/ (perm_td.shape[0]+1)
+    ps = util.permutation_ps(td, perm_td, comparison="less")
 
 
     # Want to sum how many permutations end up less than a given cutoff
