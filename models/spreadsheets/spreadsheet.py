@@ -399,7 +399,7 @@ class Spreadsheet(db.Model):
                                     shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             if res.returncode != 0:
-                raise RuntimeError(f"Error running JTK: \n {res.argsedecode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
+                raise RuntimeError(f"Error running JTK: \n {res.args.decode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
             results = pd.read_csv(results_file_path, sep='\t')
             self.df["jtk_p"] = results.JTK_P
