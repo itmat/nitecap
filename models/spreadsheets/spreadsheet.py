@@ -590,11 +590,6 @@ class Spreadsheet(db.Model):
             q[~filtered_out] = good_q
             q[filtered_out] = float("NaN")
 
-            p = numpy.empty(td.shape)
-            p[~filtered_out] = good_p
-            p[filtered_out] = float("NaN")
-
-            self.df["nitecap_p"] = p
             self.df["nitecap_q"] = q
 
             # Recompute BH q-values, too
