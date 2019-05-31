@@ -281,6 +281,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
 
     max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
     ids = json.dumps(spreadsheet.get_ids())
+    filters = spreadsheet.filters if spreadsheet.filters else []
 
     args = dict( data=data.to_json(orient='values'),
                  x_values=spreadsheet.x_values,
@@ -294,6 +295,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
                  anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
                  anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
                  filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
+                 filters=filters,
                  ids=ids,
                  column_pairs=spreadsheet.column_pairs,
                  breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,

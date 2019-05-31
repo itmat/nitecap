@@ -29,6 +29,7 @@
         peak_times = {{ peak_times | safe }};
         saved_max_value_filter = {{ max_value_filter | safe }};
         filtered = {{ filtered | safe }};
+        filters = {{ filters | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
         spreadsheet_id = {{ spreadsheet_id | safe }};
 
@@ -42,6 +43,9 @@
         max_value_filter_input = $('#max_value_filter');
         empty_filters_list_msg = $('#EmptyFiltersList');
         hide_filtered_checkbox = document.getElementById("hide_filtered");
+        filter_feature_selector = $('#filter_feature_selector');
+        filter_lower_bound = $('#filter_lower_bound');
+        filter_upper_bound = $('#filter_upper_bound');
 
         // Handles for the slider
         coarse_slider = $("#coarse_slider");
@@ -634,6 +638,17 @@
             empty_filters_list_msg.css({"visibility":"visible"});
         }
 
+        // Load existing filter
+        if (filters.length > 0) {
+            let variable = filters[0][0];
+            let lower_bound = filters[0][1];
+            let upper_bound = filters[0][2];
+
+            filter_feature_selector.val(variable);
+            filter_lower_bound.val(lower_bound ? lower_bound : '');
+            filter_upper_bound.val(upper_bound ? upper_bound : '');
+        }
+
         let filter_values = {
             "nitecap_p": function () { return ps; },
             "nitecap_q": function () { return qs; },
@@ -661,11 +676,11 @@
             }
 
             // Selectable Filters
-            let filter_value = $('#filter_feature_selector').val();
+            let filter_value = filter_feature_selector.val();
             if (filter_value !== '') {
-                let lower_bound = parseFloat($('#filter_lower_bound').val());
+                let lower_bound = parseFloat(filter_lower_bound.val());
                 if (isNaN(lower_bound)) { lower_bound = -Infinity;}
-                let upper_bound = parseFloat($('#filter_upper_bound').val());
+                let upper_bound = parseFloat(filter_upper_bound.val());
                 if (isNaN(upper_bound)) { upper_bound = Infinity;}
 
                 let values = filter_values[filter_value]();
@@ -717,9 +732,9 @@
             let max_value_filter = max_value_filter_input.val();
 
             // TODO: handle multiple filters added
-            let filters = [[$('#filter_feature_selector').val(),
-                                parseFloat($('#filter_lower_bound').val()),
-                                parseFloat($('#filter_upper_bound').val())]];
+            let filters = [[filter_feature_selector.val(),
+                                parseFloat(filter_lower_bound.val()),
+                                parseFloat(filter_upper_bound.val())]];
 
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
@@ -758,9 +773,9 @@
             let max_value_filter = max_value_filter_input.val();
 
             // TODO: handle multiple filters added
-            let filters = [[$('#filter_feature_selector').val(),
-                                parseFloat($('#filter_lower_bound').val()),
-                                parseFloat($('#filter_upper_bound').val())]];
+            let filters = [[filter_feature_selector.val(),
+                                parseFloat(filter_lower_bound.val()),
+                                parseFloat(filter_upper_bound.val())]];
 
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
