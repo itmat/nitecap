@@ -288,6 +288,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
                  x_label_values=spreadsheet.x_label_values,
                  qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
                  ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                 tds=spreadsheet.df.total_delta.to_json(orient="values"),
                  amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
                  peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
                  anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
@@ -322,7 +323,7 @@ def get_jtk(user=None):
     spreadsheet.init_on_load()
 
     jtk_ps, jtk_qs = spreadsheet.get_jtk()
-    return jsonify({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
+    return dumps({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
 
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
@@ -480,6 +481,8 @@ def save_filters(user=None):
     json_data = request.get_json()
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet_id = json_data.get('spreadsheet_id', None)
+    filtered_out = json_data.get('filtered_out', None)
+    rerun_qvalues = json_data.get('rerun_qvalues', None)
 
     # Bad data
     if not spreadsheet_id:
@@ -494,16 +497,23 @@ def save_filters(user=None):
                                 .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
         return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
+    # Check request data
+    if not filtered_out:
+        return jsonify({"error": "Incomplete request data, need 'filtered_out'"}), 400
+    if rerun_qvalues is None:
+        return jsonify({"error": "Incomplete request data, need 'rerun_qvalues'"}), 400
+
     # Populate spreadsheet with raw data
     spreadsheet.init_on_load()
 
     spreadsheet.max_value_filter = float(max_value_filter) if max_value_filter else None
-    spreadsheet.apply_filters()
+    spreadsheet.apply_filters(filtered_out, rerun_qvalues)
     spreadsheet.save_to_db()
 
     response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
                         'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
-                        'filtered': spreadsheet.df.filtered_out.values.tolist()})
+                        'jtk_qs': [x if x == x else None for x in list(spreadsheet.df.jtk_q.values)],
+                        'anova_qs': [x if x == x else None for x in list(spreadsheet.df.anova_q.values)]})
     return response
 
 
@@ -674,6 +684,8 @@ def compare(user=None):
         anova_qs.append(df[f"anova_q_{i}"].values.tolist())
         tds.append(df[f"total_delta_{i}"].tolist())
 
+    max_value_filter = [spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
+                            for spreadsheet in spreadsheets]
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
                            x_values=x_values,
@@ -692,7 +704,8 @@ def compare(user=None):
                            tds=json.dumps(tds),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            timepoints_per_day=timepoints_per_day,
-                           spreadsheet_ids=spreadsheet_ids)
+                           spreadsheet_ids=spreadsheet_ids,
+                            max_value_filter=max_value_filter)
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])

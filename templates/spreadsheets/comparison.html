@@ -30,12 +30,23 @@
         filtered = {{ filtered | safe }};
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
+        saved_max_value_filter = {{ max_value_filter | safe }};
 
         var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
         $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
 
         var breakpoint = 0;
+
+        // Handles to the error modal on base.html
+        nitecap_error = $("#error-modal");
+        nitecap_error_message = $("#error-modal-message");
+
+        // Handles to the filter panel features
+        apply_filters_button = $('#applyFilters');
+        max_value_filter_input = $('#max_value_filter');
+        empty_filters_list_msg = $('#EmptyFiltersList');
+
 
         // To be loaded later by ajax
         jtk_ps = [null,null];
@@ -314,8 +325,7 @@
             $('#heatmap_controls').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
 
-            var selected_indexes = labels.map(function (x,i) { return i; } );// Just 0,1,2,3...
-            selected_indexes = sort_order.filter( function(row_num,rank) {
+            let selected_indexes = sort_order.filter( function(row_num,rank) {
                 return (rank <= selected_row) & (!filtered[row_num]);
             } );
             var phase_sorted_order = selected_indexes.sort( function (i,j) {
@@ -448,6 +458,103 @@
             updateHeatmap()
         });
 
+        // Setup of filters card on page load
+        if(saved_max_value_filter) {
+            max_value_filter_input.val(saved_max_value_filter[number_comparisons[0]])
+        }
+        else {
+            empty_filters_list_msg.css({"visibility":"visible"});
+        }
+
+        // Applying Filters
+        function applyFilters() {
+            let filtered_out = data[number_comparisons[0]].map( function (x) {return false;} );
+
+            // Compute max-value filter if non-empty
+            let max_value_filter = max_value_filter_input.val();
+            if (max_value_filter !== '') {
+                max_value_filter = parseFloat(max_value_filter);
+
+                let max_values = maximums(data[number_comparisons[0]]);
+                filtered_out = filtered_out.map( function (x,i) {
+                    return x || (max_values[i] <= max_value_filter);
+                });
+            }
+
+            filtered = filtered_out;
+
+            computeNumSignificantBelow();
+
+            // Update row selector display to reflect the new filtering
+            rowSelector.filterRows(filtered);
+        }
+
+        function computeNumSignificantBelow() {
+            // Recompute the number of signifcant items below a cutoff
+            var ctr = 0;
+            var set_significant_items = false;
+            var significant_items = $('#significant_items')[0];
+            $.each(data[number_comparisons[0]], function (index, row) {
+                if (!filtered[sort_order[index]]) {
+                    ctr++;
+                }
+
+                num_significant_below[index] = ctr;
+
+                // Update number of significant items
+                if (index >= row_index && !set_significant_items) {
+                    significant_items.value  = ctr;
+                    set_significant_items = true;
+                }
+            });
+        }
+        computeNumSignificantBelow();
+
+        apply_filters_button.click(function() {
+            applyFilters();
+
+            let max_value_filter = max_value_filter_input.val();
+        });
+
+        var searchRows = function() {
+            var search_value = $('#row_search_box').val().toLowerCase();
+
+            // Pull out row indexes matching our search_value
+            var matching_rows = labels.map( function(unused, index) {
+                var label = labels[sort_order[index]];
+                if (label.toLowerCase().indexOf(search_value) !== -1) {
+                    return index;
+                }
+            }).filter(isFinite);
+
+
+            if (matching_rows.length === 0) {
+                console.log("Unfortunately no matching row found.");
+                // TODO: display something to the user
+                return;
+            }
+
+            // First look for matches that are *after* our selected_row
+            // so that multiple button presses will cycle the selection through all matches
+            var matches_after = matching_rows.filter( function (i) {
+                return i > selected_row;
+            } );
+            if (matches_after.length > 0) {
+                var row = matches_after[0];
+            } else {
+                // If that fails, grab the first matching row
+                var row = matching_rows[0];
+            }
+
+            rowSelector.selectRow(row);
+        };
+        $('#search_button').click( searchRows);
+        $('#row_search_box').on("keydown", function (evt) {
+            if (evt.keyCode === 13) { // On Enter key press
+                searchRows();
+            }
+        });
+
         var searchRows = function() {
             var search_value = $('#row_search_box').val().toLowerCase();
 
@@ -523,7 +630,7 @@
                 var b = two_way_anova_ps[j];
                 return compare(a,b,i,j);
             },
-            "amplitude": function (i,j) {
+            "amplitude_change": function (i,j) {
                 // Sort by ascending order
                 var a = amplitude_ps[i];
                 var b = amplitude_ps[j];
@@ -537,12 +644,8 @@
             }
         };
 
-        var sortRows = function () {
+        function updateRowLabels() {
             var sorter = $('#sort_select').val();
-
-
-            sort_order = labels.map( function(x,i) {return i;} );
-            sort_order = sort_order.sort( sorters[sorter] );
             if (sorter === 'jtk') {
                 rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
             } else if (sorter === 'upside') {
@@ -551,12 +654,25 @@
                 rowSelector.makeRowLabels(labels, two_way_anova_qs);
             } else if (sorter === 'anova') {
                 rowSelector.makeRowLabels(labels, anova_qs[number_comparisons[0]]);
+            } else if (sorter === 'amplitude_change') {
+                rowSelector.makeRowLabels(labels, amplitude_qs);
+            } else if (sorter === 'phase_change') {
+                rowSelector.makeRowLabels(labels, phase_qs);
             } else {
                 rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
             }
+        }
+
+        var sortRows = function () {
+            var sorter = $('#sort_select').val();
+            sort_order = labels.map( function(x,i) {return i;} );
+            sort_order = sort_order.sort( sorters[sorter] );
 
             rowSelector.setSortOrder(sort_order);
             rowSelector.selectRow(selected_row);
+
+            updateRowLabels();
+            applyFilters();
         };
         $('#sort_select').change( sortRows );
 
@@ -618,7 +734,7 @@
                 $('#sort_select option[value="upside"]').removeAttr("disabled");
                 $('#sort_select option[value="two_way_anova"]').removeAttr("disabled");
                 $('#sort_select option[value="phase_change"]').removeAttr("disabled");
-                $('#sort_select option[value="amplitude"]').removeAttr("disabled");
+                $('#sort_select option[value="amplitude_change"]').removeAttr("disabled");
 
                 updateStatsBox();
             },
@@ -853,8 +969,28 @@
         });
 
         $('#download_pca').click(function() {
-            var gd = document.getElementById('pca_plot');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'pca_' + (selected_row+1)});
+            // NOTE: we cannot use Plotly.downloadImage() since we have modified the plot
+            // after its creation and the downloadImage() won't reflect those changes
+            // So instead we just directly grab its SVG structure by toSVG() and then download that
+
+            // Gather the plot as an SVG
+            let pca_plot = document.getElementById('pca_plot');
+            let svg_data = Plotly.Snapshot.toSVG(pca_plot, {format: 'svg'});
+
+            // Create a URL for it
+            let blob = new Blob([svg_data]);
+            let url = URL.createObjectURL(blob);
+
+            // Trigger downloading of the URL by making an <a href ...> to it and clicking it
+            var anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = "pca.svg";
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+
+            // Cleanup after 60s, they've presumably successfully downloaded the small svg
+            setTimeout(function () { URL.revokeObjectURL(url) }, 60000);
         });
     });
 
@@ -953,7 +1089,7 @@
                          <option value="upside" disabled>Damping</option>
                          <option value="two_way_anova" disabled>Two-way ANOVA</option>
                          <option value="phase_change" disabled>Phase Change</option>
-                         <option value="amplitude" disabled>Amplitude Change</option>
+                         <option value="amplitude_change" disabled>Amplitude Change</option>
                     </select>
                     <table class="table table-sm">
                         <tbody>

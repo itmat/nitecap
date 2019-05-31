@@ -36,8 +36,9 @@ var toFixed = function(num, i) {
     if (typeof num === 'number') {
         return num.toFixed(i);
     }
-    return num;
+    return num + '';
 };
+
 var toString = function(num) {
     // Call num.toString unless num is undefined (eg: null)
     if (typeof num === 'number') {
@@ -193,6 +194,16 @@ var array_min = function (array) {
     } );
 };
 
+// Util that takes a two-dim array-of-arrays and computes the maximum of each row
+function maximums(table) {
+    return table.map(array_max);
+}
+
+// Util that takes a two-dim array-of-arrays and computes the minimum of each row
+function minimums(table) {
+    return table.map(array_min);
+}
+
 // Util to pad a string with copies of a character
 function padEnd(string, length, character) {
     if (string.length > length) {
@@ -240,9 +251,9 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
             for(var i = 0; i < num_row_selections; i++) {
                 var current_index = rowSelector.sort_order[rowSelector.top + i];
                 if (rowSelector.filtered_rows[current_index]) {
-                    rowSelector.options[i].classList.add("disabled");
+                    rowSelector.options[i].classList.add("row-disabled");
                 } else {
-                    rowSelector.options[i].classList.remove("disabled");
+                    rowSelector.options[i].classList.remove("row-disabled");
                 }
             }
         },
@@ -365,16 +376,13 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
         rowSelector.update();
 
         event.preventDefault();
-    });
+    }, {passive: false}); // indicate that we will prevent default, true may later become the default
+    
 
     // add the options to the row_selector list
     for(var i = 0; i < num_row_selections; i++) {
         var row_option = document.createElement("div");
-        if (i === num_row_selections) {
-            row_option.className = "list-group-item list-group-item-action py-0";
-        } else {
-            row_option.className = "list-group-item list-group-item-action py-0";
-        }
+        row_option.className = "list-group-item list-group-item-action py-0";
         row_option.textContent = "Loading...";
 
         let my_index = i;
