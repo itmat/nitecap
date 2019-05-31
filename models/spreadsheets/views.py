@@ -319,7 +319,11 @@ def get_jtk(user=None):
     if not spreadsheet_id:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
-    spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    if not spreadsheet:
+        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+        return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     # Populate
     spreadsheet.init_on_load()
