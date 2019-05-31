@@ -30,7 +30,6 @@
         filtered = {{ filtered | safe }};
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
-        saved_max_value_filter = {{ max_value_filter | safe }};
 
         var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
@@ -44,7 +43,6 @@
 
         // Handles to the filter panel features
         apply_filters_button = $('#applyFilters');
-        max_value_filter_input = $('#max_value_filter');
         empty_filters_list_msg = $('#EmptyFiltersList');
 
 
@@ -458,28 +456,10 @@
             updateHeatmap()
         });
 
-        // Setup of filters card on page load
-        if(saved_max_value_filter) {
-            max_value_filter_input.val(saved_max_value_filter[number_comparisons[0]])
-        }
-        else {
-            empty_filters_list_msg.css({"visibility":"visible"});
-        }
-
         // Applying Filters
         function applyFilters() {
             let filtered_out = data[number_comparisons[0]].map( function (x) {return false;} );
 
-            // Compute max-value filter if non-empty
-            let max_value_filter = max_value_filter_input.val();
-            if (max_value_filter !== '') {
-                max_value_filter = parseFloat(max_value_filter);
-
-                let max_values = maximums(data[number_comparisons[0]]);
-                filtered_out = filtered_out.map( function (x,i) {
-                    return x || (max_values[i] <= max_value_filter);
-                });
-            }
 
             filtered = filtered_out;
 
@@ -513,7 +493,6 @@
         apply_filters_button.click(function() {
             applyFilters();
 
-            let max_value_filter = max_value_filter_input.val();
         });
 
         var searchRows = function() {
@@ -1209,10 +1188,6 @@
                     </div>
                     <div class="card-body">
                         <div id="EmptyFiltersList" style="visibility:hidden">No filters currently selected.</div>
-                        <div class="form-group form-inline">
-                            <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
-                            <input class="form-control form-control-sm" type="text" id="max_value_filter" name="max_value_filter" style='width: 60px' />
-                        </div>
                         <div>
                             <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
                         </div>
