@@ -279,7 +279,6 @@ def show_spreadsheet(spreadsheet_id, user=None):
 
     data = spreadsheet.get_raw_data()
 
-    max_value_filter = spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
     ids = json.dumps(spreadsheet.get_ids())
     filters = spreadsheet.filters if spreadsheet.filters else []
 
@@ -303,8 +302,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
                  timepoints_per_day=spreadsheet.timepoints,
                  spreadsheet_id=spreadsheet_id,
                  spreadsheet_note=spreadsheet.note,
-                 visitor=user.is_visitor(),
-                 max_value_filter=max_value_filter)
+                 visitor=user.is_visitor())
 
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',**args)
 
@@ -485,7 +483,6 @@ def save_filters(user=None):
     """
 
     json_data = request.get_json()
-    max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     filtered_out = json_data.get('filtered_out', None)
     rerun_qvalues = json_data.get('rerun_qvalues', False)
@@ -517,7 +514,6 @@ def save_filters(user=None):
     # Populate spreadsheet with raw data
     spreadsheet.init_on_load()
 
-    spreadsheet.max_value_filter = float(max_value_filter) if max_value_filter else None
     spreadsheet.filters = filters
     spreadsheet.apply_filters(filtered_out, rerun_qvalues)
     spreadsheet.save_to_db()
@@ -696,8 +692,6 @@ def compare(user=None):
         anova_qs.append(df[f"anova_q_{i}"].values.tolist())
         tds.append(df[f"total_delta_{i}"].tolist())
 
-    max_value_filter = [spreadsheet.max_value_filter if spreadsheet.max_value_filter else 'null'
-                            for spreadsheet in spreadsheets]
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
                            x_values=x_values,
@@ -716,8 +710,7 @@ def compare(user=None):
                            tds=json.dumps(tds),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            timepoints_per_day=timepoints_per_day,
-                           spreadsheet_ids=spreadsheet_ids,
-                            max_value_filter=max_value_filter)
+                           spreadsheet_ids=spreadsheet_ids)
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])

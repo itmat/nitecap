@@ -204,6 +204,25 @@ function minimums(table) {
     return table.map(array_min);
 }
 
+// Util that takes a two-dim array-of-arrays and computes the mean of each row
+// If some entries are NaN, they are dropped from the averaging
+function means(table) {
+    function mean(row) {
+        let sum = 0;
+        let count = 0;
+        row.forEach( function (x) {
+            if (isNaN(x)) {
+                return;
+            }
+            count += 1;
+            sum += x;
+        });
+        return sum / count;
+    }
+
+    return table.map(mean);
+}
+
 // Util to pad a string with copies of a character
 function padEnd(string, length, character) {
     if (string.length > length) {

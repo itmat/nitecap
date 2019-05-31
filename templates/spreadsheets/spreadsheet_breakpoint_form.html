@@ -27,7 +27,6 @@
         anova_ps = {{ anova_ps | safe }};
         anova_qs = {{ anova_qs | safe }};
         peak_times = {{ peak_times | safe }};
-        saved_max_value_filter = {{ max_value_filter | safe }};
         filtered = {{ filtered | safe }};
         filters = {{ filters | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
@@ -40,7 +39,6 @@
         // Handles to the filter panel features
         apply_filters_button = $('#applyFilters');
         rerun_qvalues_button = $('#rerun_qvalues');
-        max_value_filter_input = $('#max_value_filter');
         hide_filtered_checkbox = document.getElementById("hide_filtered");
         filter_feature_selector = $('#filter_feature_selector');
         filter_lower_bound = $('#filter_lower_bound');
@@ -641,6 +639,8 @@
         }
 
         let filter_values = {
+            "max_value": function () { return maximums(data); },
+            "mean_value": function () { return means(data); },
             "nitecap_p": function () { return ps; },
             "nitecap_q": function () { return qs; },
             "jtk_p": function () { return jtk_ps; },
@@ -654,17 +654,6 @@
         // Applying Filters
         function applyFilters() {
             let filtered_out = data.map( function (x) {return false;} );
-
-            // Compute max-value filter if non-empty
-            let max_value_filter = max_value_filter_input.val();
-            if (max_value_filter !== '') {
-                max_value_filter = parseFloat(max_value_filter);
-
-                let max_values = maximums(data);
-                filtered_out = filtered_out.map( function (x,i) {
-                    return x || (max_values[i] <= max_value_filter);
-                });
-            }
 
             // Selectable Filters
             let filter_value = filter_feature_selector.val();
@@ -723,8 +712,6 @@
         function applyFiltersOrRerunQ(rerun_qvalues) {
             applyFilters();
 
-            let max_value_filter = max_value_filter_input.val();
-
             // TODO: handle multiple filters added
             let filters = [[filter_feature_selector.val(),
                                 parseFloat(filter_lower_bound.val()),
@@ -733,7 +720,6 @@
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
-                    'max_value_filter': max_value_filter,
                     'spreadsheet_id': spreadsheet_id,
                     'filtered_out': filtered,
                     'rerun_qvalues': rerun_qvalues,
@@ -1164,13 +1150,11 @@
                 </div>
                 <div class="card-body">
                     <div class="form-group form-inline">
-                        <label class="col-form-label mr-2" for="max_value_filter">Max Value &gt;</label>
-                        <input class="form-control form-control-sm" type="number" id="max_value_filter" name="max_value_filter" style='width: 85px' />
-                    </div>
-                    <div class="form-group form-inline">
                         <input class="form-control form-control-sm m-1" type="number" id="filter_lower_bound" style='width: 85px' />
                         &le;
                         <select id="filter_feature_selector" class="form-control form-control-sm m-1">
+                            <option value="max_value">Max Value</option>
+                            <option value="mean_value">Mean Value</option>
                             <option value="nitecap_p">Nitecap p</option>
                             <option value="nitecap_q">Nitecap q</option>
                             <option value="jtk_p">JTK p</option>
