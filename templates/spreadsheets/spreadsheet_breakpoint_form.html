@@ -41,11 +41,10 @@
         rerun_qvalues_button = $('#rerun_qvalues');
         max_value_filter_input = $('#max_value_filter');
         empty_filters_list_msg = $('#EmptyFiltersList');
+        hide_filtered_checkbox = document.getElementById("hide_filtered");
 
         // Handles for the slider
         coarse_slider = $("#coarse_slider");
-
-        hide_filtered_checkbox = document.getElementById("hide_filtered");
 
         // To be loaded later by ajax
         jtk_ps = null;
@@ -664,10 +663,10 @@
             // Selectable Filters
             let filter_value = $('#filter_feature_selector').val();
             if (filter_value !== '') {
-                let lower_bound = $('#filter_lower_bound').val();
-                if (lower_bound === '') { lower_bound = -Infinity;}
-                let upper_bound = $('#filter_upper_bound').val();
-                if (upper_bound === '') { upper_bound = Infinity;}
+                let lower_bound = parseFloat($('#filter_lower_bound').val());
+                if (isNaN(lower_bound)) { lower_bound = -Infinity;}
+                let upper_bound = parseFloat($('#filter_upper_bound').val());
+                if (isNaN(upper_bound)) { upper_bound = Infinity;}
 
                 let values = filter_values[filter_value]();
                 filtered_out = filtered_out.map( function (x,i) {
@@ -717,13 +716,19 @@
 
             let max_value_filter = max_value_filter_input.val();
 
+            // TODO: handle multiple filters added
+            let filters = [[$('#filter_feature_selector').val(),
+                                parseFloat($('#filter_lower_bound').val()),
+                                parseFloat($('#filter_upper_bound').val())]];
+
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
                     'max_value_filter': max_value_filter,
                     'spreadsheet_id': spreadsheet_id,
                     'filtered_out': filtered,
-                    'rerun_qvalues': false
+                    'rerun_qvalues': false,
+                    'filters': JSON.stringify(filters)
                 }),
                 dataType: "json",
                 contentType: "application/json",
@@ -752,13 +757,19 @@
 
             let max_value_filter = max_value_filter_input.val();
 
+            // TODO: handle multiple filters added
+            let filters = [[$('#filter_feature_selector').val(),
+                                parseFloat($('#filter_lower_bound').val()),
+                                parseFloat($('#filter_upper_bound').val())]];
+
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
                     'max_value_filter': max_value_filter,
                     'spreadsheet_id': spreadsheet_id,
                     'filtered_out': filtered,
-                    'rerun_qvalues': true
+                    'rerun_qvalues': true,
+                    'filters': JSON.stringify(filters)
                 }),
                 dataType: "json",
                 contentType: "application/json",

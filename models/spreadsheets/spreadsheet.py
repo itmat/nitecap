@@ -45,6 +45,7 @@ class Spreadsheet(db.Model):
     num_replicates_str = db.Column(db.String(250))
     column_labels_str = db.Column(db.String(2500))
     max_value_filter = db.Column(db.FLOAT)
+    filters = db.Column(db.String(1000))
     last_access = db.Column(db.DateTime, nullable=False)
     ids_unique = db.Column(db.Boolean, nullable=False, default=0)
     note = db.Column(db.String(5000))

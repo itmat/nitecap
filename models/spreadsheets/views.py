@@ -482,7 +482,8 @@ def save_filters(user=None):
     max_value_filter = json_data.get('max_value_filter', None)
     spreadsheet_id = json_data.get('spreadsheet_id', None)
     filtered_out = json_data.get('filtered_out', None)
-    rerun_qvalues = json_data.get('rerun_qvalues', None)
+    rerun_qvalues = json_data.get('rerun_qvalues', False)
+    filters = json_data.get('filters', '[]')
 
     # Bad data
     if not spreadsheet_id:
@@ -500,13 +501,18 @@ def save_filters(user=None):
     # Check request data
     if not filtered_out:
         return jsonify({"error": "Incomplete request data, need 'filtered_out'"}), 400
-    if rerun_qvalues is None:
-        return jsonify({"error": "Incomplete request data, need 'rerun_qvalues'"}), 400
+
+    # Verify that the filters are valid JSON
+    try:
+        _ = json.loads(filters)
+    except json.JSONDecodeError:
+        return jsonify({"error": "Error parsing 'filters' json blob"}), 400
 
     # Populate spreadsheet with raw data
     spreadsheet.init_on_load()
 
     spreadsheet.max_value_filter = float(max_value_filter) if max_value_filter else None
+    spreadsheet.filters = filters
     spreadsheet.apply_filters(filtered_out, rerun_qvalues)
     spreadsheet.save_to_db()
 
