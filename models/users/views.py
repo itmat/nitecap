@@ -66,7 +66,7 @@ def register_user():
         # User successfully registered and email sent.
         current_app.logger.info(f"user {username} - {email} just registered.")
         flash(CONFIRMATION_SENT_MESSAGE)
-        return redirect(url_for('spreadsheets.load_spreadsheet'))
+        return redirect(url_for('spreadsheets.upload_file'))
 
     else:
 
@@ -331,7 +331,7 @@ def confirm_user(token):
     session['email'] = user.email
     session['visitor'] = user.is_visitor()
     flash(f"Your registration as '{user.username}' has been confirmed through your email { user.email }.")
-    return redirect(url_for('spreadsheets.load_spreadsheet'))
+    return redirect(url_for('spreadsheets.upload_file'))
 
 
 @user_blueprint.route('/resend_confirmation', methods=['GET','POST'])
@@ -365,7 +365,7 @@ def resend_confirmation():
 
         # Confirmation sent
         flash(CONFIRMATION_SENT_MESSAGE)
-        return redirect(url_for('spreadsheets.load_spreadsheet'))
+        return redirect(url_for('spreadsheets.upload_file'))
 
     email = request.args['email']
     return render_template('users/resend_confirmation_form.html', email=email)
