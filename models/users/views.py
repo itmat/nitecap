@@ -124,7 +124,7 @@ def login_user():
                     for spreadsheet in prior_user.spreadsheets:
                         spreadsheet.update_user(user.id)
 
-            # session.permanent=False
+            session.permanent=True
             session['email'] = user.email
             session['visitor'] = False
 
