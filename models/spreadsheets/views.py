@@ -84,7 +84,7 @@ def upload_file():
             user = User.create_visitor()
             if user:
                 # Visitor's session has a fixed expiry date.
-                # session.permanent = True
+                session.permanent = True
                 session['email'] = user.email
                 session['visitor'] = True
                 user_id = user.id
