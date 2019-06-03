@@ -845,7 +845,8 @@
             readFilters();
 
             // Apply the filters to the rows
-            applyFilters();
+            // and also updates all the appropriate display
+            sortRows();
 
             // Update the DB with the features
             // and if rerunning q-values, ask server to do that
