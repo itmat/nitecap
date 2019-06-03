@@ -859,15 +859,17 @@
                 alert.hide();
             }
 
-            var rep_counts = [];
-            var pt_labels = x_values[number_comparisons[0]].map( function(time) {
-                if (rep_counts[time] === undefined) {
-                    rep_counts[time] = 0;
-                }
-                rep_counts[time] += 1;
-                var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
-                var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
-                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            var pt_labels = number_comparisons.map( function(spreadsheet_num) {
+                var rep_counts = [];
+                return x_values[spreadsheet_num].map( function(time) {
+                    if (rep_counts[time] === undefined) {
+                        rep_counts[time] = 0;
+                    }
+                    rep_counts[time] += 1;
+                    var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
+                    var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                    return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+                });
             });
 
             pca_button.prop('disabled', true);
@@ -893,7 +895,7 @@
                             y: pca_coords[spreadsheet_num][1],
                             mode: 'markers',
                             name: descriptive_names[spreadsheet_num],
-                            text: pt_labels,
+                            text: pt_labels[spreadsheet_num],
                             marker: {
                                 size: 25,
                                 opacity: 1 //x_values[spreadsheet_num].map( function (x) { return (x+1) / (1+Math.max.apply(null, x_values[spreadsheet_num])); })
