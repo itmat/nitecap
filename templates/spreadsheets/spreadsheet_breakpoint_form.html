@@ -710,6 +710,7 @@
                 let filter_lb = document.createElement('input');
                 filter_lb.className = "form-control form-control-sm m-1 filter_lower_bound";
                 filter_lb.style="width: 85px";
+                filter_lb.setAttribute('aria-label', "Lower bound for filter " + i);
                 if (!isNaN(lower_bound) && lower_bound !== null) {
                     filter_lb.value = '' + lower_bound;
                 }
@@ -728,6 +729,7 @@
                     filter_value_selector.appendChild(option);
                 });
                 filter_value_selector.value = variable;
+                filter_value_selector.setAttribute('aria-label', 'Feature to filter on for filter ' + i);
                 filter_item_div.appendChild(filter_value_selector);
 
                 filter_item_div.appendChild(document.createTextNode(less_than_symbol));
@@ -739,11 +741,12 @@
                     filter_ub.value = '' + upper_bound;
                 }
                 filter_ub.addEventListener('change', readFilters);
+                filter_ub.setAttribute('aria-label', "Upper bound for filter " + i);
                 filter_item_div.appendChild(filter_ub);
 
                 let remove_button = document.createElement('button');
                 remove_button.className = "btn btn-default";
-                remove_button.setAttribute('aria-label', 'Remove filter');
+                remove_button.setAttribute('aria-label', 'Remove filter ' + i);
                 remove_button.setAttribute('title', 'Remove filter');
 
                 function make_listener(index) {
