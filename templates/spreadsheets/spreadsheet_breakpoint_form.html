@@ -242,7 +242,16 @@
         rowSelector = makeRowSelector($('#row_selector')[0],  labels, qs, filtered, sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(breakpoint);
         $("#hide_filtered").change( function() {
+            let below = num_significant_below[selected_row];
+
+            // Redo the ordering of the rows to move the filtered ones to the back
             sortRows();
+
+            // Update the row selected to account for the same number of rows chosen as before
+            // so that we don't change which row was selected
+            // though this does move the viewed rows to contain the selected row even if it wasn't visible before
+            let new_index = num_significant_below.indexOf(below);
+            rowSelector.selectRow(new_index);
         });
 
         var computeHeatmap = function() {
