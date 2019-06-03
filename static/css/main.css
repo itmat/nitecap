@@ -167,15 +167,6 @@ body {
     font-size: 12px;
 }
 
-
-.modal {
-  position: absolute;
-  float: left;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-
 /* Row Selector styling */
 #row_selector {
     font-family: monospace;
