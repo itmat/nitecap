@@ -343,15 +343,17 @@
                 return labels[i];
             } );
 
-            var rep_counts = [];
-            heatmap_x_values = x_values[number_comparisons[0]].map( function(time) {
-                if (rep_counts[time] === undefined) {
-                    rep_counts[time] = 0;
-                }
-                rep_counts[time] += 1;
-                var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
-                var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
-                return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+            heatmap_x_values = number_comparisons.map( function(spreadsheet_num) {
+                var rep_counts = [];
+                return x_values[spreadsheet_num].map( function(time) {
+                    if (rep_counts[time] === undefined) {
+                        rep_counts[time] = 0;
+                    }
+                    rep_counts[time] += 1;
+                    var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
+                    var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                    return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+                });
             });
 
             updateHeatmap();
@@ -395,7 +397,7 @@
                         titleside: 'right'
                     };
                 }
-                var x_vals = heatmap_x_values;
+                var x_vals = heatmap_x_values[spreadsheet_num];
                 if (combine_replicates) {
                     x_vals = x_labels[spreadsheet_num];
                 }
