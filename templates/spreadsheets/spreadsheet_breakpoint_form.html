@@ -896,16 +896,23 @@
         apply_filters_button.click( function () {onApplyFilters(false);} );
 
         rerun_qvalues_button.click( function () {
+            // Check if any filters violate assumptions of rerunning the q-values
             let invalid = false;
             filters.forEach( function (filter) {
                 if (!filter_data.get(filter[0]).independent) {
-                    invalid = true;
+                    let has_lb = !(isNaN(filter[1]) || (filter[1] === null));
+                    let has_ub = !(isNaN(filter[2]) || (filter[2] === null));
+                    if (has_lb || has_ub) {
+                        invalid = true;
+                    }
                 }
             } );
 
             if (invalid) {
+                // Popup a modal to issue the warning before proceeding
                 $('#rerun_qvalues_warning').modal();
             } else {
+                // All good, apply the filters and rerun-qvalues
                 onApplyFilters(true);
             }
         });
