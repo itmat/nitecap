@@ -39,10 +39,9 @@
         // Handles to the filter panel features
         apply_filters_button = $('#applyFilters');
         rerun_qvalues_button = $('#rerun_qvalues');
+        max_value_filter_input = $('#max_value_filter');
         hide_filtered_checkbox = document.getElementById("hide_filtered");
-        filter_feature_selector = $('#filter_feature_selector');
-        filter_lower_bound = $('#filter_lower_bound');
-        filter_upper_bound = $('#filter_upper_bound');
+        filter_list = $('#filter_list');
 
         // Handles for the slider
         coarse_slider = $("#coarse_slider");
@@ -633,41 +632,64 @@
             let lower_bound = filters[0][1];
             let upper_bound = filters[0][2];
 
-            filter_feature_selector.val(variable);
-            filter_lower_bound.val(lower_bound ? lower_bound : '');
-            filter_upper_bound.val(upper_bound ? upper_bound : '');
+            // TODO
+            //filter_value_selector.val(variable);
+            //filter_lower_bound.val(lower_bound ? lower_bound : '');
+            //filter_upper_bound.val(upper_bound ? upper_bound : '');
         }
 
-        let filter_values = {
-            "max_value": function () { return maximums(data); },
-            "mean_value": function () { return means(data); },
-            "nitecap_p": function () { return ps; },
-            "nitecap_q": function () { return qs; },
-            "jtk_p": function () { return jtk_ps; },
-            "jtk_q": function () { return jtk_qs; },
-            "anova_p": function () { return anova_ps; },
-            "anova_q": function () { return anova_qs; },
-            "amplitude": function () { return amplitudes; },
-            "peak_time": function () { return peak_times; }
+        let filter_data = {
+            "max_value": {values: function () { return maximums(data); },
+                            name:"Maximum value",
+                            independent: true},
+            "mean_value": {values: function () { return means(data); },
+                            name:"Mean value",
+                            independent: true},
+            "nitecap_p": {values: function () { return ps; },
+                            name: "Nitecap p",
+                            independent: false},
+            "nitecap_q": {values: function () { return qs; },
+                            name: "Nitecap q",
+                            independent: false},
+            "jtk_p": {values: function () { return jtk_ps; },
+                            name: "JTK p",
+                            independent: false},
+            "jtk_q": {values: function () { return jtk_qs; },
+                            name: "JTK q",
+                            independent: false},
+            "anova_p": {values: function () { return anova_ps; },
+                            name: "ANOVA p",
+                            independent: false},
+            "anova_q": {values: function () { return anova_qs; },
+                            name: "ANOVA q",
+                            independent: false},
+            "amplitude": {values: function () { return amplitudes; },
+                            name: "Amplitude",
+                            indpendent: false},
+            "peak_time": {values: function () { return peak_times; },
+                            name: "Peak time",
+                            independent: false}
         };
 
         // Applying Filters
         function applyFilters() {
             let filtered_out = data.map( function (x) {return false;} );
 
-            // Selectable Filters
-            let filter_value = filter_feature_selector.val();
-            if (filter_value !== '') {
-                let lower_bound = parseFloat(filter_lower_bound.val());
-                if (isNaN(lower_bound)) { lower_bound = -Infinity;}
-                let upper_bound = parseFloat(filter_upper_bound.val());
-                if (isNaN(upper_bound)) { upper_bound = Infinity;}
+            // Apply all filters
+            filters.forEach(function(filter) {
+                var filter_value = filter[0];
 
-                let values = filter_values[filter_value]();
+                var lower_bound = filter[1];
+                var upper_bound = filter[2];
+
+                if (isNaN(lower_bound)) {lower_bound = -Infinity;}
+                if (isNaN(upper_bound)) {upper_bound = Infinity;}
+
+                let values = filter_data[filter_value].values();
                 filtered_out = filtered_out.map( function (x,i) {
                     return x || (values[i] < lower_bound) || (values[i] > upper_bound);
                 });
-            }
+            });
 
             filtered = filtered_out;
 
@@ -706,17 +728,27 @@
         }
         computeNumSignificantBelow();
 
-        apply_filters_button.click( function () {applyFiltersOrRerunQ(false);} );
-        rerun_qvalues_button.click( function () {applyFiltersOrRerunQ(true);} );
+        apply_filters_button.click( function () {onApplyFilters(false);} );
+        rerun_qvalues_button.click( function () {onApplyFilters(true);} );
 
-        function applyFiltersOrRerunQ(rerun_qvalues) {
+        function onApplyFilters(rerun_qvalues) {
+            // First gather all the filters the user has entered
+            filters = filter_list.find(".filter_item").map( function() {
+                var filter = $(this);
+
+                var value = filter.find(".filter_value_selector").val();
+
+                var lower_bound = parseFloat(filter.find(".filter_lower_bound").val());
+                var upper_bound = parseFloat(filter.find(".filter_upper_bound").val());
+
+                return [[value, lower_bound, upper_bound]];
+            }).toArray();
+
+            // Apply the filters to the rows
             applyFilters();
 
-            // TODO: handle multiple filters added
-            let filters = [[filter_feature_selector.val(),
-                                parseFloat(filter_lower_bound.val()),
-                                parseFloat(filter_upper_bound.val())]];
-
+            // Update the DB with the features
+            // and if rerunning q-values, ask server to do that
             $.ajax({
                 url: "{{url_for('spreadsheets.save_filters')}}",
                 data: JSON.stringify({
@@ -760,7 +792,6 @@
                     "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
                     "</span>Computing...");
             }
-
         };
 
         var searchRows = function() {
@@ -1149,23 +1180,25 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <div class="form-group form-inline">
-                        <input class="form-control form-control-sm m-1" type="number" id="filter_lower_bound" style='width: 85px' />
-                        &le;
-                        <select id="filter_feature_selector" class="form-control form-control-sm m-1">
-                            <option value="max_value">Max Value</option>
-                            <option value="mean_value">Mean Value</option>
-                            <option value="nitecap_p">Nitecap p</option>
-                            <option value="nitecap_q">Nitecap q</option>
-                            <option value="jtk_p">JTK p</option>
-                            <option value="jtk_q">JTK q</option>
-                            <option value="anova_p">ANOVA p</option>
-                            <option value="anova_q">ANOVA q</option>
-                            <option value="amplitude">Amplitude</option>
-                            <option value="peak_time">Peak-time</option>
-                        </select>
-                        &le;
-                        <input class="form-control form-control-sm m-1" type="number" id="filter_upper_bound" style='width: 85px' />
+                    <div class="form-group form-inline" id="filter_list">
+                        <div class="row filter_item">
+                            <input class="form-control form-control-sm m-1 filter_lower_bound" type="number" style='width: 85px' />
+                            &le;
+                            <select class="form-control form-control-sm m-1 filter_value_selector">
+                                <option value="max_value">Max Value</option>
+                                <option value="mean_value">Mean Value</option>
+                                <option value="nitecap_p">Nitecap p</option>
+                                <option value="nitecap_q">Nitecap q</option>
+                                <option value="jtk_p">JTK p</option>
+                                <option value="jtk_q">JTK q</option>
+                                <option value="anova_p">ANOVA p</option>
+                                <option value="anova_q">ANOVA q</option>
+                                <option value="amplitude">Amplitude</option>
+                                <option value="peak_time">Peak-time</option>
+                            </select>
+                            &le;
+                            <input class="form-control form-control-sm m-1 filter_upper_bound" type="number" style='width: 85px' />
+                        </div>
                     </div>
                     <div>
                         <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>

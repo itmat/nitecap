@@ -44,7 +44,6 @@ class Spreadsheet(db.Model):
     date_uploaded = db.Column(db.DateTime, nullable=False)
     num_replicates_str = db.Column(db.String(250))
     column_labels_str = db.Column(db.String(2500))
-    max_value_filter = db.Column(db.FLOAT)
     filters = db.Column(db.String(1000))
     last_access = db.Column(db.DateTime, nullable=False)
     ids_unique = db.Column(db.Boolean, nullable=False, default=0)
@@ -59,8 +58,8 @@ class Spreadsheet(db.Model):
     @timeit
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
-                 breakpoint=None, num_replicates_str=None, max_value_filter=None, last_access=None, user_id=None,
-                 date_uploaded=None, ids_unique=False):
+                 breakpoint=None, num_replicates_str=None, last_access=None, user_id=None,
+                 date_uploaded=None, ids_unique=False, filters=''):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
         method (only __new__).  Many of the parameters are filled in only after the spreadsheet has been instantiated
@@ -82,12 +81,12 @@ class Spreadsheet(db.Model):
         columns.
         :param breakpoint: The cutoff value used to limit the number of rows displayed on a heatmap
         :param num_replicates_str: A comma delimited listing of the number of replicates identified for each timepoint.
-        :param max_value_filter: A value below which rows having smaller maximum values are filter out.
         :param last_access: A timestamp indicating when the spreadsheet was last accessed (actually last updated)
         :param user_id: The id of the spreadsheet's owner.  Visitors have individual (although more transitory)
         accounts and consequently a user id.
         :param date_uploaded:  The timestamp at which the original spreadsheet was uploaded.
         :param ids_unique:  Flag indicating whether the ids are unique given the columns selected as ids
+        :param filters: JSON string of list of filters of the format [ ['variable', lower_bound, upper_bound],...]
         """
         current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
@@ -102,7 +101,6 @@ class Spreadsheet(db.Model):
         self.date_uploaded = date_uploaded
         self.num_replicates_str = num_replicates_str
         self.column_labels_str = column_labels_str
-        self.max_value_filter = max_value_filter
         self.breakpoint = breakpoint
         self.last_access = last_access if last_access else datetime.datetime.utcnow()
         self.ids_unique = ids_unique
@@ -628,7 +626,7 @@ class Spreadsheet(db.Model):
                                   column_labels_str=spreadsheet.column_labels_str,
                                   breakpoint=spreadsheet.breakpoint,
                                   num_replicates_str=spreadsheet.num_replicates_str,
-                                  max_value_filter=spreadsheet.max_value_filter,
+                                  filters=spreadsheet.filters,
                                   last_access=None,
                                   user_id=user_id)
         spreadsheet_share.save_to_db()
