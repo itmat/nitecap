@@ -701,6 +701,7 @@
 
                 let filter_item_row = document.createElement('div');
                 filter_item_row.className = "row";
+                filter_list_element.appendChild(filter_item_row);
 
                 let filter_item_div = document.createElement('div');
                 filter_item_div.className = "col form-inline filter_item";
@@ -756,11 +757,7 @@
                 let icon  = document.createElement('span');
                 icon.className = 'far fa-minus-square';
                 remove_button.appendChild(icon);
-
-                filter_item_row.appendChild(remove_button);
-
-
-                filter_list_element.appendChild(filter_item_row);
+                filter_item_div.appendChild(remove_button);
             });
         }
         updateFilterList();
@@ -1316,14 +1313,14 @@
                 </a>
             </div>
             <div class="card-body">
-                <div class="form-group" id="filter_list">
+                <div id="filter_list">
                     <!-- Filters will go here, made dynamically -->
                 </div>
-                <button id="add_filter_button" class="btn btn-default" aria-label="Add filter">
-                    <span class="far fa-plus-square fa-lg" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                </button>
                 <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters">
-                    <span class="fas fa-undo fa-lg" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                    <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                </button>
+                <button id="add_filter_button" class="btn btn-default" style="float: right" aria-label="Add filter">
+                    <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
                 </button>
                 <div>
                     <button id="applyFilters" type="button" class="btn btn-primary mb-4">Apply filters</button>
