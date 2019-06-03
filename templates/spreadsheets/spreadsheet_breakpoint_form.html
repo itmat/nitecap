@@ -780,8 +780,8 @@
                 var lower_bound = filter[1];
                 var upper_bound = filter[2];
 
-                if (isNaN(lower_bound)) {lower_bound = -Infinity;}
-                if (isNaN(upper_bound)) {upper_bound = Infinity;}
+                if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
+                if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
 
                 let values = filter_data.get(filter_value).values();
                 filtered_out = filtered_out.map( function (x,i) {
