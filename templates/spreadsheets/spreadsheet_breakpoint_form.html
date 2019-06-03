@@ -826,9 +826,6 @@
         }
         computeNumSignificantBelow();
 
-        apply_filters_button.click( function () {onApplyFilters(false);} );
-        rerun_qvalues_button.click( function () {onApplyFilters(true);} );
-
         function readFilters() {
             // Reads the values from the DOM into the filters list
             filters = filter_list.find(".filter_item").map( function() {
@@ -843,7 +840,7 @@
             }).toArray();
         }
 
-        function onApplyFilters(rerun_qvalues) {
+        onApplyFilters = function(rerun_qvalues) {
             // First gather all the filters the user has entered
             readFilters();
 
@@ -896,6 +893,23 @@
                     "</span>Computing...");
             }
         };
+        apply_filters_button.click( function () {onApplyFilters(false);} );
+
+        rerun_qvalues_button.click( function () {
+            let invalid = false;
+            filters.forEach( function (filter) {
+                if (!filter_data.get(filter[0]).independent) {
+                    invalid = true;
+                }
+            } );
+
+            if (invalid) {
+                $('#rerun_qvalues_warning').modal();
+            } else {
+                onApplyFilters(true);
+            }
+        });
+
 
         var searchRows = function() {
             var search_value = $('#row_search_box').val().toLowerCase();
@@ -1293,8 +1307,8 @@
                         <span class="fas fa-undo fa-lg" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
                     </button>
                     <div>
-                        <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
-                        <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Rerun q-values</button>
+                        <button id="applyFilters" type="button" class="btn btn-primary mb-4">Apply filters</button>
+                        <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>
                     </div>
                 </div>
             </div>
@@ -1392,6 +1406,33 @@
         </div>
     </div>
   </div>
+</div>
+
+<div class="modal" id="rerun_qvalues_warning" tabindex="-1" role="dialog" aria-labelledby="rerun_qvalues_warning_label">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="rerun_qvalues_warning_label">Warning</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Rerunning q-values with a filter that depends upon the time values is not statistically valid.
+                    Use 'Apply Filter' instead to apply the filter without recomputing q-values, or proceed without any guarantees about the correctness of the q-values produced.
+                </p>
+                <p>
+                    Rerunning q-values reduces the number of features being tested for the purpose of multiple-hypothesis testing correction.
+                    Doing so is justified only when the criteria for excluding a test is independent of the exogenous variables (for circadian analysis, the times at which each datapoint was collected).
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="onApplyFilters(true)">Rerun q-values</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}
