@@ -1292,37 +1292,37 @@
         </div>
     </div>
 
-    <div class="row">
-        <div id="FiltersCard" class="col-auto">
-            <div class="card">
-                <div class="card-header">
-                    Filters
-                    <a id="filtersHelp" class="text-primary help-pointer"
-                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                       title="Filter Help"
-                       data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
-                        <i class="fas fa-info-circle ml-3"></i>
-                    </a>
+</div>
+
+<div class="row">
+    <div id="FiltersCard" class="col-auto">
+        <div class="card">
+            <div class="card-header">
+                Filters
+                <a id="filtersHelp" class="text-primary help-pointer"
+                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                   title="Filter Help"
+                   data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
+                    <i class="fas fa-info-circle ml-3"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="form-group" id="filter_list">
+                    <!-- Filters will go here, made dynamically -->
                 </div>
-                <div class="card-body">
-                    <div class="form-group" id="filter_list">
-                        <!-- Filters will go here, made dynamically -->
-                    </div>
-                    <button id="add_filter_button" class="btn btn-default" aria-label="Add filter">
-                        <span class="far fa-plus-square fa-lg" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                    </button>
-                    <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters">
-                        <span class="fas fa-undo fa-lg" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
-                    </button>
-                    <div>
-                        <button id="applyFilters" type="button" class="btn btn-primary mb-4">Apply filters</button>
-                        <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>
-                    </div>
+                <button id="add_filter_button" class="btn btn-default" aria-label="Add filter">
+                    <span class="far fa-plus-square fa-lg" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
+                </button>
+                <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters">
+                    <span class="fas fa-undo fa-lg" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                </button>
+                <div>
+                    <button id="applyFilters" type="button" class="btn btn-primary mb-4">Apply filters</button>
+                    <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>
                 </div>
             </div>
         </div>
     </div>
-
 </div>
 
 <div class="row py-2">
