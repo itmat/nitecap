@@ -39,9 +39,10 @@
         // Handles to the filter panel features
         apply_filters_button = $('#applyFilters');
         rerun_qvalues_button = $('#rerun_qvalues');
-        max_value_filter_input = $('#max_value_filter');
         hide_filtered_checkbox = document.getElementById("hide_filtered");
         filter_list = $('#filter_list');
+        add_filter_button = $('#add_filter_button');
+        reset_filters_button = $('#reset_filters_button');
 
         // Handles for the slider
         coarse_slider = $("#coarse_slider");
@@ -49,6 +50,9 @@
         // To be loaded later by ajax
         jtk_ps = null;
         jtk_qs = null;
+
+        // Save a copy of the filters that were run last
+        ran_filters = filters.slice();
 
         // List of the number of significant (non-filtered) features that are at or below a given index
         num_significant_below = labels.map(function(x,i) { return i+1;} );
@@ -626,53 +630,147 @@
             Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (selected_row+1)});
         });
 
-        // Load existing filter
-        if (filters.length > 0) {
-            let variable = filters[0][0];
-            let lower_bound = filters[0][1];
-            let upper_bound = filters[0][2];
-
-            // TODO
-            //filter_value_selector.val(variable);
-            //filter_lower_bound.val(lower_bound ? lower_bound : '');
-            //filter_upper_bound.val(upper_bound ? upper_bound : '');
-        }
-
-        let filter_data = {
-            "max_value": {values: function () { return maximums(data); },
-                            name:"Maximum value",
-                            independent: true},
-            "mean_value": {values: function () { return means(data); },
-                            name:"Mean value",
-                            independent: true},
-            "nitecap_p": {values: function () { return ps; },
+        // Configuration of the filters
+        let filter_data_list = [
+            ["max_value", {values: function () { return maximums(data); },
+                            name: "Maximum value",
+                            independent: true}],
+            ["mean_value", {values: function () { return means(data); },
+                            name: "Mean value",
+                            independent: true}],
+            ["nitecap_p", {values: function () { return ps; },
                             name: "Nitecap p",
-                            independent: false},
-            "nitecap_q": {values: function () { return qs; },
+                            independent: false}],
+            ["nitecap_q", {values: function () { return qs; },
                             name: "Nitecap q",
-                            independent: false},
-            "jtk_p": {values: function () { return jtk_ps; },
+                            independent: false}],
+            ["jtk_p", {values: function () { return jtk_ps; },
                             name: "JTK p",
-                            independent: false},
-            "jtk_q": {values: function () { return jtk_qs; },
+                            independent: false}],
+            ["jtk_q", {values: function () { return jtk_qs; },
                             name: "JTK q",
-                            independent: false},
-            "anova_p": {values: function () { return anova_ps; },
+                            independent: false}],
+            ["anova_p", {values: function () { return anova_ps; },
                             name: "ANOVA p",
-                            independent: false},
-            "anova_q": {values: function () { return anova_qs; },
+                            independent: false}],
+            ["anova_q", {values: function () { return anova_qs; },
                             name: "ANOVA q",
-                            independent: false},
-            "amplitude": {values: function () { return amplitudes; },
+                            independent: false}],
+            ["amplitude", {values: function () { return amplitudes; },
                             name: "Amplitude",
-                            indpendent: false},
-            "peak_time": {values: function () { return peak_times; },
+                            independent: false}],
+            ["peak_time", {values: function () { return peak_times; },
                             name: "Peak time",
-                            independent: false}
-        };
+                            independent: false}]
+            ];
+        // Build a Map for convenience of the filter data
+        filter_data = new Map();
+        filter_data_list.forEach( function(pair) {
+            filter_data.set(pair[0], pair[1]);
+        });
+
+        function updateFilterList() {
+            // Get raw DOM element, not the jQueried version
+            let filter_list_element = filter_list.get(0);
+
+            if (filters.length == 0) {
+                // Deafult to empty max-value filter
+                filters = [["max_value", NaN, NaN]];
+            }
+
+            // Clear out the filter list before remaking it
+            while (filter_list_element.lastChild) {
+                filter_list_element.removeChild(filter_list_element.lastChild);
+            }
+
+            filters.forEach( function (filter, i) {
+                // Create the filter entries in the filter list
+
+                let variable = filter[0];
+                let lower_bound = filter[1];
+                let upper_bound = filter[2];
+
+                let filter_item_row = document.createElement('div');
+                filter_item_row.className = "row";
+
+                let filter_item_div = document.createElement('div');
+                filter_item_div.className = "col form-inline filter_item";
+                filter_item_row.appendChild(filter_item_div);
+
+                let filter_lb = document.createElement('input');
+                filter_lb.className = "form-control form-control-sm m-1 filter_lower_bound";
+                filter_lb.style="width: 85px";
+                if (!isNaN(lower_bound) && lower_bound !== null) {
+                    filter_lb.value = '' + lower_bound;
+                }
+                filter_lb.addEventListener('change', readFilters);
+                filter_item_div.appendChild(filter_lb);
+
+                let less_than_symbol = "\u2264"; // Actaully less than or equal to symbol
+                filter_item_div.appendChild(document.createTextNode(less_than_symbol));
+
+                let filter_value_selector = document.createElement('select');
+                filter_value_selector.className = "form-control form-control-sm m-1 filter_value_selector";
+                filter_data.forEach(function (filter, key) {
+                    let option = document.createElement('option');
+                    option.setAttribute("value", key);
+                    option.innerHTML = filter.name;
+                    filter_value_selector.appendChild(option);
+                });
+                filter_value_selector.value = variable;
+                filter_item_div.appendChild(filter_value_selector);
+
+                filter_item_div.appendChild(document.createTextNode(less_than_symbol));
+
+                let filter_ub = document.createElement('input');
+                filter_ub.className = "form-control form-control-sm m-1 filter_upper_bound";
+                filter_ub.style="width: 85px";
+                if (!isNaN(upper_bound) && upper_bound !== null) {
+                    filter_ub.value = '' + upper_bound;
+                }
+                filter_ub.addEventListener('change', readFilters);
+                filter_item_div.appendChild(filter_ub);
+
+                let remove_button = document.createElement('button');
+                remove_button.className = "btn btn-default";
+                remove_button.setAttribute('aria-label', 'Remove filter');
+                remove_button.setAttribute('title', 'Remove filter');
+
+                function make_listener(index) {
+                    return function () {
+                        filters = filters.filter(function (x,j) { return j !== index; } );
+                        updateFilterList();
+                    };
+                }
+                remove_button.addEventListener('click', make_listener(i));
+
+                let icon  = document.createElement('span');
+                icon.className = 'far fa-minus-square';
+                remove_button.appendChild(icon);
+
+                filter_item_row.appendChild(remove_button);
+
+
+                filter_list_element.appendChild(filter_item_row);
+            });
+        }
+        updateFilterList();
+
+        add_filter_button.click( function () {
+            filters.push( ['max_value', null, null] );
+            updateFilterList();
+        });
+
+        reset_filters_button.click( function () {
+            filters = ran_filters.slice();
+            updateFilterList();
+        });
 
         // Applying Filters
         function applyFilters() {
+            // Copy the filters that we last ran
+            ran_filters = filters.slice();
+
             let filtered_out = data.map( function (x) {return false;} );
 
             // Apply all filters
@@ -685,7 +783,7 @@
                 if (isNaN(lower_bound)) {lower_bound = -Infinity;}
                 if (isNaN(upper_bound)) {upper_bound = Infinity;}
 
-                let values = filter_data[filter_value].values();
+                let values = filter_data.get(filter_value).values();
                 filtered_out = filtered_out.map( function (x,i) {
                     return x || (values[i] < lower_bound) || (values[i] > upper_bound);
                 });
@@ -731,8 +829,7 @@
         apply_filters_button.click( function () {onApplyFilters(false);} );
         rerun_qvalues_button.click( function () {onApplyFilters(true);} );
 
-        function onApplyFilters(rerun_qvalues) {
-            // First gather all the filters the user has entered
+        function readFilters() {
             filters = filter_list.find(".filter_item").map( function() {
                 var filter = $(this);
 
@@ -743,6 +840,11 @@
 
                 return [[value, lower_bound, upper_bound]];
             }).toArray();
+        }
+
+        function onApplyFilters(rerun_qvalues) {
+            // First gather all the filters the user has entered
+            readFilters();
 
             // Apply the filters to the rows
             applyFilters();
@@ -1180,26 +1282,15 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <div class="form-group form-inline" id="filter_list">
-                        <div class="row filter_item">
-                            <input class="form-control form-control-sm m-1 filter_lower_bound" type="number" style='width: 85px' />
-                            &le;
-                            <select class="form-control form-control-sm m-1 filter_value_selector">
-                                <option value="max_value">Max Value</option>
-                                <option value="mean_value">Mean Value</option>
-                                <option value="nitecap_p">Nitecap p</option>
-                                <option value="nitecap_q">Nitecap q</option>
-                                <option value="jtk_p">JTK p</option>
-                                <option value="jtk_q">JTK q</option>
-                                <option value="anova_p">ANOVA p</option>
-                                <option value="anova_q">ANOVA q</option>
-                                <option value="amplitude">Amplitude</option>
-                                <option value="peak_time">Peak-time</option>
-                            </select>
-                            &le;
-                            <input class="form-control form-control-sm m-1 filter_upper_bound" type="number" style='width: 85px' />
-                        </div>
+                    <div class="form-group" id="filter_list">
+                        <!-- Filters will go here, made dynamically -->
                     </div>
+                    <button id="add_filter_button" class="btn btn-default" aria-label="Add filter">
+                        <span class="far fa-plus-square fa-lg" title="Add filter"></span>
+                    </button>
+                    <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters">
+                        <span class="fas fa-undo fa-lg" title="Reset filters"></span>
+                    </button>
                     <div>
                         <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
                         <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Rerun q-values</button>
