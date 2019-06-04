@@ -241,6 +241,7 @@
         var num_row_selections = 21; // Show this many rows at once
         rowSelector = makeRowSelector($('#row_selector')[0],  labels, qs, filtered, sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(breakpoint);
+
         $("#hide_filtered").change( function() {
             let below = num_significant_below[selected_row];
 
@@ -811,7 +812,6 @@
 
             // Update row selector display to reflect the new filtering
             rowSelector.filterRows(filtered);
-            rowSelector.update();
         }
 
         function computeNumSignificantBelow() {
