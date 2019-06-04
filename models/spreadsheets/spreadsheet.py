@@ -331,8 +331,10 @@ class Spreadsheet(db.Model):
         # Other statistics
         # TODO: should users be able to choose their cycle length?
         amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, num_cycles = self.days, cycle_length=self.timepoints)
+
+        data_folded = nitecap.fold_days(data_formatted, self.days)
         try:
-            anova_p = nitecap.util.anova(data_formatted)
+            anova_p = nitecap.util.anova(data_folded)
             anova_q = nitecap.util.BH_FDR(anova_p)
         except ValueError:
             # Can't run anova (eg: no replicates)
