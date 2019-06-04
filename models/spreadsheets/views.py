@@ -770,24 +770,24 @@ def get_upside():
 
                 for i in [0, 1]:
                     columns = [column + f"_{i}" if column in common_columns else column
-                                        for column in spreadsheets[i].get_data_columns()]
+                                        for column in spreadsheets[i].get_data_columns(by_day=False)]
                     datasets.append(df[columns].values)
 
             # Run the actual upside calculation
             current_app.logger.info(f"Dataset sizes: {df.shape}, {datasets[primary].shape}, {datasets[secondary].shape}")
-            upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates, datasets[primary],
-                                           spreadsheets[secondary].num_replicates, datasets[secondary])
+            upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates_by_time, datasets[primary],
+                                           spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
             upside_q = nitecap.util.BH_FDR(upside_p)
 
             if anova_p is None:
                 # Run two-way anova
-                anova_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates, datasets[primary],
-                                                     spreadsheets[secondary].num_replicates, datasets[secondary])
+                anova_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates_by_time, datasets[primary],
+                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
                 anova_q = nitecap.util.BH_FDR(anova_p)
 
                 # Run Cosinor analysis
-                amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].num_replicates, datasets[primary],
-                                                                     spreadsheets[secondary].num_replicates, datasets[secondary])
+                amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].num_replicates_by_time, datasets[primary],
+                                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
                 phase_q = nitecap.util.BH_FDR(phase_p)
                 amplitude_q = nitecap.util.BH_FDR(amplitude_p)
 

@@ -225,7 +225,9 @@ class Spreadsheet(db.Model):
         self.num_replicates = [len([1 for x in self.x_values if x == i])
                                     for i in range(self.timepoints * self.days)]
         self.num_replicates_str = ",".join([str(num_replicate) for num_replicate in self.num_replicates])
-
+        # Num replicates separated out by times not counting which day it comes from
+        self.num_replicates_by_time = [len([1 for x in self.x_values if x % self.timepoints == i])
+                                                for i in range(self.timepoints)]
 
         self.x_values = [i for i,num_reps in enumerate(self.num_replicates)
                             for j in range(num_reps)]
@@ -248,11 +250,15 @@ class Spreadsheet(db.Model):
         data_columns = self.get_data_columns()
         return self.df[data_columns]
 
-    def get_data_columns(self):
+    def get_data_columns(self, by_day=True):
         # Order the columns by chronological order
         filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
                             if label not in Spreadsheet.NON_DATA_COLUMNS]
-        ordered_columns = sorted(filtered_columns, key = lambda c_l: self.label_to_daytime(c_l[1]))
+        if by_day:
+            sorter = lambda col_label: self.label_to_daytime(col_label[1])
+        else:
+            sorter = lambda col_label: self.label_to_daytime(col_label[1], False)
+        ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
 
     @timeit
@@ -481,12 +487,15 @@ class Spreadsheet(db.Model):
                                     for timepoint in range(self.timepoints)]
 
 
-    def label_to_daytime(self, label):
+    def label_to_daytime(self, label, include_day = True):
         """ returns the day and time of column label """
         match = re.search("Day(\d+) Timepoint(\d+)", label)
         if match:
             d, t = match.groups()
-            return int(d), int(t)
+            if include_day:
+                return int(d), int(t)
+            else:
+                return int(t)
         else:
             return None
 
