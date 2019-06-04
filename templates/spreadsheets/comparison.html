@@ -31,7 +31,7 @@
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
 
-        var number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
+        number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
         $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
 
@@ -126,43 +126,43 @@
 
             $('#significant_items')[0].value = num_significant_below[selected_row];
 
-            number_comparisons.forEach( function (idx) {
+            number_comparisons.forEach( function (idx, order) {
                 // Update the "statistics" card
-                $('#p_value' + idx).html(formatNum(ps[idx][row_index], 4));
-                $('#p_value' + idx).prop('title', toString(ps[idx][row_index]));
-                $('#q_value' + idx).html(formatNum(qs[idx][row_index], 4));
-                $('#q_value' + idx).prop('title', toString(qs[idx][row_index]));
-                $('#amplitude' + idx).html(formatNum(amplitudes[idx][row_index], 4));
-                $('#amplitude' + idx).prop('title', toString(amplitudes[idx][row_index]));
-                $('#anova_p' + idx).html(formatNum(anova_ps[idx][row_index], 4));
-                $('#anova_p' + idx).prop('title', toString(anova_ps[idx][row_index]));
-                $('#anova_q' + idx).html(formatNum(anova_qs[idx][row_index], 4));
-                $('#anova_q' + idx).prop('title', toString(anova_qs[idx][row_index]));
-                $('#peak_time' + idx).html(formatNum(peak_times[idx][row_index], 4));
-                $('#peak_time' + idx).prop('title', toString(peak_times[idx][row_index]));
+                $('#p_value' + order).html(formatNum(ps[idx][row_index], 4));
+                $('#p_value' + order).prop('title', toString(ps[idx][row_index]));
+                $('#q_value' + order).html(formatNum(qs[idx][row_index], 4));
+                $('#q_value' + order).prop('title', toString(qs[idx][row_index]));
+                $('#amplitude' + order).html(formatNum(amplitudes[idx][row_index], 4));
+                $('#amplitude' + order).prop('title', toString(amplitudes[idx][row_index]));
+                $('#anova_p' + order).html(formatNum(anova_ps[idx][row_index], 4));
+                $('#anova_p' + order).prop('title', toString(anova_ps[idx][row_index]));
+                $('#anova_q' + order).html(formatNum(anova_qs[idx][row_index], 4));
+                $('#anova_q' + order).prop('title', toString(anova_qs[idx][row_index]));
+                $('#peak_time' + order).html(formatNum(peak_times[idx][row_index], 4));
+                $('#peak_time' + order).prop('title', toString(peak_times[idx][row_index]));
 
                 if (jtk_ps[idx] !== null && jtk_qs[idx] !== null) {
-                    $('#jtk_p' + idx).html(formatNum(jtk_ps[idx][row_index], 4));
-                    $('#jtk_p' + idx).prop('title', toString(jtk_ps[idx][row_index]));
-                    $('#jtk_q' + idx).html(formatNum(jtk_qs[idx][row_index], 4));
-                    $('#jtk_q' + idx).prop('title', toString(jtk_qs[idx][row_index]));
+                    $('#jtk_p' + order).html(formatNum(jtk_ps[idx][row_index], 4));
+                    $('#jtk_p' + order).prop('title', toString(jtk_ps[idx][row_index]));
+                    $('#jtk_q' + order).html(formatNum(jtk_qs[idx][row_index], 4));
+                    $('#jtk_q' + order).prop('title', toString(jtk_qs[idx][row_index]));
                 } else {
-                    $('#jtk_p' + idx).html("loading");
-                    $('#jtk_p' + idx).prop('title', "loading");
-                    $('#jtk_q' + idx).html("loading");
-                    $('#jtk_q' + idx).prop('title', "loading");
+                    $('#jtk_p' + order).html("loading");
+                    $('#jtk_p' + order).prop('title', "loading");
+                    $('#jtk_q' + order).html("loading");
+                    $('#jtk_q' + order).prop('title', "loading");
                 }
 
                 if (upside_ps !== null && upside_qs !== null) {
-                    $('#upside_p' + idx).html(formatNum(upside_ps[idx][row_index], 4));
-                    $('#upside_p' + idx).prop('title', toString(upside_ps[idx][row_index]));
-                    $('#upside_q' + idx).html(formatNum(upside_qs[idx][row_index], 4));
-                    $('#upside_q' + idx).prop('title', toString(upside_qs[idx][row_index]));
+                    $('#upside_p' + order).html(formatNum(upside_ps[idx][row_index], 4));
+                    $('#upside_p' + order).prop('title', toString(upside_ps[idx][row_index]));
+                    $('#upside_q' + order).html(formatNum(upside_qs[idx][row_index], 4));
+                    $('#upside_q' + order).prop('title', toString(upside_qs[idx][row_index]));
                 } else {
-                    $('#upside_p' + idx).html("loading");
-                    $('#upside_p' + idx).prop('title', "loading");
-                    $('#upside_q' + idx).html("loading");
-                    $('#upside_q' + idx).prop('title', "loading");
+                    $('#upside_p' + order).html("loading");
+                    $('#upside_p' + order).prop('title', "loading");
+                    $('#upside_q' + order).html("loading");
+                    $('#upside_q' + order).prop('title', "loading");
                 }
             });
 
