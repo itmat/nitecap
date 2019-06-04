@@ -126,48 +126,50 @@
 
             $('#significant_items')[0].value = num_significant_below[selected_row];
 
-            // Update the "statistics" card
-            $('#p_value').html(toFixed(ps[number_comparisons[0]][row_index], 3));
-            $('#p_value').prop('title', toString(ps[number_comparisons[0]][row_index]));
-            $('#q_value').html(toFixed(qs[number_comparisons[0]][row_index], 3));
-            $('#q_value').prop('title', toString(qs[number_comparisons[0]][row_index]));
-            $('#amplitude').html(toFixed(amplitudes[number_comparisons[0]][row_index], 3));
-            $('#amplitude').prop('title', toString(amplitudes[number_comparisons[0]][row_index]));
-            $('#anova_p').html(toFixed(anova_ps[number_comparisons[0]][row_index], 3));
-            $('#anova_p').prop('title', toString(anova_ps[number_comparisons[0]][row_index]));
-            $('#anova_q').html(toFixed(anova_qs[number_comparisons[0]][row_index], 3));
-            $('#anova_q').prop('title', toString(anova_qs[number_comparisons[0]][row_index]));
-            $('#peak_time').html(toFixed(peak_times[number_comparisons[0]][row_index], 3));
-            $('#peak_time').prop('title', toString(peak_times[number_comparisons[0]][row_index]));
+            number_comparisons.forEach( function (idx) {
+                // Update the "statistics" card
+                $('#p_value' + idx).html(formatNum(ps[idx][row_index], 4));
+                $('#p_value' + idx).prop('title', toString(ps[idx][row_index]));
+                $('#q_value' + idx).html(formatNum(qs[idx][row_index], 4));
+                $('#q_value' + idx).prop('title', toString(qs[idx][row_index]));
+                $('#amplitude' + idx).html(formatNum(amplitudes[idx][row_index], 4));
+                $('#amplitude' + idx).prop('title', toString(amplitudes[idx][row_index]));
+                $('#anova_p' + idx).html(formatNum(anova_ps[idx][row_index], 4));
+                $('#anova_p' + idx).prop('title', toString(anova_ps[idx][row_index]));
+                $('#anova_q' + idx).html(formatNum(anova_qs[idx][row_index], 4));
+                $('#anova_q' + idx).prop('title', toString(anova_qs[idx][row_index]));
+                $('#peak_time' + idx).html(formatNum(peak_times[idx][row_index], 4));
+                $('#peak_time' + idx).prop('title', toString(peak_times[idx][row_index]));
 
-            if (jtk_ps[number_comparisons[0]] !== null && jtk_qs[number_comparisons[0]] !== null) {
-                $('#jtk_p').html(toFixed(jtk_ps[number_comparisons[0]][row_index], 3));
-                $('#jtk_p').prop('title', toString(jtk_ps[number_comparisons[0]][row_index]));
-                $('#jtk_q').html(toFixed(jtk_qs[number_comparisons[0]][row_index], 3));
-                $('#jtk_q').prop('title', toString(jtk_qs[number_comparisons[0]][row_index]));
-            } else {
-                $('#jtk_p').html("loading");
-                $('#jtk_p').prop('title', "loading");
-                $('#jtk_q').html("loading");
-                $('#jtk_q').prop('title', "loading");
-            }
+                if (jtk_ps[idx] !== null && jtk_qs[idx] !== null) {
+                    $('#jtk_p' + idx).html(formatNum(jtk_ps[idx][row_index], 4));
+                    $('#jtk_p' + idx).prop('title', toString(jtk_ps[idx][row_index]));
+                    $('#jtk_q' + idx).html(formatNum(jtk_qs[idx][row_index], 4));
+                    $('#jtk_q' + idx).prop('title', toString(jtk_qs[idx][row_index]));
+                } else {
+                    $('#jtk_p' + idx).html("loading");
+                    $('#jtk_p' + idx).prop('title', "loading");
+                    $('#jtk_q' + idx).html("loading");
+                    $('#jtk_q' + idx).prop('title', "loading");
+                }
 
-            if (upside_ps !== null && upside_qs !== null) {
-                $('#upside_p').html(toFixed(upside_ps[number_comparisons[0]][row_index], 3));
-                $('#upside_p').prop('title', toString(upside_ps[number_comparisons[0]][row_index]));
-                $('#upside_q').html(toFixed(upside_qs[number_comparisons[0]][row_index], 3));
-                $('#upside_q').prop('title', toString(upside_qs[number_comparisons[0]][row_index]));
-            } else {
-                $('#upside_p').html("loading");
-                $('#upside_p').prop('title', "loading");
-                $('#upside_q').html("loading");
-                $('#upside_q').prop('title', "loading");
-            }
+                if (upside_ps !== null && upside_qs !== null) {
+                    $('#upside_p' + idx).html(formatNum(upside_ps[idx][row_index], 4));
+                    $('#upside_p' + idx).prop('title', toString(upside_ps[idx][row_index]));
+                    $('#upside_q' + idx).html(formatNum(upside_qs[idx][row_index], 4));
+                    $('#upside_q' + idx).prop('title', toString(upside_qs[idx][row_index]));
+                } else {
+                    $('#upside_p' + idx).html("loading");
+                    $('#upside_p' + idx).prop('title', "loading");
+                    $('#upside_q' + idx).html("loading");
+                    $('#upside_q' + idx).prop('title', "loading");
+                }
+            });
 
             if (two_way_anova_ps !== null && two_way_anova_qs !== null) {
-                $('#two_way_anova_p').html(toFixed(two_way_anova_ps[row_index], 3));
+                $('#two_way_anova_p').html(formatNum(two_way_anova_ps[row_index], 4));
                 $('#two_way_anova_p').prop('title', toString(two_way_anova_ps[row_index]));
-                $('#two_way_anova_q').html(toFixed(two_way_anova_qs[row_index], 3));
+                $('#two_way_anova_q').html(formatNum(two_way_anova_qs[row_index], 4));
                 $('#two_way_anova_q').prop('title', toString(two_way_anova_qs[row_index]));
             } else {
                 $('#two_way_anova_p').html("loading");
@@ -177,9 +179,9 @@
             }
 
             if (phase_ps !== null && phase_qs !== null) {
-                $('#phase_p').html(toFixed(phase_ps[row_index], 3));
+                $('#phase_p').html(formatNum(phase_ps[row_index], 4));
                 $('#phase_p').prop('title', toString(phase_ps[row_index]));
-                $('#phase_q').html(toFixed(phase_qs[row_index], 3));
+                $('#phase_q').html(formatNum(phase_qs[row_index], 4));
                 $('#phase_q').prop('title', toString(phase_qs[row_index]));
             } else {
                 $('#phase_p').html("loading");
@@ -189,9 +191,9 @@
             }
 
             if (amplitude_ps !== null && amplitude_qs !== null) {
-                $('#amplitude_p').html(toFixed(amplitude_ps[row_index], 3));
+                $('#amplitude_p').html(formatNum(amplitude_ps[row_index], 4));
                 $('#amplitude_p').prop('title', toString(amplitude_ps[row_index]));
-                $('#amplitude_q').html(toFixed(amplitude_qs[row_index], 3));
+                $('#amplitude_q').html(formatNum(amplitude_qs[row_index], 4));
                 $('#amplitude_q').prop('title', toString(amplitude_qs[row_index]));
             } else {
                 $('#amplitude_p').html("loading");
@@ -1075,17 +1077,27 @@
                          <option value="amplitude_change" disabled>Amplitude Change</option>
                     </select>
                     <table class="table table-sm">
-                        <tbody>
-                            <tr> <td rowspan="2">Nitecap
-                                <a class="text-primary help-pointer float-right"
-                                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                   title="Nitecap"
-                                   data-content="Nitecap significance of rhythmicity for primary dataset.">
-                                    <i class="fas fa-info-circle ml-3"></i>
-                                </a>
-                                </td> <td>p: <span id="p_value"></span></td>
+                        <thead>
+                            <tr>
+                                <th scope="col"></th>
+                                <th scope="col">Primary</th>
+                                <th scope="col">Secondary</th>
                             </tr>
-                            <tr> <td>q: <span id="q_value"></span></td></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td rowspan="2">Nitecap
+                                    <a class="text-primary help-pointer float-right"
+                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                       title="Nitecap"
+                                       data-content="Nitecap significance of rhythmicity for primary dataset.">
+                                        <i class="fas fa-info-circle ml-3"></i>
+                                    </a>
+                                </td>
+                                <td>p: <span id="p_value0"></span></td>
+                                <td>p: <span id="p_value1"></span></td>
+                            </tr>
+                            <tr> <td>q: <span id="q_value0"></span></td> <td>q: <span id="q_value1"></span></td></tr>
 
                             <tr> <td rowspan="2">JTK
                                 <a class="text-primary help-pointer float-right"
@@ -1094,8 +1106,11 @@
                                    data-content="JTK_cycle significance of rhythmicity for primary dataset.">
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
-                                </td> <td>p: <span id="jtk_p"></span></td> </tr>
-                            <tr> <td>q: <span id="jtk_q"></span></td></tr>
+                                </td>
+                                <td>p: <span id="jtk_p0"></span></td>
+                                <td>p: <span id="jtk_p1"></span></td>
+                            </tr>
+                            <tr> <td>q: <span id="jtk_q0"></span></td> <td>q: <span id="jtk_q1"></span></td> </tr>
 
                             <tr> <td rowspan="2"> ANOVA
                                 <a class="text-primary help-pointer float-right"
@@ -1104,9 +1119,11 @@
                                    data-content="1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.">
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
-                                 </td> <td>p: <span id="anova_p"></span></td>
+                                 </td>
+                                 <td>p: <span id="anova_p0"></span></td>
+                                 <td>p: <span id="anova_p1"></span></td>
                             </tr>
-                            <tr> <td>q: <span id="anova_q"></span></td></tr>
+                            <tr> <td>q: <span id="anova_q0"></span></td> <td>q: <span id="anova_q1"></span></td> </tr>
 
                             <tr> <td rowspan="2">Damping
                                 <a class="text-primary help-pointer float-right"
@@ -1115,9 +1132,11 @@
                                    data-content="Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.">
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
-                                </td> <td>p: <span id="upside_p"></span></td>
+                                </td>
+                                <td>p: <span id="upside_p0"></span></td>
+                                <td>p: <span id="upside_p1"></span></td>
                             </tr>
-                            <tr> <td>q: <span id="upside_q"></span></td></tr>
+                            <tr> <td>q: <span id="upside_q0"></span></td> <td>q: <span id="upside_q1"></span></td> </tr>
 
                             <tr> <td rowspan="2">Two-way ANOVA
                                 <a class="text-primary help-pointer float-right"
@@ -1126,9 +1145,10 @@
                                    data-content="Two-way ANOVA test for difference in timepoint-effects across datasets">
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
-                                </td> <td>p: <span id="two_way_anova_p"></span></td>
+                                </td>
+                                <td colspan="2">p: <span id="two_way_anova_p"></span></td>
                             </tr>
-                            <tr> <td>q: <span id="two_way_anova_q"></span></td></tr>
+                            <tr> <td colspan="2">q: <span id="two_way_anova_q"></span></td> </tr>
 
                             <tr> <td rowspan="2">Phase Change
                                 <a class="text-primary help-pointer float-right"
@@ -1137,9 +1157,10 @@
                                    data-content="Test for equality of phase between datasets through cosinor analysis (least squares fit)">
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
-                                </td> <td>p: <span id="phase_p"></span></td>
+                                </td>
+                                <td colspan="2">p: <span id="phase_p"></span></td>
                             </tr>
-                            <tr> <td>q: <span id="phase_q"></span></td></tr>
+                            <tr> <td colspan="2">q: <span id="phase_q"></span></td> </tr>
 
                             <tr> <td rowspan="2">Amplitude Change
                                 <a class="text-primary help-pointer float-right"
@@ -1148,9 +1169,10 @@
                                    data-content="Test for equality of amplitudes between datasets through cosinor analysis (least squares fit)">
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
-                                </td> <td>p: <span id="amplitude_p"></span></td>
+                                </td>
+                                <td colspan="2">p: <span id="amplitude_p"></span></td>
                             </tr>
-                            <tr> <td>q: <span id="amplitude_q"></span></td></tr>
+                            <tr> <td colspan="2">q: <span id="amplitude_q"></span></td> </tr>
 
                             <tr> <td>Amplitude
                                 <a class="text-primary help-pointer float-right"
@@ -1160,7 +1182,8 @@
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
                                 </td>
-                                <td id="amplitude"></td>
+                                <td id="amplitude0"></td>
+                                <td id="amplitude1"></td>
                             </tr>
 
                             <tr> <td>Peak-time
@@ -1170,7 +1193,9 @@
                                    data-content="Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.">
                                     <i class="fas fa-info-circle ml-3"></i>
                                 </a>
-                                 </td> <td id="peak_time"></td>
+                                 </td>
+                                <td id="peak_time0"></td>
+                                <td id="peak_time1"> </td>
                             </tr>
                         </tbody>
                     </table>

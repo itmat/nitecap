@@ -31,6 +31,28 @@ function initializePopovers() {
     });
 }
 
+var formatNum = function(num, digits) {
+    if (isNaN(num)) {
+        return "N/A";
+    } else if (num === null) {
+        return "N/A";
+    } else if (num === 0.0) {
+        return "0";
+    }
+
+    let magnitude = Math.abs(num);
+    let digits_above_zero = Math.max(Math.floor(Math.log10(magnitude)), 1);
+
+    let large_cutoff = Math.pow(10, digits);
+    let small_cutoff = Math.pow(10, -digits+1);
+    if (magnitude >= large_cutoff) {
+        return num.toExponential(digits-3);
+    } else if (magnitude < small_cutoff) {
+        return num.toExponential(digits-3);
+    } else {
+        return num.toFixed(digits - digits_above_zero);
+    }
+}
 var toFixed = function(num, i) {
     // Call num.toFixed unless num is undefined (eg: null)
     if (typeof num === 'number') {
