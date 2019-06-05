@@ -853,7 +853,8 @@ def run_pca():
         data = spreadsheet.df
         data["compare_ids"] = list(spreadsheet.get_ids())
         data = data.set_index("compare_ids")
-        data = data[~data.index.duplicated()]
+        if len(spreadsheets) > 1:
+            data = data[~data.index.duplicated()]
         dfs.append(data)
 
     if len(dfs) == 2:
