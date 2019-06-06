@@ -109,7 +109,7 @@
             fold_days = fold_days_checkbox.checked;
             if (fold_days) {
                 plot_x_values = x_values.map( function (x) {return x % timepoints_per_day;});
-                plot_x_labels = plot_x_values.map( function(x,i) {return "Timepoint " + (x+1);});
+                plot_x_labels = plot_x_values.map( function(x) {return "Timepoint " + (x+1);});
                 plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
             } else {
                 plot_x_values = x_values;
