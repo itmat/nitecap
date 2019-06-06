@@ -17,7 +17,6 @@
         x_labels = {{ x_labels | safe }};
         x_label_values = {{ x_label_values | safe }};
         data = {{ data | safe }};
-        column_pairs = {{ column_pairs | safe }};
         descriptive_name = '{{ descriptive_name | safe }}'
         breakpoint = {{ breakpoint | safe }};
         qs = {{ qs | safe }};
@@ -43,6 +42,8 @@
         filter_list = $('#filter_list');
         add_filter_button = $('#add_filter_button');
         reset_filters_button = $('#reset_filters_button');
+
+        fold_days_checkbox = document.getElementById('fold_days_checkbox');
 
         // Handles for the slider
         coarse_slider = $("#coarse_slider");
@@ -105,22 +106,24 @@
                 return;
             }
 
-            // points for the basketweave styel
-            var paired_y_values = [];
-            for( var i in column_pairs ) {
-                paired_y_values.push( raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null );
-            }
-            var paired_x_values = [];
-            for( var i in column_pairs ) {
-                paired_x_values.push( x_values[column_pairs[i][0]], x_values[column_pairs[i][1]], null );
+            fold_days = fold_days_checkbox.checked;
+            if (fold_days) {
+                plot_x_values = x_values.map( function (x) {return x % timepoints_per_day;});
+                plot_x_labels = plot_x_values.map( function(x,i) {return "Timepoint " + (x+1);});
+                plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
+            } else {
+                plot_x_values = x_values;
+                plot_x_labels = x_labels;
+                plot_x_label_values = x_label_values;
             }
 
-            var stats = rowStatsByTimepoint(raw_y_values, x_values);
+            var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
 
             // Default values for the different plot styles to override
             var values = [{
-                x: paired_x_values, y: paired_y_values,
-                mode: 'lines+markers',
+                x: plot_x_values,
+                y: raw_y_values,
+                mode: 'markers',
                 marker: marker_settings,
                 name: labels[row_index],
                 type: 'scatter'
@@ -129,8 +132,8 @@
                 hovermode: 'closest',
                 title: labels[row_index],
                 xaxis: {
-                    ticktext: x_labels,
-                    tickvals: x_label_values,
+                    ticktext: plot_x_labels,
+                    tickvals: plot_x_label_values,
                     automargin: true
                 }
             };
@@ -138,10 +141,31 @@
             // Pick data and styling based off the plot_style_select value
             var plot_style = $('#plot_style_select').val();
             if (plot_style === "basketweave") {
-                // Do nothing, basketweave is already the default settings
+                // Make pairs of points that are adjacent in time to each other
+                column_pairs = [];
+                plot_x_values.forEach( function(x,i) {
+                    for(var j = i+1; j < plot_x_values.length; j++) {
+                        if (Math.abs(plot_x_values[j] - x) === 1) {
+                            column_pairs.push([i,j]);
+                        }
+                    }
+                });
+
+                // points for the basketweave style
+                var paired_y_values = [];
+                for( var i in column_pairs ) {
+                    paired_y_values.push( raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null );
+                }
+                var paired_x_values = [];
+                for( var i in column_pairs ) {
+                    paired_x_values.push( plot_x_values[column_pairs[i][0]], plot_x_values[column_pairs[i][1]], null );
+                }
+
+                values[0].x = paired_x_values;
+                values[0].y = paired_y_values,
+                values[0].mode = 'lines+markers';
             } else if (plot_style === "points") {
-                values[0].mode = "markers";
-                values[0].x = x_values;
+                values[0].x = plot_x_values;
                 values[0].y = raw_y_values;
             } else if (plot_style === "mean") {
                 values[0].mode = "lines";
@@ -149,8 +173,7 @@
                 values[0].y = stats.means;
                 values[0].name = labels[row_index] + " means";
             } else if (plot_style === "mean_points") {
-                values[0].mode = "markers";
-                values[0].x = x_values
+                values[0].x = plot_x_values
                 values[0].y = raw_y_values;
                 values[1] = {
                     x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
@@ -212,6 +235,7 @@
         $('#plot_style_select').change( function () {
             redrawPlot();
         });
+        fold_days_checkbox.addEventListener('change', redrawPlot);
 
         coarse_slider.slider({
             orientation: "horizontal",
@@ -1217,6 +1241,10 @@
             <option value="std">Standard Deviations</option>
             <option value="SEM">SEM</option>
         </select>
+        <div class="form-check">
+            <input class="form-check-input" id="fold_days_checkbox" type="checkbox" value="">
+            <label class="form-check-label" for="fold_days_checkbox">Overlay cycles</label>
+        </div>
         <div class='py-3 float-right'>
             <button id="download_plot" class="btn btn-primary">Download Plot</button>
         </div>
@@ -1247,7 +1275,7 @@
                             <a class="text-primary help-pointer float-right"
                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                                title="Nitecap"
-                               data-content="Nitecap significance of rhythmicity for primary dataset.">
+                               data-content="Nitecap significance of rhythmicity for the dataset.">
                                 <i class="fas fa-info-circle ml-3"></i>
                             </a>
                             </td> <td>p: <span id="p_value"></span></td>
@@ -1258,7 +1286,7 @@
                             <a class="text-primary help-pointer float-right"
                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                                title="JTK"
-                               data-content="JTK_cycle significance of rhythmicity for primary dataset.">
+                               data-content="JTK_cycle significance of rhythmicity for the dataset.">
                                 <i class="fas fa-info-circle ml-3"></i>
                             </a>
                             </td> <td>p: <span id="jtk_p"></span></td> </tr>
@@ -1268,7 +1296,7 @@
                             <a class="text-primary help-pointer float-right"
                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                                title="ANOVA"
-                               data-content="1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.">
+                               data-content="1-Way ANOVA on the dataset. If there are no replicates on timepoints, ANOVA cannot be run.">
                                 <i class="fas fa-info-circle ml-3"></i>
                             </a>
                              </td> <td>p: <span id="anova_p"></span></td>
