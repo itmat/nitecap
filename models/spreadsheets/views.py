@@ -296,7 +296,6 @@ def show_spreadsheet(spreadsheet_id, user=None):
                  filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
                  filters=filters,
                  ids=ids,
-                 column_pairs=spreadsheet.column_pairs,
                  breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                  descriptive_name=spreadsheet.descriptive_name,
                  timepoints_per_day=spreadsheet.timepoints,
@@ -620,7 +619,6 @@ def compare(user=None):
     x_values = []
     x_labels = []
     x_label_values = []
-    column_pairs = []
     columns = []
     datasets = []
     timepoints_per_day = []
@@ -653,7 +651,6 @@ def compare(user=None):
         x_values.append(spreadsheet.x_values)
         x_labels.append(spreadsheet.x_labels)
         x_label_values.append(spreadsheet.x_label_values)
-        column_pairs.append(spreadsheet.column_pairs)
         descriptive_names.append(spreadsheet.descriptive_name)
         timepoints_per_day.append(spreadsheet.timepoints)
         data = spreadsheet.df
@@ -698,7 +695,6 @@ def compare(user=None):
                            x_labels=x_labels,
                            x_label_values=x_label_values,
                            ids=compare_ids,
-                           column_pairs=column_pairs,
                            descriptive_names=descriptive_names,
                            non_unique_id_counts=non_unique_id_counts,
                            qs=json.dumps(qs),

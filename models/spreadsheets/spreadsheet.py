@@ -234,18 +234,6 @@ class Spreadsheet(db.Model):
         self.x_labels = [f"Day{i+1} Timepoint{j+1}" for i in range(self.days) for j in range(self.timepoints)]
         self.x_label_values = [i*self.timepoints + j for i in range(self.days) for j in range(self.timepoints)]
 
-
-        # Also compute all the ways that we can pair adjacent data points, for use in plotting
-        # TODO: should this be moved elsewhere? only possible to do after getting column_labels
-        self.column_pairs =  []
-        first_col_in_timepoint = 0
-        for timepoint, num_reps in enumerate(self.num_replicates[:-1]):
-            next_num_reps = self.num_replicates[timepoint+1]
-            self.column_pairs.extend( [[first_col_in_timepoint + a, first_col_in_timepoint + num_reps + b]
-                                       for a in range(num_reps)
-                                       for b in range(next_num_reps)] )
-            first_col_in_timepoint += num_reps
-
     def get_raw_data(self):
         data_columns = self.get_data_columns()
         return self.df[data_columns]
