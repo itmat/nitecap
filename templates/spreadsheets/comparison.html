@@ -46,6 +46,11 @@
 
         fold_days_checkbox = document.getElementById('fold_days_checkbox');
 
+        num_days = (Math.max.apply(null, x_values[0]) + 1) / timepoints_per_day;
+        if (num_days > 1) {
+            $('#fold_days_box').show();
+        }
+
         // To be loaded later by ajax
         jtk_ps = [null,null];
         jtk_qs = [null,null];
@@ -1094,7 +1099,7 @@
                 <option value="std">Standard Deviations</option>
                 <option value="SEM">SEM</option>
             </select>
-            <div class="form-check">
+            <div class="form-check" id="fold_days_box" style="display:none">
                 <input class="form-check-input" id="fold_days_checkbox" type="checkbox" value="">
                 <label class="form-check-label" for="fold_days_checkbox">Overlay cycles</label>
             </div>
