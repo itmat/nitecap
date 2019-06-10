@@ -54,7 +54,7 @@
                 {% if 'email' in session and session['email'] and 'visitor' in session and not session['visitor'] %}
                     <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.display_spreadsheets')}}">Display Spreadsheets</a></li>
                 {% endif %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('faqs') }}">FAQs</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('faqs') }}">FAQ</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('people') }}">People</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('about') }}">About</a></li>
             </ul>

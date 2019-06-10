@@ -191,3 +191,11 @@ body {
     font-weight: 900;
 }
 
+
+.screenshot_examples .card{
+    border-width: 2px;
+}
+
+.screenshot_examples .card-body {
+    background-color: #F6F6F6;
+}
