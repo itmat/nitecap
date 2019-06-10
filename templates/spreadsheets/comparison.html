@@ -29,6 +29,7 @@
         filtered = {{ filtered | safe }};
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
+        filters = [];
 
         number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
@@ -42,7 +43,11 @@
 
         // Handles to the filter panel features
         apply_filters_button = $('#applyFilters');
+        rerun_qvalues_button = $('#rerun_qvalues');
         hide_filtered_checkbox = document.getElementById("hide_filtered");
+        filter_list = $('#filter_list');
+        add_filter_button = $('#add_filter_button');
+        reset_filters_button = $('#reset_filters_button');
 
         fold_days_checkbox = document.getElementById('fold_days_checkbox');
 
@@ -533,10 +538,204 @@
         $('#heatmap_fold_days').change(updateHeatmap);
         $('#heatmap_show_labels').change(updateHeatmap);
 
+        // Configuration of the filters
+        let filter_data_list = [
+            ["max_value", {values: function () {
+                                     // Grand maximum across both datasets within each row
+                                     let maxes = data.map( maximums );
+                                     return maxes[0].map( function(row, i) {
+                                        return Math.max(maxes[0][i], maxes[1][i]);
+                                    });
+                                },
+                            name: "Maximum value",
+                            independent: true}],
+            ["mean_value", {values: function () {
+                                // Grand means across both datasets within each row
+                                let ms = data.map( means );
+                                let a = data[0][0].length;
+                                let b = data[1][0].length;
+                                return ms[0].map( function(row, i) {
+                                    return (ms[0][i]*a + ms[1][i]*b) / (a + b);
+                                });
+                            },
+                            name: "Mean value",
+                            independent: true}],
+            ["nitecap_p0", {values: function () { return ps[number_comparisons[0]]; },
+                            name: "Nitecap p Primary",
+                            independent: false}],
+            ["nitecap_q0", {values: function () { return qs[number_comparisons[0]]; },
+                            name: "Nitecap q Primary",
+                            independent: false}],
+            ["jtk_p0", {values: function () { return jtk_ps[number_comparisons[0]]; },
+                            name: "JTK p Primary",
+                            independent: false}],
+            ["jtk_q0", {values: function () { return jtk_qs[number_comparisons[0]]; },
+                            name: "JTK q Primary",
+                            independent: false}],
+            ["anova_p0", {values: function () { return anova_ps[number_comparisons[0]]; },
+                            name: "ANOVA p Primary",
+                            independent: false}],
+            ["anova_q0", {values: function () { return anova_qs[number_comparisons[0]]; },
+                            name: "ANOVA q Primary",
+                            independent: false}],
+            ["amplitude0", {values: function () { return amplitudes[number_comparisons[0]]; },
+                            name: "Amplitude Primary",
+                            independent: false}],
+            ["peak_time0", {values: function () { return peak_times[number_comparisons[0]]; },
+                            name: "Peak time Primary",
+                            independent: false}],
+            ["nitecap_p1", {values: function () { return ps[number_comparisons[1]]; },
+                            name: "Nitecap p Secondary",
+                            independent: false}],
+            ["nitecap_q1", {values: function () { return qs[number_comparisons[1]]; },
+                            name: "Nitecap q Secondary",
+                            independent: false}],
+            ["jtk_p1", {values: function () { return jtk_ps[number_comparisons[1]]; },
+                            name: "JTK p Secondary",
+                            independent: false}],
+            ["jtk_q1", {values: function () { return jtk_qs[number_comparisons[1]]; },
+                            name: "JTK q Secondary",
+                            independent: false}],
+            ["anova_p1", {values: function () { return anova_ps[number_comparisons[1]]; },
+                            name: "ANOVA p Secondary",
+                            independent: false}],
+            ["anova_q1", {values: function () { return anova_qs[number_comparisons[1]]; },
+                            name: "ANOVA q Secondary",
+                            independent: false}],
+            ["amplitude1", {values: function () { return amplitudes[number_comparisons[1]]; },
+                            name: "Amplitude Secondary",
+                            independent: false}],
+            ["peak_time1", {values: function () { return peak_times[number_comparisons[1]]; },
+                            name: "Peak time Secondary",
+                            independent: false}]
+            ];
+        // Build a Map for convenience of the filter data
+        filter_data = new Map();
+        filter_data_list.forEach( function(pair) {
+            filter_data.set(pair[0], pair[1]);
+        });
+
+        function updateFilterList() {
+            // Get raw DOM element, not the jQueried version
+            let filter_list_element = filter_list.get(0);
+
+            if (filters.length == 0) {
+                // Deafult to empty max-value filter
+                filters = [["max_value", NaN, NaN]];
+            }
+
+            // Clear out the filter list before remaking it
+            while (filter_list_element.lastChild) {
+                filter_list_element.removeChild(filter_list_element.lastChild);
+            }
+
+            filters.forEach( function (filter, i) {
+                // Create the filter entries in the filter list
+
+                let variable = filter[0];
+                let lower_bound = filter[1];
+                let upper_bound = filter[2];
+
+                let filter_item_row = document.createElement('div');
+                filter_item_row.className = "row";
+                filter_list_element.appendChild(filter_item_row);
+
+                let filter_item_div = document.createElement('div');
+                filter_item_div.className = "col form-inline filter_item";
+                filter_item_row.appendChild(filter_item_div);
+
+                let filter_lb = document.createElement('input');
+                filter_lb.className = "form-control form-control-sm m-1 filter_lower_bound";
+                filter_lb.style="width: 85px";
+                filter_lb.setAttribute('aria-label', "Lower bound for filter " + i);
+                if (!isNaN(lower_bound) && lower_bound !== null) {
+                    filter_lb.value = '' + lower_bound;
+                }
+                filter_lb.addEventListener('change', readFilters);
+                filter_item_div.appendChild(filter_lb);
+
+                let less_than_symbol = "\u2264"; // Actaully less than or equal to symbol
+                filter_item_div.appendChild(document.createTextNode(less_than_symbol));
+
+                let filter_value_selector = document.createElement('select');
+                filter_value_selector.className = "form-control form-control-sm m-1 filter_value_selector";
+                filter_data.forEach(function (filter, key) {
+                    let option = document.createElement('option');
+                    option.setAttribute("value", key);
+                    option.innerHTML = filter.name;
+                    filter_value_selector.appendChild(option);
+                });
+                filter_value_selector.value = variable;
+                filter_value_selector.setAttribute('aria-label', 'Feature to filter on for filter ' + i);
+                filter_item_div.appendChild(filter_value_selector);
+
+                filter_item_div.appendChild(document.createTextNode(less_than_symbol));
+
+                let filter_ub = document.createElement('input');
+                filter_ub.className = "form-control form-control-sm m-1 filter_upper_bound";
+                filter_ub.style="width: 85px";
+                if (!isNaN(upper_bound) && upper_bound !== null) {
+                    filter_ub.value = '' + upper_bound;
+                }
+                filter_ub.addEventListener('change', readFilters);
+                filter_ub.setAttribute('aria-label', "Upper bound for filter " + i);
+                filter_item_div.appendChild(filter_ub);
+
+                let remove_button = document.createElement('button');
+                remove_button.className = "btn btn-default";
+                remove_button.setAttribute('aria-label', 'Remove filter ' + i);
+                remove_button.setAttribute('title', 'Remove filter');
+
+                function make_listener(index) {
+                    return function () {
+                        filters = filters.filter(function (x,j) { return j !== index; } );
+                        updateFilterList();
+                    };
+                }
+                remove_button.addEventListener('click', make_listener(i));
+
+                let icon  = document.createElement('span');
+                icon.className = 'far fa-minus-square';
+                remove_button.appendChild(icon);
+                filter_item_div.appendChild(remove_button);
+            });
+        }
+        updateFilterList();
+
+        add_filter_button.click( function () {
+            filters.push( ['max_value', null, null] );
+            updateFilterList();
+        });
+
+        reset_filters_button.click( function () {
+            filters = ran_filters.slice();
+            updateFilterList();
+        });
+
         // Applying Filters
         function applyFilters() {
-            //let filtered_out = data[number_comparisons[0]].map( function (x) {return false;} );
-            //filtered = filtered_out;
+            // Copy the filters that we last ran
+            ran_filters = filters.slice();
+
+            let filtered_out = data[0].map( function (x) {return false;} );
+
+            // Apply all filters
+            filters.forEach(function(filter) {
+                var filter_value = filter[0];
+
+                var lower_bound = filter[1];
+                var upper_bound = filter[2];
+
+                if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
+                if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
+
+                let values = filter_data.get(filter_value).values();
+                filtered_out = filtered_out.map( function (x,i) {
+                    return x || (values[i] < lower_bound) || (values[i] > upper_bound);
+                });
+            });
+
+            filtered = filtered_out;
 
             if (hide_filtered_checkbox.checked) {
                 // Move filtered items from the sort_order to the back of the list  to hide them
@@ -572,9 +771,62 @@
         }
         computeNumSignificantBelow();
 
-        apply_filters_button.click(function() {
-            applyFilters();
+        function readFilters() {
+            // Reads the values from the DOM into the filters list
+            filters = filter_list.find(".filter_item").map( function() {
+                var filter = $(this);
 
+                var value = filter.find(".filter_value_selector").val();
+
+                var lower_bound = parseFloat(filter.find(".filter_lower_bound").val());
+                var upper_bound = parseFloat(filter.find(".filter_upper_bound").val());
+
+                return [[value, lower_bound, upper_bound]];
+            }).toArray();
+        }
+
+        onApplyFilters = function(rerun_qvalues) {
+            // First gather all the filters the user has entered
+            readFilters();
+
+            // Apply the filters to the rows
+            // and also updates all the appropriate display
+            sortRows();
+
+            // Update the DB with the features
+            // and if rerunning q-values, ask server to do that
+            // TODO: currently no ajax to rerun q-values no matter
+            //$.ajax();
+
+            //if (rerun_qvalues) {
+            //    rerun_qvalues_button.prop('disabled', true);
+            //    rerun_qvalues_button.html(
+            //        "<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+            //        "</span>Computing...");
+            //}
+        };
+        apply_filters_button.click( function () {onApplyFilters(false);} );
+
+        rerun_qvalues_button.click( function () {
+            // Check if any filters violate assumptions of rerunning the q-values
+            let invalid = false;
+            filters.forEach( function (filter) {
+                if (!filter_data.get(filter[0]).independent) {
+                    let has_lb = !(isNaN(filter[1]) || (filter[1] === null));
+                    let has_ub = !(isNaN(filter[2]) || (filter[2] === null));
+                    if (has_lb || has_ub) {
+                        invalid = true;
+                    }
+                }
+            } );
+
+            if (invalid) {
+                // Popup a modal to issue the warning before proceeding
+                $('#rerun_qvalues_warning').modal();
+            } else {
+                // All good, apply the filters and rerun-qvalues
+                onApplyFilters(true);
+            }
         });
 
         var searchRows = function() {
@@ -1160,8 +1412,8 @@
                          <option value="amplitude">Amplitude</option>
                          <option value="upside" disabled>Damping</option>
                          <option value="two_way_anova" disabled>Two-way ANOVA</option>
-                         <option value="phase_change" disabled>Phase Change</option>
-                         <option value="amplitude_change" disabled>Amplitude Change</option>
+                         <option value="phase_change" disabled>Phase Difference</option>
+                         <option value="amplitude_change" disabled>Amplitude Difference</option>
                     </select>
                     <table class="table table-sm">
                         <thead>
@@ -1237,7 +1489,7 @@
                             </tr>
                             <tr> <td colspan="2">q: <span id="two_way_anova_q"></span></td> </tr>
 
-                            <tr> <td rowspan="2">Phase Change
+                            <tr> <td rowspan="2">Phase Difference
                                 <a class="text-primary help-pointer float-right"
                                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                                    title="Damping"
@@ -1249,7 +1501,7 @@
                             </tr>
                             <tr> <td colspan="2">q: <span id="phase_q"></span></td> </tr>
 
-                            <tr> <td rowspan="2">Amplitude Change
+                            <tr> <td rowspan="2">Amplitude Difference
                                 <a class="text-primary help-pointer float-right"
                                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                                    title="Damping"
@@ -1300,13 +1552,23 @@
                     <a id="filtersHelp" class="text-primary help-pointer"
                        data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                        title="Filter Help"
-                       data-content="Keep only rows matching the criteria provided. Please note that filter application can take some time to process.">
+                       data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
                         <i class="fas fa-info-circle ml-3"></i>
                     </a>
                 </div>
                 <div class="card-body">
+                    <div id="filter_list">
+                        <!-- Filters will go here, made dynamically -->
+                    </div>
+                    <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters">
+                        <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                    </button>
+                    <button id="add_filter_button" class="btn btn-default" style="float: right" aria-label="Add filter">
+                        <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
+                    </button>
                     <div>
-                        <button id="applyFilters" type="button" class="btn btn-primary mb-4" data-dismiss="modal">Apply filters</button>
+                        <button id="applyFilters" type="button" class="btn btn-primary mb-4">Apply filters</button>
+                        <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>
                     </div>
                 </div>
             </div>
