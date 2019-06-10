@@ -46,9 +46,10 @@
 
         fold_days_checkbox = document.getElementById('fold_days_checkbox');
 
-        num_days = (Math.max.apply(null, x_values[0]) + 1) / timepoints_per_day;
+        num_days = (Math.max.apply(null, x_values[0]) + 1) / timepoints_per_day[0];
         if (num_days > 1) {
             $('#fold_days_box').show();
+            $('#heatmap_fold_days_box').show();
         }
 
         // To be loaded later by ajax
@@ -359,7 +360,7 @@
         });
 
         // Heatmap
-        var computeHeatmap = function() {
+        let updateHeatmap = function() {
             $('#heatmap_block').hide();
             $('#download_heatmap').hide();
             $('#heatmap_controls').hide();
@@ -368,41 +369,26 @@
             let selected_indexes = sort_order.filter( function(row_num,rank) {
                 return (rank <= selected_row) & (!filtered[row_num]);
             } );
-            var phase_sorted_order = selected_indexes.sort( function (i,j) {
+            let phase_sorted_order = selected_indexes.sort( function (i,j) {
                 return compare(peak_times[number_comparisons[0]][i], peak_times[number_comparisons[0]][j], i,j);
             } );
 
-            var zScoreData = data.map(computeZScores(phase_sorted_order));
+            let zScoreData = data.map(computeZScores(phase_sorted_order));
 
-            // Average all z-scores at the same timepoint together
-            var meanZScores = zScoreData.map(  function(zscores,i) {
-                return meanByTimepoints(zscores, x_values[i]);
-            });
+            let times = x_values;
 
-            heatmap_data = zScoreData;
-            heatmap_combined_data = meanZScores;
+            let fold_days = $('#heatmap_fold_days').is(':checked');
+            if (fold_days) {
+                times = x_values.map( function(x_values_, idx) {
+                    return x_values_.map( function (x) {return x % timepoints_per_day[idx];} );
+                });
+            }
+
             heatmap_labels = phase_sorted_order.map( function(i) {
                 return labels[i];
             } );
 
-            heatmap_x_values = number_comparisons.map( function(spreadsheet_num) {
-                var rep_counts = [];
-                return x_values[spreadsheet_num].map( function(time) {
-                    if (rep_counts[time] === undefined) {
-                        rep_counts[time] = 0;
-                    }
-                    rep_counts[time] += 1;
-                    var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
-                    var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
-                    return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
-                });
-            });
-
-            updateHeatmap();
-        };
-
-        var updateHeatmap = function () {
-            var heatmap_options = {
+            let heatmap_options = {
                 modeBarButtonsToAdd: [{
                     name: 'download in SVG format',
                     icon: Plotly.Icons.camera,
@@ -413,40 +399,91 @@
             };
 
 
-            var data;
-            var combine_replicates = $('#combine_replicates').is(':checked');
+            let combine_replicates = $('#combine_replicates').is(':checked');
             if (combine_replicates) {
-                data = heatmap_combined_data;
+                // Average all z-scores at the same timepoint together
+                let meanZScores = zScoreData.map( function(zscores,idx) {
+                    return meanByTimepoints(zscores, times[idx]);
+                });
+
+                heatmap_data = meanZScores;
+
+                if (fold_days) {
+                    heatmap_x_values = meanZScores.map( function (zscores) {
+                        return zscores[0].map( function(x,i) {return "Timepoint " + (i + 1);});
+                    });
+                } else {
+                    heatmap_x_values = x_labels;
+                }
             } else {
-                data = heatmap_data;
+                if (fold_days) {
+                    let x_sort_order = times.map( function(times_) {
+                        return times_.map( function(x,i) {return i;} ).sort( function (i,j) {
+                            return compare(times_[i],times_[j],i,j);
+                        } );
+                    });
+
+                    heatmap_data = zScoreData.map( function(zscores,idx) {
+                        return zscores.map( function(row) {
+                            return x_sort_order[idx].map( function(i) {
+                                return row[i];
+                            });
+                        } );
+                    });
+
+                    let rep_counts = [];
+                    heatmap_x_values = x_sort_order.map( function(x_sort_order_, idx) {
+                        return x_sort_order_.map( function(i) {
+                            let time = times[idx][i];
+                            if (rep_counts[time] === undefined) {
+                                rep_counts[time] = 0;
+                            }
+                            rep_counts[time] += 1;
+
+                            return "Timepoint " + (time + 1) + " Rep " + rep_counts[time];
+                        });
+                    });
+                } else {
+                    heatmap_data = zScoreData;
+
+                    heatmap_x_values = number_comparisons.map( function(spreadsheet_num) {
+                        let rep_counts = [];
+                        return x_values[spreadsheet_num].map( function(time) {
+                            if (rep_counts[time] === undefined) {
+                                rep_counts[time] = 0;
+                            }
+                            rep_counts[time] += 1;
+                            let day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
+                            let time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                            return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
+                        });
+                    });
+                }
             }
+
             // Find max/min values so that we can center the colormap with 0=middle
-            var maxInRow = data.map( function(spreadsheet) { return spreadsheet.map(array_max); });
-            var minInRow = data.map( function(spreadsheet) { return spreadsheet.map(array_min); });
+            let maxInRow = heatmap_data.map( function(spreadsheet) { return spreadsheet.map(array_max); });
+            let minInRow = heatmap_data.map( function(spreadsheet) { return spreadsheet.map(array_min); });
 
-            var max = Math.max.apply(null, maxInRow.map(array_max));
-            var min = Math.min.apply(null, minInRow.map(array_min));
-            var limit = Math.max(Math.abs(min), Math.abs(max));
+            let max = Math.max.apply(null, maxInRow.map(array_max));
+            let min = Math.min.apply(null, minInRow.map(array_min));
+            let limit = Math.max(Math.abs(min), Math.abs(max));
 
-            var y_vals =  heatmap_labels.map(function (x,i) {return i;});
-            var show_labels = $('#heatmap_show_labels').is(':checked');
+            let y_vals =  heatmap_labels.map(function (x,i) {return i;});
+            let show_labels = $('#heatmap_show_labels').is(':checked');
 
-            var heatmap_values = number_comparisons.map( function(spreadsheet_num) {
-                var colorbar = {};
+            let heatmap_values = number_comparisons.map( function(spreadsheet_num) {
+                let colorbar = {};
                 if (spreadsheet_num === 0){
                     colorbar = {
                         title: 'Z Score',
                         titleside: 'right'
                     };
                 }
-                var x_vals = heatmap_x_values[spreadsheet_num];
-                if (combine_replicates) {
-                    x_vals = x_labels[spreadsheet_num];
-                }
                 return {
-                    x: x_vals,
+                    x: heatmap_x_values[spreadsheet_num],
                     y: y_vals,
-                    z: data[spreadsheet_num],
+                    z: heatmap_data[spreadsheet_num],
                     type: 'heatmap',
                     xaxis: "x" + (spreadsheet_num+1),
                     yaxis: "y",
@@ -456,7 +493,7 @@
                 };
             });
 
-            var heatmap_layout = {
+            let heatmap_layout = {
                 height: 700,
                 width: 1200,
                 margin: {
@@ -485,20 +522,16 @@
             $('#download_heatmap').show();
             $('#heatmap_controls').show();
         };
-        $('#set_breakpoint').click(computeHeatmap);
+        $('#set_breakpoint').click(updateHeatmap);
 
         $('#download_heatmap').click(function() {
             var gd = document.getElementById('heatmap');
             Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (selected_row+1)});
         });
 
-        $('#combine_replicates').change(function() {
-            updateHeatmap()
-        });
-
-        $('#heatmap_show_labels').change(function() {
-            updateHeatmap()
-        });
+        $('#combine_replicates').change(updateHeatmap);
+        $('#heatmap_fold_days').change(updateHeatmap);
+        $('#heatmap_show_labels').change(updateHeatmap);
 
         // Applying Filters
         function applyFilters() {
@@ -782,7 +815,7 @@
             sortRows();
 
             if ($('#heatmap_block').is(":visible")) {
-                computeHeatmap();
+                updateHeatmap();
             }
         });
 
@@ -1293,17 +1326,20 @@
                 <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
                 <div id="heatmap"></div>
                 <span id="heatmap_controls" class="col-lg-5" style="display:none">
-                    <span>Combine Replicates</span>
-                    <label class="switch">
-                        <input id="combine_replicates" name="combine_replicates" type="checkbox" >
-                        <span class="slider"></span>
-                    </label>
+                    <div class="form-check">
+                        <input class="form-check-input" id="combine_replicates" type="checkbox" value="">
+                        <label class="form-check-label" for="combine_replicates">Combine replicates</label>
+                    </div>
 
-                    <span>Show row labels</span>
-                    <label class="switch">
-                        <input id="heatmap_show_labels" name="combine_replicates" type="checkbox" />
-                        <span class="slider"></span>
-                    </label>
+                    <div class="form-check" id="heatmap_fold_days_box" style="display:none">
+                        <input class="form-check-input" id="heatmap_fold_days" type="checkbox" value="">
+                        <label class="form-check-label" for="heatmap_fold_days">Overlay cycles</label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" id="heatmap_show_labels" type="checkbox" value="">
+                        <label class="form-check-label" for="heatmap_show_labels">Show row lables</label>
+                    </div>
                 </span>
                 <span>
                     <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>

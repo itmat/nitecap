@@ -291,7 +291,6 @@
             $('#heatmap_controls').hide();
             $('#cutoff').html(num_significant_below[selected_row]);
 
-            let fold_days = $('#heatmap_fold_days').is(':checked');
 
             // Ajax call to save cutoff value
             $.ajax({
@@ -319,11 +318,11 @@
             } );
 
             let times = x_values;
+
+            let fold_days = $('#heatmap_fold_days').is(':checked');
             if (fold_days) {
                 times = x_values.map( function (x) {return x % timepoints_per_day;} );
             }
-            console.log(fold_days);
-            console.log(times);
 
             let zScoreData = computeZScores(phase_sorted_order)(data);
 
