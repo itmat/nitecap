@@ -607,7 +607,25 @@
                             independent: false}],
             ["peak_time1", {values: function () { return peak_times[number_comparisons[1]]; },
                             name: "Peak time Secondary",
-                            independent: false}]
+                            independent: false}],
+            ["two_way_anova_p", {values:function () { return two_way_anova_ps; },
+                                  name: "Two-way ANOVA p",
+                                  independent: false}],
+            ["two_way_anova_q", {values:function () { return two_way_anova_qs; },
+                                  name: "Two-way ANOVA q",
+                                  independent: false}],
+            ["phase_difference_q", {values:function () { return phase_ps; },
+                                  name: "Phase difference p",
+                                  independent: false}],
+            ["phase_difference_p", {values:function () { return phase_qs; },
+                                  name: "Phase difference q",
+                                  independent: false}],
+            ["amplitude_difference_p", {values:function () { return amplitude_ps; },
+                                  name: "Amplitude difference p",
+                                  independent: false}],
+            ["amplitude_difference_q", {values:function () { return amplitude_qs; },
+                                  name: "Amplitude difference q",
+                                  independent: false}]
             ];
         // Build a Map for convenience of the filter data
         filter_data = new Map();
