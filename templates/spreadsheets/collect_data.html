@@ -6,7 +6,8 @@
                 new RegExp("CT(\\d+)"), new RegExp("ct(\\d)"),
                 new RegExp("(\\d+)CT"), new RegExp("(\\d)ct"),
                 new RegExp("ZT(\\d+)"), new RegExp("zt(\\d+)"),
-                new RegExp("(\\d+)ZT"), new RegExp("(\\d+)zt")
+                new RegExp("(\\d+)ZT"), new RegExp("(\\d+)zt"),
+                new RegExp("^(\\d+)$")  // Just number nothing else
     ];
     function guessColumnLabels(columns, days, timepoints) {
         let best_num_matches = 0;
