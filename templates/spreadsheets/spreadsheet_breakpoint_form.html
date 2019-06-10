@@ -483,8 +483,8 @@
             info_layer.selectAll('.pca_legend').remove();
             info_layer.selectAll('.pca_legend_bg').remove();
 
-            let times = x_label_values;
-            let labels = x_labels;
+            let times = x_label_values.filter(function(t) { if (t < timepoints_per_day) { return 1; } else { return 0; } });
+            let labels = times.map( function(t) {return "Timepoint " + (t + 1);} );
 
             if (times.length > 6) {
                 // If there are too many points to show all in the legend
