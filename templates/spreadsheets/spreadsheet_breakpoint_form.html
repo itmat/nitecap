@@ -31,6 +31,9 @@
         timepoints_per_day = {{ timepoints_per_day | safe }};
         spreadsheet_id = {{ spreadsheet_id | safe }};
 
+        // List of regions to shade
+        shaded_regions = [];
+
         // Handles to the error modal on base.html
         nitecap_error = $("#error-modal");
         nitecap_error_message = $("#error-modal-message");
@@ -141,6 +144,23 @@
 
             var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
 
+            // Shade regions as specified by the list of regions
+            let shapes = [];
+            shapes = shaded_regions.map( function(region) {
+                let start = region[0];
+                let end = region[1];
+                return { type: 'rect',
+                          xref: 'x',
+                          yref: 'paper',
+                          x0: start,
+                          x1: end,
+                          y0: 0.0,
+                          y1: 1.0,
+                          line: { width: 0 },
+                          fillcolor: 'rgba(0,0,0, 0.3)'
+                        };
+            });
+
             // Default values for the different plot styles to override
             var values = [{
                 x: plot_x_values,
@@ -157,7 +177,8 @@
                     ticktext: plot_x_labels,
                     tickvals: plot_x_label_values,
                     automargin: true
-                }
+                },
+                shapes: shapes
             };
 
             // Pick data and styling based off the plot_style_select value
