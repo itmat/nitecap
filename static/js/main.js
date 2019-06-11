@@ -233,7 +233,7 @@ function means(table) {
         let sum = 0;
         let count = 0;
         row.forEach( function (x) {
-            if (isNaN(x)) {
+            if (isNaN(x) || x === null) {
                 return;
             }
             count += 1;
