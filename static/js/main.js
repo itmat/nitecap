@@ -254,6 +254,141 @@ function padEnd(string, length, character) {
     }
 }
 
+
+/// Util functions for finding column labels (timepoint/day counts) from headers
+var column_label_formats = [
+            new RegExp("CT(\\d+)"), new RegExp("ct(\\d)"),
+            new RegExp("(\\d+)CT"), new RegExp("(\\d)ct"),
+            new RegExp("ZT(\\d+)"), new RegExp("zt(\\d+)"),
+            new RegExp("(\\d+)ZT"), new RegExp("(\\d+)zt"),
+            new RegExp("^(\\d+)$"),  // Just number nothing else
+            new RegExp("(\\d+:\\d\\d)")  // 5:32-style labels
+];
+var clock_time_regexp = new RegExp("(\\d+):(\\d\\d)");
+
+function inferColumnTimes(columns, days, timepoints) {
+    let best_num_matches = 0;
+    let best_matches = [];
+    let best_format = null;
+
+    column_label_formats.forEach( function(fmt) {
+        let matches = columns.map( function(label) { return fmt.exec(label); } );
+        let num_matches = matches.filter( function(match) { return match !== null; }).length;
+        if (num_matches > best_num_matches) {
+            best_num_matches = num_matches;
+            best_matches = matches;
+            best_format = fmt;
+        }
+    });
+
+    if (best_num_matches === 0) {
+        return null;
+    }
+
+    // Try to convert the match to numbers, first as just plain integers than as ##:## clock times into minutes since midnight
+    let times = best_matches.map( function(match) {
+        if (match !== null) {
+            let val = parseInt(match[1], 10);
+            if (val === null) {
+                let m = clock_time_regex.exec(match[1]);
+                if (m === null) { return null; }
+                let hours = m[1];
+                let minutes = m[2];
+                return hours*60+minutes;
+            } else {
+                return val;
+            }
+        } else {
+            return null;
+        }
+    } );
+
+    return {times: times,
+            format: best_format,
+            matches: best_matches,
+            num_matches: best_num_matches};
+}
+
+function guessColumnLabels(columns, days, timepoints) {
+    let inferred = inferColumnTimes(columns, days, timepoints);
+
+    if (inferred  === null) {
+        // Nothing matches any known header format
+        return columns.map( function(x) {return "Ignore";} );
+    }
+
+    let times = inferred.times;
+    let num_matches = inferred.num_matches;
+
+    let min_time = Math.min.apply(null, times.filter(function(t) {return t !== null;}));
+    let max_time = Math.max.apply(null, times.filter(function(t) {return t !== null;}));
+    let total_time_delta = max_time - min_time;
+    let time_per_timepoint = total_time_delta / (timepoints * days - 1);
+
+    let time_point_counts = times.map(function(time,i) {
+        if (time !== null) {
+            return (time - min_time) / time_per_timepoint;
+        } else {
+            return null;
+        }
+    });
+
+    if (time_point_counts.every(function(t) {if (t !== null) {return Number.isInteger(t)} return true;})) {
+        let selections = time_point_counts.map( function(time_point_count, i) {
+            if (time_point_count === null) {
+                if (i == 0) {
+                    return "ID";
+                } else {
+                    return "Ignore";
+                }
+            }
+            return "Day" + (Math.floor(time_point_count / timepoints) + 1) + " Timepoint" + (time_point_count % timepoints + 1);
+        });
+
+        return selections;
+    }
+
+    // Okay, so the timepoints aren't evenly distributed
+    // But let's check there might be the right number of them
+    // assuming that there are constant number of reps per day
+    // and that they are in the right order
+    if (num_matches % (timepoints*days) === 0) {
+        let num_reps = Math.floor(num_matches / timepoints*days);
+
+        let selections = [];
+        let selected_below = 0;
+        columns.map( function(column, i) {
+            if (times[i] !== null) {
+                day = Math.floor(selected_below / timepoints);
+                time = selected_below % timepoints;
+                selections[i] = "Day" + (day+1) + " Timepoint" + (time+1);
+                selected_below += 1;
+            } else {
+                if (i == 0) {
+                    selections[i] = "ID";
+                } else {
+                    selections[i] = "Ignore";
+                }
+            }
+        });
+        return selections;
+    }
+
+    // No selections, we have uneven timepoints
+    return columns.map( function(x) {return "Ignore";} );
+}
+
+function getLabelOptions(days, timepoints) {
+    let options = ["Ignore", "ID"];
+    for(let i = 0; i < days; i++) {
+        for(let j = 0; j < timepoints; j++) {
+            options.push("Day" + (i+1) + " Timepoint" + (j+1));
+        }
+    }
+    return options;
+};
+
+
 //// Row selector object ////
 function makeRowSelector(element, labels, q_values, filtered, sort_order, num_row_selections, onSelect) {
     let rowSelector = {
@@ -418,7 +553,6 @@ function makeRowSelector(element, labels, q_values, filtered, sort_order, num_ro
 
         event.preventDefault();
     }, {passive: false}); // indicate that we will prevent default, true may later become the default
-    
 
     // add the options to the row_selector list
     for(var i = 0; i < num_row_selections; i++) {

@@ -30,6 +30,7 @@
         filters = {{ filters | safe }};
         timepoints_per_day = {{ timepoints_per_day | safe }};
         spreadsheet_id = {{ spreadsheet_id | safe }};
+        column_headers = {{ column_headers | safe }};
 
         // List of regions to shade
         shaded_regions = [];
@@ -133,6 +134,19 @@
                 plot_x_labels = plot_x_labels.map( function(x,i) {
                     return "Timepoint " + (i+1);
                 });
+            } else if (x_label_style === 'infer') {
+                let inferred = inferColumnTimes(column_headers, num_days, timepoints_per_day);
+                if (inferred !== null) {
+                    let headings = inferred.matches.map(function(x) {return x[0];});
+                    plot_x_labels = [];
+                    plot_x_label_values = [];
+                    x_values.forEach( function (time,i) {
+                        if (plot_x_labels[time] === undefined) {
+                            plot_x_labels[time] = headings[i];
+                            plot_x_label_values[time] = time;
+                        }
+                    });
+                }
             }
 
             // Down-sample x-labels if too many
@@ -1314,6 +1328,7 @@
                 <select id="plot_x_label_style" class="form-control form-control-sm">
                     <option value="daytime" selected>Day and time</option>
                     <option value="time">Time of day</option>
+                    <option value="infer">Inferred labels</option>
                     <option value="none">None</option>
                 </select>
             </div>
