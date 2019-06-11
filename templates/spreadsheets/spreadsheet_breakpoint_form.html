@@ -123,6 +123,22 @@
                 plot_x_label_values = x_label_values;
             }
 
+            let x_label_style = $('#plot_x_label_style').val();
+            if (x_label_style === 'none') {
+                plot_x_labels = plot_x_labels.map( function (x) {return '';} );
+            } else if (x_label_style === 'time') {
+                plot_x_labels = plot_x_labels.map( function(x,i) {
+                    return "Timepoint " + (i+1);
+                });
+            }
+
+            // Down-sample x-labels if too many
+            if (plot_x_labels.length > 8) {
+                let n = Math.floor(plot_x_labels.length / 8);
+                plot_x_labels = plot_x_labels.filter( function (x,i) {return (i % n) === 0;} );
+                plot_x_label_values = plot_x_label_values.filter( function (x,i) {return (i % n) === 0;} );
+            }
+
             var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
 
             // Default values for the different plot styles to override
@@ -238,9 +254,8 @@
             }
         }
 
-        $('#plot_style_select').change( function () {
-            redrawPlot();
-        });
+        $('#plot_style_select').change(redrawPlot);
+        $('#plot_x_label_style').change(redrawPlot);
         fold_days_checkbox.addEventListener('change', redrawPlot);
 
         coarse_slider.slider({
@@ -1261,19 +1276,31 @@
 
     <div class='col-auto'>
         <div id="scatter_plot" style="width:625px;height:450px;vertical-align: top"></div>
-        <label for="plot_style_select"></label>
-        <select id="plot_style_select" class="form-control form-control-sm">
-            <option value="basketweave" selected>Basketweave</option>
-            <option value="points">Points</option>
-            <option value="mean">Mean only</option>
-            <option value="mean_points">Points and Mean</option>
-            <option value="std">Standard Deviations</option>
-            <option value="SEM">SEM</option>
-        </select>
-        <div class="form-check" id="fold_days_box" style="display:none">
-            <input class="form-check-input" id="fold_days_checkbox" type="checkbox" value="">
-            <label class="form-check-label" for="fold_days_checkbox">Overlay cycles</label>
-        </div>
+        <form class="form-group">
+            <div class="form-inline">
+                <label for="plot_style_select">Plot style</label>
+                <select id="plot_style_select" class="form-control form-control-sm">
+                    <option value="basketweave" selected>Basketweave</option>
+                    <option value="points">Points</option>
+                    <option value="mean">Mean only</option>
+                    <option value="mean_points">Points and Mean</option>
+                    <option value="std">Standard Deviations</option>
+                    <option value="SEM">SEM</option>
+                </select>
+            </div>
+            <div class="form-inline">
+                <label for="plot_x_label_style">Plot x-axis labels</label>
+                <select id="plot_x_label_style" class="form-control form-control-sm">
+                    <option value="daytime" selected>Day and time</option>
+                    <option value="time">Time of day</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+            <div class="form-check" id="fold_days_box" style="display:none">
+                <input class="form-check-input" id="fold_days_checkbox" type="checkbox" value="">
+                <label class="form-check-label" for="fold_days_checkbox">Overlay cycles</label>
+            </div>
+        </form>
         <div class='py-3 float-right'>
             <button id="download_plot" class="btn btn-primary">Download Plot</button>
         </div>
