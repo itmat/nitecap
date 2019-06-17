@@ -79,12 +79,14 @@
             plot_x_labels = plot_x_labels.map( function (x) {return '';} );
         } else if (x_label_style === 'time') {
             plot_x_labels = plot_x_labels.map( function(x,i) {
-                return "Timepoint " + (i+1);
+                return "Timepoint " + (i % timepoints_per_day + 1);
             });
         } else if (x_label_style === 'infer') {
             let inferred = inferColumnTimes(column_headers, num_days, timepoints_per_day);
             if (inferred !== null) {
-                let headings = inferred.matches.map(function(x) {return x[0];});
+                let headings = inferred.times.map(function(t) {
+                    return inferred.format.make_label(t);
+                });
                 plot_x_labels = [];
                 plot_x_label_values = [];
                 x_values.forEach( function (time,i) {
@@ -97,15 +99,9 @@
         } else if (x_label_style === 'infer_wrapped') {
             let inferred = inferColumnTimes(column_headers, num_days, timepoints_per_day);
             if (inferred !== null) {
-                let headings = inferred.matches.map(function(x) {return x[0];});
-                if (headings[0].indexOf(":") >= 0) {
-                    // Displaying as 00:00 time
-                    headings = inferred.times.map(function(x) {
-                        let hours = Math.floor(x / 60);
-                        let minutes = x - hours*60;
-                        return zeroPad(hours % 24, 2) + ":" + zeroPad(minutes, 2);
-                    });
-                }
+                let headings = inferred.times.map(function(t) {
+                    return inferred.format.make_label(t, true);
+                });
 
                 plot_x_labels = [];
                 plot_x_label_values = [];

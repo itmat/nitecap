@@ -265,12 +265,62 @@ function zeroPad(integer, num_digits) {
 
 /// Util functions for finding column labels (timepoint/day counts) from headers
 var column_label_formats = [
-            new RegExp("CT(\\d+)"), new RegExp("ct(\\d)"),
-            new RegExp("(\\d+)CT"), new RegExp("(\\d)ct"),
-            new RegExp("ZT(\\d+)"), new RegExp("zt(\\d+)"),
-            new RegExp("(\\d+)ZT"), new RegExp("(\\d+)zt"),
-            new RegExp("^(\\d+)$"),  // Just number nothing else
-            new RegExp("(\\d+):(\\d\\d)")  // 5:32-style labels
+            // Formats with CT, eg CT04
+            {format: new RegExp("CT(\\d+)"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return 'CT'+zeroPad(x,2);
+            }},
+            {format: new RegExp("ct(\\d+)"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return 'ct'+zeroPad(x,2);
+            }},
+            {format: new RegExp("(\\d+)CT"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return zeroPad(x,2)+'CT';
+            }},
+            {format: new RegExp("(\\d+)ct"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return zeroPad(x,2)+'ct';
+            }},
+            // Formats with ZT, eg ZT04
+            {format: new RegExp("ZT(\\d+)"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return 'ZT'+zeroPad(x,2);
+            }},
+            {format: new RegExp("zt(\\d+)"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return 'zt'+zeroPad(x,2);
+            }},
+            {format: new RegExp("(\\d+)ZT"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return zeroPad(x,2)+'ZT';
+            }},
+            {format: new RegExp("(\\d+)zt"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return zeroPad(x,2)+'zt';
+            }},
+            // Just numbers, nothing else
+            {format: new RegExp("^(\\d+)$"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return ''+x;
+            }},
+            // 12:34 style label
+            {format: new RegExp("(\\d+):(\\d\\d)"),
+             make_label: function(x, wrapped) {
+                let hours = Math.floor(x/60);
+                let minutes = x - hours;
+                if (wrapped) { hours = hours % 24; }
+                return zeroPad(hours, 2) + ':' + zeroPad(minutes, 2);
+             }}
 ];
 var clock_time_regexp = new RegExp("(\\d+):(\\d\\d)");
 
@@ -280,7 +330,7 @@ function inferColumnTimes(columns, days, timepoints) {
     let best_format = null;
 
     column_label_formats.forEach( function(fmt) {
-        let matches = columns.map( function(label) { return fmt.exec(label); } );
+        let matches = columns.map( function(label) { return fmt.format.exec(label); } );
         let num_matches = matches.filter( function(match) { return match !== null; }).length;
         if (num_matches > best_num_matches) {
             best_num_matches = num_matches;
