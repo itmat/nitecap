@@ -678,6 +678,7 @@ def compare(user=None):
     peak_times = []
     anova_ps = []
     anova_qs = []
+    column_headers = []
     for i in [0, 1]:
         columns.append([column + f"_{i}" if column in common_columns else column
                         for column in spreadsheets[i].get_data_columns()])
@@ -689,6 +690,7 @@ def compare(user=None):
         anova_ps.append(df[f"anova_p_{i}"].values.tolist())
         anova_qs.append(df[f"anova_q_{i}"].values.tolist())
         tds.append(df[f"total_delta_{i}"].tolist())
+        column_headers.append(spreadsheets[i].get_data_columns())
 
     return render_template('spreadsheets/comparison.html',
                            data=json.dumps([dataset.tolist() for dataset in datasets]),
@@ -707,7 +709,8 @@ def compare(user=None):
                            tds=json.dumps(tds),
                            filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
                            timepoints_per_day=timepoints_per_day,
-                           spreadsheet_ids=spreadsheet_ids)
+                           spreadsheet_ids=spreadsheet_ids,
+                           column_headers=column_headers)
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
