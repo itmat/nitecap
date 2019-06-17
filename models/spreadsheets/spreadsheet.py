@@ -258,7 +258,7 @@ class Spreadsheet(db.Model):
         # convert to type string first since otherwise blank entries will result in float('NaN')
         first_id = id_indices[0]
         concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ')
-        return concats.tolist()
+        return concats
 
     def find_replicate_ids(self, *args):
         ids = list(self.get_ids(*args))

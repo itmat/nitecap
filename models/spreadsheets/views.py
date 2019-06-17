@@ -10,8 +10,9 @@ import numpy
 import pandas as pd
 import pyarrow
 import pyarrow.parquet
-from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, flash, json, jsonify
+from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, flash, jsonify
 from flask import current_app
+import simplejson
 from sklearn.decomposition import PCA
 
 import constants
@@ -33,11 +34,19 @@ FILE_UPLOAD_ERROR = "We are unable to load your spreadsheet at the present time.
 IMPROPER_ACCESS_TEMPLATE = Template('User $user_id attempted to apply the endpoint $endpoint to '
                                     'spreadsheet $spreadsheet_id.')
 
-# JSON cannot contain NaN or Inf but Python will happily encode those values by default
-# Create a new JSONEncoder using the simplejson library (used by flask if available) that
-# will replace NaN and Inf with null which isn't ideal but at least can be parsed by the browser
-json_encoder = json.JSONEncoder(ignore_nan=True)
-dumps = json_encoder.encode
+# Specialized JSON encoder for us that allows:
+# A) the inclusion of pandas objects (anything with a to_json(orient='values') method)
+# B) conversion of NaN and Inf to nulls
+# While (B) is unfortunate it is necessary to get them it to parse in the browser on return from an ajax call
+def json_encoder_for_pandas(obj):
+    try:
+        res = obj.to_json(orient="values")
+    except:
+        raise TypeError("Cannot serialize object")
+    else:
+        return simplejson.RawJSON(res)
+json_encoder = simplejson.JSONEncoder(ignore_nan=True, default=json_encoder_for_pandas)
+dumps = json_encoder.encode # Our encoder function
 
 @spreadsheet_blueprint.route('/upload_file', methods=['GET', 'POST'])
 @timeit
@@ -279,7 +288,7 @@ def show_spreadsheet(spreadsheet_id, user=None):
 
     data = spreadsheet.get_raw_data()
 
-    ids = json.dumps(spreadsheet.get_ids())
+    ids = json.dumps(list(spreadsheet.get_ids()))
     filters = spreadsheet.filters if spreadsheet.filters else []
 
     args = dict( data=data.to_json(orient='values'),
@@ -318,56 +327,6 @@ def get_spreadsheets(user=None):
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
     spreadsheets = []
-    for ID in spreadsheet_ids:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        if not spreadsheet:
-            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
-                                    .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
-            return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
-
-        # Populate
-        spreadsheet.init_on_load()
-
-        spreadsheet_args = dict( data=data.to_json(orient='values'),
-                     x_values=spreadsheet.x_values,
-                     x_labels=spreadsheet.x_labels,
-                     x_label_values=spreadsheet.x_label_values,
-                     qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
-                     ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
-                     tds=spreadsheet.df.total_delta.to_json(orient="values"),
-                     amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
-                     peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
-                     anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
-                     anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
-                     filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
-                     filters=filters,
-                     ids=ids,
-                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                     descriptive_name=spreadsheet.descriptive_name,
-                     timepoints_per_day=spreadsheet.timepoints,
-                     spreadsheet_id=spreadsheet_id,
-                     spreadsheet_note=spreadsheet.note,
-                     visitor=user.is_visitor(),
-                     column_headers=list(data.columns))
-        spreadsheets.append(spreadsheet_args)
-
-    return dumps(spreadsheets)
-
-    # COMPARISON
-    spreadsheets = []
-    x_values = []
-    x_labels = []
-    x_label_values = []
-    columns = []
-    datasets = []
-    timepoints_per_day = []
-
-    spreadsheet_ids = request.args.get('spreadsheet_ids', None)
-    if not spreadsheet_ids or len(spreadsheet_ids.split(",")) != 2:
-        errors.append("No spreadsheets were provided")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-    spreadsheet_ids = spreadsheet_ids.split(",")
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
@@ -378,73 +337,67 @@ def get_spreadsheets(user=None):
 
         spreadsheets.append(spreadsheet)
 
-    errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
-    if errors:
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    # TODO: do we need to check this?
+    #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
+    #if errors:
+    #    return jsonify({'error': errors}), 400
 
-    descriptive_names = []
-    for spreadsheet in spreadsheets:
-        x_values.append(spreadsheet.x_values)
-        x_labels.append(spreadsheet.x_labels)
-        x_label_values.append(spreadsheet.x_label_values)
-        descriptive_names.append(spreadsheet.descriptive_name)
-        timepoints_per_day.append(spreadsheet.timepoints)
-        data = spreadsheet.df
-        data["compare_ids"] = list(spreadsheet.get_ids())
-        current_app.logger.debug(f"Shape prior to removal of non-unique ids: {data.shape}")
-        data = data.set_index("compare_ids")
-        data = data[~data.index.duplicated()]
-        datasets.append(data)
-        current_app.logger.debug(f"Shape prior to join with label col: {data.shape}")
-    if not set(datasets[0].index) & set(datasets[1].index):
-        errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    if len(spreadsheets) == 1:
+        # For just a lone spreadsheet, we use all of its rows regardless of
+        # the IDs and so for example they don't need to be unique
+        datasets = [spreadsheet.get_raw_data()]
+        combined_index = pd.Index(spreadsheet.get_ids())
+    else:
+        # For more than 1, we take only unique IDs and do an inner join over all the spreadsheets
+        # that way they all have the same rows
+        combined_index = None
+        raw_datasets = []
+        for spreadsheet in spreadsheets:
+            data = spreadsheet.get_raw_data()
+            index = pd.Index(spreadsheet.get_ids())
+            data = data.set_index(index)
+            data = data[~index.duplicated()]
+            raw_datasets.append(data)
 
-    common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
-    df = datasets[0].join(datasets[1], how='inner', lsuffix='_0', rsuffix='_1')
-    df = df.sort_values(by=['total_delta_0'])
-    current_app.logger.debug(f"Shape after join: {df.shape}")
-    compare_ids = df.index.tolist()
-    datasets = []
-    qs = []
-    ps = []
-    tds = []
-    amplitudes = []
-    peak_times = []
-    anova_ps = []
-    anova_qs = []
-    column_headers = []
-    for i in [0, 1]:
-        columns.append([column + f"_{i}" if column in common_columns else column
-                        for column in spreadsheets[i].get_data_columns()])
-        datasets.append(df[columns[i]].values)
-        qs.append(df[f"nitecap_q_{i}"].values.tolist())
-        ps.append(df[f"nitecap_p_{i}"].values.tolist())
-        amplitudes.append(df[f"amplitude_{i}"].values.tolist())
-        peak_times.append(df[f"peak_time_{i}"].values.tolist())
-        anova_ps.append(df[f"anova_p_{i}"].values.tolist())
-        anova_qs.append(df[f"anova_q_{i}"].values.tolist())
-        tds.append(df[f"total_delta_{i}"].tolist())
-        column_headers.append(spreadsheets[i].get_data_columns())
+            if combined_index is None:
+                combined_index = data.index
+                continue
 
-    return render_template('spreadsheets/comparison.html',
-                           data=json.dumps([dataset.tolist() for dataset in datasets]),
-                           x_values=x_values,
-                           x_labels=x_labels,
-                           x_label_values=x_label_values,
-                           ids=compare_ids,
-                           descriptive_names=descriptive_names,
-                           qs=json.dumps(qs),
-                           ps=json.dumps(ps),
-                           amplitudes=json.dumps(amplitudes),
-                           peak_times=json.dumps(peak_times),
-                           anova_ps=json.dumps(anova_ps),
-                           anova_qs=json.dumps(anova_qs),
-                           tds=json.dumps(tds),
-                           filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
-                           timepoints_per_day=timepoints_per_day,
-                           spreadsheet_ids=spreadsheet_ids,
-                           column_headers=column_headers)
+            combined_index = combined_index.intersection(index)
+
+        # Select only the parts of the data in common to all
+        datasets = [data.loc[combined_index] for data in raw_datasets]
+
+    # Gather all values except for the actual numerical data
+    # Which is handled separately
+    spreadsheet_values = []
+    for spreadsheet, data in zip(spreadsheets, datasets):
+        values = dict(
+                     data=data,
+                     x_values=spreadsheet.x_values,
+                     x_labels=spreadsheet.x_labels,
+                     x_label_values=spreadsheet.x_label_values,
+                     qs=spreadsheet.df.nitecap_q,
+                     ps=spreadsheet.df.nitecap_p,
+                     tds=spreadsheet.df.total_delta,
+                     amplitudes=spreadsheet.df.amplitude,
+                     peak_times=spreadsheet.df.peak_time,
+                     anova_ps=spreadsheet.df.anova_p,
+                     anova_qs=spreadsheet.df.anova_q,
+                     filtered=spreadsheet.df.filtered_out,
+                     filters=spreadsheet.filters if spreadsheet.filters else [],
+                     labels=combined_index.to_list(),
+                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                     descriptive_name=spreadsheet.descriptive_name,
+                     timepoints_per_day=spreadsheet.timepoints,
+                     spreadsheet_id=spreadsheet.id,
+                     spreadsheet_note=spreadsheet.note,
+                     visitor=user.is_visitor(),
+                     column_headers=list(data.columns),
+                    )
+        spreadsheet_values.append(values)
+
+    return dumps(spreadsheet_values)
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
 @timeit
