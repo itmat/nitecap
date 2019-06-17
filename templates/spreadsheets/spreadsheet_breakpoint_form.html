@@ -7,6 +7,266 @@
         $('[data-toggle="tooltip"]').tooltip()
     });
 
+    function setShadedRegions(regions) {
+        // Take list of regions (each region is [start,end])
+        // sets this to be drawn by the plot and also computing dipping ratio
+
+        shaded_regions = regions;
+
+        let day_timepoints = data[0].map( function(x,i) {
+            for(let j = 0; j < regions.length; j++) {
+                let region = regions[j];
+                if ( (i > regions[j][0]) && (i < regions[j][1]) ) {
+                    return false;
+                }
+            }
+            return true
+        });
+
+        let data_days = data.map( function(row) {
+            return row.filter( function (x,i) {
+                return day_timepoints[i];
+            });
+        });
+
+        let data_nights = data.map( function(row) {
+            return row.filter( function (x,i) {
+                return !day_timepoints[i];
+            });
+        });
+
+        let day_means = means(data_days);
+        let night_means = means(data_nights);
+        let ratios = day_means.map( function(day_mean,i) {
+            return night_means[i] / day_mean;
+        });
+        dipping_ratios = ratios;
+        dipping_percents = ratios.map( function (x) { return (1-x)*100; } );
+
+        redrawPlot();
+        updateStatsBox();
+
+        if (regions.length > 0) {
+            $('.dipping_entry').show();
+        } else {
+            $('.dipping_entry').hide();
+        }
+    }
+
+    function redrawPlot() {
+        var row_index = sort_order[selected_row];
+
+        // Update the Plotly plot of the feature profile
+        let raw_y_values = data[row_index];
+        if (raw_y_values === undefined) {
+            console.log("Could not find the y-values for row " + row_index);
+            return;
+        }
+
+        fold_days = fold_days_checkbox.checked;
+        if (fold_days) {
+            plot_x_values = x_values.map( function (x) {return x % timepoints_per_day;});
+            plot_x_labels = plot_x_values.map( function(x) {return "Timepoint " + (x+1);});
+            plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
+        } else {
+            plot_x_values = x_values;
+            plot_x_labels = x_labels;
+            plot_x_label_values = x_label_values;
+        }
+
+        let x_label_style = $('#plot_x_label_style').val();
+        if (x_label_style === 'none') {
+            plot_x_labels = plot_x_labels.map( function (x) {return '';} );
+        } else if (x_label_style === 'time') {
+            plot_x_labels = plot_x_labels.map( function(x,i) {
+                return "Timepoint " + (i+1);
+            });
+        } else if (x_label_style === 'infer') {
+            let inferred = inferColumnTimes(column_headers, num_days, timepoints_per_day);
+            if (inferred !== null) {
+                let headings = inferred.matches.map(function(x) {return x[0];});
+                plot_x_labels = [];
+                plot_x_label_values = [];
+                x_values.forEach( function (time,i) {
+                    if (plot_x_labels[time] === undefined) {
+                        plot_x_labels[time] = headings[i];
+                        plot_x_label_values[time] = time;
+                    }
+                });
+            }
+        } else if (x_label_style === 'infer_wrapped') {
+            let inferred = inferColumnTimes(column_headers, num_days, timepoints_per_day);
+            if (inferred !== null) {
+                let headings = inferred.matches.map(function(x) {return x[0];});
+                if (headings[0].indexOf(":") >= 0) {
+                    // Displaying as 00:00 time
+                    headings = inferred.times.map(function(x) {
+                        let hours = Math.floor(x / 60);
+                        let minutes = x - hours*60;
+                        return zeroPad(hours % 24, 2) + ":" + zeroPad(minutes, 2);
+                    });
+                }
+
+                plot_x_labels = [];
+                plot_x_label_values = [];
+                x_values.forEach( function (time,i) {
+                    if (plot_x_labels[time] === undefined) {
+                        plot_x_labels[time] = headings[i];
+                        plot_x_label_values[time] = time;
+                    }
+                });
+            }
+        }
+
+        // Down-sample x-labels if too many
+        if (plot_x_labels.length > 8) {
+            let n = Math.floor(plot_x_labels.length / 8);
+            plot_x_labels = plot_x_labels.filter( function (x,i) {return (i % n) === 0;} );
+            plot_x_label_values = plot_x_label_values.filter( function (x,i) {return (i % n) === 0;} );
+        }
+
+        var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
+
+        // Shade regions as specified by the list of regions
+        let shapes = [];
+        shapes = shaded_regions.map( function(region) {
+            let start = region[0];
+            let end = region[1];
+            return { type: 'rect',
+                      xref: 'x',
+                      yref: 'paper',
+                      x0: start,
+                      x1: end,
+                      y0: 0.0,
+                      y1: 1.0,
+                      line: { width: 0 },
+                      fillcolor: 'rgba(0,0,0, 0.3)'
+                    };
+        });
+
+        // Default values for the different plot styles to override
+        var values = [{
+            x: plot_x_values,
+            y: raw_y_values,
+            mode: 'markers',
+            marker: marker_settings,
+            name: labels[row_index],
+            type: 'scatter'
+        }];
+        var layout = {
+            hovermode: 'closest',
+            title: labels[row_index],
+            xaxis: {
+                ticktext: plot_x_labels,
+                tickvals: plot_x_label_values,
+                automargin: true
+            },
+            shapes: shapes
+        };
+
+        // Pick data and styling based off the plot_style_select value
+        var plot_style = $('#plot_style_select').val();
+        if (plot_style === "basketweave") {
+            // Make pairs of points that are adjacent in time to each other
+            column_pairs = [];
+            plot_x_values.forEach( function(x,i) {
+                for(var j = i+1; j < plot_x_values.length; j++) {
+                    if (Math.abs(plot_x_values[j] - x) === 1) {
+                        column_pairs.push([i,j]);
+                    }
+                }
+            });
+
+            // points for the basketweave style
+            var paired_y_values = [];
+            for( var i in column_pairs ) {
+                paired_y_values.push( raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null );
+            }
+            var paired_x_values = [];
+            for( var i in column_pairs ) {
+                paired_x_values.push( plot_x_values[column_pairs[i][0]], plot_x_values[column_pairs[i][1]], null );
+            }
+
+            values[0].x = paired_x_values;
+            values[0].y = paired_y_values,
+            values[0].mode = 'lines+markers';
+        } else if (plot_style === "points") {
+            values[0].x = plot_x_values;
+            values[0].y = raw_y_values;
+        } else if (plot_style === "mean") {
+            values[0].mode = "lines";
+            values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+            values[0].y = stats.means;
+            values[0].name = labels[row_index] + " means";
+        } else if (plot_style === "mean_points") {
+            values[0].x = plot_x_values
+            values[0].y = raw_y_values;
+            values[1] = {
+                x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
+                y: stats.means,
+                name: labels[row_index] + " mean",
+                type: "scatter",
+                mode: "lines",
+                'line': {color: plot_color}
+            };
+            layout["showlegend"] = false;
+        } else if (plot_style === "std") {
+            values[0].mode = "lines";
+            values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+            values[0].y = stats.means;
+            values[0].name = labels[row_index] + " means";
+            values[0].error_y = {type: 'data', array:stats.stds, visible:true};
+        } else if (plot_style === "SEM") {
+            values[0].mode = "lines";
+            values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+            values[0].y = stats.means;
+            values[0].name = labels[row_index] + " means";
+            values[0].error_y = {type: 'data', array:stats.sems, visible:true};
+        }
+        Plotly.react(scatter_plot, values, layout);
+    };
+
+    function updateStatsBox() {
+        var row_index = sort_order[selected_row];
+
+        $('#significant_items')[0].value = num_significant_below[selected_row];
+
+        // Update the "statistics" card
+        $('#p_value').html(formatNum(ps[row_index], 4));
+        $('#p_value').prop('title', toString(ps[row_index]));
+        $('#q_value').html(formatNum(qs[row_index], 4));
+        $('#q_value').prop('title', toString(qs[row_index]));
+        $('#amplitude').html(formatNum(amplitudes[row_index], 4));
+        $('#amplitude').prop('title', toString(amplitudes[row_index]));
+        $('#anova_p').html(formatNum(anova_ps[row_index], 4));
+        $('#anova_p').prop('title', toString(anova_ps[row_index]));
+        $('#anova_q').html(formatNum(anova_qs[row_index], 4));
+        $('#anova_q').prop('title', toString(anova_qs[row_index]));
+        $('#peak_time').html(formatNum(peak_times[row_index], 4));
+        $('#peak_time').prop('title', toString(peak_times[row_index]));
+
+        if (jtk_ps !== null && jtk_qs !== null) {
+            $('#jtk_p').html(formatNum(jtk_ps[row_index], 4));
+            $('#jtk_p').prop('title', toString(jtk_ps[row_index]));
+            $('#jtk_q').html(formatNum(jtk_qs[row_index], 4));
+            $('#jtk_q').prop('title', toString(jtk_qs[row_index]));
+        } else {
+            $('#jtk_p').html("loading");
+            $('#jtk_p').prop('title', "loading");
+            $('#jtk_q').html("loading");
+            $('#jtk_q').prop('title', "loading");
+        }
+
+        if (dipping_ratios !== null) {
+            $('#dipping_ratio').html(formatNum(dipping_ratios[row_index], 4));
+            $('#dipping_ratio').prop('title', toString(dipping_ratios[row_index]));
+            $('#dipping_percent').html(formatNum(dipping_percents[row_index], 2) + "%");
+            $('#dipping_percent').prop('title', toString(dipping_percents[row_index]) + "%");
+        }
+
+    }
+
+
     PCA_WIDTH = 800;
     PCA_HEIGHT = 800;
     PCA_SYMBOL = "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0";
@@ -34,6 +294,8 @@
 
         // List of regions to shade
         shaded_regions = [];
+        // If shading regions, we compute ratio of means of the regions
+        dipping_ratios = null;
 
         // Handles to the error modal on base.html
         nitecap_error = $("#error-modal");
@@ -80,7 +342,7 @@
         marker_settings = {};
 
         // d3's default color
-        var plot_color = Plotly.d3.scale.category10()(0);
+        plot_color = Plotly.d3.scale.category10()(0);
 
         var scatter_plot = document.getElementById('scatter_plot');
 
@@ -105,189 +367,6 @@
         // This empty plot should be quickly replaced since we trigger a select change event once everything is
         // set up.
         Plotly.newPlot(scatter_plot, values, layout, {showLink: true});
-
-        var redrawPlot = function () {
-            var row_index = sort_order[selected_row];
-
-            // Update the Plotly plot of the feature profile
-            let raw_y_values = data[row_index];
-            if (raw_y_values === undefined) {
-                console.log("Could not find the y-values for row " + row_index);
-                return;
-            }
-
-            fold_days = fold_days_checkbox.checked;
-            if (fold_days) {
-                plot_x_values = x_values.map( function (x) {return x % timepoints_per_day;});
-                plot_x_labels = plot_x_values.map( function(x) {return "Timepoint " + (x+1);});
-                plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
-            } else {
-                plot_x_values = x_values;
-                plot_x_labels = x_labels;
-                plot_x_label_values = x_label_values;
-            }
-
-            let x_label_style = $('#plot_x_label_style').val();
-            if (x_label_style === 'none') {
-                plot_x_labels = plot_x_labels.map( function (x) {return '';} );
-            } else if (x_label_style === 'time') {
-                plot_x_labels = plot_x_labels.map( function(x,i) {
-                    return "Timepoint " + (i+1);
-                });
-            } else if (x_label_style === 'infer') {
-                let inferred = inferColumnTimes(column_headers, num_days, timepoints_per_day);
-                if (inferred !== null) {
-                    let headings = inferred.matches.map(function(x) {return x[0];});
-                    plot_x_labels = [];
-                    plot_x_label_values = [];
-                    x_values.forEach( function (time,i) {
-                        if (plot_x_labels[time] === undefined) {
-                            plot_x_labels[time] = headings[i];
-                            plot_x_label_values[time] = time;
-                        }
-                    });
-                }
-            }
-
-            // Down-sample x-labels if too many
-            if (plot_x_labels.length > 8) {
-                let n = Math.floor(plot_x_labels.length / 8);
-                plot_x_labels = plot_x_labels.filter( function (x,i) {return (i % n) === 0;} );
-                plot_x_label_values = plot_x_label_values.filter( function (x,i) {return (i % n) === 0;} );
-            }
-
-            var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
-
-            // Shade regions as specified by the list of regions
-            let shapes = [];
-            shapes = shaded_regions.map( function(region) {
-                let start = region[0];
-                let end = region[1];
-                return { type: 'rect',
-                          xref: 'x',
-                          yref: 'paper',
-                          x0: start,
-                          x1: end,
-                          y0: 0.0,
-                          y1: 1.0,
-                          line: { width: 0 },
-                          fillcolor: 'rgba(0,0,0, 0.3)'
-                        };
-            });
-
-            // Default values for the different plot styles to override
-            var values = [{
-                x: plot_x_values,
-                y: raw_y_values,
-                mode: 'markers',
-                marker: marker_settings,
-                name: labels[row_index],
-                type: 'scatter'
-            }];
-            var layout = {
-                hovermode: 'closest',
-                title: labels[row_index],
-                xaxis: {
-                    ticktext: plot_x_labels,
-                    tickvals: plot_x_label_values,
-                    automargin: true
-                },
-                shapes: shapes
-            };
-
-            // Pick data and styling based off the plot_style_select value
-            var plot_style = $('#plot_style_select').val();
-            if (plot_style === "basketweave") {
-                // Make pairs of points that are adjacent in time to each other
-                column_pairs = [];
-                plot_x_values.forEach( function(x,i) {
-                    for(var j = i+1; j < plot_x_values.length; j++) {
-                        if (Math.abs(plot_x_values[j] - x) === 1) {
-                            column_pairs.push([i,j]);
-                        }
-                    }
-                });
-
-                // points for the basketweave style
-                var paired_y_values = [];
-                for( var i in column_pairs ) {
-                    paired_y_values.push( raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null );
-                }
-                var paired_x_values = [];
-                for( var i in column_pairs ) {
-                    paired_x_values.push( plot_x_values[column_pairs[i][0]], plot_x_values[column_pairs[i][1]], null );
-                }
-
-                values[0].x = paired_x_values;
-                values[0].y = paired_y_values,
-                values[0].mode = 'lines+markers';
-            } else if (plot_style === "points") {
-                values[0].x = plot_x_values;
-                values[0].y = raw_y_values;
-            } else if (plot_style === "mean") {
-                values[0].mode = "lines";
-                values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                values[0].y = stats.means;
-                values[0].name = labels[row_index] + " means";
-            } else if (plot_style === "mean_points") {
-                values[0].x = plot_x_values
-                values[0].y = raw_y_values;
-                values[1] = {
-                    x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
-                    y: stats.means,
-                    name: labels[row_index] + " mean",
-                    type: "scatter",
-                    mode: "lines",
-                    'line': {color: plot_color}
-                };
-                layout["showlegend"] = false;
-            } else if (plot_style === "std") {
-                values[0].mode = "lines";
-                values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                values[0].y = stats.means;
-                values[0].name = labels[row_index] + " means";
-                values[0].error_y = {type: 'data', array:stats.stds, visible:true};
-            } else if (plot_style === "SEM") {
-                values[0].mode = "lines";
-                values[0].x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                values[0].y = stats.means;
-                values[0].name = labels[row_index] + " means";
-                values[0].error_y = {type: 'data', array:stats.sems, visible:true};
-            }
-            Plotly.react(scatter_plot, values, layout);
-        };
-
-        function updateStatsBox() {
-            var row_index = sort_order[selected_row];
-
-            $('#significant_items')[0].value = num_significant_below[selected_row];
-
-            // Update the "statistics" card
-            $('#p_value').html(formatNum(ps[row_index], 4));
-            $('#p_value').prop('title', toString(ps[row_index]));
-            $('#q_value').html(formatNum(qs[row_index], 4));
-            $('#q_value').prop('title', toString(qs[row_index]));
-            $('#amplitude').html(formatNum(amplitudes[row_index], 4));
-            $('#amplitude').prop('title', toString(amplitudes[row_index]));
-            $('#anova_p').html(formatNum(anova_ps[row_index], 4));
-            $('#anova_p').prop('title', toString(anova_ps[row_index]));
-            $('#anova_q').html(formatNum(anova_qs[row_index], 4));
-            $('#anova_q').prop('title', toString(anova_qs[row_index]));
-            $('#peak_time').html(formatNum(peak_times[row_index], 4));
-            $('#peak_time').prop('title', toString(peak_times[row_index]));
-
-            if (jtk_ps !== null && jtk_qs !== null) {
-                $('#jtk_p').html(formatNum(jtk_ps[row_index], 4));
-                $('#jtk_p').prop('title', toString(jtk_ps[row_index]));
-                $('#jtk_q').html(formatNum(jtk_qs[row_index], 4));
-                $('#jtk_q').prop('title', toString(jtk_qs[row_index]));
-            } else {
-                $('#jtk_p').html("loading");
-                $('#jtk_p').prop('title', "loading");
-                $('#jtk_q').html("loading");
-                $('#jtk_q').prop('title', "loading");
-            }
-        }
 
         $('#plot_style_select').change(redrawPlot);
         $('#plot_x_label_style').change(redrawPlot);
@@ -1329,6 +1408,7 @@
                     <option value="daytime" selected>Day and time</option>
                     <option value="time">Time of day</option>
                     <option value="infer">Inferred labels</option>
+                    <option value="infer_wrapped">Inferred labels wrapping</option>
                     <option value="none">None</option>
                 </select>
             </div>
@@ -1414,6 +1494,26 @@
                                 <i class="fas fa-info-circle ml-3"></i>
                             </a>
                              </td> <td id="peak_time"></td>
+                        </tr>
+
+                        <tr class="dipping_entry" style="display:none"> <td>Dipping Ratio
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Dipping Ratio"
+                               data-content="Ratio of mean value during night (shaded region) to mean during day (unshaded region). For blood pressure, classification of phenotypes is: reverse dippers if >1.0, non-dippers if >0.9, dipper if >0.8 and extreme dipper if <0.8">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                             </td> <td id="dipping_ratio"></td>
+                        </tr>
+
+                        <tr class="dipping_entry" style="display:none"> <td>Dipping Percent
+                            <a class="text-primary help-pointer float-right"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Dipping Percent"
+                               data-content="Percent dip during shaded region (>10% considered dipping, <0% considered reverse-dipping)">
+                                <i class="fas fa-info-circle ml-3"></i>
+                            </a>
+                             </td> <td id="dipping_percent"></td>
                         </tr>
                     </tbody>
                 </table>

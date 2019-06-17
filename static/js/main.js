@@ -254,6 +254,14 @@ function padEnd(string, length, character) {
     }
 }
 
+// Pad zeros in front of an integer
+function zeroPad(integer, num_digits) {
+    let s = toString(integer);
+    if (s.length > num_digits) {
+        return s;
+    }
+    return new Array(num_digits - s.length + 1).join('0') + s;
+}
 
 /// Util functions for finding column labels (timepoint/day counts) from headers
 var column_label_formats = [
@@ -262,7 +270,7 @@ var column_label_formats = [
             new RegExp("ZT(\\d+)"), new RegExp("zt(\\d+)"),
             new RegExp("(\\d+)ZT"), new RegExp("(\\d+)zt"),
             new RegExp("^(\\d+)$"),  // Just number nothing else
-            new RegExp("(\\d+:\\d\\d)")  // 5:32-style labels
+            new RegExp("(\\d+):(\\d\\d)")  // 5:32-style labels
 ];
 var clock_time_regexp = new RegExp("(\\d+):(\\d\\d)");
 
@@ -288,14 +296,12 @@ function inferColumnTimes(columns, days, timepoints) {
     // Try to convert the match to numbers, first as just plain integers than as ##:## clock times into minutes since midnight
     let times = best_matches.map( function(match) {
         if (match !== null) {
-            let val = parseInt(match[1], 10);
-            if (val === null) {
-                let m = clock_time_regex.exec(match[1]);
-                if (m === null) { return null; }
-                let hours = m[1];
-                let minutes = m[2];
+            if (match.length > 2) {
+                let hours = parseInt(match[1]);
+                let minutes = parseInt(match[2]);
                 return hours*60+minutes;
             } else {
+                let val = parseInt(match[1], 10);
                 return val;
             }
         } else {
