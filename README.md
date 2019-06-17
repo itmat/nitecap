@@ -262,29 +262,30 @@ BEGIN TRANSACTION;
  
 ALTER TABLE spreadsheets RENAME TO orig_spreadsheets;
  
-create table spreadsheets
-(
-    id                 INTEGER      not null
-        primary key,
-    descriptive_name   VARCHAR(250) not null,
-    days               INTEGER,
-    timepoints         INTEGER,
-    repeated_measures  BOOLEAN      not null,
-    header_row         INTEGER      not null,
-    original_filename  VARCHAR(250) not null,
-    file_mime_type     VARCHAR(250) not null,
-    breakpoint         INTEGER,
-    file_path          VARCHAR(250),
-    uploaded_file_path VARCHAR(250) not null,
-    date_uploaded      DATETIME     not null,
+CREATE TABLE "spreadsheets" (
+    id INTEGER NOT NULL,
+    descriptive_name VARCHAR(250) NOT NULL,
+    days INTEGER,
+    timepoints INTEGER,
+    repeated_measures BOOLEAN,
+    header_row INTEGER,
+    original_filename VARCHAR(250) NOT NULL,
+    file_mime_type VARCHAR(250) NOT NULL,
+    breakpoint INTEGER,
+    file_path VARCHAR(250),
+    uploaded_file_path VARCHAR(250) NOT NULL,
+    date_uploaded DATETIME NOT NULL,
     num_replicates_str VARCHAR(250),
-    column_labels_str  VARCHAR(2500),
-    max_value_filter   FLOAT,
-    last_access        DATETIME     not null,
-    user_id            INTEGER      not null
-        references users,
-    ids_unique         integer default 0,
-    note               varchar(5000)
+    column_labels_str VARCHAR(2500),
+    max_value_filter FLOAT,
+    last_access DATETIME NOT NULL,
+    user_id INTEGER NOT NULL,
+    ids_unique BIT,
+    note varchar(5000),
+    filters TEXT,
+    PRIMARY KEY (id),
+    CHECK (repeated_measures IN (0, 1)),
+    FOREIGN KEY(user_id) REFERENCES users (id)
 );
  
 INSERT INTO spreadsheets 
