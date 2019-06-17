@@ -307,6 +307,145 @@ def show_spreadsheet(spreadsheet_id, user=None):
     return render_template('spreadsheets/spreadsheet_breakpoint_form.html',**args)
 
 
+@spreadsheet_blueprint.route('/get_spreadsheets', methods=['POST'])
+@timeit
+@ajax_requires_account
+def get_spreadsheets(user=None):
+
+    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
+
+    if not spreadsheet_ids:
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
+
+    spreadsheets = []
+    for ID in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
+                                    .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
+            return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
+
+        # Populate
+        spreadsheet.init_on_load()
+
+        spreadsheet_args = dict( data=data.to_json(orient='values'),
+                     x_values=spreadsheet.x_values,
+                     x_labels=spreadsheet.x_labels,
+                     x_label_values=spreadsheet.x_label_values,
+                     qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
+                     ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
+                     tds=spreadsheet.df.total_delta.to_json(orient="values"),
+                     amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
+                     peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
+                     anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
+                     anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
+                     filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
+                     filters=filters,
+                     ids=ids,
+                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                     descriptive_name=spreadsheet.descriptive_name,
+                     timepoints_per_day=spreadsheet.timepoints,
+                     spreadsheet_id=spreadsheet_id,
+                     spreadsheet_note=spreadsheet.note,
+                     visitor=user.is_visitor(),
+                     column_headers=list(data.columns))
+        spreadsheets.append(spreadsheet_args)
+
+    return dumps(spreadsheets)
+
+    # COMPARISON
+    spreadsheets = []
+    x_values = []
+    x_labels = []
+    x_label_values = []
+    columns = []
+    datasets = []
+    timepoints_per_day = []
+
+    spreadsheet_ids = request.args.get('spreadsheet_ids', None)
+    if not spreadsheet_ids or len(spreadsheet_ids.split(",")) != 2:
+        errors.append("No spreadsheets were provided")
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    spreadsheet_ids = spreadsheet_ids.split(",")
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
+
+        # Populate
+        spreadsheet.init_on_load()
+
+        spreadsheets.append(spreadsheet)
+
+    errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
+    if errors:
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    descriptive_names = []
+    for spreadsheet in spreadsheets:
+        x_values.append(spreadsheet.x_values)
+        x_labels.append(spreadsheet.x_labels)
+        x_label_values.append(spreadsheet.x_label_values)
+        descriptive_names.append(spreadsheet.descriptive_name)
+        timepoints_per_day.append(spreadsheet.timepoints)
+        data = spreadsheet.df
+        data["compare_ids"] = list(spreadsheet.get_ids())
+        current_app.logger.debug(f"Shape prior to removal of non-unique ids: {data.shape}")
+        data = data.set_index("compare_ids")
+        data = data[~data.index.duplicated()]
+        datasets.append(data)
+        current_app.logger.debug(f"Shape prior to join with label col: {data.shape}")
+    if not set(datasets[0].index) & set(datasets[1].index):
+        errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
+    df = datasets[0].join(datasets[1], how='inner', lsuffix='_0', rsuffix='_1')
+    df = df.sort_values(by=['total_delta_0'])
+    current_app.logger.debug(f"Shape after join: {df.shape}")
+    compare_ids = df.index.tolist()
+    datasets = []
+    qs = []
+    ps = []
+    tds = []
+    amplitudes = []
+    peak_times = []
+    anova_ps = []
+    anova_qs = []
+    column_headers = []
+    for i in [0, 1]:
+        columns.append([column + f"_{i}" if column in common_columns else column
+                        for column in spreadsheets[i].get_data_columns()])
+        datasets.append(df[columns[i]].values)
+        qs.append(df[f"nitecap_q_{i}"].values.tolist())
+        ps.append(df[f"nitecap_p_{i}"].values.tolist())
+        amplitudes.append(df[f"amplitude_{i}"].values.tolist())
+        peak_times.append(df[f"peak_time_{i}"].values.tolist())
+        anova_ps.append(df[f"anova_p_{i}"].values.tolist())
+        anova_qs.append(df[f"anova_q_{i}"].values.tolist())
+        tds.append(df[f"total_delta_{i}"].tolist())
+        column_headers.append(spreadsheets[i].get_data_columns())
+
+    return render_template('spreadsheets/comparison.html',
+                           data=json.dumps([dataset.tolist() for dataset in datasets]),
+                           x_values=x_values,
+                           x_labels=x_labels,
+                           x_label_values=x_label_values,
+                           ids=compare_ids,
+                           descriptive_names=descriptive_names,
+                           qs=json.dumps(qs),
+                           ps=json.dumps(ps),
+                           amplitudes=json.dumps(amplitudes),
+                           peak_times=json.dumps(peak_times),
+                           anova_ps=json.dumps(anova_ps),
+                           anova_qs=json.dumps(anova_qs),
+                           tds=json.dumps(tds),
+                           filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
+                           timepoints_per_day=timepoints_per_day,
+                           spreadsheet_ids=spreadsheet_ids,
+                           column_headers=column_headers)
+
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
 @timeit
 @ajax_requires_account

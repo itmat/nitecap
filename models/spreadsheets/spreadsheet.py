@@ -200,18 +200,6 @@ class Spreadsheet(db.Model):
             print(e)
             raise NitecapException("The file provided could not be parsed.")
 
-    def column_defaults(self):
-        """
-        Try to guess the columns by looking for CT/ZT labels only if days and timepoints are populated.
-        :return: a list of tuples having header and guess or ignore column depending on whether days and
-        timepoints are set.
-        """
-        if not self.days or not self.timepoints:
-            return list(zip(self.df.columns, Spreadsheet.IGNORE_COLUMN * len(self.df.columns)))
-        selections = guess_column_labels(self.df.columns, self.timepoints, self.days)
-        return list(zip(self.df.columns, selections))
-
-
     def identify_columns(self, column_labels):
 
         # column labels saved as comma delimited string in db
@@ -659,54 +647,3 @@ column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
                         re.compile(r"ZT(\d+)"), re.compile(r"zt(\d+)"),
                         re.compile(r"(\d+)ZT"), re.compile(r"(\d+)zt")]
-
-def guess_column_labels(columns, timepoints, days):
-    best_num_matches = 0
-    best_matches = []
-    for fmt in column_label_formats:
-        matches = [fmt.search(label) for label in columns]
-        num_matches = len([match for match in matches if match])
-        if num_matches > best_num_matches:
-            best_num_matches = num_matches
-            best_matches = matches
-
-    if best_num_matches > 0:
-        times = [int(match.groups()[0]) if match else None
-                 for match in best_matches]
-        selected_columns = [column if match else None
-                                 for column, match in zip(columns, best_matches)]
-        min_time = min(time for time in times if time is not None)
-        max_time = max(time for time in times if time is not None)
-        total_time_delta = max_time - min_time
-        time_per_timepoint = total_time_delta / (timepoints * days - 1)
-        time_point_counts = [(time - min_time)/ time_per_timepoint if match else None
-                                for time, match in zip(times,best_matches)]
-        if all(int(time_point_count) == time_point_count for time_point_count in time_point_counts if time_point_count is not None):
-
-            selections = [f"Day{int(time_point_count // timepoints)+1} Timepoint{int(time_point_count % timepoints)+1}"
-                          if time_point_count is not None else "Ignore"
-                          for time_point_count in time_point_counts]
-            return selections
-        
-        # Okay, so the timepoitns aren't evenly distributed
-        # But let's check there might be the right number of them
-        # assuming that there are constant number of reps per day
-        # and that they are in the right order
-        if best_num_matches % (timepoints*days) == 0:
-            num_reps = int(best_num_matches // timepoints*days)
-
-            selections = []
-            selected_below = 0
-            for i,column in enumerate(columns):
-                if best_matches[i]:
-                    day = int(selected_below // timepoints)
-                    time = int(selected_below % timepoints)
-                    selections.append(f"Day{day+1} Timepoint{time+1}")
-                    selected_below += 1
-                else:
-                    selections.append("Ignore")
-            return selections
-        return ["Ignore"]*len(columns)  # No selections, we have uneven timepoints
-    else:
-        return ["Ignore"]*len(columns)
-
