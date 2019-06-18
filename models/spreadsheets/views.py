@@ -402,8 +402,8 @@ def get_jtk(user=None):
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
     # Now just extract the right columns
-    jtk_ps = [df["jtk_p"].loc[combined_index] for df in dfs]
-    jtk_qs = [df["jtk_q"].loc[combined_index] for df in dfs]
+    jtk_ps = [df["jtk_p"] for df in dfs]
+    jtk_qs = [df["jtk_q"] for df in dfs]
     #results = [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
     #jtk_ps = [ps for ps,qs in results]
     #jtk_qs = [qs for ps,qs in results]

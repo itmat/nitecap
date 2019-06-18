@@ -1218,13 +1218,13 @@
         // Load the JTK values
         $.ajax({
             url: "{{url_for('spreadsheets.get_jtk')}}",
-            data: JSON.stringify({'spreadsheet_id': spreadsheet_id}),
+            data: JSON.stringify({'spreadsheet_ids': [spreadsheet_id]}),
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
             success: function(response) {
-                jtk_ps = response['jtk_ps'];
-                jtk_qs = response['jtk_qs'];
+                jtk_ps = response['jtk_ps'][0];
+                jtk_qs = response['jtk_qs'][0];
 
                 $('#sort_select option[value="jtk"]').removeAttr("disabled");
 
