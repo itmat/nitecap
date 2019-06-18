@@ -625,6 +625,39 @@ class Spreadsheet(db.Model):
                       self.column_labels))
 
     @staticmethod
+    def join_spreadsheets(spreadsheets):
+        ''' Take inner join of multiple spreadsheets
+
+        returns a list of the joined dataframes as well as the appropriate index
+        '''
+        if len(spreadsheets) == 1:
+            # For just a lone spreadsheet, we use all of its rows regardless of
+            # the IDs and so for example they don't need to be unique
+            dfs = [spreadsheets[0].df]
+            combined_index = pd.Index(spreadsheets[0].get_ids())
+        else:
+            # For more than 1, we take only unique IDs and do an inner join over all the spreadsheets
+            # that way they all have the same rows
+            combined_index = None
+            dfs = []
+            for spreadsheet in spreadsheets:
+                index = pd.Index(spreadsheet.get_ids())
+                df = spreadsheet.df.set_index(index)
+                df = df[~index.duplicated()]
+                dfs.append(df)
+
+                if combined_index is None:
+                    combined_index = df.index
+                    continue
+
+                combined_index = combined_index.intersection(index)
+
+            # Select only the parts of the data in common to all
+            dfs = [df.loc[combined_index] for df in dfs]
+
+        return dfs, combined_index
+
+    @staticmethod
     def check_for_timepoint_consistency(spreadsheets):
         errors = []
         if not spreadsheets or len(spreadsheets) < 2:

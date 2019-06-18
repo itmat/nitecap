@@ -337,35 +337,7 @@ def get_spreadsheets(user=None):
 
         spreadsheets.append(spreadsheet)
 
-    # TODO: do we need to check this?
-    #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
-    #if errors:
-    #    return jsonify({'error': errors}), 400
-
-    if len(spreadsheets) == 1:
-        # For just a lone spreadsheet, we use all of its rows regardless of
-        # the IDs and so for example they don't need to be unique
-        datasets = [spreadsheet.get_raw_data()]
-        combined_index = pd.Index(spreadsheet.get_ids())
-    else:
-        # For more than 1, we take only unique IDs and do an inner join over all the spreadsheets
-        # that way they all have the same rows
-        combined_index = None
-        dfs = []
-        for spreadsheet in spreadsheets:
-            index = pd.Index(spreadsheet.get_ids())
-            df = spreadsheet.df.set_index(index)
-            df = df[~index.duplicated()]
-            dfs.append(df)
-
-            if combined_index is None:
-                combined_index = df.index
-                continue
-
-            combined_index = combined_index.intersection(index)
-
-        # Select only the parts of the data in common to all
-        dfs = [df.loc[combined_index] for df in dfs]
+    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
     # TODO: should load JTK ps and qs here if available, currently just report them as None
 
