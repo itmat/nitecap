@@ -402,9 +402,11 @@ def get_jtk(user=None):
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
     # Now just extract the right columns
-    results = [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
-    jtk_ps = [ps for ps,qs in results]
-    jtk_qs = [qs for ps,qs in results]
+    jtk_ps = [df["jtk_p"].loc[combined_index] for df in dfs]
+    jtk_qs = [df["jtk_q"].loc[combined_index] for df in dfs]
+    #results = [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
+    #jtk_ps = [ps for ps,qs in results]
+    #jtk_qs = [qs for ps,qs in results]
 
     return dumps({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
 
@@ -760,29 +762,15 @@ def get_upside():
             current_app.logger.info(f"Loaded upside values from file {file_path}")
         except OSError: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
-                dfs = []
+                # Populate all
                 for spreadsheet in spreadsheets:
-                    # Populate
                     spreadsheet.init_on_load()
 
-                    data = spreadsheet.df
-                    data["compare_ids"] = list(spreadsheet.get_ids())
-                    data = data.set_index("compare_ids")
-                    data = data[~data.index.duplicated()]
-                    dfs.append(data)
+                dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-                common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
-                df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
-                df = df.sort_values(by=['total_delta_0'])
-                compare_ids = df.index.tolist()
-
-                for i in [0, 1]:
-                    columns = [column + f"_{i}" if column in common_columns else column
-                                        for column in spreadsheets[i].get_data_columns(by_day=False)]
-                    datasets.append(df[columns].values)
+                datasets = [df[spreadsheet.get_data_columns()].values for df, spreadsheet in zip(dfs, spreadsheets)]
 
             # Run the actual upside calculation
-            current_app.logger.info(f"Dataset sizes: {df.shape}, {datasets[primary].shape}, {datasets[secondary].shape}")
             upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates_by_time, datasets[primary],
                                            spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
             upside_q = nitecap.util.BH_FDR(upside_p)
@@ -799,7 +787,7 @@ def get_upside():
                 phase_q = nitecap.util.BH_FDR(phase_p)
                 amplitude_q = nitecap.util.BH_FDR(amplitude_p)
 
-            comp_data = pd.DataFrame(index=df.index)
+            comp_data = pd.DataFrame(index=combined_index)
             comp_data["upside_ps"] = upside_p
             comp_data["upside_qs"] = upside_q
             comp_data["two_way_anova_ps"] = anova_p
