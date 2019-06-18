@@ -351,40 +351,39 @@ def get_spreadsheets(user=None):
         # For more than 1, we take only unique IDs and do an inner join over all the spreadsheets
         # that way they all have the same rows
         combined_index = None
-        raw_datasets = []
+        dfs = []
         for spreadsheet in spreadsheets:
-            data = spreadsheet.get_raw_data()
             index = pd.Index(spreadsheet.get_ids())
-            data = data.set_index(index)
-            data = data[~index.duplicated()]
-            raw_datasets.append(data)
+            df = spreadsheet.df.set_index(index)
+            df = df[~index.duplicated()]
+            dfs.append(df)
 
             if combined_index is None:
-                combined_index = data.index
+                combined_index = df.index
                 continue
 
             combined_index = combined_index.intersection(index)
 
         # Select only the parts of the data in common to all
-        datasets = [data.loc[combined_index] for data in raw_datasets]
+        dfs = [df.loc[combined_index] for df in dfs]
 
     # Gather all values except for the actual numerical data
     # Which is handled separately
     spreadsheet_values = []
-    for spreadsheet, data in zip(spreadsheets, datasets):
+    for spreadsheet, df in zip(spreadsheets, dfs):
         values = dict(
-                     data=data,
+                     data=df[spreadsheet.get_data_columns()],
                      x_values=spreadsheet.x_values,
                      x_labels=spreadsheet.x_labels,
                      x_label_values=spreadsheet.x_label_values,
-                     qs=spreadsheet.df.nitecap_q,
-                     ps=spreadsheet.df.nitecap_p,
-                     tds=spreadsheet.df.total_delta,
-                     amplitudes=spreadsheet.df.amplitude,
-                     peak_times=spreadsheet.df.peak_time,
-                     anova_ps=spreadsheet.df.anova_p,
-                     anova_qs=spreadsheet.df.anova_q,
-                     filtered=spreadsheet.df.filtered_out,
+                     qs=df.nitecap_q,
+                     ps=df.nitecap_p,
+                     tds=df.total_delta,
+                     amplitudes=df.amplitude,
+                     peak_times=df.peak_time,
+                     anova_ps=df.anova_p,
+                     anova_qs=df.anova_q,
+                     filtered=df.filtered_out,
                      filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
                      breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -393,7 +392,7 @@ def get_spreadsheets(user=None):
                      spreadsheet_id=spreadsheet.id,
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
-                     column_headers=list(data.columns),
+                     column_headers=spreadsheet.get_data_columns(),
                     )
         spreadsheet_values.append(values)
 
