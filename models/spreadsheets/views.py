@@ -842,74 +842,41 @@ def run_pca(user=None):
     # Inner join of the spreadsheets so that they match indexes
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-    if len(dfs) == 2:
-        datasets = [df.iloc[selected_genes][spreadsheet.get_data_columns()].values for df,spreadsheet in zip(dfs, spreadsheets)]
+    datasets = [df.iloc[selected_genes][spreadsheet.get_data_columns()].values for df,spreadsheet in zip(dfs, spreadsheets)]
 
-        data = numpy.concatenate(datasets, axis=1)
+    data = numpy.concatenate(datasets, axis=1)
 
-        # Drop rows that contain NaNs
-        data = data[numpy.isfinite(data).all(axis=1)]
-        if data.shape[0] < 3:
-            return "Insufficient non-NaN rows selected. Need at least 3", 500
+    # Drop rows that contain NaNs
+    data = data[numpy.isfinite(data).all(axis=1)]
+    if data.shape[0] < 3:
+        return "Insufficient non-NaN rows selected. Need at least 3", 500
 
-        if take_log_transform:
-            # log(1+x) transform data
-            data = numpy.log(1 + data)
+    if take_log_transform:
+        # log(1+x) transform data
+        data = numpy.log(1 + data)
 
-        if take_zscore:
-            # Normalize to z-scored data across both datasets
-             data = (data - data.mean(axis=0)) / data.std(axis=0)
+    if take_zscore:
+        # Normalize to z-scored data across both datasets
+         data = (data - data.mean(axis=0)) / data.std(axis=0)
 
-        # Run the PCA
-        pca = PCA(n_components=2)
-        try:
-            coords = pca.fit_transform(data.T)
-        except ValueError:
-            return "NaN value encountered - PCA must be run on only non-NaN, non-empty values", 500
+    # Run the PCA
+    pca = PCA(n_components=2)
+    try:
+        coords = pca.fit_transform(data.T)
+    except ValueError:
+        return "NaN value encountered - PCA must be run on only non-NaN, non-empty values", 500
 
-        # Separate the coords into the two datasets
-        pca_coords = []
-        start = 0
-        for dataset in datasets:
-            num_cols = dataset.shape[1]
-            pca_coords.append(coords[start:start + num_cols].T.tolist())
-            start += num_cols
-        return jsonify({
-                    'pca_coords': pca_coords,
-                    'explained_variance': pca.explained_variance_ratio_.tolist()
-                })
-    elif len(dfs) == 1:
-        # PCA on just one dataset
-        df = dfs[0]
-        df = df.iloc[selected_genes]
-        data_columns = spreadsheets[0].get_data_columns()
-        data = df[data_columns].values
-
-        # Drop rows that contain NaNs
-        data = data[numpy.isfinite(data).all(axis=1)]
-        if data.shape[0] < 3:
-            return "Insufficient non-NaN rows selected. Need at least 3", 500
-
-        if take_log_transform:
-            # log(1+x) transform data
-            data = numpy.log(1 + data)
-
-        if take_zscore:
-            # Normalize to z-scored data across both datasets
-             data = (data - data.mean(axis=0)) / data.std(axis=0)
-
-        pca = PCA(n_components=2)
-        try:
-            coords = pca.fit_transform(data.T)
-        except ValueError:
-            return "NaN value encountered - PCA must be run on only non-NaN, non-empty values", 500
-
-        return jsonify({
-                        'pca_coords': coords.T.tolist(),
-                        'explained_variance': pca.explained_variance_ratio_.tolist()
-                    })
-    else:
-        raise NotImplementedError("Require either 1 or 2 datasets for PCA analysis")
+    # Separate the coords into the two datasets
+    pca_coords = []
+    start = 0
+    for dataset in datasets:
+        num_cols = dataset.shape[1]
+        pca_coords.append(coords[start:start + num_cols].T.tolist())
+        start += num_cols
+    return jsonify({
+                'pca_coords': pca_coords,
+                'explained_variance': pca.explained_variance_ratio_.tolist()
+            })
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 @requires_account

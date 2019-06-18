@@ -712,7 +712,7 @@
                 contentType: 'application/json',
                 type: 'POST',
                 success: function (response) {
-                    pca_coords = response['pca_coords'];
+                    pca_coords = response['pca_coords'][0];
                     explained_variance = response['explained_variance'];
 
                     var traces = [{
