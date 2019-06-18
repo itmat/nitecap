@@ -127,7 +127,7 @@
                 $('#q_value' + order).html(formatNum(spreadsheet.qs[row_index], 4));
                 $('#q_value' + order).prop('title', toString(spreadsheet.qs[row_index]));
                 $('#amplitude' + order).html(formatNum(spreadsheet.amplitudes[row_index], 4));
-                $('#amplitude' + order).prop('title', spreadsheet.toString(spreadsheet.amplitudes[row_index]));
+                $('#amplitude' + order).prop('title', toString(spreadsheet.amplitudes[row_index]));
                 $('#anova_p' + order).html(formatNum(spreadsheet.anova_ps[row_index], 4));
                 $('#anova_p' + order).prop('title', toString(spreadsheet.anova_ps[row_index]));
                 $('#anova_q' + order).html(formatNum(spreadsheet.anova_qs[row_index], 4));
