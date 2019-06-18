@@ -1058,28 +1058,34 @@
         } );
 
         // Load the JTK values for each spreadsheet
-        spreadsheets.forEach( function (spreadsheet, idx) {
-            $.ajax({
-                url: "{{url_for('spreadsheets.get_jtk')}}",
-                data: JSON.stringify({'spreadsheet_id': spreadsheet_ids[idx]}),
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function(response) {
-                    spreadsheet.jtk_ps = response['jtk_ps'];
-                    spreadsheet.jtk_qs = response['jtk_qs'];
+        $.ajax({
+            url: "{{url_for('spreadsheets.get_jtk')}}",
+            data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+            dataType: "json",
+            contentType: "application/json",
+            type: 'POST',
+            success: function(response) {
+                let jtk_ps = response['jtk_ps'];
+                let jtk_qs = response['jtk_qs'];
 
-                    if (idx === 0) {
-                        $('#sort_select option[value="jtk"]').removeAttr("disabled");
-                    }
+                // Find the right spreadsheets and put each jtk_ps/qs into it
+                spreadsheet_ids.forEach(function(id, i) {
+                    spreadsheets.forEach(function(spreadsheet) {
+                        if (spreadsheet.spreadsheet_id == id) {
+                            spreadsheet.jtk_ps = jtk_ps[i];
+                            spreadsheet.jtk_qs = jtk_qs[i];
+                        }
+                    });
+                });
 
-                    updateStatsBox();
-                },
-                error: function(error) {
-                    console.log("Error loading JTK values");
-                    console.log(error);
-                }
-            });
+                $('#sort_select option[value="jtk"]').removeAttr("disabled");
+
+                updateStatsBox();
+            },
+            error: function(error) {
+                console.log("Error loading JTK values");
+                console.log(error);
+            }
         });
 
         // Load the Upside values

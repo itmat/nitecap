@@ -379,21 +379,33 @@ def get_spreadsheets(user=None):
 @ajax_requires_account
 def get_jtk(user=None):
 
-    spreadsheet_id = json.loads(request.data)['spreadsheet_id']
+    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
-    if not spreadsheet_id:
+    if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-    if not spreadsheet:
-        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
-                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
-        return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
+    spreadsheets = []
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
 
-    # Populate
-    spreadsheet.init_on_load()
+        # Populate
+        spreadsheet.init_on_load()
 
-    jtk_ps, jtk_qs = spreadsheet.get_jtk()
+        spreadsheets.append(spreadsheet)
+
+    # Running it once will calculate JTK if necessary
+    [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
+
+    # Inner join of the spreadsheets so that they match indexes
+    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+
+    # Now just extract the right columns
+    results = [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
+    jtk_ps = [ps for ps,qs in results]
+    jtk_qs = [qs for ps,qs in results]
+
     return dumps({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
 
 
@@ -705,7 +717,7 @@ def compare(user=None):
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
     return render_template('spreadsheets/comparison.html',
-                           spreadsheet_ids=spreadsheet_ids,
+                           spreadsheet_ids=[int(ID) for ID in spreadsheet_ids],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 
