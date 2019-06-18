@@ -13,28 +13,37 @@
 
     $(document).ready(function () {
 
-        labels = {{ ids | safe }}
-        x_values = {{ x_values | safe }};
-        x_labels = {{ x_labels | safe }};
-        x_label_values = {{ x_label_values | safe }};
-        data = {{ data | safe }};
-        descriptive_names = {{ descriptive_names | safe }}
-        qs = {{ qs | safe }};
-        ps = {{ ps | safe }};
-        tds = {{ tds | safe }};
-        amplitudes = {{ amplitudes | safe }};
-        anova_ps = {{ anova_ps | safe }};
-        anova_qs = {{ anova_qs | safe }};
-        peak_times = {{ peak_times | safe }};
-        filtered = {{ filtered | safe }};
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
-        timepoints_per_day = {{ timepoints_per_day | safe }};
-        column_headers = {{ column_headers | safe }};
+
+        spreadsheets = null;
+
+        $.ajax({
+            url: "/spreadsheets/get_spreadsheets",
+            data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+            dataType: "json",
+            contentType: "application/json",
+            type: 'POST',
+            success: function(response) {
+                spreadsheets = response;
+
+                onSpreadsheetLoad();
+            },
+            error: function(error) {
+                console.log("Error loading spreadsheets");
+                console.log(error);
+            }
+        });
+    });
+
+    function onSpreadsheetLoad() {
+        labels = spreadsheets[0].labels; // Both have same labels, so we pull those out
+
+        // Start with no filters since we don't save these to DB for comparison
         filters = [];
+        filtered = spreadsheets[0].labels.map(function(x) {return false;});
 
-        number_comparisons = Array.apply(null, {length: x_values.length}).map(Number.call, Number);
 
-        $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
+        $("#primary_plot_name").text(spreadsheets[0].descriptive_names);
 
         var breakpoint = 0;
 
@@ -52,7 +61,7 @@
 
         fold_days_checkbox = document.getElementById('fold_days_checkbox');
 
-        num_days = (Math.max.apply(null, x_values[0]) + 1) / timepoints_per_day[0];
+        num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
         if (num_days > 1) {
             $('#fold_days_box').show();
             $('#heatmap_fold_days_box').show();
@@ -86,11 +95,11 @@
 
         var traces = Array(2);
 
-        number_comparisons.forEach(function(ctr) {
+        spreadsheets.forEach(function(spreadsheet, idx) {
 
-            traces[ctr] = {
-                x: x_values[ctr],
-                y: x_values[ctr].map(function (x) {
+            traces[idx] = {
+                x: spreadsheet.x_values,
+                y: spreadsheet.x_values.map(function (x) {
                     return 0;
                 }),
                 name: trace_name,
@@ -104,8 +113,8 @@
         var layout = {
             xaxis: {
                 title: labels[breakpoint],
-                ticktext: x_labels[0],
-                tickvals: x_label_values[0],
+                ticktext: spreadsheets[0].x_labels,
+                tickvals: spreadsheets[0].x_label_values,
                 automargin: true
             },
             legend: {
@@ -138,26 +147,26 @@
 
             $('#significant_items')[0].value = num_significant_below[selected_row];
 
-            number_comparisons.forEach( function (idx, order) {
+            spreadsheets.forEach( function (spreadsheet, order) {
                 // Update the "statistics" card
-                $('#p_value' + order).html(formatNum(ps[idx][row_index], 4));
-                $('#p_value' + order).prop('title', toString(ps[idx][row_index]));
-                $('#q_value' + order).html(formatNum(qs[idx][row_index], 4));
-                $('#q_value' + order).prop('title', toString(qs[idx][row_index]));
-                $('#amplitude' + order).html(formatNum(amplitudes[idx][row_index], 4));
-                $('#amplitude' + order).prop('title', toString(amplitudes[idx][row_index]));
-                $('#anova_p' + order).html(formatNum(anova_ps[idx][row_index], 4));
-                $('#anova_p' + order).prop('title', toString(anova_ps[idx][row_index]));
-                $('#anova_q' + order).html(formatNum(anova_qs[idx][row_index], 4));
-                $('#anova_q' + order).prop('title', toString(anova_qs[idx][row_index]));
-                $('#peak_time' + order).html(formatNum(peak_times[idx][row_index], 4));
-                $('#peak_time' + order).prop('title', toString(peak_times[idx][row_index]));
+                $('#p_value' + order).html(formatNum(spreadsheet.ps[row_index], 4));
+                $('#p_value' + order).prop('title', toString(spreadsheet.ps[row_index]));
+                $('#q_value' + order).html(formatNum(spreadsheet.qs[row_index], 4));
+                $('#q_value' + order).prop('title', toString(spreadsheet.qs[row_index]));
+                $('#amplitude' + order).html(formatNum(spreadsheet.amplitudes[row_index], 4));
+                $('#amplitude' + order).prop('title', spreadsheet.toString(spreadsheet.amplitudes[row_index]));
+                $('#anova_p' + order).html(formatNum(spreadsheet.anova_ps[row_index], 4));
+                $('#anova_p' + order).prop('title', toString(spreadsheet.anova_ps[row_index]));
+                $('#anova_q' + order).html(formatNum(spreadsheet.anova_qs[row_index], 4));
+                $('#anova_q' + order).prop('title', toString(spreadsheet.anova_qs[row_index]));
+                $('#peak_time' + order).html(formatNum(spreadsheet.peak_times[row_index], 4));
+                $('#peak_time' + order).prop('title', toString(spreadsheet.peak_times[row_index]));
 
-                if (jtk_ps[idx] !== null && jtk_qs[idx] !== null) {
-                    $('#jtk_p' + order).html(formatNum(jtk_ps[idx][row_index], 4));
-                    $('#jtk_p' + order).prop('title', toString(jtk_ps[idx][row_index]));
-                    $('#jtk_q' + order).html(formatNum(jtk_qs[idx][row_index], 4));
-                    $('#jtk_q' + order).prop('title', toString(jtk_qs[idx][row_index]));
+                if (spreadsheet.jtk_ps !== null && spreadsheet.jtk_qs !== null) {
+                    $('#jtk_p' + order).html(formatNum(spreadsheet.jtk_ps[row_index], 4));
+                    $('#jtk_p' + order).prop('title', toString(spreadsheet.jtk_ps[row_index]));
+                    $('#jtk_q' + order).html(formatNum(spreadsheet.jtk_qs[row_index], 4));
+                    $('#jtk_q' + order).prop('title', toString(spreadsheet.jtk_qs[row_index]));
                 } else {
                     $('#jtk_p' + order).html("loading");
                     $('#jtk_p' + order).prop('title', "loading");
@@ -166,10 +175,10 @@
                 }
 
                 if (upside_ps !== null && upside_qs !== null) {
-                    $('#upside_p' + order).html(formatNum(upside_ps[idx][row_index], 4));
-                    $('#upside_p' + order).prop('title', toString(upside_ps[idx][row_index]));
-                    $('#upside_q' + order).html(formatNum(upside_qs[idx][row_index], 4));
-                    $('#upside_q' + order).prop('title', toString(upside_qs[idx][row_index]));
+                    $('#upside_p' + order).html(formatNum(upside_ps[order][row_index], 4));
+                    $('#upside_p' + order).prop('title', toString(upside_ps[order][row_index]));
+                    $('#upside_q' + order).html(formatNum(upside_qs[order][row_index], 4));
+                    $('#upside_q' + order).prop('title', toString(upside_qs[order][row_index]));
                 } else {
                     $('#upside_p' + order).html("loading");
                     $('#upside_p' + order).prop('title', "loading");
@@ -219,9 +228,9 @@
             // Update the Plotly plots of the feature profiles
             traces = [];
             var colors = Plotly.d3.scale.category10();
-            number_comparisons.forEach(function (ctr) {
+            spreadsheets.forEach(function (spreadsheet, idx) {
                 var row_index = sort_order[selected_row];
-                raw_y_values = data[ctr][row_index];
+                raw_y_values = spreadsheet.data[row_index];
                 if (raw_y_values === undefined) {
                     console.log("Could not find the y-values for row " + row_index);
                     return;
@@ -229,13 +238,13 @@
 
                 fold_days = fold_days_checkbox.checked;
                 if (fold_days) {
-                    plot_x_values = x_values[ctr].map(function (x) {return x % timepoints_per_day[ctr];});
+                    plot_x_values = spreadsheet.x_values.map(function (x) {return x % spreadsheet.timepoints_per_day;});
                     plot_x_labels = plot_x_values.map(function(x) {return "Timepoint " + (x+1);});
                     plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
                 } else {
-                    plot_x_values = x_values[ctr];
-                    plot_x_labels = x_labels[ctr];
-                    plot_x_label_values = x_label_values[ctr];
+                    plot_x_values = spreadsheet.x_values;
+                    plot_x_labels = spreadsheet.x_labels;
+                    plot_x_label_values = spreadsheet.x_label_values;
                 }
 
                 let x_label_style = $('#plot_x_label_style').val();
@@ -243,17 +252,17 @@
                     plot_x_labels = plot_x_labels.map( function (x) {return '';} );
                 } else if (x_label_style === 'time') {
                     plot_x_labels = plot_x_labels.map( function(x,i) {
-                        return "Timepoint " + (i % timepoints_per_day[ctr] + 1);
+                        return "Timepoint " + (i % spreadsheet.timepoints_per_day + 1);
                     });
                 } else if (x_label_style === 'infer') {
-                    let inferred = inferColumnTimes(column_headers[0], num_days, timepoints_per_day[ctr]);
+                    let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
                     if (inferred !== null) {
                         let headings = inferred.times.map(function(t) {
                             return inferred.format.make_label(t);
                         });
                         plot_x_labels = [];
                         plot_x_label_values = [];
-                        x_values[0].forEach( function (time,i) {
+                        spreadsheet.x_values.forEach( function (time,i) {
                             if (plot_x_labels[time] === undefined) {
                                 plot_x_labels[time] = headings[i];
                                 plot_x_label_values[time] = time;
@@ -261,7 +270,7 @@
                         });
                     }
                 } else if (x_label_style === 'infer_wrapped') {
-                    let inferred = inferColumnTimes(column_headers[0], num_days, timepoints_per_day[ctr]);
+                    let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
                     if (inferred !== null) {
                         let headings = inferred.times.map(function(t) {
                             return inferred.format.make_label(t, true);
@@ -269,7 +278,7 @@
 
                         plot_x_labels = [];
                         plot_x_label_values = [];
-                        x_values[0].forEach( function (time,i) {
+                        spreadsheet.x_values.forEach( function (time,i) {
                             if (plot_x_labels[time] === undefined) {
                                 plot_x_labels[time] = headings[i];
                                 plot_x_label_values[time] = time;
@@ -281,14 +290,14 @@
                 var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
 
                 // Pick a color for this spreadsheet using Plotly's defaults from d3
-                var spreadsheet_color = colors(ctr);
+                var spreadsheet_color = colors(idx);
 
                 // Default values for the different plot styles to override
                 var trace = {
                     x: plot_x_values, y: raw_y_values,
                     mode: 'markers',
                     marker: marker_settings,
-                    name: descriptive_names[ctr],
+                    name: spreadsheet.descriptive_name,
                     type: 'scatter',
                     'marker': {color: spreadsheet_color},
                     'line': {color: spreadsheet_color}
@@ -388,7 +397,7 @@
             redrawPlot();
         }
         var num_row_selections = 21; // Show this many rows at once
-        rowSelector = makeRowSelector($('#row_selector')[0],  labels, qs[number_comparisons[0]], filtered, sort_order, num_row_selections, onRowSelect);
+        rowSelector = makeRowSelector($('#row_selector')[0],  labels, spreadsheets[0].qs, filtered, sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(breakpoint);
 
         $("#hide_filtered").change( function() {
@@ -415,17 +424,21 @@
                 return (rank <= selected_row) & (!filtered[row_num]);
             } );
             let phase_sorted_order = selected_indexes.sort( function (i,j) {
-                return compare(peak_times[number_comparisons[0]][i], peak_times[number_comparisons[0]][j], i,j);
+                return compare(spreadsheets[0].peak_times[i], spreadsheets[0].peak_times[j], i,j);
             } );
 
-            let zScoreData = data.map(computeZScores(phase_sorted_order));
+            let zScoreData = spreadsheets.map(function(spreadsheet) {
+                return computeZScores(phase_sorted_order)(spreadsheet.data);
+            });
 
-            let times = x_values;
+            let times = spreadsheets.map(function(spreadsheet){ return spreadsheet.x_values; });
 
             let fold_days = $('#heatmap_fold_days').is(':checked');
             if (fold_days) {
-                times = x_values.map( function(x_values_, idx) {
-                    return x_values_.map( function (x) {return x % timepoints_per_day[idx];} );
+                times = spreadsheets.map(function(spreadsheet) {
+                    return spreadsheet.x_values.map(function(x) {
+                        return x % spreadsheet.timepoints_per_day;
+                    });
                 });
             }
 
@@ -458,7 +471,7 @@
                         return zscores[0].map( function(x,i) {return "Timepoint " + (i + 1);});
                     });
                 } else {
-                    heatmap_x_values = x_labels;
+                    heatmap_x_values = spreadsheets.map( function(spreadsheet) {return spreadsheet.x_labels;} );
                 }
             } else {
                 if (fold_days) {
@@ -491,15 +504,15 @@
                 } else {
                     heatmap_data = zScoreData;
 
-                    heatmap_x_values = x_values.map( function(x_values_, idx) {
+                    heatmap_x_values = spreadsheets.map( function(spreadsheet, idx) {
                         let rep_counts = [];
-                        return x_values_.map( function(time) {
+                        return spreadsheet.x_values.map( function(time) {
                             if (rep_counts[time] === undefined) {
                                 rep_counts[time] = 0;
                             }
                             rep_counts[time] += 1;
-                            let day = Math.floor(time / timepoints_per_day[idx]) + 1;
-                            let time_of_day = time % timepoints_per_day[idx] + 1;
+                            let day = Math.floor(time / spreadsheet.timepoints_per_day) + 1;
+                            let time_of_day = time % spreadsheet.timepoints_per_day + 1;
                             return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
                         });
                     });
@@ -517,20 +530,20 @@
             let y_vals =  heatmap_labels.map(function (x,i) {return i;});
             let show_labels = $('#heatmap_show_labels').is(':checked');
 
-            let heatmap_values = number_comparisons.map( function(spreadsheet_num) {
+            let heatmap_values = spreadsheets.map( function(spreadsheet, idx) {
                 let colorbar = {};
-                if (spreadsheet_num === 0){
+                if (idx === 0){
                     colorbar = {
                         title: 'Z Score',
                         titleside: 'right'
                     };
                 }
                 return {
-                    x: heatmap_x_values[spreadsheet_num],
+                    x: heatmap_x_values[idx],
                     y: y_vals,
-                    z: heatmap_data[spreadsheet_num],
+                    z: heatmap_data[idx],
                     type: 'heatmap',
-                    xaxis: "x" + (spreadsheet_num+1),
+                    xaxis: "x" + (idx+1),
                     yaxis: "y",
                     zmin: -1 * limit,
                     zmax: limit,
@@ -582,7 +595,9 @@
         let filter_data_list = [
             ["max_value", {values: function () {
                                      // Grand maximum across both datasets within each row
-                                     let maxes = data.map( maximums );
+                                     let maxes = spreadsheets.map(function (spreadsheet) {
+                                            return maximums(spreadsheet.data);
+                                     });
                                      return maxes[0].map( function(row, i) {
                                         return Math.max(maxes[0][i], maxes[1][i]);
                                     });
@@ -591,61 +606,64 @@
                             independent: true}],
             ["mean_value", {values: function () {
                                 // Grand means across both datasets within each row
-                                let ms = data.map( means );
-                                let a = data[0][0].length;
-                                let b = data[1][0].length;
-                                return ms[0].map( function(row, i) {
-                                    return (ms[0][i]*a + ms[1][i]*b) / (a + b);
+                                // TODO: better support for missing values (different numbers missing in each spreadsheet)
+                                let means = spreadsheets.map(function (spreadsheet) {
+                                    return means(spreadsheet.data);
+                                });
+                                let a = spreadsheets[0].data[0].length;
+                                let b = spreadsheets[1].data[0].length;
+                                return means[0].map( function(row, i) {
+                                    return (means[0][i]*a + means[1][i]*b) / (a + b);
                                 });
                             },
                             name: "Mean value",
                             independent: true}],
-            ["nitecap_p0", {values: function () { return ps[number_comparisons[0]]; },
+            ["nitecap_p0", {values: function () { return spreadsheets[0].ps; },
                             name: "Nitecap p Primary",
                             independent: false}],
-            ["nitecap_q0", {values: function () { return qs[number_comparisons[0]]; },
+            ["nitecap_q0", {values: function () { return spreadsheets[0].qs; },
                             name: "Nitecap q Primary",
                             independent: false}],
-            ["jtk_p0", {values: function () { return jtk_ps[number_comparisons[0]]; },
+            ["jtk_p0", {values: function () { return spreadsheets[0].jtk_ps; },
                             name: "JTK p Primary",
                             independent: false}],
-            ["jtk_q0", {values: function () { return jtk_qs[number_comparisons[0]]; },
+            ["jtk_q0", {values: function () { return spreadsheets[0].jtk_qs; },
                             name: "JTK q Primary",
                             independent: false}],
-            ["anova_p0", {values: function () { return anova_ps[number_comparisons[0]]; },
+            ["anova_p0", {values: function () { return spreadsheets[0].anova_ps; },
                             name: "ANOVA p Primary",
                             independent: false}],
-            ["anova_q0", {values: function () { return anova_qs[number_comparisons[0]]; },
+            ["anova_q0", {values: function () { return spreadsheets[0].anova_qs; },
                             name: "ANOVA q Primary",
                             independent: false}],
-            ["amplitude0", {values: function () { return amplitudes[number_comparisons[0]]; },
+            ["amplitude0", {values: function () { return spreadsheets[0].amplitudes; },
                             name: "Amplitude Primary",
                             independent: false}],
-            ["peak_time0", {values: function () { return peak_times[number_comparisons[0]]; },
+            ["peak_time0", {values: function () { return spreadsheets[0].peak_times; },
                             name: "Peak time Primary",
                             independent: false}],
-            ["nitecap_p1", {values: function () { return ps[number_comparisons[1]]; },
+            ["nitecap_p1", {values: function () { return spreadsheets[1].ps; },
                             name: "Nitecap p Secondary",
                             independent: false}],
-            ["nitecap_q1", {values: function () { return qs[number_comparisons[1]]; },
+            ["nitecap_q1", {values: function () { return spreadsheets[1].qs; },
                             name: "Nitecap q Secondary",
                             independent: false}],
-            ["jtk_p1", {values: function () { return jtk_ps[number_comparisons[1]]; },
+            ["jtk_p1", {values: function () { return spreadsheets[1].jtk_ps; },
                             name: "JTK p Secondary",
                             independent: false}],
-            ["jtk_q1", {values: function () { return jtk_qs[number_comparisons[1]]; },
+            ["jtk_q1", {values: function () { return spreadsheets[1].jtk_qs; },
                             name: "JTK q Secondary",
                             independent: false}],
-            ["anova_p1", {values: function () { return anova_ps[number_comparisons[1]]; },
+            ["anova_p1", {values: function () { return spreadsheets[1].anova_ps; },
                             name: "ANOVA p Secondary",
                             independent: false}],
-            ["anova_q1", {values: function () { return anova_qs[number_comparisons[1]]; },
+            ["anova_q1", {values: function () { return spreadsheets[1].anova_qs; },
                             name: "ANOVA q Secondary",
                             independent: false}],
-            ["amplitude1", {values: function () { return amplitudes[number_comparisons[1]]; },
+            ["amplitude1", {values: function () { return spreadsheets[1].amplitudes; },
                             name: "Amplitude Secondary",
                             independent: false}],
-            ["peak_time1", {values: function () { return peak_times[number_comparisons[1]]; },
+            ["peak_time1", {values: function () { return spreadsheets[1].peak_times; },
                             name: "Peak time Secondary",
                             independent: false}],
             ["two_way_anova_p", {values:function () { return two_way_anova_ps; },
@@ -775,7 +793,7 @@
             // Copy the filters that we last ran
             ran_filters = filters.slice();
 
-            let filtered_out = data[0].map( function (x) {return false;} );
+            let filtered_out = labels.map( function (x) {return false;} );
 
             // Apply all filters
             filters.forEach(function(filter) {
@@ -813,7 +831,7 @@
             var ctr = 0;
             var set_significant_items = false;
             var significant_items = $('#significant_items')[0];
-            $.each(data[number_comparisons[0]], function (index, row) {
+            $.each(spreadsheets[0].data, function (index, row) {
                 if (!filtered[sort_order[index]]) {
                     ctr++;
                 }
@@ -967,32 +985,32 @@
 
         var sorters = {
             "nitecap": function(i,j) {
-                var a = tds[number_comparisons[0]][i];
-                var b = tds[number_comparisons[0]][j];
+                var a = spreadsheets[0].tds[i];
+                var b = spreadsheets[0].tds[j];
                 return compare(a,b,i,j);
             },
             "anova": function (i,j) {
                 // Sort anova p-values in ascending order
-                var a = anova_ps[number_comparisons[0]][i];
-                var b = anova_ps[number_comparisons[0]][j];
+                var a = spreadsheets[0].anova_ps[i];
+                var b = spreadsheets[0].anova_ps[j];
                 return compare(a,b,i,j);
             },
             "jtk": function (i,j) {
                 // Sort jtk p-values in ascending order
-                var a = jtk_ps[number_comparisons[0]][i];
-                var b = jtk_ps[number_comparisons[0]][j];
+                var a = spreadsheets[0].jtk_ps[i];
+                var b = spreadsheets[0].jtk_ps[j];
                 return compare(a,b,i,j);
             },
             "amplitude": function (i,j) {
                 // Sort amplitude values in descending order
-                var a = -amplitudes[number_comparisons[0]][i];
-                var b = -amplitudes[number_comparisons[0]][j];
+                var a = -spreadsheets[0].amplitudes[i];
+                var b = -spreadsheets[0].amplitudes[j];
                 return compare(a,b,i,j);
             },
             "upside": function (i,j) {
                 // Sort by ascending order
-                var a = upside_ps[number_comparisons[0]][i];
-                var b = upside_ps[number_comparisons[0]][j];
+                var a = upside_ps[0][i];
+                var b = upside_ps[0][j];
                 return compare(a,b,i,j);
             },
             "two_way_anova": function (i,j) {
@@ -1018,19 +1036,19 @@
         function updateRowLabels() {
             var sorter = $('#sort_select').val();
             if (sorter === 'jtk') {
-                rowSelector.makeRowLabels(labels, jtk_qs[number_comparisons[0]]);
+                rowSelector.makeRowLabels(labels, spreadsheets[0].jtk_qs);
             } else if (sorter === 'upside') {
-                rowSelector.makeRowLabels(labels, upside_qs[number_comparisons[0]]);
+                rowSelector.makeRowLabels(labels, upside_qs[0]);
             } else if (sorter === 'two_way_anova') {
                 rowSelector.makeRowLabels(labels, two_way_anova_qs);
             } else if (sorter === 'anova') {
-                rowSelector.makeRowLabels(labels, anova_qs[number_comparisons[0]]);
+                rowSelector.makeRowLabels(labels, spreadsheets[0].anova_qs);
             } else if (sorter === 'amplitude_change') {
                 rowSelector.makeRowLabels(labels, amplitude_qs);
             } else if (sorter === 'phase_change') {
                 rowSelector.makeRowLabels(labels, phase_qs);
             } else {
-                rowSelector.makeRowLabels(labels, qs[number_comparisons[0]]);
+                rowSelector.makeRowLabels(labels, spreadsheets[0].qs);
             }
         }
 
@@ -1062,18 +1080,18 @@
         } );
 
         // Load the JTK values for each spreadsheet
-        number_comparisons.forEach( function (i) {
+        spreadsheets.forEach( function (spreadsheet, idx) {
             $.ajax({
                 url: "{{url_for('spreadsheets.get_jtk')}}",
-                data: JSON.stringify({'spreadsheet_id': spreadsheet_ids[i]}),
+                data: JSON.stringify({'spreadsheet_id': spreadsheet_ids[idx]}),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
                 success: function(response) {
-                    jtk_ps[i] = response['jtk_ps'];
-                    jtk_qs[i] = response['jtk_qs'];
+                    spreadsheet.jtk_ps = response['jtk_ps'];
+                    spreadsheet.jtk_qs = response['jtk_qs'];
 
-                    if (i === 0) {
+                    if (idx === 0) {
                         $('#sort_select option[value="jtk"]').removeAttr("disabled");
                     }
 
@@ -1119,9 +1137,9 @@
 
         // Cycle current primary to back of array and refresh relevant data
         $("#toggle_primary").click(function() {
-            first_element = number_comparisons.shift();
-            number_comparisons.push(first_element);
-            $("#primary_plot_name").text(descriptive_names[number_comparisons[0]]);
+            first_spreadsheet = spreadsheets.shift();
+            spreadsheets.push(first_spreadsheet);
+            $("#primary_plot_name").text(spreadsheets[0].descriptive_name);
             sortRows();
 
             if ($('#heatmap_block').is(":visible")) {
@@ -1151,7 +1169,8 @@
             points.attr("d", PCA_SYMBOL);
             // Rotate the colored wedge by the time (x-value)
             points.attr("transform", function(x,i,j) {
-                let rotation = (x_values[j][i] % timepoints_per_day[j]) / timepoints_per_day[j] * 360 - 45;
+                let spreadsheet = spreadsheets[j];
+                let rotation = (spreadsheet.x_values[i] % spreadsheet.timepoints_per_day) / spreadsheet.timepoints_per_day * 360 - 45;
 
                 let curr_transform = this.getAttribute("transform");
                 if (curr_transform.indexOf("rotate") < 0) {
@@ -1173,7 +1192,7 @@
             info_layer.selectAll('.pca_legend').remove();
             info_layer.selectAll('.pca_legend_bg').remove();
 
-            let times = x_label_values[0].filter(function(t) { if (t < timepoints_per_day[0]) { return 1; } else { return 0; } });
+            let times = spreadsheets[0].x_label_values.filter(function(t) { if (t < spreadsheets[0].timepoints_per_day) { return 1; } else { return 0; } });
             let labels = times.map( function(t) {return "Timepoint " + (t + 1);} );
 
             if (times.length > 6) {
@@ -1218,7 +1237,7 @@
             entries.append('path')
                     .attr('transform', function (x,i) {
                             return 'translate(' + radius + ',' + radius + ')'
-                                  +'rotate(' + ((times[i] % timepoints_per_day[0]) / timepoints_per_day[0] * 360 - 45) + ')';
+                                  +'rotate(' + ((times[i] % spreadsheets[0].timepoints_per_day) / spreadsheets[0].timepoints_per_day * 360 - 45) + ')';
                         })
                     .attr('d', PCA_SYMBOL)
                     .attr('fill', 'rgb(127,127,127)');
@@ -1252,15 +1271,15 @@
                 alert.hide();
             }
 
-            var pt_labels = number_comparisons.map( function(spreadsheet_num) {
+            var pt_labels = spreadsheets.map( function(spreadsheet, idx) {
                 var rep_counts = [];
-                return x_values[spreadsheet_num].map( function(time) {
+                return spreadsheet.x_values.map( function(time) {
                     if (rep_counts[time] === undefined) {
                         rep_counts[time] = 0;
                     }
                     rep_counts[time] += 1;
-                    var day = Math.floor(time / timepoints_per_day[number_comparisons[0]]) + 1;
-                    var time_of_day = time % timepoints_per_day[number_comparisons[0]] + 1;
+                    var day = Math.floor(time / spreadsheet.timepoints_per_day) + 1;
+                    var time_of_day = time % spreadsheet.timepoints_per_day + 1;
                     return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
                 });
             });
@@ -1282,16 +1301,16 @@
                     pca_coords = response['pca_coords'];
                     explained_variance = response['explained_variance'];
 
-                    var traces = number_comparisons.map( function (spreadsheet_num) {
+                    var traces = spreadsheets.map( function (spreadsheet, idx) {
                         return {
-                            x: pca_coords[spreadsheet_num][0],
-                            y: pca_coords[spreadsheet_num][1],
+                            x: pca_coords[idx][0],
+                            y: pca_coords[idx][1],
                             mode: 'markers',
-                            name: descriptive_names[spreadsheet_num],
-                            text: pt_labels[spreadsheet_num],
+                            name: spreadsheet.descriptive_name,
+                            text: pt_labels[idx],
                             marker: {
                                 size: 25,
-                                opacity: 1 //x_values[spreadsheet_num].map( function (x) { return (x+1) / (1+Math.max.apply(null, x_values[spreadsheet_num])); })
+                                opacity: 1 //x_values[idx].map( function (x) { return (x+1) / (1+Math.max.apply(null, x_values[idx])); })
                             }
                         };
                     });
@@ -1366,7 +1385,7 @@
             // Cleanup after 60s, they've presumably successfully downloaded the small svg
             setTimeout(function () { URL.revokeObjectURL(url) }, 60000);
         });
-    });
+    }
 
 </script>
 
@@ -1462,7 +1481,7 @@
                 </div>
             </form>
             <button id="toggle_primary" class="btn btn-primary mt-2">Toggle Primary Plot</button>
-            <span>Currently: <span id="primary_plot_name"></span></span>
+            <span>Currently: <span id="primary_plot_name">{{descriptive_names[0]}}</span></span>
         </div>
 
         <div class="col-auto">

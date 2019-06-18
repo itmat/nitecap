@@ -367,6 +367,8 @@ def get_spreadsheets(user=None):
         # Select only the parts of the data in common to all
         dfs = [df.loc[combined_index] for df in dfs]
 
+    # TODO: should load JTK ps and qs here if available, currently just report them as None
+
     # Gather all values except for the actual numerical data
     # Which is handled separately
     spreadsheet_values = []
@@ -393,6 +395,8 @@ def get_spreadsheets(user=None):
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
                      column_headers=spreadsheet.get_data_columns(),
+                     jtk_ps=None,
+                     jtk_qs=None,
                     )
         spreadsheet_values.append(values)
 
@@ -707,13 +711,6 @@ def compare(user=None):
     errors = []
 
     spreadsheets = []
-    non_unique_id_counts = []
-    x_values = []
-    x_labels = []
-    x_label_values = []
-    columns = []
-    datasets = []
-    timepoints_per_day = []
 
     spreadsheet_ids = request.args.get('spreadsheet_ids', None)
     if not spreadsheet_ids or len(spreadsheet_ids.split(",")) != 2:
@@ -735,73 +732,9 @@ def compare(user=None):
     if errors:
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
-    descriptive_names = []
-    for spreadsheet in spreadsheets:
-        non_unique_ids = spreadsheet.find_replicate_ids()
-        non_unique_id_counts.append(len(non_unique_ids))
-        current_app.logger.debug(f"Number of non unique ids is {len(non_unique_ids)}")
-        x_values.append(spreadsheet.x_values)
-        x_labels.append(spreadsheet.x_labels)
-        x_label_values.append(spreadsheet.x_label_values)
-        descriptive_names.append(spreadsheet.descriptive_name)
-        timepoints_per_day.append(spreadsheet.timepoints)
-        data = spreadsheet.df
-        data["compare_ids"] = list(spreadsheet.get_ids())
-        current_app.logger.debug(f"Shape prior to removal of non-unique ids: {data.shape}")
-        data = data.set_index("compare_ids")
-        data = data[~data.index.duplicated()]
-        datasets.append(data)
-        current_app.logger.debug(f"Shape prior to join with label col: {data.shape}")
-    if not set(datasets[0].index) & set(datasets[1].index):
-        errors.append("The spreadsheets have no IDs in common.  Perhaps the wrong column was selected as the ID?")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-    common_columns = set(datasets[0].columns).intersection(set(datasets[1].columns))
-    df = datasets[0].join(datasets[1], how='inner', lsuffix='_0', rsuffix='_1')
-    df = df.sort_values(by=['total_delta_0'])
-    current_app.logger.debug(f"Shape after join: {df.shape}")
-    compare_ids = df.index.tolist()
-    datasets = []
-    qs = []
-    ps = []
-    tds = []
-    amplitudes = []
-    peak_times = []
-    anova_ps = []
-    anova_qs = []
-    column_headers = []
-    for i in [0, 1]:
-        columns.append([column + f"_{i}" if column in common_columns else column
-                        for column in spreadsheets[i].get_data_columns()])
-        datasets.append(df[columns[i]].values)
-        qs.append(df[f"nitecap_q_{i}"].values.tolist())
-        ps.append(df[f"nitecap_p_{i}"].values.tolist())
-        amplitudes.append(df[f"amplitude_{i}"].values.tolist())
-        peak_times.append(df[f"peak_time_{i}"].values.tolist())
-        anova_ps.append(df[f"anova_p_{i}"].values.tolist())
-        anova_qs.append(df[f"anova_q_{i}"].values.tolist())
-        tds.append(df[f"total_delta_{i}"].tolist())
-        column_headers.append(spreadsheets[i].get_data_columns())
-
     return render_template('spreadsheets/comparison.html',
-                           data=json.dumps([dataset.tolist() for dataset in datasets]),
-                           x_values=x_values,
-                           x_labels=x_labels,
-                           x_label_values=x_label_values,
-                           ids=compare_ids,
-                           descriptive_names=descriptive_names,
-                           non_unique_id_counts=non_unique_id_counts,
-                           qs=json.dumps(qs),
-                           ps=json.dumps(ps),
-                           amplitudes=json.dumps(amplitudes),
-                           peak_times=json.dumps(peak_times),
-                           anova_ps=json.dumps(anova_ps),
-                           anova_qs=json.dumps(anova_qs),
-                           tds=json.dumps(tds),
-                           filtered=json.dumps(spreadsheets[0].df.filtered_out.tolist()),
-                           timepoints_per_day=timepoints_per_day,
                            spreadsheet_ids=spreadsheet_ids,
-                           column_headers=column_headers)
+                           descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
