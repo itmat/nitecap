@@ -883,12 +883,12 @@
             }
         });
 
-        var searchRows = function() {
-            var search_value = $('#row_search_box').val().toLowerCase();
+        let searchRows = function() {
+            let search_value = $('#row_search_box').val().toLowerCase();
 
             // Pull out row indexes matching our search_value
-            var matching_rows = labels.map( function(unused, index) {
-                var label = labels[sort_order[index]];
+            let matching_rows = labels.map( function(unused, index) {
+                let label = labels[sort_order[index]];
                 if (label.toLowerCase().indexOf(search_value) !== -1) {
                     return index;
                 }
@@ -901,55 +901,19 @@
                 return;
             }
 
-            // First look for matches that are *after* our selected_row
-            // so that multiple button presses will cycle the selection through all matches
-            var matches_after = matching_rows.filter( function (i) {
+            // Find matches in rows past the current selection
+            let matches_after = matching_rows.filter( function (i) {
                 return i > selected_row;
             } );
+
+            let row = null;
             if (matches_after.length > 0) {
-                var row = matches_after[0];
+                // First look for matches that are *after* our selected_row
+                // so that multiple button presses will cycle the selection through all matches
+                row = matches_after[0];
             } else {
                 // If that fails, grab the first matching row
-                var row = matching_rows[0];
-            }
-
-            rowSelector.selectRow(row);
-        };
-        $('#search_button').click( searchRows);
-        $('#row_search_box').on("keydown", function (evt) {
-            if (evt.keyCode === 13) { // On Enter key press
-                searchRows();
-            }
-        });
-
-        var searchRows = function() {
-            var search_value = $('#row_search_box').val().toLowerCase();
-
-            // Pull out row indexes matching our search_value
-            var matching_rows = labels.map( function(unused, index) {
-                var label = labels[sort_order[index]];
-                if (label.toLowerCase().indexOf(search_value) !== -1) {
-                    return index;
-                }
-            }).filter(isFinite);
-
-
-            if (matching_rows.length === 0) {
-                console.log("Unfortunately no matching row found.");
-                // TODO: display something to the user
-                return;
-            }
-
-            // First look for matches that are *after* our selected_row
-            // so that multiple button presses will cycle the selection through all matches
-            var matches_after = matching_rows.filter( function (i) {
-                return i > selected_row;
-            } );
-            if (matches_after.length > 0) {
-                var row = matches_after[0];
-            } else {
-                // If that fails, grab the first matching row
-                var row = matching_rows[0];
+                row = matching_rows[0];
             }
 
             rowSelector.selectRow(row);
@@ -1044,7 +1008,7 @@
         };
         $('#sort_select').change( sortRows );
 
-        $('#significant_items').change( function () {
+        $('#significant_items').change(function () {
             let row = Math.round(this.value) -1;
             console.log("Significant items changed to " + row);
 
@@ -1055,7 +1019,7 @@
             }
 
             rowSelector.selectRow(row);
-        } );
+        });
 
         // Load the JTK values for each spreadsheet
         $.ajax({
