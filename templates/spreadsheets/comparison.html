@@ -47,6 +47,9 @@
 
         var breakpoint = 0;
 
+        // Wether we have drawn a plot yet, changes what Plotly wants
+        let first_plot = false;
+
         // Handles to the error modal on base.html
         nitecap_error = $("#error-modal");
         nitecap_error_message = $("#error-modal-message");
@@ -93,36 +96,6 @@
         trace_name = 'Nothing selected';
         marker_settings = {size: 12, symbol: 'circle-open'};
 
-        var traces = Array(2);
-
-        spreadsheets.forEach(function(spreadsheet, idx) {
-
-            traces[idx] = {
-                x: spreadsheet.x_values,
-                y: spreadsheet.x_values.map(function (x) {
-                    return 0;
-                }),
-                name: trace_name,
-                type: 'scatter',
-                mode: 'lines+markers',
-                marker: marker_settings
-            };
-
-        });
-
-        var layout = {
-            xaxis: {
-                title: labels[breakpoint],
-                ticktext: spreadsheets[0].x_labels,
-                tickvals: spreadsheets[0].x_label_values,
-                automargin: true
-            },
-            legend: {
-                orientation: 'h', y: -0.2
-            }
-        };
-
-        Plotly.newPlot('scatter_plot', traces, layout);
 
         function makeCoarseSlider(element, start_value, maximum) {
             element.slider({
@@ -374,7 +347,12 @@
                 }
             };
 
-            Plotly.react(scatter_plot, traces, layout);
+            if (first_plot) {
+                Plotly.newPlot(scatter_plot, traces, layout);
+                first_plot = false;
+            } else {
+                Plotly.react(scatter_plot, traces, layout);
+            }
         };
 
         $('#plot_style_select').change(redrawPlot);
