@@ -740,9 +740,6 @@ def get_upside():
             current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
             return jsonify({'upside_ps': None})
 
-        # Populate
-        spreadsheet.init_on_load()
-
         spreadsheets.append(spreadsheet)
 
     anova_p = None
@@ -765,6 +762,9 @@ def get_upside():
             if not datasets:
                 dfs = []
                 for spreadsheet in spreadsheets:
+                    # Populate
+                    spreadsheet.init_on_load()
+
                     data = spreadsheet.df
                     data["compare_ids"] = list(spreadsheet.get_ids())
                     data = data.set_index("compare_ids")
