@@ -64,6 +64,7 @@
 
         days.on('change', updateLabels);
         timepoints.on('change', updateLabels);
+        updateLabels();
 
 
         // Form Submitted
@@ -197,15 +198,11 @@
                     {% endfor %}
                 </tr>
                 <tr id="selectors" style="visibility: {{ 'visible' if days and timepoints else 'hidden' }}">
-                    {% for heading, default_selection in spreadsheet.column_defaults() %}
+                    {% for heading in spreadsheet.df.columns %}
                     <th>
-                            <select style="font-size: 10px" name="col{{ loop.index }}" id="col{{ loop.index }}">
-                                {% for selection in spreadsheet.get_selection_options() %}
-                                    <option value="{{selection}}"
-                                        {{'selected' if selection == default_selection else ''}} > {{selection}}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                        <select style="font-size: 10px" name="col{{ loop.index }}" id="col{{ loop.index }}">
+                            <!-- filled in later -->
+                        </select>
                     </th>
                     {% endfor %}
                 </tr>
