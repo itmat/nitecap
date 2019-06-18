@@ -817,59 +817,33 @@ def get_upside():
 
 
 @spreadsheet_blueprint.route('/run_pca', methods=['POST'])
-def run_pca():
+@ajax_requires_account
+def run_pca(user=None):
     args = json.loads(request.data)
     spreadsheet_ids = args['spreadsheet_ids']
     selected_genes = args['selected_genes']
     take_zscore = args['take_zscore']
     take_log_transform = args['take_logtransform']
 
-    datasets = []
+    if not spreadsheet_ids:
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
+
     spreadsheets = []
-
-    # Check user ownership over these spreadsheets
-    try:
-        user = User.find_by_email(session['email'])
-    except KeyError:
-        return "Must log in to run PCA", 404
-
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
 
         # Populate
         spreadsheet.init_on_load()
 
-        if not spreadsheet:
-            current_app.logger.info("Attempted access for spreadsheet {spreadsheet_id} not owned by user")
-            return "Spreadsheet not found", 404
         spreadsheets.append(spreadsheet)
 
-    dfs = []
-    for spreadsheet in spreadsheets:
-        data = spreadsheet.df
-        data["compare_ids"] = list(spreadsheet.get_ids())
-        data = data.set_index("compare_ids")
-        if len(spreadsheets) > 1:
-            data = data[~data.index.duplicated()]
-        dfs.append(data)
+    # Inner join of the spreadsheets so that they match indexes
+    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
     if len(dfs) == 2:
-        # PCA on two different datasets
-        common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
-        df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
-        df = df.sort_values(by=['total_delta_0'])
-        df = df.iloc[selected_genes]
-        compare_ids = df.index.tolist()
-
-        data_columns = [column + f"_{i}" if column in common_columns else column
-                        for i in range(len(spreadsheets))
-                        for column in spreadsheets[i].get_data_columns()]
-
-        # Extract individual datasets
-        for i in [0, 1]:
-            columns = [column + f"_{i}" if column in common_columns else column
-                                for column in spreadsheets[i].get_data_columns()]
-            datasets.append(df[columns].values)
+        datasets = [df.iloc[selected_genes][spreadsheet.get_data_columns()].values for df,spreadsheet in zip(dfs, spreadsheets)]
 
         data = numpy.concatenate(datasets, axis=1)
 
