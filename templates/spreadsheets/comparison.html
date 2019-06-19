@@ -2,7 +2,6 @@
 {% block content %}
 
 <script>
-
     $(function () {
         $('[data-toggle="tooltip"]').tooltip()
     });
@@ -10,6 +9,26 @@
     PCA_WIDTH = 800;
     PCA_HEIGHT = 800;
     PCA_SYMBOL = "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0";
+
+    function computeNumSignificantBelow() {
+        // Recompute the number of signifcant items below a cutoff
+        var ctr = 0;
+        var set_significant_items = false;
+        var significant_items = $('#significant_items')[0];
+        $.each(spreadsheets[0].data, function (index, row) {
+            if (!filtered[sort_order[index]]) {
+                ctr++;
+            }
+
+            num_significant_below[index] = ctr;
+
+            // Update number of significant items
+            if (index >= row_index && !set_significant_items) {
+                significant_items.value  = ctr;
+                set_significant_items = true;
+            }
+        });
+    }
 
     $(document).ready(function () {
 
@@ -60,7 +79,6 @@
         hide_filtered_checkbox = document.getElementById("hide_filtered");
         filter_list = $('#filter_list');
         add_filter_button = $('#add_filter_button');
-        reset_filters_button = $('#reset_filters_button');
 
         fold_days_checkbox = document.getElementById('fold_days_checkbox');
 
@@ -570,7 +588,7 @@
         $('#heatmap_show_labels').change(updateHeatmap);
 
         // Configuration of the filters
-        let filter_data_list = [
+        filter_data_list = [
             ["max_value", {values: function () {
                                      // Grand maximum across both datasets within each row
                                      let maxes = spreadsheets.map(function (spreadsheet) {
@@ -670,6 +688,8 @@
         });
 
         function updateFilterList() {
+            return;
+
             // Get raw DOM element, not the jQueried version
             let filter_list_element = filter_list.get(0);
 
@@ -761,13 +781,9 @@
             updateFilterList();
         });
 
-        reset_filters_button.click( function () {
-            filters = ran_filters.slice();
-            updateFilterList();
-        });
-
         // Applying Filters
         function applyFilters() {
+            return;
             // Copy the filters that we last ran
             ran_filters = filters.slice();
 
@@ -804,25 +820,6 @@
             rowSelector.filterRows(filtered);
         }
 
-        function computeNumSignificantBelow() {
-            // Recompute the number of signifcant items below a cutoff
-            var ctr = 0;
-            var set_significant_items = false;
-            var significant_items = $('#significant_items')[0];
-            $.each(spreadsheets[0].data, function (index, row) {
-                if (!filtered[sort_order[index]]) {
-                    ctr++;
-                }
-
-                num_significant_below[index] = ctr;
-
-                // Update number of significant items
-                if (index >= row_index && !set_significant_items) {
-                    significant_items.value  = ctr;
-                    set_significant_items = true;
-                }
-            });
-        }
         computeNumSignificantBelow();
 
         function readFilters() {
@@ -1337,6 +1334,8 @@
 
 </script>
 
+<div id="vue-app">
+
 
 <div id="comparison-graph-page" class="page-header">
     <h1>Spreadsheet Comparison</h1>
@@ -1598,16 +1597,48 @@
                 </div>
                 <div class="card-body">
                     <div id="filter_list">
-                        <!-- Filters will go here, made dynamically -->
+                        <div v-for="(filter, index) in filters" class="row">
+                            <div class='col form-inline filter_item'>
+                                <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
+                                     v-bind:aria-label="'Lower bound for filter ' + index"
+                                     v-model="filter[1]">
+                                </input>
+
+                                &le;
+
+                                <select class="form-control form-control-sm m-1 filter_value_selector"
+                                        v-bind:aria-label="'Filter selector for filter ' + index"
+                                        v-bind:value="filter[0]">
+                                    <option v-for="filter in filter_data_list"
+                                            v-bind:value="filter.key">
+                                            {% raw %} {{filter.name}} {% endraw %}
+                                    </option>
+                                </select>
+
+                                &le;
+
+                                <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
+                                     v-bind:aria-label="'Upper bound for filter ' + index"
+                                     v-model="filter[2]">
+                                </input>
+
+                                <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
+                                        v-on:click="filters = filters.filter(function(x,j) {return j !== index;})">
+                                    <span class="far fa-minus-square"> </span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters">
+                    <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
+                        v-on:click="resetFilters">
                         <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
                     </button>
-                    <button id="add_filter_button" class="btn btn-default" style="float: right" aria-label="Add filter">
+                    <button id="add_filter_button" class="btn btn-default" style="float: right" aria-label="Add filter"
+                        v-on:click="addFilter">
                         <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
                     </button>
                     <div>
-                        <button id="applyFilters" type="button" class="btn btn-primary mb-4">Apply filters</button>
+                        <button id="applyFilters" type="button" class="btn btn-primary mb-4" v-on:click="applyFilters">Apply filters</button>
                         <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>
                     </div>
                 </div>
@@ -1677,4 +1708,149 @@
     </div>
 
 
+</div>
+
+
+<!-- temporary inlining of Vue.JS dev version -->
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script>
+    Vue.prototype.filter_data_list = [
+        {values: function () {
+                         // Grand maximum across both datasets within each row
+                         let maxes = spreadsheets.map(function (spreadsheet) {
+                                return maximums(spreadsheet.data);
+                         });
+                         return maxes[0].map( function(row, i) {
+                            return Math.max(maxes[0][i], maxes[1][i]);
+                        });
+                    },
+                name: "Maximum value",
+                independent: true,
+                key:"max_value"},
+        {values: function () {
+                    // Grand means across both datasets within each row
+                    // TODO: better support for missing values (different numbers missing in each spreadsheet)
+                    let means = spreadsheets.map(function (spreadsheet) {
+                        return means(spreadsheet.data);
+                    });
+                    let a = spreadsheets[0].data[0].length;
+                    let b = spreadsheets[1].data[0].length;
+                    return means[0].map( function(row, i) {
+                        return (means[0][i]*a + means[1][i]*b) / (a + b);
+                    });
+                },
+                name: "Mean value",
+                independent: true,
+                key: "mean_value"},
+        {values: function () { return spreadsheets[0].ps; },
+                name: "Nitecap p Primary",
+                independent: false,
+                key: "nitecap_p0"},
+        {values: function () { return spreadsheets[0].qs; },
+                name: "Nitecap q Primary",
+                independent: false,
+                key: "nitecap_q0"},
+        {values: function () { return spreadsheets[0].jtk_ps; },
+                name: "JTK p Primary",
+                independent: false,
+                key: "jtk_p0"},
+        {values: function () { return spreadsheets[0].jtk_qs; },
+                name: "JTK q Primary",
+                independent: false,
+                key: "jtk_q0"},
+        {values: function () { return spreadsheets[0].anova_ps; },
+                name: "ANOVA p Primary",
+                independent: false,
+                key: "anova_p0"},
+        {values: function () { return spreadsheets[0].anova_qs; },
+                name: "ANOVA q Primary",
+                independent: false,
+                key: "anova_q0"},
+        {values: function () { return spreadsheets[0].amplitudes; },
+                name: "Amplitude Primary",
+                independent: false,
+                key: "amplitude0"},
+        {values: function () { return spreadsheets[0].peak_times; },
+                name: "Peak time Primary",
+                independent: false,
+                key: "peaktime0"},
+        {values:function () { return two_way_anova_ps; },
+                  name: "Two-way ANOVA p",
+                  independent: false,
+                  key: "two_way_anova_p"},
+        {values:function () { return two_way_anova_qs; },
+                  name: "Two-way ANOVA q",
+                  independent: false,
+                  key: "two_way_anova_q"},
+        {values:function () { return phase_ps; },
+                  name: "Phase difference p",
+                  independent: false,
+                  key: "phase_difference_q"},
+        {values:function () { return phase_qs; },
+                  name: "Phase difference q",
+                  independent: false,
+                  key: "phase_difference_p"},
+        {values:function () { return amplitude_ps; },
+                  name: "Amplitude difference p",
+                  independent: false,
+                  key: "amplitude_difference_p"},
+        {values:function () { return amplitude_qs; },
+                  name: "Amplitude difference q",
+                  independent: false,
+                key: "amplitude_difference_q"}
+    ];
+
+    let app = new Vue({
+        el: "#vue-app",
+        data: {
+            filters: [],
+            last_used_filters: []
+        },
+        methods: {
+            resetFilters: function(){
+                this.filters = this.last_used_filters.slice();
+            },
+            addFilter: function(){
+                this.filters.push( ['max_value', '',''] );
+            },
+            applyFilters: function() {
+                // Copy the filters that we last ran
+                this.last_used_filters = this.filters.slice();
+
+                let filtered_out = labels.map( function (x) {return false;} );
+
+                // Apply all filters
+                this.filters.forEach(function(filter) {
+                    var filter_value = filter[0];
+
+                    var lower_bound = parseInt(filter[1]);
+                    var upper_bound = parseInt(filter[2]);
+
+                    if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
+                    if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
+
+                    let values = filter_data.get(filter_value).values();
+                    filtered_out = filtered_out.map( function (x,i) {
+                        return x || (values[i] < lower_bound) || (values[i] > upper_bound);
+                    });
+                });
+
+                filtered = filtered_out;
+
+                if (hide_filtered_checkbox.checked) {
+                    // Move filtered items from the sort_order to the back of the list  to hide them
+                    let head = sort_order.filter( function(x) {return !filtered[x];});
+                    let tail = sort_order.filter( function(x) {return filtered[x];});
+                    sort_order = head.concat(tail);
+                }
+
+                computeNumSignificantBelow();
+
+                // Update row selector display to reflect the new filtering
+                rowSelector.filterRows(filtered);
+            },
+        }
+    });
+
+</script>
 {% endblock %}
