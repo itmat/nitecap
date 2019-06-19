@@ -55,6 +55,11 @@
     });
 
     function onSpreadsheetLoad() {
+        // FOR VUE
+        app.spreadsheets = spreadsheets;
+
+
+
         labels = spreadsheets[0].labels; // Both have same labels, so we pull those out
 
         // Start with no filters since we don't save these to DB for comparison
@@ -134,6 +139,7 @@
         makeCoarseSlider($('#coarse_slider'), breakpoint, labels.length - 1);
 
         function updateStatsBox() {
+            return;
             var row_index = sort_order[selected_row];
 
             $('#significant_items')[0].value = num_significant_below[selected_row];
@@ -1059,6 +1065,12 @@
             success: function(response) {
                 upside_ps = response['upside_ps'];
                 upside_qs = response['upside_qs'];
+
+                upside_ps.forEach(function(ps, idx){
+                    spreadsheets[idx].upside_ps = ps;
+                    spreadsheets[idx].upside_qs = upside_qs[idx];
+                });
+
                 two_way_anova_ps = response['two_way_anova_ps'];
                 two_way_anova_qs = response['two_way_anova_qs'];
                 phase_ps = response['phase_ps'];
@@ -1358,6 +1370,8 @@
         </span>
     </div>
 
+{% raw %}
+
     <div class="row">
         <div class="col">
             <div id="coarse_slider" class="coarse-slider"></div>
@@ -1428,7 +1442,7 @@
                 </div>
             </form>
             <button id="toggle_primary" class="btn btn-primary mt-2">Toggle Primary Plot</button>
-            <span>Currently: <span id="primary_plot_name">{{descriptive_names[0]}}</span></span>
+            <span>Currently: <span id="primary_plot_name">TODO</span></span>
         </div>
 
         <div class="col-auto">
@@ -1462,119 +1476,84 @@
                                 <th scope="col">Secondary</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td rowspan="2">Nitecap
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="Nitecap"
-                                       data-content="Nitecap significance of rhythmicity for primary dataset.">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                </td>
-                                    <td>p: <span v-model="stats.p_value0"></span></td>
-                                    <td>p: <span v-model="stats.p_value1"></span></td>
-                                </tr>
-                                <tr> <td>q: <span v-model="stats.q_value0"></span></td> <td>q: <span v-model="stats.q_value1"></span></td></tr>
-
-                                <tr> <td rowspan="2">JTK
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="JTK"
-                                       data-content="JTK_cycle significance of rhythmicity for primary dataset.">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
+                        <tbody v-if="spreadsheets !== null">
+                            <template v-for="stat in stats_list">
+                                <tr>
+                                    <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
+                                        {{stat.name}}
+                                        <a class="text-primary help-pointer float-right"
+                                            data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                            v-bind:title="stat.name"
+                                            v-bind:data-content="stat.description">
+                                            <i class="fas fa-info-circle ml-3"></i>
+                                        </a>
                                     </td>
-                                    <td>p: <span v-model="stats.jtk_p0"></span></td>
-                                    <td>p: <span v-model="stats.jtk_p1"></span></td>
-                                </tr>
-                                <tr> <td>q: <span v-model="stats.jtk_q0"></span></td> <td>q: <span v-model="stats.jtk_q1"></span></td> </tr>
 
-                                <tr> <td rowspan="2"> ANOVA
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="ANOVA"
-                                       data-content="1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                     </td>
-                                     <td>p: <span v-model="stats.anova_p0"></span></td>
-                                     <td>p: <span v-model="stats.anova_p1"></span></td>
-                                </tr>
-                                <tr> <td>q: <span v-model="stats.anova_q0"></span></td> <td>q: <span v-model="stats.anova_q1"></span></td> </tr>
+                                    <template v-if="typeof stat.value === 'string'">
+                                        <template v-if="stat.per_spreadsheet">
+                                            <td v-bind:title="toString(spreadsheets[0][stat.value][row_index])">
+                                                {{util.formatNum(spreadsheets[0][stat.value][row_index], 4)}}
+                                            </td>
+                                            <td v-bind:title="toString(spreadsheets[1][stat.value][row_index])">
+                                                {{util.formatNum(spreadsheets[1][stat.value][row_index], 4)}}
+                                            </td>
+                                        </template>
+                                        <template v-else>
+                                            <td v-if="this[stat.value] !== null"
+                                                v-bind:title="toString(this[stat.value][row_index])">
+                                                {{util.formatNum(this[stat.value][row_index], 4)}}
+                                            </td>
+                                            <td v-else>
+                                                loading
+                                            </td>
+                                        </template>
+                                    </template>
+                                    <template v-else>
+                                        <template v-if="stat.per_spreadsheet">
+                                            <td v-bind:title="toString(spreadsheets[0][stat.value.p][row_index])">
+                                                p: {{util.formatNum(spreadsheets[0][stat.value.p][row_index], 4)}}
+                                            </td>
+                                            <td v-bind:title="toString(spreadsheets[1][stat.value.p][row_index])">
+                                                p: {{util.formatNum(spreadsheets[1][stat.value.p][row_index], 4)}}
+                                            </td>
+                                        </template>
+                                        <template v-else>
+                                            <td v-if="this[stat.value.p] !== null"
+                                                v-bind:title="toString(this[stat.value.p][row_index])">
+                                                p: {{util.formatNum(this[stat.value.p][row_index], 4)}}
+                                            </td>
+                                            <td v-else>
+                                                loading
+                                            </td>
 
-                                <tr> <td rowspan="2">Damping
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="Damping"
-                                       data-content="Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                    </td>
-                                    <td>p: <span v-model="stats.upside_p0"></span></td>
-                                    <td>p: <span v-model="stats.upside_p1"></span></td>
-                                </tr>
-                                <tr> <td>q: <span v-model="stats.upside_q0"></span></td> <td>q: <span v-model="stats.upside_q1"></span></td> </tr>
-
-                                <tr> <td rowspan="2">Two-way ANOVA
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="Damping"
-                                       data-content="Two-way ANOVA test for difference in timepoint-effects across datasets">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                    </td>
-                                    <td colspan="2">p: <span v-model="stats.two_way_anova_p"></span></td>
-                                </tr>
-                                <tr> <td colspan="2">q: <span v-model="stats.two_way_anova_q"></span></td> </tr>
-
-                                <tr> <td rowspan="2">Phase Difference
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="Damping"
-                                       data-content="Test for equality of phase between datasets through cosinor analysis (least squares fit)">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                    </td>
-                                    <td colspan="2">p: <span v-model="stats.phase_p"></span></td>
-                                </tr>
-                                <tr> <td colspan="2">q: <span v-model="stats.phase_q"></span></td> </tr>
-
-                                <tr> <td rowspan="2">Amplitude Difference
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="Damping"
-                                       data-content="Test for equality of amplitudes between datasets through cosinor analysis (least squares fit)">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                    </td>
-                                    <td colspan="2">p: <span v-model="stats.amplitude_p"></span></td>
-                                </tr>
-                                <tr> <td colspan="2">q: <span v-model="stats.amplitude_q"></span></td> </tr>
-
-                                <tr> <td>Amplitude
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="Amplitude"
-                                       data-content="Amplitude of the variation.">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                    </td>
-                                    <td v-model="stats.amplitude0"></td>
-                                    <td v-model="stats.amplitude1"></td>
+                                            <td>
+                                            </td>
+                                        </template>
+                                    </template>
                                 </tr>
 
-                                <tr> <td>Peak-time
-                                    <a class="text-primary help-pointer float-right"
-                                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                       title="Peak-time"
-                                       data-content="Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.">
-                                        <i class="fas fa-info-circle ml-3"></i>
-                                    </a>
-                                     </td>
-                                    <td v-model="stats.peak_time0"></td>
-                                    <td v-model="stats.peak_time1"> </td>
+                                <tr v-if="typeof stat.value !== 'string'">
+                                    <template v-if="stat.per_spreadsheet">
+                                        <td v-bind:title="toString(spreadsheets[0][stat.value.q][row_index])">
+                                            q: {{util.formatNum(spreadsheets[0][stat.value.q][row_index], 4)}}
+                                        </td>
+                                        <td v-bind:title="toString(spreadsheets[1][stat.value.q][row_index])">
+                                            q: {{util.formatNum(spreadsheets[1][stat.value.q][row_index], 4)}}
+                                        </td>
+                                    </template>
+                                    <template v-else>
+                                        <td v-if="this[stat.value.q] !== null"
+                                            v-bind:title="toString(this[stat.value.q][row_index])">
+                                            q: {{util.formatNum(this[stat.value.q][row_index], 4)}}
+                                        </td>
+                                        <td v-else>
+                                            loading
+                                        </td>
+                                        <td>
+                                        </td>
+                                    </template>
                                 </tr>
+                            </template>
                         </tbody>
                     </table>
                 </div>
@@ -1611,7 +1590,7 @@
                                         v-bind:value="filter[0]">
                                     <option v-for="filter in filter_data_list"
                                             v-bind:value="filter.key">
-                                            {% raw %} {{filter.name}} {% endraw %}
+                                            {{filter.name}}
                                     </option>
                                 </select>
 
@@ -1708,11 +1687,13 @@
     </div>
 
 
+{% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
 </div>
 
 
 <!-- temporary inlining of Vue.JS dev version -->
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
 <script>
     Vue.prototype.filter_data_list = [
         {values: function () {
@@ -1832,22 +1813,106 @@
                 key: "amplitude_difference_q"}
     ];
 
+    Vue.prototype.util = {
+        formatNum: formatNum
+    };
+
     let app = new Vue({
         el: "#vue-app",
         data: {
             filters: [],
-            last_used_filters: []
+            last_used_filters: [],
+            spreadsheets: null,
+            selected_row: 0,
+            sort_order: null,
+            ampltiude_ps: null,
+            phase_ps: null,
+            two_way_anova_ps: null,
+            two_way_anova_qs: null,
+
+            stats_list: [
+                {name: "Nitecap",
+                 value: {p: "ps",
+                         q: "qs"},
+                  description: "Nitecap significance of rhythmicity for primary dataset.",
+                 per_spreadsheet: true},
+                {name: "JTK",
+                 value: {p: "jtk_ps",
+                         q: "jtk_qs"},
+                 description: "JTK_cycle significance of rhythmicity for primary dataset.",
+                 per_spreadsheet: true},
+                {name: "ANOVA",
+                 value: {p: "anova_ps",
+                         q: "anova_qs"},
+                 description: "1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.",
+                 per_spreadsheet: true},
+                {name: "Damping",
+                 value: {p: "upside_ps",
+                         q: "upside_qs"},
+                 description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
+                 per_spreadsheet: true},
+                {name: "Two-way ANOVA",
+                 value: {p: "two_way_anova_ps",
+                         q: "two_way_anova_qs"},
+                 description: "Two-way ANOVA test for difference in timepoint-effects across datasets",
+                 per_spreadsheet: false},
+                {name: "Phase Difference",
+                 value: {p: "phase_ps",
+                         q: "phase_qs"},
+                 description: "Test for equality of phase between datasets through cosinor analysis (least squares fit)",
+                 per_spreadsheet: false},
+                {name: "Amplitude Difference",
+                 value: {p: "amplitude_ps",
+                         q: "amplitude_qs"},
+                 description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit)",
+                 per_spreadsheet: false},
+                {name: "Amplitude",
+                 value: "amplitudes",
+                 description: "Amplitude of the variation.",
+                 per_spreadsheet: true},
+                {name: "Peak-time",
+                 value: "peak_times",
+                 description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
+                 per_spreadsheet: true},
+            ],
+
             stats: {
-                jtk_p0: 0
+                p_value0: null,
+                q_value0: null,
+                jtk_p0: null,
+                jtk_q0: null,
+                anova_p0: null,
+                anova_q0: null,
+                upside_p0: null,
+                upside_q0: null,
+                amplitude0: null,
+                peak_time0: null,
+                p_value1: null,
+                q_value1: null,
+                jtk_p1: null,
+                jtk_q1: null,
+                anova_p1: null,
+                anova_q1: null,
+                upside_p1: null,
+                upside_q1: null,
+                amplitude1: null,
+                peak_time1: null,
+                two_way_anova_p: null,
+                two_way_anova_q: null,
+                phase_p: null,
+                phase_q: null,
             }
         },
+
         methods: {
             resetFilters: function(){
                 this.filters = this.last_used_filters.slice();
             },
+
             addFilter: function(){
                 this.filters.push( ['max_value', '',''] );
             },
+
             applyFilters: function() {
                 // Copy the filters that we last ran
                 this.last_used_filters = this.filters.slice();
@@ -1884,6 +1949,17 @@
                 // Update row selector display to reflect the new filtering
                 rowSelector.filterRows(filtered);
             },
+        },
+
+        computed: {
+            row_index: function() {
+                if (this.sort_order !== null) {
+                    return this.sort_order[this.selected_row];
+                } else {
+                    return this.selected_row;
+                }
+
+            }
         }
     });
 
