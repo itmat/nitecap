@@ -1576,21 +1576,22 @@
                 </div>
                 <div class="card-body">
                     <div id="filter_list">
-                        <div v-for="(filter, index) in filters" class="row">
+                        <div v-for="(filter, index) in filters" class="row"
+                            :key="filter.id">
                             <div class='col form-inline filter_item'>
                                 <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
                                      v-bind:aria-label="'Lower bound for filter ' + index"
-                                     v-model="filter[1]">
+                                     v-model="filter.lower_bound">
                                 </input>
 
                                 &le;
 
                                 <select class="form-control form-control-sm m-1 filter_value_selector"
                                         v-bind:aria-label="'Filter selector for filter ' + index"
-                                        v-bind:value="filter[0]">
-                                    <option v-for="filter in filter_data_list"
-                                            v-bind:value="filter.key">
-                                            {{filter.name}}
+                                        v-model="filter.variable">
+                                    <option v-for="filter_data in filter_data_list"
+                                            v-bind:value="filter_data.key">
+                                            {{filter_data.name}}
                                     </option>
                                 </select>
 
@@ -1598,7 +1599,7 @@
 
                                 <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
                                      v-bind:aria-label="'Upper bound for filter ' + index"
-                                     v-model="filter[2]">
+                                     v-model="filter.upper_bound">
                                 </input>
 
                                 <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
@@ -1910,7 +1911,13 @@
             },
 
             addFilter: function(){
-                this.filters.push( ['max_value', '',''] );
+                let new_id = 0; // Make filter keys
+                if (this.filters.length > 0){
+                    new_id  = Math.max.apply(null, this.filters.map( function(filter) {
+                        return filter.id;
+                    }))  + 1;
+                }
+                this.filters.push( {variable: 'max_value', lower_bound:'', upper_bound:'', id: new_id} );
             },
 
             applyFilters: function() {
@@ -1921,10 +1928,10 @@
 
                 // Apply all filters
                 this.filters.forEach(function(filter) {
-                    var filter_value = filter[0];
+                    var filter_value = filter.variable;
 
-                    var lower_bound = parseInt(filter[1]);
-                    var upper_bound = parseInt(filter[2]);
+                    var lower_bound = parseInt(filter.lower_bound);
+                    var upper_bound = parseInt(filter.upper_bound);
 
                     if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
                     if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
