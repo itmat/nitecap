@@ -183,6 +183,8 @@
     }
 </script>
 
+{% raw %}
+
 <div id="vue-app">
 
 
@@ -192,10 +194,11 @@
 
 <p id="spreadsheet-comparison-page">
     <div class="row">
-        <p class="col-lg-12 h3">
-            {{descriptive_names[0]}} vs. {{descriptive_names[1]}}
+        <p class="col-lg-12 h3" v-if="spreadsheets[1]">
+            {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
 
-            <a href="{{ url_for('spreadsheets.download_comparison', id1=spreadsheet_ids[0], id2=spreadsheet_ids[1]) }}" class="mx-3" download="processed_file.txt">
+            <a v-bind:href="'spreadsheets/download_comparison/?id1='+spreadsheets[0].spreadsheet_id+'&id2='+spreadsheets[1].spreadsheet_id"
+                    class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
         </p>
@@ -207,7 +210,6 @@
         </span>
     </div>
 
-{% raw %}
 
     <div class="row">
         <div class="col">
@@ -281,7 +283,7 @@
                 </div>
             </form>
             <button class="btn btn-primary mt-2" v-on:click="cycleSpreadsheets">Toggle Primary Plot</button>
-            <span>Currently: <span id="primary_plot_name">TODO</span></span>
+            <span>Currently: <span id="primary_plot_name">{{spreadsheets[0] ? spreadsheets[0].descriptive_name : "loading"}}</span></span>
         </div>
 
         <div class="col-auto">
