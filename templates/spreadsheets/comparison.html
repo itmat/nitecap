@@ -109,7 +109,7 @@
 
         // Load the JTK values for each spreadsheet
         $.ajax({
-            url: "{{url_for('spreadsheets.get_jtk')}}",
+            url: "jtk",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
             dataType: "json",
             contentType: "application/json",
@@ -130,10 +130,6 @@
                         }
                     });
                 });
-
-                $('#sort_select option[value="jtk"]').removeAttr("disabled");
-
-                //updateStatsBox();
             },
             error: function(error) {
                 console.log("Error loading JTK values");
@@ -143,7 +139,7 @@
 
         // Load the Upside values
         $.ajax({
-            url: "{{url_for('spreadsheets.get_upside')}}",
+            url: "get_upside",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
             dataType: 'text json',
             contentType: 'application/json',
@@ -197,7 +193,7 @@
         <p class="col-lg-12 h3" v-if="spreadsheets[1]">
             {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
 
-            <a v-bind:href="'spreadsheets/download_comparison/?id1='+spreadsheets[0].spreadsheet_id+'&id2='+spreadsheets[1].spreadsheet_id"
+            <a v-bind:href="'download_comparison/'+spreadsheets[0].spreadsheet_id+','+spreadsheets[1].spreadsheet_id"
                     class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
@@ -833,6 +829,7 @@
                 },
                 rendered: false,
                 running: false,
+                alert: '',
             },
         },
 
@@ -1375,7 +1372,7 @@
                 vm.pca.running = true;
 
                 $.ajax({
-                    url: "{{url_for('spreadsheets.run_pca')}}",
+                    url: "run_pca",
                     data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids,
                                           'selected_genes': selected_genes,
                                           'take_logtransform': vm.pca.config.logtransform,
