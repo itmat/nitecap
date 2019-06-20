@@ -51,12 +51,26 @@
         spreadsheets.forEach(function(spreadsheet) {
             spreadsheet.upside_ps = null;
             spreadsheet.upside_qs = null;
+
+            // VUE PERF NOTE
+            // Vue "observes" all attributes of observed objects
+            // so it will try to observe everything in the large data arrays
+            // however we do not need reactivity for those arrays since they don't change
+            // Here we disable adding new elements to them which causes Vue to not observe every element in the array
+            // Note that the arrays themselves are still observed in the sense that doing spreadsheet.tds = <new array>
+            // will propagate changes that depend on spreadsheet.tds
+            Object.keys(spreadsheet).forEach(function(key){
+                if (Array.isArray(spreadsheet[key])) {
+                    Object.preventExtensions(spreadsheet[key]);
+                }
+            });
         });
+
         app.spreadsheets = spreadsheets;
         app.labels = spreadsheets[0].labels;
         app.filtered = app.labels.map(function(x) {return false;});
         app.num_significant_below = app.labels.map(function(x,i) { return i+1;} );
-        app.sort_order = app.labels.map( function (x,i) { return i; });
+        //app.sort_order = app.labels.map( function (x,i) { return i; });
         app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
         app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
         initialize();
@@ -78,18 +92,6 @@
         if (num_days > 1) {
             $('#fold_days_box').show();
         }
-
-        // To be loaded later by ajax
-        jtk_ps = [null,null];
-        jtk_qs = [null,null];
-        upside_ps = null;
-        upside_qs = null;
-        two_way_anova_ps = null;
-        two_way_anova_qs = null;
-        phase_ps = null;
-        phase_qs = null;
-        amplitude_ps = null;
-        amplitude_qs = null;
 
         // List of the number of significant (non-filtered) features that are at or below a given index
         app.num_significant_below = app.labels.map(function(x,i) { return i+1;} );
@@ -141,9 +143,7 @@
         let el = document.getElementById("row_selector");
         qs = app.labels.map( function (x) {return 1;} );
         rowSelector = makeRowSelector(el,  app.labels, qs, app.filtered, app.sort_order, num_row_selections, onRowSelect);
-        console.log("Made row selector");
         rowSelector.selectRow(breakpoint);
-        console.log("Made row selector");
 
         computeNumSignificantBelow();
 
@@ -225,6 +225,9 @@
                 spreadsheet_ids.forEach(function(id, i) {
                     spreadsheets.forEach(function(spreadsheet) {
                         if (spreadsheet.spreadsheet_id == id) {
+                            // For Vue performance see VUE PERF NOTE
+                            Object.preventExtensions(jtk_ps[i]);
+                            Object.preventExtensions(jtk_qs[i]);
                             spreadsheet.jtk_ps = jtk_ps[i];
                             spreadsheet.jtk_qs = jtk_qs[i];
                         }
@@ -242,7 +245,6 @@
         });
 
         // Load the Upside values
-        console.log("Asking for Upside values")
         $.ajax({
             url: "{{url_for('spreadsheets.get_upside')}}",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
@@ -250,13 +252,20 @@
             contentType: 'application/json',
             type: 'POST',
             success: function(response) {
-                console.log("Received Upside values")
+                // See VUE PERF NOTE
+                // Make all arrays non-traversed by Vue for performance
+                Object.keys(response).forEach(function(key) {
+                    Object.preventExtensions(response[key]);
+                });
+
                 upside_ps = response['upside_ps'];
                 upside_qs = response['upside_qs'];
 
-                upside_ps.forEach(function(ps, idx){
-                    spreadsheets[idx].upside_ps = ps;
-                    spreadsheets[idx].upside_qs = upside_qs[idx];
+                app.spreadsheets.forEach(function(spreadsheet, idx){
+                    Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
+                    Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
+                    spreadsheet.upside_ps = upside_ps[idx];
+                    spreadsheet.upside_qs = upside_qs[idx];
                 });
 
                 app.stats.two_way_anova_ps = response['two_way_anova_ps'];
@@ -265,6 +274,7 @@
                 app.stats.phase_qs = response['phase_qs'];
                 app.stats.amplitude_ps = response['amplitude_ps'];
                 app.stats.amplitude_qs = response['amplitude_qs'];
+
             },
             error: function(error) {
                 console.log("Error loading upside values");
@@ -1017,50 +1027,50 @@
 
     Vue.prototype.sorters = {
         "nitecap": function(i,j) {
-            var a = spreadsheets[0].tds[i];
-            var b = spreadsheets[0].tds[j];
+            var a = app.spreadsheets[0].tds[i];
+            var b = app.spreadsheets[0].tds[j];
             return compare(a,b,i,j);
         },
         "anova": function (i,j) {
             // Sort anova p-values in ascending order
-            var a = spreadsheets[0].anova_ps[i];
-            var b = spreadsheets[0].anova_ps[j];
+            var a = app.spreadsheets[0].anova_ps[i];
+            var b = app.spreadsheets[0].anova_ps[j];
             return compare(a,b,i,j);
         },
         "jtk": function (i,j) {
             // Sort jtk p-values in ascending order
-            var a = spreadsheets[0].jtk_ps[i];
-            var b = spreadsheets[0].jtk_ps[j];
+            var a = app.spreadsheets[0].jtk_ps[i];
+            var b = app.spreadsheets[0].jtk_ps[j];
             return compare(a,b,i,j);
         },
         "amplitude": function (i,j) {
             // Sort amplitude values in descending order
-            var a = -spreadsheets[0].amplitudes[i];
-            var b = -spreadsheets[0].amplitudes[j];
+            var a = -app.spreadsheets[0].amplitudes[i];
+            var b = -app.spreadsheets[0].amplitudes[j];
             return compare(a,b,i,j);
         },
         "upside": function (i,j) {
             // Sort by ascending order
-            var a = upside_ps[0][i];
-            var b = upside_ps[0][j];
+            var a = app.spreadsheets[0].upside_ps[i];
+            var b = app.spreadsheets[0].upside_ps[j];
             return compare(a,b,i,j);
         },
         "two_way_anova": function (i,j) {
             // Sort by ascending order
-            var a = two_way_anova_ps[i];
-            var b = two_way_anova_ps[j];
+            var a = app.stats.two_way_anova_ps[i];
+            var b = app.stats.two_way_anova_ps[j];
             return compare(a,b,i,j);
         },
         "amplitude_change": function (i,j) {
             // Sort by ascending order
-            var a = amplitude_ps[i];
-            var b = amplitude_ps[j];
+            var a = app.stats.amplitude_ps[i];
+            var b = app.stats.amplitude_ps[j];
             return compare(a,b,i,j);
         },
         "phase_change": function (i,j) {
             // Sort by ascending order
-            var a = phase_ps[i];
-            var b = phase_ps[j];
+            var a = app.stats.phase_ps[i];
+            var b = app.stats.phase_ps[j];
             return compare(a,b,i,j);
         }
     };
@@ -1074,7 +1084,6 @@
             hide_filtered_rows: false,
             spreadsheets: [],
             selected_row: 0,
-            sort_order: null,
             sort_variable: "nitecap",
 
             stats: {
@@ -1216,8 +1225,8 @@
             },
 
             sortRows: function () {
-                this.sort_order = this.labels.map( function(x,i) {return i;} )
-                        .sort( this.sorters[this.sort_variable] );
+                //this.sort_order = this.labels.map( function(x,i) {return i;} )
+                //        .sort( this.sorters[this.sort_variable] );
 
                 this.applyFilters();
 
@@ -1588,6 +1597,13 @@
                         }
                     }
                 }
+            },
+
+            sort_order: function () {
+                let sorter = this.sorters[this.sort_variable];
+                let val =  this.labels.map( function(x,i) {return i;} );
+                val = val.sort( this.sorters[this.sort_variable] );
+                return val;
             },
         },
 
