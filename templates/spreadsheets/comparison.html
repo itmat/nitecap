@@ -1119,20 +1119,6 @@
                 this.last_used_filters = this.filters.slice();
             },
 
-            sortRows: function () {
-                //this.sort_order = this.labels.map( function(x,i) {return i;} )
-                //        .sort( this.sorters[this.sort_variable] );
-
-                this.applyFilters();
-
-                //rowSelector.setSortOrder(this.sort_order);
-                //rowSelector.selectRow(this.selected_row);
-
-                // TODO: not using this function at all right now
-
-                updateRowLabels();
-            },
-
             redrawPlot: function() {
                 let vm = this;
                 // Update the Plotly plots of the feature profiles
