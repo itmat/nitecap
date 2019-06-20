@@ -111,49 +111,6 @@
         rowSelector = makeRowSelector(el,  app.labels, qs, app.filtered, app.sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(0);
 
-        let searchRows = function() {
-            let search_value = $('#row_search_box').val().toLowerCase();
-
-            // Pull out row indexes matching our search_value
-            let matching_rows = app.labels.map( function(unused, index) {
-                let label = app.labels[app.sort_order[index]];
-                if (label.toLowerCase().indexOf(search_value) !== -1) {
-                    return index;
-                }
-            }).filter(isFinite);
-
-
-            if (matching_rows.length === 0) {
-                console.log("Unfortunately no matching row found.");
-                // TODO: display something to the user
-                return;
-            }
-
-            // Find matches in rows past the current selection
-            let matches_after = matching_rows.filter( function (i) {
-                return i > app.selected_row;
-            } );
-
-            let row = null;
-            if (matches_after.length > 0) {
-                // First look for matches that are *after* our selected_row
-                // so that multiple button presses will cycle the selection through all matches
-                row = matches_after[0];
-            } else {
-                // If that fails, grab the first matching row
-                row = matching_rows[0];
-            }
-
-            rowSelector.selectRow(row);
-        };
-        $('#search_button').click( searchRows);
-        $('#row_search_box').on("keydown", function (evt) {
-            if (evt.keyCode === 13) { // On Enter key press
-                searchRows();
-            }
-        });
-
-
         // Load the JTK values for each spreadsheet
         $.ajax({
             url: "{{url_for('spreadsheets.get_jtk')}}",
@@ -509,9 +466,11 @@
                 <div class="col">
                     <div class="input-group mb-2">
                         <input class="form-control form-control-sm" type="text" name="row_search"
-                               placeholder="Search for row by label" id="row_search_box" />
+                               placeholder="Search for row by label" v-model="search_value"
+                               v-on:keyup.enter="searchRows"/>
                         <div class="input-group-append">
-                            <button type="button" id="search_button" class="btn btn-secondary btn-sm">
+                            <button type="button" class="btn btn-secondary btn-sm"
+                                    v-on:click="searchRows">
                                 Search
                             </button>
                         </div>
@@ -1015,6 +974,8 @@
             selected_row: 0,
             sort_variable: "nitecap",
 
+            search_value: '',
+
             stats: {
                 amplitude_ps: null,
                 amplitude_qs: null,
@@ -1459,7 +1420,42 @@
                 // Shifts spreadsheets over by one, cyclicly
                 // For just 2, it just swaps primary/secondary
                 this.spreadsheets.push(this.spreadsheets.shift());
-            }
+            },
+            searchRows: function() {
+                let search_value = this.search_value.toLowerCase();
+
+                // Pull out row indexes matching our search_value
+                let matching_rows = app.labels.map( function(unused, index) {
+                    let label = app.labels[app.sort_order[index]];
+                    if (label.toLowerCase().indexOf(search_value) !== -1) {
+                        return index;
+                    }
+                }).filter(isFinite);
+
+
+                if (matching_rows.length === 0) {
+                    console.log("Unfortunately no matching row found.");
+                    // TODO: display something to the user
+                    return;
+                }
+
+                // Find matches in rows past the current selection
+                let matches_after = matching_rows.filter( function (i) {
+                    return i > app.selected_row;
+                } );
+
+                let row = null;
+                if (matches_after.length > 0) {
+                    // First look for matches that are *after* our selected_row
+                    // so that multiple button presses will cycle the selection through all matches
+                    row = matches_after[0];
+                } else {
+                    // If that fails, grab the first matching row
+                    row = matching_rows[0];
+                }
+
+                rowSelector.selectRow(row);
+            },
         },
 
         computed: {
