@@ -13,20 +13,12 @@
     function computeNumSignificantBelow() {
         // Recompute the number of signifcant items below a cutoff
         var ctr = 0;
-        var set_significant_items = false;
-        var significant_items = $('#significant_items')[0];
         $.each(spreadsheets[0].data, function (index, row) {
-            if (!filtered[sort_order[index]]) {
+            if (!app.filtered[app.sort_order[index]]) {
                 ctr++;
             }
 
-            num_significant_below[index] = ctr;
-
-            // Update number of significant items
-            if (index >= row_index && !set_significant_items) {
-                significant_items.value  = ctr;
-                set_significant_items = true;
-            }
+            app.num_significant_below[index] = ctr;
         });
     }
 
@@ -56,6 +48,10 @@
 
     function onSpreadsheetLoad() {
         // FOR VUE
+        spreadsheets.forEach(function(spreadsheet) {
+            spreadsheet.upside_ps = null;
+            spreadsheet.upside_qs = null;
+        });
         app.spreadsheets = spreadsheets;
         app.labels = spreadsheets[0].labels;
         app.filtered = app.labels.map(function(x) {return false;});
@@ -63,35 +59,24 @@
         app.sort_order = app.labels.map( function (x,i) { return i; });
         app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
         app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
+        initialize();
+    }
 
+    function initialize() {
 
-
-        labels = spreadsheets[0].labels; // Both have same labels, so we pull those out
-
-        // Start with no filters since we don't save these to DB for comparison
-        filters = [];
-        filtered = spreadsheets[0].labels.map(function(x) {return false;});
-
-
-        $("#primary_plot_name").text(spreadsheets[0].descriptive_names);
+        $("#primary_plot_name").text(app.spreadsheets[0].descriptive_names);
 
         var breakpoint = 0;
-
-        // Wether we have drawn a plot yet, changes what Plotly wants
-        let first_plot = false;
 
         // Handles to the error modal on base.html
         nitecap_error = $("#error-modal");
         nitecap_error_message = $("#error-modal-message");
 
-        hide_filtered_checkbox = document.getElementById("hide_filtered");
-
         fold_days_checkbox = document.getElementById('fold_days_checkbox');
 
-        num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
+        num_days = (Math.max.apply(null, app.spreadsheets[0].x_values) + 1) / app.spreadsheets[0].timepoints_per_day;
         if (num_days > 1) {
             $('#fold_days_box').show();
-            $('#heatmap_fold_days_box').show();
         }
 
         // To be loaded later by ajax
@@ -107,14 +92,7 @@
         amplitude_qs = null;
 
         // List of the number of significant (non-filtered) features that are at or below a given index
-        num_significant_below = labels.map(function(x,i) { return i+1;} );
-
-        // Indexes to the order in which we will display the genes
-        // default to the order in which they were sent
-        sort_order = labels.map(function(x,i) {return i;});
-
-        // Currently selected row from slider
-        selected_row = breakpoint;
+        app.num_significant_below = app.labels.map(function(x,i) { return i+1;} );
 
         y_values = [];
         trace_name = 'Nothing selected';
@@ -130,216 +108,42 @@
                 max: maximum,
                 range: "min",
                 slide: function (event, ui) {
-                    selected_row = ui.value;
+                    app.selected_row = ui.value;
                     rowSelector.selectRow(parseInt(ui.value));
-                    $('#row_selector').focus();
+                    //$('#row_selector').focus();
                 }
             });
         }
 
-        makeCoarseSlider($('#coarse_slider'), breakpoint, labels.length - 1);
+        makeCoarseSlider($('#coarse_slider'), breakpoint, app.labels.length - 1);
 
-        var redrawPlot = function() {
-            // Update the Plotly plots of the feature profiles
-            traces = [];
-            var colors = Plotly.d3.scale.category10();
-            spreadsheets.forEach(function (spreadsheet, idx) {
-                var row_index = sort_order[selected_row];
-                raw_y_values = spreadsheet.data[row_index];
-                if (raw_y_values === undefined) {
-                    console.log("Could not find the y-values for row " + row_index);
-                    return;
-                }
-
-                fold_days = fold_days_checkbox.checked;
-                if (fold_days) {
-                    plot_x_values = spreadsheet.x_values.map(function (x) {return x % spreadsheet.timepoints_per_day;});
-                    plot_x_labels = plot_x_values.map(function(x) {return "Timepoint " + (x+1);});
-                    plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
-                } else {
-                    plot_x_values = spreadsheet.x_values;
-                    plot_x_labels = spreadsheet.x_labels;
-                    plot_x_label_values = spreadsheet.x_label_values;
-                }
-
-                let x_label_style = $('#plot_x_label_style').val();
-                if (x_label_style === 'none') {
-                    plot_x_labels = plot_x_labels.map( function (x) {return '';} );
-                } else if (x_label_style === 'time') {
-                    plot_x_labels = plot_x_labels.map( function(x,i) {
-                        return "Timepoint " + (i % spreadsheet.timepoints_per_day + 1);
-                    });
-                } else if (x_label_style === 'infer') {
-                    let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
-                    if (inferred !== null) {
-                        let headings = inferred.times.map(function(t) {
-                            return inferred.format.make_label(t);
-                        });
-                        plot_x_labels = [];
-                        plot_x_label_values = [];
-                        spreadsheet.x_values.forEach( function (time,i) {
-                            if (plot_x_labels[time] === undefined) {
-                                plot_x_labels[time] = headings[i];
-                                plot_x_label_values[time] = time;
-                            }
-                        });
-                    }
-                } else if (x_label_style === 'infer_wrapped') {
-                    let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
-                    if (inferred !== null) {
-                        let headings = inferred.times.map(function(t) {
-                            return inferred.format.make_label(t, true);
-                        });
-
-                        plot_x_labels = [];
-                        plot_x_label_values = [];
-                        spreadsheet.x_values.forEach( function (time,i) {
-                            if (plot_x_labels[time] === undefined) {
-                                plot_x_labels[time] = headings[i];
-                                plot_x_label_values[time] = time;
-                            }
-                        });
-                    }
-                }
-
-                var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
-
-                // Pick a color for this spreadsheet using Plotly's defaults from d3
-                var spreadsheet_color = colors(idx);
-
-                // Default values for the different plot styles to override
-                var trace = {
-                    x: plot_x_values, y: raw_y_values,
-                    mode: 'markers',
-                    marker: marker_settings,
-                    name: spreadsheet.descriptive_name,
-                    type: 'scatter',
-                    'marker': {color: spreadsheet_color},
-                    'line': {color: spreadsheet_color}
-                };
-
-                // Pick data and styling based off the plot_style_select value
-                var plot_style = $('#plot_style_select').val();
-                if (plot_style === "basketweave") {
-                    // Make pairs of points that are adjacent in time to each other, for each dataset
-                    column_pairs = [];
-                    plot_x_values.forEach( function(x,i) {
-                        for(var j = i+1; j < plot_x_values.length; j++) {
-                            if (Math.abs(plot_x_values[j] - x) === 1) {
-                                column_pairs.push([i,j]);
-                            }
-                        }
-                    });
-
-                    paired_y_values = [];
-                    for (var i in column_pairs) {
-                        paired_y_values.push(raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null);
-                    }
-
-                    paired_x_values = [];
-                    for (var i in column_pairs) {
-                        paired_x_values.push(plot_x_values[column_pairs[i][0]], plot_x_values[column_pairs[i][1]], null);
-                    }
-
-                    trace.mode = 'lines+markers';
-                    trace.x = paired_x_values;
-                    trace.y = paired_y_values;
-                } else if (plot_style === "points") {
-                    trace.x = plot_x_values;
-                    trace.y = raw_y_values;
-                } else if (plot_style === "mean") {
-                    trace.mode = "lines";
-                    trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                    trace.y = stats.means;
-                } else if (plot_style === "mean_points") {
-                    trace.x = plot_x_values;
-                    trace.y = raw_y_values;
-                    traces.push({ // The mean value trace
-                        x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
-                        y: stats.means,
-                        type: "scatter",
-                        mode: "lines",
-                        showlegend: false,
-                        'line': {color: spreadsheet_color}
-                    });
-                } else if (plot_style === "std") {
-                    trace.mode = "lines";
-                    trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                    trace.y = stats.means;
-                    trace.error_y = {type: 'data', array:stats.stds, visible:true};
-                } else if (plot_style === "SEM") {
-                    trace.mode = "lines";
-                    trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
-                    trace.y = stats.means;
-                    trace.error_y = {type: 'data', array:stats.sems, visible:true};
-                }
-
-                traces.push(trace);
-
-            });
-
-            var layout = {
-                hovermode: 'closest',
-                title: labels[sort_order[selected_row]],
-                legend: { orientation: 'h', y: -0.2 },
-                xaxis: {
-                    ticktext: plot_x_labels,
-                    tickvals: plot_x_label_values,
-                    automargin: true
-                }
-            };
-
-            if (first_plot) {
-                Plotly.newPlot(scatter_plot, traces, layout);
-                first_plot = false;
-            } else {
-                Plotly.react(scatter_plot, traces, layout);
-            }
-        };
-
-        $('#plot_style_select').change(redrawPlot);
-        $('#plot_x_label_style').change(redrawPlot);
-        fold_days_checkbox.addEventListener('change', redrawPlot);
+        //$('#plot_style_select').change(redrawPlot);
+        //$('#plot_x_label_style').change(redrawPlot);
+        //fold_days_checkbox.addEventListener('change', redrawPlot);
 
         $('#download_plot').click(function() {
             var gd = document.getElementById('scatter_plot');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (selected_row+1)});
+            Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.selected_row+1)});
         });
 
         // Make the row selector
         function onRowSelect(selection) {
-            selected_row = selection;
 
-            app.selected_row = selected_row;
+            app.selected_row = selection;
 
             // Update the coarse slider
-            $("#coarse_slider").slider("option", "value", selected_row);
+            $("#coarse_slider").slider("option", "value", app.selected_row);
 
             //updateStatsBox();
-            redrawPlot();
+            //redrawPlot();
         }
         var num_row_selections = 21; // Show this many rows at once
-        rowSelector = makeRowSelector($('#row_selector')[0],  labels, spreadsheets[0].qs, filtered, sort_order, num_row_selections, onRowSelect);
+        let el = document.getElementById("row_selector");
+        qs = app.labels.map( function (x) {return 1;} );
+        rowSelector = makeRowSelector(el,  app.labels, qs, app.filtered, app.sort_order, num_row_selections, onRowSelect);
+        console.log("Made row selector");
         rowSelector.selectRow(breakpoint);
-
-        $("#hide_filtered").change( function() {
-            let below = num_significant_below[selected_row];
-
-            // Redo the ordering of the rows to move the filtered ones to the back
-            sortRows();
-
-            // Update the row selected to account for the same number of rows chosen as before
-            // so that we don't change which row was selected
-            // though this does move the viewed rows to contain the selected row even if it wasn't visible before
-            let new_index = num_significant_below.indexOf(below);
-            rowSelector.selectRow(new_index);
-        });
-
-        // Heatmap
-        $('#download_heatmap').click(function() {
-            var gd = document.getElementById('heatmap');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (selected_row+1)});
-        });
+        console.log("Made row selector");
 
         computeNumSignificantBelow();
 
@@ -347,8 +151,8 @@
             let search_value = $('#row_search_box').val().toLowerCase();
 
             // Pull out row indexes matching our search_value
-            let matching_rows = labels.map( function(unused, index) {
-                let label = labels[sort_order[index]];
+            let matching_rows = app.labels.map( function(unused, index) {
+                let label = app.labels[app.sort_order[index]];
                 if (label.toLowerCase().indexOf(search_value) !== -1) {
                     return index;
                 }
@@ -363,7 +167,7 @@
 
             // Find matches in rows past the current selection
             let matches_after = matching_rows.filter( function (i) {
-                return i > selected_row;
+                return i > app.selected_row;
             } );
 
             let row = null;
@@ -385,101 +189,26 @@
             }
         });
 
-        var sorters = {
-            "nitecap": function(i,j) {
-                var a = spreadsheets[0].tds[i];
-                var b = spreadsheets[0].tds[j];
-                return compare(a,b,i,j);
-            },
-            "anova": function (i,j) {
-                // Sort anova p-values in ascending order
-                var a = spreadsheets[0].anova_ps[i];
-                var b = spreadsheets[0].anova_ps[j];
-                return compare(a,b,i,j);
-            },
-            "jtk": function (i,j) {
-                // Sort jtk p-values in ascending order
-                var a = spreadsheets[0].jtk_ps[i];
-                var b = spreadsheets[0].jtk_ps[j];
-                return compare(a,b,i,j);
-            },
-            "amplitude": function (i,j) {
-                // Sort amplitude values in descending order
-                var a = -spreadsheets[0].amplitudes[i];
-                var b = -spreadsheets[0].amplitudes[j];
-                return compare(a,b,i,j);
-            },
-            "upside": function (i,j) {
-                // Sort by ascending order
-                var a = upside_ps[0][i];
-                var b = upside_ps[0][j];
-                return compare(a,b,i,j);
-            },
-            "two_way_anova": function (i,j) {
-                // Sort by ascending order
-                var a = two_way_anova_ps[i];
-                var b = two_way_anova_ps[j];
-                return compare(a,b,i,j);
-            },
-            "amplitude_change": function (i,j) {
-                // Sort by ascending order
-                var a = amplitude_ps[i];
-                var b = amplitude_ps[j];
-                return compare(a,b,i,j);
-            },
-            "phase_change": function (i,j) {
-                // Sort by ascending order
-                var a = phase_ps[i];
-                var b = phase_ps[j];
-                return compare(a,b,i,j);
-            }
-        };
 
         function updateRowLabels() {
+            return; // TODO!!
             var sorter = $('#sort_select').val();
             if (sorter === 'jtk') {
-                rowSelector.makeRowLabels(labels, spreadsheets[0].jtk_qs);
+                rowSelector.makeRowLabels(app.labels, spreadsheets[0].jtk_qs);
             } else if (sorter === 'upside') {
-                rowSelector.makeRowLabels(labels, upside_qs[0]);
+                rowSelector.makeRowLabels(app.labels, upside_qs[0]);
             } else if (sorter === 'two_way_anova') {
-                rowSelector.makeRowLabels(labels, two_way_anova_qs);
+                rowSelector.makeRowLabels(app.labels, two_way_anova_qs);
             } else if (sorter === 'anova') {
-                rowSelector.makeRowLabels(labels, spreadsheets[0].anova_qs);
+                rowSelector.makeRowLabels(app.labels, spreadsheets[0].anova_qs);
             } else if (sorter === 'amplitude_change') {
-                rowSelector.makeRowLabels(labels, amplitude_qs);
+                rowSelector.makeRowLabels(app.labels, amplitude_qs);
             } else if (sorter === 'phase_change') {
-                rowSelector.makeRowLabels(labels, phase_qs);
+                rowSelector.makeRowLabels(app.labels, phase_qs);
             } else {
-                rowSelector.makeRowLabels(labels, spreadsheets[0].qs);
+                rowSelector.makeRowLabels(app.labels, spreadsheets[0].qs);
             }
         }
-
-        var sortRows = function () {
-            var sorter = $('#sort_select').val();
-            sort_order = labels.map( function(x,i) {return i;} );
-            sort_order = sort_order.sort( sorters[sorter] );
-
-            applyFilters();
-
-            rowSelector.setSortOrder(sort_order);
-            rowSelector.selectRow(selected_row);
-
-            updateRowLabels();
-        };
-        $('#sort_select').change( sortRows );
-
-        $('#significant_items').change(function () {
-            let row = Math.round(this.value) -1;
-            console.log("Significant items changed to " + row);
-
-            if (row < 0) {
-                row = 0;
-            } else if (row > labels.length-1) {
-                row = labels.length-1;
-            }
-
-            rowSelector.selectRow(row);
-        });
 
         // Load the JTK values for each spreadsheet
         $.ajax({
@@ -513,6 +242,7 @@
         });
 
         // Load the Upside values
+        console.log("Asking for Upside values")
         $.ajax({
             url: "{{url_for('spreadsheets.get_upside')}}",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
@@ -520,6 +250,7 @@
             contentType: 'application/json',
             type: 'POST',
             success: function(response) {
+                console.log("Received Upside values")
                 upside_ps = response['upside_ps'];
                 upside_qs = response['upside_qs'];
 
@@ -528,19 +259,12 @@
                     spreadsheets[idx].upside_qs = upside_qs[idx];
                 });
 
-                two_way_anova_ps = response['two_way_anova_ps'];
-                two_way_anova_qs = response['two_way_anova_qs'];
-                phase_ps = response['phase_ps'];
-                phase_qs = response['phase_qs'];
-                amplitude_ps = response['amplitude_ps'];
-                amplitude_qs = response['amplitude_qs'];
-
-                $('#sort_select option[value="upside"]').removeAttr("disabled");
-                $('#sort_select option[value="two_way_anova"]').removeAttr("disabled");
-                $('#sort_select option[value="phase_change"]').removeAttr("disabled");
-                $('#sort_select option[value="amplitude_change"]').removeAttr("disabled");
-
-                //updateStatsBox();
+                app.stats.two_way_anova_ps = response['two_way_anova_ps'];
+                app.stats.two_way_anova_qs = response['two_way_anova_qs'];
+                app.stats.phase_ps = response['phase_ps'];
+                app.stats.phase_qs = response['phase_qs'];
+                app.stats.amplitude_ps = response['amplitude_ps'];
+                app.stats.amplitude_qs = response['amplitude_qs'];
             },
             error: function(error) {
                 console.log("Error loading upside values");
@@ -666,11 +390,11 @@
         let pca_button = $('#run_pca');
         function runPCA() {
             // We only run PCA on unfiltered genes below the selected row
-            var selected_genes = sort_order.filter( function(row,rank) {
-                if (rank > selected_row) {
+            var selected_genes = app.sort_order.filter( function(row,rank) {
+                if (rank > app.selected_row) {
                     return false;
                 }
-                if (filtered[row]) {
+                if (app.filtered[row]) {
                     return false;
                 }
                 return true;
@@ -823,7 +547,7 @@
     <div class="row">
         <span class="form-group col-lg-9">
             Number of selected rows:
-            <input type="number" id="significant_items"></input>
+            <input type="number" v-model="num_below"></input>
         </span>
     </div>
 
@@ -860,7 +584,7 @@
                     <div id="row_selector" class="list-group" tabindex="0" style="white-space:pre">
                      </div>
                     <div class="form-check">
-                        <input class="form-check-input" id="hide_filtered" type="checkbox" value="">
+                        <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="hide_filtered_rows">
                         <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>
                     </div>
                 </div>
@@ -874,7 +598,7 @@
             <form class="form-group">
                 <div class="form-inline">
                     <label for="plot_style_select">Plot style</label>
-                    <select id="plot_style_select" value="basketweave" class="form-control form-control-sm">
+                    <select id="plot_style_select" value="basketweave" class="form-control form-control-sm" v-model="plot.config.style">
                         <option value="basketweave">Basketweave</option>
                         <option value="points">Points</option>
                         <option value="mean">Mean only</option>
@@ -885,7 +609,7 @@
                 </div>
                 <div class="form-inline">
                     <label for="plot_x_label_style">Plot x-axis labels</label>
-                    <select id="plot_x_label_style" class="form-control form-control-sm">
+                    <select id="plot_x_label_style" class="form-control form-control-sm" v-model="plot.config.x_label_style">
                         <option value="daytime" selected>Day and time</option>
                         <option value="time">Time of day</option>
                         <option value="infer">Inferred labels</option>
@@ -894,7 +618,7 @@
                     </select>
                 </div>
                 <div class="form-check" id="fold_days_box" style="display:none">
-                    <input class="form-check-input" id="fold_days_checkbox" type="checkbox" value="">
+                    <input class="form-check-input" id="fold_days_checkbox" type="checkbox" v-model="plot.config.fold_days">
                     <label class="form-check-label" for="fold_days_checkbox">Overlay cycles</label>
                 </div>
             </form>
@@ -915,15 +639,16 @@
                 </div>
                 <div class="card-body">
                     <label for="sort_select">Sort by:</label>
-                    <select id="sort_select" class="form-control form-control-sm">
+                    <select id="sort_select" class="form-control form-control-sm"
+                            v-model="sort_variable">
                          <option value="nitecap">Nitecap</option>
-                         <option value="jtk" disabled>JTK</option>
+                         <option value="jtk" v-bind:disabled="spreadsheets.length == 0 || spreadsheets[0].jtk_ps === null">JTK</option>
                          <option value="anova">ANOVA</option>
                          <option value="amplitude">Amplitude</option>
-                         <option value="upside" disabled>Damping</option>
-                         <option value="two_way_anova" disabled>Two-way ANOVA</option>
-                         <option value="phase_change" disabled>Phase Difference</option>
-                         <option value="amplitude_change" disabled>Amplitude Difference</option>
+                         <option value="upside" v-bind:disabled="spreadsheets.length == 0 || spreadsheets[0].updside_ps === null">Damping</option>
+                         <option value="two_way_anova" v-bind:disabled="stats.two_way_anova_ps === null">Two-way ANOVA</option>
+                         <option value="phase_change" v-bind:disabled="stats.phase_ps === null">Phase Difference</option>
+                         <option value="amplitude_change" v-bind:disabled="stats.amplitude_ps === null">Amplitude Difference</option>
                     </select>
                     <table class="table table-sm">
                         <thead>
@@ -948,36 +673,43 @@
 
                                     <template v-if="typeof stat.value === 'string'">
                                         <template v-if="stat.per_spreadsheet">
-                                            <td v-bind:title="toString(spreadsheets[0][stat.value][row_index])">
-                                                {{util.formatNum(spreadsheets[0][stat.value][row_index], 4)}}
-                                            </td>
-                                            <td v-bind:title="toString(spreadsheets[1][stat.value][row_index])">
-                                                {{util.formatNum(spreadsheets[1][stat.value][row_index], 4)}}
-                                            </td>
+                                            <template v-for="spreadsheet in spreadsheets">
+                                                <td v-if="spreadsheet[stat.value] != null"
+                                                    v-bind:title="toString(spreadsheet[stat.value][row_index])">
+                                                    {{util.formatNum(spreadsheet[stat.value][row_index], 4)}}
+                                                </td>
+                                                <td v-else>
+                                                    loading
+                                                </td>
+                                            </template>
                                         </template>
                                         <template v-else>
-                                            <td v-if="this[stat.value] !== null"
-                                                v-bind:title="toString(this[stat.value][row_index])">
-                                                {{util.formatNum(this[stat.value][row_index], 4)}}
+                                            <td v-if="stats[stat.value] != null"
+                                                v-bind:title="toString(stats[stat.value][row_index])">
+                                                {{util.formatNum(stats[stat.value][row_index], 4)}}
                                             </td>
                                             <td v-else>
                                                 loading
                                             </td>
                                         </template>
                                     </template>
+
                                     <template v-else>
                                         <template v-if="stat.per_spreadsheet">
-                                            <td v-bind:title="toString(spreadsheets[0][stat.value.p][row_index])">
-                                                p: {{util.formatNum(spreadsheets[0][stat.value.p][row_index], 4)}}
-                                            </td>
-                                            <td v-bind:title="toString(spreadsheets[1][stat.value.p][row_index])">
-                                                p: {{util.formatNum(spreadsheets[1][stat.value.p][row_index], 4)}}
-                                            </td>
+                                            <template v-for="spreadsheet in spreadsheets">
+                                                <td v-if="spreadsheet[stat.value.p] != null"
+                                                    v-bind:title="toString(spreadsheet[stat.value.p][row_index])">
+                                                    p: {{util.formatNum(spreadsheet[stat.value.p][row_index], 4)}}
+                                                </td>
+                                                <td v-else>
+                                                    loading
+                                                </td>
+                                            </template>
                                         </template>
                                         <template v-else>
-                                            <td v-if="this[stat.value.p] !== null"
-                                                v-bind:title="toString(this[stat.value.p][row_index])">
-                                                p: {{util.formatNum(this[stat.value.p][row_index], 4)}}
+                                            <td v-if="stats[stat.value.p] != null"
+                                                v-bind:title="toString(stats[stat.value.p][row_index])">
+                                                p: {{util.formatNum(stats[stat.value.p][row_index], 4)}}
                                             </td>
                                             <td v-else>
                                                 loading
@@ -991,17 +723,20 @@
 
                                 <tr v-if="typeof stat.value !== 'string'">
                                     <template v-if="stat.per_spreadsheet">
-                                        <td v-bind:title="toString(spreadsheets[0][stat.value.q][row_index])">
-                                            q: {{util.formatNum(spreadsheets[0][stat.value.q][row_index], 4)}}
-                                        </td>
-                                        <td v-bind:title="toString(spreadsheets[1][stat.value.q][row_index])">
-                                            q: {{util.formatNum(spreadsheets[1][stat.value.q][row_index], 4)}}
-                                        </td>
+                                        <template v-for="spreadsheet in spreadsheets">
+                                            <td v-if="spreadsheet[stat.value.q] != null"
+                                                v-bind:title="toString(spreadsheet[stat.value.q][row_index])">
+                                                q: {{util.formatNum(spreadsheet[stat.value.q][row_index], 4)}}
+                                            </td>
+                                            <td v-else>
+                                                loading
+                                            </td>
+                                        </template>
                                     </template>
                                     <template v-else>
-                                        <td v-if="this[stat.value.q] !== null"
-                                            v-bind:title="toString(this[stat.value.q][row_index])">
-                                            q: {{util.formatNum(this[stat.value.q][row_index], 4)}}
+                                        <td v-if="stats[stat.value.q] != null"
+                                            v-bind:title="toString(stats[stat.value.q][row_index])">
+                                            q: {{util.formatNum(stats[stat.value.q][row_index], 4)}}
                                         </td>
                                         <td v-else>
                                             loading
@@ -1112,7 +847,7 @@
                     </div>
                 </span>
                 <span>
-                    <button id="download_heatmap" class="btn btn-primary" style="display:none">Download Heatmap</button>
+                    <button id="download_heatmap" class="btn btn-primary" v-on:click="downloadHeatmap">Download Heatmap</button>
                 </span>
             </div>
         </div>
@@ -1245,27 +980,27 @@
                 name: "Peak time Secondary",
                 independent: false,
                 key: "peaktime1"},
-        {values:function () { return two_way_anova_ps; },
+        {values:function () { return app.stats.two_way_anova_ps; },
                   name: "Two-way ANOVA p",
                   independent: false,
                   key: "two_way_anova_p"},
-        {values:function () { return two_way_anova_qs; },
+        {values:function () { return app.stats.two_way_anova_qs; },
                   name: "Two-way ANOVA q",
                   independent: false,
                   key: "two_way_anova_q"},
-        {values:function () { return phase_ps; },
+        {values:function () { return app.stats.phase_ps; },
                   name: "Phase difference p",
                   independent: false,
                   key: "phase_difference_q"},
-        {values:function () { return phase_qs; },
+        {values:function () { return app.stats.phase_qs; },
                   name: "Phase difference q",
                   independent: false,
                   key: "phase_difference_p"},
-        {values:function () { return amplitude_ps; },
+        {values:function () { return app.stats.amplitude_ps; },
                   name: "Amplitude difference p",
                   independent: false,
                   key: "amplitude_difference_p"},
-        {values:function () { return amplitude_qs; },
+        {values:function () { return app.stats.amplitude_qs; },
                   name: "Amplitude difference q",
                   independent: false,
                 key: "amplitude_difference_q"}
@@ -1280,23 +1015,90 @@
         formatNum: formatNum
     };
 
+    Vue.prototype.sorters = {
+        "nitecap": function(i,j) {
+            var a = spreadsheets[0].tds[i];
+            var b = spreadsheets[0].tds[j];
+            return compare(a,b,i,j);
+        },
+        "anova": function (i,j) {
+            // Sort anova p-values in ascending order
+            var a = spreadsheets[0].anova_ps[i];
+            var b = spreadsheets[0].anova_ps[j];
+            return compare(a,b,i,j);
+        },
+        "jtk": function (i,j) {
+            // Sort jtk p-values in ascending order
+            var a = spreadsheets[0].jtk_ps[i];
+            var b = spreadsheets[0].jtk_ps[j];
+            return compare(a,b,i,j);
+        },
+        "amplitude": function (i,j) {
+            // Sort amplitude values in descending order
+            var a = -spreadsheets[0].amplitudes[i];
+            var b = -spreadsheets[0].amplitudes[j];
+            return compare(a,b,i,j);
+        },
+        "upside": function (i,j) {
+            // Sort by ascending order
+            var a = upside_ps[0][i];
+            var b = upside_ps[0][j];
+            return compare(a,b,i,j);
+        },
+        "two_way_anova": function (i,j) {
+            // Sort by ascending order
+            var a = two_way_anova_ps[i];
+            var b = two_way_anova_ps[j];
+            return compare(a,b,i,j);
+        },
+        "amplitude_change": function (i,j) {
+            // Sort by ascending order
+            var a = amplitude_ps[i];
+            var b = amplitude_ps[j];
+            return compare(a,b,i,j);
+        },
+        "phase_change": function (i,j) {
+            // Sort by ascending order
+            var a = phase_ps[i];
+            var b = phase_ps[j];
+            return compare(a,b,i,j);
+        }
+    };
+
     let app = new Vue({
         el: "#vue-app",
         data: {
             filters: [],
             filtered: [],
             last_used_filters: [],
-            spreadsheets: null,
+            hide_filtered_rows: false,
+            spreadsheets: [],
             selected_row: 0,
             sort_order: null,
-            ampltiude_ps: null,
-            phase_ps: null,
-            two_way_anova_ps: null,
-            two_way_anova_qs: null,
-            labels: null,
-            num_significant_below: null,
+            sort_variable: "nitecap",
+
+            stats: {
+                amplitude_ps: null,
+                amplitude_qs: null,
+                phase_ps: null,
+                phase_qs: null,
+                two_way_anova_ps: null,
+                two_way_anova_qs: null,
+            },
+
+            labels: [],
+            num_significant_below: [],
             timepoints_per_day: 0,
             num_days: 0,
+
+            plot: {
+                config: {
+                    fold_days: false,
+                    style: "mean_points",
+                    x_label_style: "infer",
+                },
+                first_render: false,
+            },
 
             stats_list: [
                 {name: "Nitecap",
@@ -1308,7 +1110,7 @@
                  value: {p: "jtk_ps",
                          q: "jtk_qs"},
                  description: "JTK_cycle significance of rhythmicity for primary dataset.",
-                 per_spreadsheet: true},
+                per_spreadsheet: true},
                 {name: "ANOVA",
                  value: {p: "anova_ps",
                          q: "anova_qs"},
@@ -1375,6 +1177,7 @@
             },
 
             applyFilters: function() {
+                console.log("Applying filters");
                 let vm = this;
                 // Copy the filters that we last ran
                 this.last_used_filters = this.filters.slice();
@@ -1397,27 +1200,198 @@
                     });
                 });
 
-                filtered = filtered_out;
+                this.filtered = filtered_out;
 
-                if (hide_filtered_checkbox.checked) {
+                if (this.hide_filtered_rows) {
                     // Move filtered items from the sort_order to the back of the list  to hide them
-                    let head = sort_order.filter( function(x) {return !filtered[x];});
-                    let tail = sort_order.filter( function(x) {return filtered[x];});
-                    sort_order = head.concat(tail);
+                    let head = this.sort_order.filter( function(x) {return !this.filtered[x];});
+                    let tail = this.sort_order.filter( function(x) {return this.filtered[x];});
+                    this.sort_order = head.concat(tail);
                 }
 
                 computeNumSignificantBelow();
 
                 // Update row selector display to reflect the new filtering
-                rowSelector.filterRows(filtered);
+                //rowSelector.filterRows(this.filtered);
             },
+
+            sortRows: function () {
+                this.sort_order = this.labels.map( function(x,i) {return i;} )
+                        .sort( this.sorters[this.sort_variable] );
+
+                this.applyFilters();
+
+                //rowSelector.setSortOrder(this.sort_order);
+                //rowSelector.selectRow(this.selected_row);
+
+                updateRowLabels();
+            },
+
+            redrawPlot: function() {
+                let vm = this;
+                // Update the Plotly plots of the feature profiles
+                let traces = [];
+                var colors = Plotly.d3.scale.category10();
+                vm.spreadsheets.forEach(function (spreadsheet, idx) {
+                    var row_index = vm.sort_order[vm.selected_row];
+                    raw_y_values = spreadsheet.data[row_index];
+                    if (raw_y_values === undefined) {
+                        console.log("Could not find the y-values for row " + row_index);
+                        return;
+                    }
+
+                    if (vm.plot.config.fold_days) {
+                        plot_x_values = spreadsheet.x_values.map(function (x) {return x % spreadsheet.timepoints_per_day;});
+                        plot_x_labels = plot_x_values.map(function(x) {return "Timepoint " + (x+1);});
+                        plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
+                    } else {
+                        plot_x_values = spreadsheet.x_values;
+                        plot_x_labels = spreadsheet.x_labels;
+                        plot_x_label_values = spreadsheet.x_label_values;
+                    }
+
+                    let x_label_style = vm.plot.config.x_label_style;
+                    if (x_label_style === 'none') {
+                        plot_x_labels = plot_x_labels.map( function (x) {return '';} );
+                    } else if (x_label_style === 'time') {
+                        plot_x_labels = plot_x_labels.map( function(x,i) {
+                            return "Timepoint " + (i % spreadsheet.timepoints_per_day + 1);
+                        });
+                    } else if (x_label_style === 'infer') {
+                        let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
+                        if (inferred !== null) {
+                            let headings = inferred.times.map(function(t) {
+                                return inferred.format.make_label(t);
+                            });
+                            plot_x_labels = [];
+                            plot_x_label_values = [];
+                            spreadsheet.x_values.forEach( function (time,i) {
+                                if (plot_x_labels[time] === undefined) {
+                                    plot_x_labels[time] = headings[i];
+                                    plot_x_label_values[time] = time;
+                                }
+                            });
+                        }
+                    } else if (x_label_style === 'infer_wrapped') {
+                        let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
+                        if (inferred !== null) {
+                            let headings = inferred.times.map(function(t) {
+                                return inferred.format.make_label(t, true);
+                            });
+
+                            plot_x_labels = [];
+                            plot_x_label_values = [];
+                            spreadsheet.x_values.forEach( function (time,i) {
+                                if (plot_x_labels[time] === undefined) {
+                                    plot_x_labels[time] = headings[i];
+                                    plot_x_label_values[time] = time;
+                                }
+                            });
+                        }
+                    }
+
+                    var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
+
+                    // Pick a color for this spreadsheet using Plotly's defaults from d3
+                    var spreadsheet_color = colors(idx);
+
+                    // Default values for the different plot styles to override
+                    var trace = {
+                        x: plot_x_values, y: raw_y_values,
+                        mode: 'markers',
+                        marker: marker_settings,
+                        name: spreadsheet.descriptive_name,
+                        type: 'scatter',
+                        'marker': {color: spreadsheet_color},
+                        'line': {color: spreadsheet_color}
+                    };
+
+                    // Pick data and styling based off the plot_style_select value
+                    var plot_style = vm.plot.config.style;
+                    if (plot_style === "basketweave") {
+                        // Make pairs of points that are adjacent in time to each other, for each dataset
+                        column_pairs = [];
+                        plot_x_values.forEach( function(x,i) {
+                            for(var j = i+1; j < plot_x_values.length; j++) {
+                                if (Math.abs(plot_x_values[j] - x) === 1) {
+                                    column_pairs.push([i,j]);
+                                }
+                            }
+                        });
+
+                        paired_y_values = [];
+                        for (var i in column_pairs) {
+                            paired_y_values.push(raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null);
+                        }
+
+                        paired_x_values = [];
+                        for (var i in column_pairs) {
+                            paired_x_values.push(plot_x_values[column_pairs[i][0]], plot_x_values[column_pairs[i][1]], null);
+                        }
+
+                        trace.mode = 'lines+markers';
+                        trace.x = paired_x_values;
+                        trace.y = paired_y_values;
+                    } else if (plot_style === "points") {
+                        trace.x = plot_x_values;
+                        trace.y = raw_y_values;
+                    } else if (plot_style === "mean") {
+                        trace.mode = "lines";
+                        trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                        trace.y = stats.means;
+                    } else if (plot_style === "mean_points") {
+                        trace.x = plot_x_values;
+                        trace.y = raw_y_values;
+                        traces.push({ // The mean value trace
+                            x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
+                            y: stats.means,
+                            type: "scatter",
+                            mode: "lines",
+                            showlegend: false,
+                            'line': {color: spreadsheet_color}
+                        });
+                    } else if (plot_style === "std") {
+                        trace.mode = "lines";
+                        trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                        trace.y = stats.means;
+                        trace.error_y = {type: 'data', array:stats.stds, visible:true};
+                    } else if (plot_style === "SEM") {
+                        trace.mode = "lines";
+                        trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                        trace.y = stats.means;
+                        trace.error_y = {type: 'data', array:stats.sems, visible:true};
+                    }
+
+                    traces.push(trace);
+
+                });
+
+                var layout = {
+                    hovermode: 'closest',
+                    title: app.labels[app.sort_order[app.selected_row]],
+                    legend: { orientation: 'h', y: -0.2 },
+                    xaxis: {
+                        ticktext: plot_x_labels,
+                        tickvals: plot_x_label_values,
+                        automargin: true
+                    }
+                };
+
+                if (vm.first_render) {
+                    Plotly.newPlot('scatter_plot', traces, layout);
+                    vm.first_render = false;
+                } else {
+                    Plotly.react('scatter_plot', traces, layout);
+                }
+            },
+
 
             updateHeatmap: function() {
                 let vm = this;
                 vm.heatmap.cutoff = vm.num_significant_below[vm.selected_row];
 
                 let selected_indexes = vm.sort_order.filter( function(row_num,rank) {
-                    return (rank <= selected_row) & (!filtered[row_num]);
+                    return (rank <= vm.selected_row) & (!this.filtered[row_num]);
                 } );
                 let phase_sorted_order = selected_indexes.sort( function (i,j) {
                     return compare(vm.spreadsheets[0].peak_times[i], vm.spreadsheets[0].peak_times[j], i,j);
@@ -1438,7 +1412,7 @@
                 }
 
                 vm.heatmap.labels = phase_sorted_order.map( function(i) {
-                    return labels[i];
+                    return vm.labels[i];
                 } );
 
                 let heatmap_options = {
@@ -1572,6 +1546,15 @@
 
                 vm.heatmap.rendered = true;
             },
+
+            downloadHeatmap: function() {
+                var gd = document.getElementById('heatmap');
+                Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (this.selected_row+1)});
+            },
+
+            onRowChange: function () {
+                this.redrawPlot();
+            }
         },
 
         computed: {
@@ -1582,7 +1565,30 @@
                     return this.selected_row;
                 }
 
-            }
+            },
+
+            num_below: {
+                get: function () {
+                    return this.num_significant_below[this.row_index];
+                },
+                set: function (val) {
+                    val = parseInt(val);
+                    if (val === null || this.num_significant_below === null) {
+                        this.selected_row = 0;
+                    }
+
+                    let idx = this.num_significant_below.indexOf(val);
+                    if (idx !== -1) {
+                        this.selected_row = idx;
+                    } else {
+                        if (idx > Math.max(null, this.num_significant_below)) {
+                            this.selected_row = this.num_siginificant_below.length;
+                        } else {
+                            this.selected_row = 0;
+                        }
+                    }
+                }
+            },
         },
 
         watch: {
@@ -1591,8 +1597,10 @@
                     this.updateHeatmap();
                 },
                 deep: true
-            }
-        }
+            },
+
+            selected_row: "onRowChange",
+        },
     });
 
 </script>
