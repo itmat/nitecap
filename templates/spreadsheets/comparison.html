@@ -1232,7 +1232,6 @@
                 rowSelector.selectRow(row);
             },
 
-            // PCA plot
             setPCAPointStyles: function() {
                 let vm = this;
 
@@ -1496,14 +1495,16 @@
             },
 
             sort_order: function () {
+                let vm = this;
+
                 let sorter = this.sorters[this.sort_variable];
                 let sort_order =  this.labels.map( function(x,i) {return i;} );
                 sort_order = sort_order.sort( this.sorters[this.sort_variable] );
 
                 if (this.hide_filtered_rows) {
                     // Move filtered items from the sort_order to the back of the list  to hide them
-                    let head = sort_order.filter( function(x) {return !this.filtered[x];});
-                    let tail = sort_order.filter( function(x) {return this.filtered[x];});
+                    let head = sort_order.filter( function(x) {return !vm.filtered[x];});
+                    let tail = sort_order.filter( function(x) {return vm.filtered[x];});
                     sort_order = head.concat(tail);
                 }
 
