@@ -56,9 +56,6 @@
 
         app.spreadsheets = spreadsheets;
         app.labels = spreadsheets[0].labels;
-        //app.filtered = app.labels.map(function(x) {return false;});
-        //app.num_significant_below = app.labels.map(function(x,i) { return i+1;} );
-        //app.sort_order = app.labels.map( function (x,i) { return i; });
         app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
         app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
         initialize();
@@ -67,8 +64,6 @@
     function initialize() {
 
         $("#primary_plot_name").text(app.spreadsheets[0].descriptive_names);
-
-        var breakpoint = 0;
 
         // Handles to the error modal on base.html
         nitecap_error = $("#error-modal");
@@ -80,11 +75,6 @@
         if (num_days > 1) {
             $('#fold_days_box').show();
         }
-
-        y_values = [];
-        trace_name = 'Nothing selected';
-        marker_settings = {size: 12, symbol: 'circle-open'};
-
 
         function makeCoarseSlider(element, start_value, maximum) {
             element.slider({
@@ -102,7 +92,7 @@
             });
         }
 
-        makeCoarseSlider($('#coarse_slider'), breakpoint, app.labels.length - 1);
+        makeCoarseSlider($('#coarse_slider'), 0, app.labels.length - 1);
 
         // Make the row selector
         function onRowSelect(selection) {
@@ -115,11 +105,11 @@
             //updateStatsBox();
             //redrawPlot();
         }
-        var num_row_selections = 21; // Show this many rows at once
+        let num_row_selections = 21; // Show this many rows at once
         let el = document.getElementById("row_selector");
         qs = app.labels.map( function (x) {return 1;} );
         rowSelector = makeRowSelector(el,  app.labels, qs, app.filtered, app.sort_order, num_row_selections, onRowSelect);
-        rowSelector.selectRow(breakpoint);
+        rowSelector.selectRow(0);
 
         let searchRows = function() {
             let search_value = $('#row_search_box').val().toLowerCase();
@@ -237,19 +227,6 @@
             }
         });
 
-        // Cycle current primary to back of array and refresh relevant data
-        $("#toggle_primary").click(function() {
-            first_spreadsheet = spreadsheets.shift();
-            spreadsheets.push(first_spreadsheet);
-            $("#primary_plot_name").text(spreadsheets[0].descriptive_name);
-            sortRows();
-
-            if ($('#heatmap_block').is(":visible")) {
-                updateHeatmap();
-            }
-        });
-
-
         // PCA plot
         function setPCAPointStyles() {
             let pca_plot = Plotly.d3.select("#pca_plot");
@@ -354,7 +331,7 @@
         let pca_button = $('#run_pca');
         function runPCA() {
             // We only run PCA on unfiltered genes below the selected row
-            var selected_genes = app.sort_order.filter( function(row,rank) {
+            let selected_genes = app.sort_order.filter( function(row,rank) {
                 if (rank > app.selected_row) {
                     return false;
                 }
@@ -364,7 +341,7 @@
                 return true;
             });
 
-            var alert = $('#run_pca_alert');
+            let alert = $('#run_pca_alert');
             if (selected_genes.length <  3) {
                 alert.text("Too few rows selected, need at least 3 for PCA.");
                 alert.show();
@@ -373,15 +350,15 @@
                 alert.hide();
             }
 
-            var pt_labels = spreadsheets.map( function(spreadsheet, idx) {
-                var rep_counts = [];
+            let pt_labels = spreadsheets.map( function(spreadsheet, idx) {
+                let rep_counts = [];
                 return spreadsheet.x_values.map( function(time) {
                     if (rep_counts[time] === undefined) {
                         rep_counts[time] = 0;
                     }
                     rep_counts[time] += 1;
-                    var day = Math.floor(time / spreadsheet.timepoints_per_day) + 1;
-                    var time_of_day = time % spreadsheet.timepoints_per_day + 1;
+                    let day = Math.floor(time / spreadsheet.timepoints_per_day) + 1;
+                    let time_of_day = time % spreadsheet.timepoints_per_day + 1;
                     return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
                 });
             });
@@ -403,7 +380,7 @@
                     pca_coords = response['pca_coords'];
                     explained_variance = response['explained_variance'];
 
-                    var traces = spreadsheets.map( function (spreadsheet, idx) {
+                    let traces = spreadsheets.map( function (spreadsheet, idx) {
                         return {
                             x: pca_coords[idx][0],
                             y: pca_coords[idx][1],
@@ -417,7 +394,7 @@
                         };
                     });
 
-                    var layout = {
+                    let layout = {
                         height:PCA_HEIGHT,
                         width:PCA_WIDTH,
                         xaxis: {
@@ -477,7 +454,7 @@
             let url = URL.createObjectURL(blob);
 
             // Trigger downloading of the URL by making an <a href ...> to it and clicking it
-            var anchor = document.createElement("a");
+            let anchor = document.createElement("a");
             anchor.href = url;
             anchor.download = "pca.svg";
             document.body.appendChild(anchor);
@@ -488,7 +465,6 @@
             setTimeout(function () { URL.revokeObjectURL(url) }, 60000);
         });
     }
-
 </script>
 
 <div id="vue-app">
@@ -586,7 +562,7 @@
                     <label class="form-check-label" for="fold_days_checkbox">Overlay cycles</label>
                 </div>
             </form>
-            <button id="toggle_primary" class="btn btn-primary mt-2">Toggle Primary Plot</button>
+            <button class="btn btn-primary mt-2" v-on:click="cycleSpreadsheets">Toggle Primary Plot</button>
             <span>Currently: <span id="primary_plot_name">TODO</span></span>
         </div>
 
@@ -981,50 +957,50 @@
 
     Vue.prototype.sorters = {
         "nitecap": function(i,j) {
-            var a = app.spreadsheets[0].tds[i];
-            var b = app.spreadsheets[0].tds[j];
+            let a = app.spreadsheets[0].tds[i];
+            let b = app.spreadsheets[0].tds[j];
             return compare(a,b,i,j);
         },
         "anova": function (i,j) {
             // Sort anova p-values in ascending order
-            var a = app.spreadsheets[0].anova_ps[i];
-            var b = app.spreadsheets[0].anova_ps[j];
+            let a = app.spreadsheets[0].anova_ps[i];
+            let b = app.spreadsheets[0].anova_ps[j];
             return compare(a,b,i,j);
         },
         "jtk": function (i,j) {
             // Sort jtk p-values in ascending order
-            var a = app.spreadsheets[0].jtk_ps[i];
-            var b = app.spreadsheets[0].jtk_ps[j];
+            let a = app.spreadsheets[0].jtk_ps[i];
+            let b = app.spreadsheets[0].jtk_ps[j];
             return compare(a,b,i,j);
         },
         "amplitude": function (i,j) {
             // Sort amplitude values in descending order
-            var a = -app.spreadsheets[0].amplitudes[i];
-            var b = -app.spreadsheets[0].amplitudes[j];
+            let a = -app.spreadsheets[0].amplitudes[i];
+            let b = -app.spreadsheets[0].amplitudes[j];
             return compare(a,b,i,j);
         },
         "upside": function (i,j) {
             // Sort by ascending order
-            var a = app.spreadsheets[0].upside_ps[i];
-            var b = app.spreadsheets[0].upside_ps[j];
+            let a = app.spreadsheets[0].upside_ps[i];
+            let b = app.spreadsheets[0].upside_ps[j];
             return compare(a,b,i,j);
         },
         "two_way_anova": function (i,j) {
             // Sort by ascending order
-            var a = app.stats.two_way_anova_ps[i];
-            var b = app.stats.two_way_anova_ps[j];
+            let a = app.stats.two_way_anova_ps[i];
+            let b = app.stats.two_way_anova_ps[j];
             return compare(a,b,i,j);
         },
         "amplitude_change": function (i,j) {
             // Sort by ascending order
-            var a = app.stats.amplitude_ps[i];
-            var b = app.stats.amplitude_ps[j];
+            let a = app.stats.amplitude_ps[i];
+            let b = app.stats.amplitude_ps[j];
             return compare(a,b,i,j);
         },
         "phase_change": function (i,j) {
             // Sort by ascending order
-            var a = app.stats.phase_ps[i];
-            var b = app.stats.phase_ps[j];
+            let a = app.stats.phase_ps[i];
+            let b = app.stats.phase_ps[j];
             return compare(a,b,i,j);
         }
     };
@@ -1161,9 +1137,9 @@
                 let vm = this;
                 // Update the Plotly plots of the feature profiles
                 let traces = [];
-                var colors = Plotly.d3.scale.category10();
+                let colors = Plotly.d3.scale.category10();
                 vm.spreadsheets.forEach(function (spreadsheet, idx) {
-                    var row_index = vm.sort_order[vm.selected_row];
+                    let row_index = vm.sort_order[vm.selected_row];
                     raw_y_values = spreadsheet.data[row_index];
                     if (raw_y_values === undefined) {
                         console.log("Could not find the y-values for row " + row_index);
@@ -1220,13 +1196,15 @@
                         }
                     }
 
-                    var stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
+                    let stats = rowStatsByTimepoint(raw_y_values, plot_x_values);
 
                     // Pick a color for this spreadsheet using Plotly's defaults from d3
-                    var spreadsheet_color = colors(idx);
+                    let spreadsheet_color = colors(idx);
+                    let marker_settings = {size: 12, symbol: 'circle-open'};
+
 
                     // Default values for the different plot styles to override
-                    var trace = {
+                    let trace = {
                         x: plot_x_values, y: raw_y_values,
                         mode: 'markers',
                         marker: marker_settings,
@@ -1237,12 +1215,12 @@
                     };
 
                     // Pick data and styling based off the plot_style_select value
-                    var plot_style = vm.plot.config.style;
+                    let plot_style = vm.plot.config.style;
                     if (plot_style === "basketweave") {
                         // Make pairs of points that are adjacent in time to each other, for each dataset
                         column_pairs = [];
                         plot_x_values.forEach( function(x,i) {
-                            for(var j = i+1; j < plot_x_values.length; j++) {
+                            for(let j = i+1; j < plot_x_values.length; j++) {
                                 if (Math.abs(plot_x_values[j] - x) === 1) {
                                     column_pairs.push([i,j]);
                                 }
@@ -1250,12 +1228,12 @@
                         });
 
                         paired_y_values = [];
-                        for (var i in column_pairs) {
+                        for (let i in column_pairs) {
                             paired_y_values.push(raw_y_values[column_pairs[i][0]], raw_y_values[column_pairs[i][1]], null);
                         }
 
                         paired_x_values = [];
-                        for (var i in column_pairs) {
+                        for (let i in column_pairs) {
                             paired_x_values.push(plot_x_values[column_pairs[i][0]], plot_x_values[column_pairs[i][1]], null);
                         }
 
@@ -1296,7 +1274,7 @@
 
                 });
 
-                var layout = {
+                let layout = {
                     hovermode: 'closest',
                     title: app.labels[app.sort_order[app.selected_row]],
                     legend: { orientation: 'h', y: -0.2 },
@@ -1316,7 +1294,7 @@
             },
 
             downloadPlot: function() {
-                var gd = document.getElementById('scatter_plot');
+                let gd = document.getElementById('scatter_plot');
                 Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.selected_row+1)});
             },
 
@@ -1483,12 +1461,18 @@
             },
 
             downloadHeatmap: function() {
-                var gd = document.getElementById('heatmap');
+                let gd = document.getElementById('heatmap');
                 Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (this.selected_row+1)});
             },
 
             onRowChange: function () {
                 this.redrawPlot();
+            },
+
+            cycleSpreadsheets: function() {
+                // Shifts spreadsheets over by one, cyclicly
+                // For just 2, it just swaps primary/secondary
+                this.spreadsheets.push(this.spreadsheets.shift());
             }
         },
 
@@ -1546,10 +1530,10 @@
 
                 // Apply all filters
                 this.last_used_filters.forEach(function(filter) {
-                    var filter_value = filter.variable;
+                    let filter_value = filter.variable;
 
-                    var lower_bound = parseFloat(filter.lower_bound);
-                    var upper_bound = parseFloat(filter.upper_bound);
+                    let lower_bound = parseFloat(filter.lower_bound);
+                    let upper_bound = parseFloat(filter.upper_bound);
 
                     if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
                     if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
@@ -1567,7 +1551,7 @@
                 // Recompute the number of signifcant items below a cutoff
                 // discards filtered out rows
                 let num_significant_below = new Array(this.labels.length);
-                var ctr = 0;
+                let ctr = 0;
                 this.labels.forEach(function(label, index) {
                     if (!app.filtered[app.sort_order[index]]) {
                         ctr++;
@@ -1579,7 +1563,7 @@
             },
 
             row_labels: function() {
-                var sorter = this.sort_variable;
+                let sorter = this.sort_variable;
                 console.log(rowSelector);
                 if (sorter === 'jtk') {
                     rowSelector.makeRowLabels(app.labels, app.spreadsheets[0].jtk_qs);
