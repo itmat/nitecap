@@ -10,18 +10,6 @@
     PCA_HEIGHT = 800;
     PCA_SYMBOL = "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0";
 
-    function computeNumSignificantBelow() {
-        // Recompute the number of signifcant items below a cutoff
-        var ctr = 0;
-        $.each(spreadsheets[0].data, function (index, row) {
-            if (!app.filtered[app.sort_order[index]]) {
-                ctr++;
-            }
-
-            app.num_significant_below[index] = ctr;
-        });
-    }
-
     $(document).ready(function () {
 
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
@@ -68,8 +56,8 @@
 
         app.spreadsheets = spreadsheets;
         app.labels = spreadsheets[0].labels;
-        app.filtered = app.labels.map(function(x) {return false;});
-        app.num_significant_below = app.labels.map(function(x,i) { return i+1;} );
+        //app.filtered = app.labels.map(function(x) {return false;});
+        //app.num_significant_below = app.labels.map(function(x,i) { return i+1;} );
         //app.sort_order = app.labels.map( function (x,i) { return i; });
         app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
         app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
@@ -92,9 +80,6 @@
         if (num_days > 1) {
             $('#fold_days_box').show();
         }
-
-        // List of the number of significant (non-filtered) features that are at or below a given index
-        app.num_significant_below = app.labels.map(function(x,i) { return i+1;} );
 
         y_values = [];
         trace_name = 'Nothing selected';
@@ -119,15 +104,6 @@
 
         makeCoarseSlider($('#coarse_slider'), breakpoint, app.labels.length - 1);
 
-        //$('#plot_style_select').change(redrawPlot);
-        //$('#plot_x_label_style').change(redrawPlot);
-        //fold_days_checkbox.addEventListener('change', redrawPlot);
-
-        $('#download_plot').click(function() {
-            var gd = document.getElementById('scatter_plot');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.selected_row+1)});
-        });
-
         // Make the row selector
         function onRowSelect(selection) {
 
@@ -144,8 +120,6 @@
         qs = app.labels.map( function (x) {return 1;} );
         rowSelector = makeRowSelector(el,  app.labels, qs, app.filtered, app.sort_order, num_row_selections, onRowSelect);
         rowSelector.selectRow(breakpoint);
-
-        computeNumSignificantBelow();
 
         let searchRows = function() {
             let search_value = $('#row_search_box').val().toLowerCase();
@@ -189,26 +163,6 @@
             }
         });
 
-
-        function updateRowLabels() {
-            return; // TODO!!
-            var sorter = $('#sort_select').val();
-            if (sorter === 'jtk') {
-                rowSelector.makeRowLabels(app.labels, spreadsheets[0].jtk_qs);
-            } else if (sorter === 'upside') {
-                rowSelector.makeRowLabels(app.labels, upside_qs[0]);
-            } else if (sorter === 'two_way_anova') {
-                rowSelector.makeRowLabels(app.labels, two_way_anova_qs);
-            } else if (sorter === 'anova') {
-                rowSelector.makeRowLabels(app.labels, spreadsheets[0].anova_qs);
-            } else if (sorter === 'amplitude_change') {
-                rowSelector.makeRowLabels(app.labels, amplitude_qs);
-            } else if (sorter === 'phase_change') {
-                rowSelector.makeRowLabels(app.labels, phase_qs);
-            } else {
-                rowSelector.makeRowLabels(app.labels, spreadsheets[0].qs);
-            }
-        }
 
         // Load the JTK values for each spreadsheet
         $.ajax({
@@ -600,7 +554,7 @@
                 </div>
             </div>
             <div class='p-3'>
-                <button id="download_plot" class="btn btn-primary">Download Plot</button>
+                <button class="btn btn-primary" v-on:click="downloadPlot">Download Plot</button>
             </div>
         </span>
         <div class='col-auto'>
@@ -1079,7 +1033,6 @@
         el: "#vue-app",
         data: {
             filters: [],
-            filtered: [],
             last_used_filters: [],
             hide_filtered_rows: false,
             spreadsheets: [],
@@ -1096,7 +1049,6 @@
             },
 
             labels: [],
-            num_significant_below: [],
             timepoints_per_day: 0,
             num_days: 0,
 
@@ -1186,42 +1138,9 @@
             },
 
             applyFilters: function() {
-                console.log("Applying filters");
-                let vm = this;
                 // Copy the filters that we last ran
+                // last_used_filters are the ones we actually filter on
                 this.last_used_filters = this.filters.slice();
-
-                let filtered_out = this.labels.map( function (x) {return false;} );
-
-                // Apply all filters
-                this.filters.forEach(function(filter) {
-                    var filter_value = filter.variable;
-
-                    var lower_bound = parseFloat(filter.lower_bound);
-                    var upper_bound = parseFloat(filter.upper_bound);
-
-                    if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
-                    if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
-
-                    let values = vm.filter_data.get(filter_value).values();
-                    filtered_out = filtered_out.map( function (x,i) {
-                        return x || (values[i] < lower_bound) || (values[i] > upper_bound);
-                    });
-                });
-
-                this.filtered = filtered_out;
-
-                if (this.hide_filtered_rows) {
-                    // Move filtered items from the sort_order to the back of the list  to hide them
-                    let head = this.sort_order.filter( function(x) {return !this.filtered[x];});
-                    let tail = this.sort_order.filter( function(x) {return this.filtered[x];});
-                    this.sort_order = head.concat(tail);
-                }
-
-                computeNumSignificantBelow();
-
-                // Update row selector display to reflect the new filtering
-                //rowSelector.filterRows(this.filtered);
             },
 
             sortRows: function () {
@@ -1232,6 +1151,8 @@
 
                 //rowSelector.setSortOrder(this.sort_order);
                 //rowSelector.selectRow(this.selected_row);
+
+                // TODO: not using this function at all right now
 
                 updateRowLabels();
             },
@@ -1392,6 +1313,11 @@
                 } else {
                     Plotly.react('scatter_plot', traces, layout);
                 }
+            },
+
+            downloadPlot: function() {
+                var gd = document.getElementById('scatter_plot');
+                Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.selected_row+1)});
             },
 
 
@@ -1578,7 +1504,7 @@
 
             num_below: {
                 get: function () {
-                    return this.num_significant_below[this.row_index];
+                    return this.num_significant_below[this.selected_row];
                 },
                 set: function (val) {
                     val = parseInt(val);
@@ -1601,21 +1527,90 @@
 
             sort_order: function () {
                 let sorter = this.sorters[this.sort_variable];
-                let val =  this.labels.map( function(x,i) {return i;} );
-                val = val.sort( this.sorters[this.sort_variable] );
-                return val;
+                let sort_order =  this.labels.map( function(x,i) {return i;} );
+                sort_order = sort_order.sort( this.sorters[this.sort_variable] );
+
+                if (this.hide_filtered_rows) {
+                    // Move filtered items from the sort_order to the back of the list  to hide them
+                    let head = sort_order.filter( function(x) {return !this.filtered[x];});
+                    let tail = sort_order.filter( function(x) {return this.filtered[x];});
+                    sort_order = head.concat(tail);
+                }
+
+                return sort_order;
             },
+
+            filtered: function () {
+                let vm = this;
+                let filtered_out = this.labels.map( function (x) {return false;} );
+
+                // Apply all filters
+                this.last_used_filters.forEach(function(filter) {
+                    var filter_value = filter.variable;
+
+                    var lower_bound = parseFloat(filter.lower_bound);
+                    var upper_bound = parseFloat(filter.upper_bound);
+
+                    if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
+                    if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
+
+                    let values = vm.filter_data.get(filter_value).values();
+                    filtered_out = filtered_out.map( function (x,i) {
+                        return x || (values[i] < lower_bound) || (values[i] > upper_bound);
+                    });
+                });
+
+                return filtered_out;
+            },
+
+            num_significant_below: function() {
+                // Recompute the number of signifcant items below a cutoff
+                // discards filtered out rows
+                let num_significant_below = new Array(this.labels.length);
+                var ctr = 0;
+                this.labels.forEach(function(label, index) {
+                    if (!app.filtered[app.sort_order[index]]) {
+                        ctr++;
+                    }
+
+                    num_significant_below[index] = ctr;
+                });
+                return num_significant_below;
+            },
+
+            row_labels: function() {
+                var sorter = this.sort_variable;
+                console.log(rowSelector);
+                if (sorter === 'jtk') {
+                    rowSelector.makeRowLabels(app.labels, app.spreadsheets[0].jtk_qs);
+                } else if (sorter === 'upside') {
+                    rowSelector.makeRowLabels(app.labels, app.upside_qs[0]);
+                } else if (sorter === 'two_way_anova') {
+                    rowSelector.makeRowLabels(app.labels, app.two_way_anova_qs);
+                } else if (sorter === 'anova') {
+                    rowSelector.makeRowLabels(app.labels, app.spreadsheets[0].anova_qs);
+                } else if (sorter === 'amplitude_change') {
+                    rowSelector.makeRowLabels(app.labels, app.amplitude_qs);
+                } else if (sorter === 'phase_change') {
+                    rowSelector.makeRowLabels(app.labels, app.phase_qs);
+                } else {
+                    rowSelector.makeRowLabels(app.labels, app.spreadsheets[0].qs);
+                }
+            },
+
         },
 
         watch: {
             "heatmap.config": {
-                handler: function(){
-                    this.updateHeatmap();
-                },
+                handler: "updateHeatmap",
                 deep: true
             },
 
-            selected_row: "onRowChange",
+            row_index: "onRowChange",
+            "plot.config": {
+                handler: "redrawPlot",
+                deep: true
+            },
         },
     });
 
