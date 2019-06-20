@@ -1452,14 +1452,13 @@
                 };
 
 
-                let combine_replicates = $('#combine_replicates').is(':checked');
-                if (combine_replicates) {
+                if (vm.heatmap.config.combine_replicates) {
                     // Average all z-scores at the same timepoint together
                     let meanZScores = zScoreData.map( function(zscores,idx) {
                         return meanByTimepoints(zscores, times[idx]);
                     });
 
-                    heatmap.data = meanZScores;
+                    vm.heatmap.data = meanZScores;
 
                     if (vm.heatmap.config.fold_days) {
                         vm.heatmap.x_values = meanZScores.map( function (zscores) {
