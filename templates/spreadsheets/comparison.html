@@ -107,44 +107,45 @@
         });
 
         // Load the Upside values
-        $.ajax({
-            url: "get_upside",
-            data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
-            dataType: 'text json',
-            contentType: 'application/json',
-            type: 'POST',
-            success: function(response) {
-                // See VUE PERF NOTE
-                // Make all arrays non-traversed by Vue for performance
-                Object.keys(response).forEach(function(key) {
-                    Object.preventExtensions(response[key]);
-                });
+        if (app.spreadsheets.length > 1) {
+            $.ajax({
+                url: "get_upside",
+                data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+                dataType: 'text json',
+                contentType: 'application/json',
+                type: 'POST',
+                success: function(response) {
+                    // See VUE PERF NOTE
+                    // Make all arrays non-traversed by Vue for performance
+                    Object.keys(response).forEach(function(key) {
+                        Object.preventExtensions(response[key]);
+                    });
 
-                upside_ps = response['upside_ps'];
-                upside_qs = response['upside_qs'];
+                    upside_ps = response['upside_ps'];
+                    upside_qs = response['upside_qs'];
 
-                app.spreadsheets.forEach(function(spreadsheet, idx){
-                    Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
-                    Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
-                    spreadsheet.upside_ps = upside_ps[idx];
-                    spreadsheet.upside_qs = upside_qs[idx];
-                });
+                    app.spreadsheets.forEach(function(spreadsheet, idx){
+                        Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
+                        Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
+                        spreadsheet.upside_ps = upside_ps[idx];
+                        spreadsheet.upside_qs = upside_qs[idx];
+                    });
 
-                app.stats.two_way_anova_ps = response['two_way_anova_ps'];
-                app.stats.two_way_anova_qs = response['two_way_anova_qs'];
-                app.stats.phase_ps = response['phase_ps'];
-                app.stats.phase_qs = response['phase_qs'];
-                app.stats.amplitude_ps = response['amplitude_ps'];
-                app.stats.amplitude_qs = response['amplitude_qs'];
+                    app.stats.two_way_anova_ps = response['two_way_anova_ps'];
+                    app.stats.two_way_anova_qs = response['two_way_anova_qs'];
+                    app.stats.phase_ps = response['phase_ps'];
+                    app.stats.phase_qs = response['phase_qs'];
+                    app.stats.amplitude_ps = response['amplitude_ps'];
+                    app.stats.amplitude_qs = response['amplitude_qs'];
 
-            },
-            error: function(error) {
-                console.log("Error loading upside values");
-                console.log(error);
-                response = error.responseText;
-            }
-        });
-
+                },
+                error: function(error) {
+                    console.log("Error loading upside values");
+                    console.log(error);
+                    response = error.responseText;
+                }
+            });
+        }
     }
 </script>
 
@@ -165,6 +166,19 @@
             <a v-bind:href="'download_comparison/'+spreadsheets[0].spreadsheet_id+','+spreadsheets[1].spreadsheet_id"
                     class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
+            </a>
+        </p>
+
+        <p class="col-lg-12 h3" v-if="spreadsheets.length === 1">
+            {{spreadsheets[0].descriptive_name}}
+            <a v-bind:href="'download?spreadsheet_id='+spreadsheets[0].spreadsheet_id" class="mx-3" download="processed_file.txt">
+                <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
+            </a>
+            <a v-bind:href="'collect_data?spreadsheet_id='+spreadsheets[0].spreadsheet_id">
+                <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+            </a>
+            <a id='share_spreadsheet' href="#">
+                <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
             </a>
         </p>
     </div>
@@ -1536,6 +1550,8 @@
             },
 
             useable_stats: function () {
+                // Only the stats from stats_list that apply to this context
+                // i.e. the ones we have enough spreadsheets for
                 let vm = this;
                 return this.stats_list.filter( function(stat) {
                     if (stat.num_spreadsheets == 'multi') {
