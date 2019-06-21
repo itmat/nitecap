@@ -696,7 +696,7 @@ def compare(user=None):
     spreadsheets = []
 
     spreadsheet_ids = request.args.get('spreadsheet_ids', None)
-    if not spreadsheet_ids or len(spreadsheet_ids.split(",")) != 2:
+    if not spreadsheet_ids: # or len(spreadsheet_ids.split(",")) != 2:
         errors.append("No spreadsheets were provided")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
@@ -711,9 +711,9 @@ def compare(user=None):
 
         spreadsheets.append(spreadsheet)
 
-    errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
-    if errors:
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+    #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
+    #if errors:
+    #    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
     return render_template('spreadsheets/comparison.html',
                            spreadsheet_ids=[int(ID) for ID in spreadsheet_ids],

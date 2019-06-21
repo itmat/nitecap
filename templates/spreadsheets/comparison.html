@@ -473,7 +473,7 @@
     <div class="row">
         <div class="col card" id="heatmap_block" v-show="heatmap.rendered">
             <div class="card-body">
-                <span class="col-lg-12">Number of items in heatmap: <span id="cutoff"></span></span>
+                <span class="col-lg-12">Number of items in heatmap: {{heatmap.labels.length}}</span>
                 <div id="heatmap"></div>
                 <span class="col-lg-5">
                     <div class="form-check">
@@ -807,10 +807,10 @@
             heatmap: {
                 cutoff: 0,
                 rendered: false,
-                data: null,
-                x_values: null,
-                x_labels: null,
-                labels: null,
+                data: [],
+                x_values: [],
+                x_labels: [],
+                labels: [],
                 config: {
                     fold_days: false,
                     combine_replicates: false,
