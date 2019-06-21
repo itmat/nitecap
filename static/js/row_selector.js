@@ -76,7 +76,7 @@ Vue.component('row-selector', {
                     label: vm.fullLabels[idx],
                     filtered: filtered,
                     selected: selected,
-                    index: idx,
+                    index: i + vm.top,
                     class: base_class + (selected ? ' active' : '') + (filtered ? ' row-disabled' : ''),
                 };
             }
