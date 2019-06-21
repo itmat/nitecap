@@ -1152,7 +1152,7 @@
 
                 let heatmap_layout = {
                     height: 700,
-                    width: 1200,
+                    width: 300*vm.spreadsheets.length+600,
                     margin: {
                         l: 200,
                         r: 5,
@@ -1169,7 +1169,7 @@
                     },
                     grid: {
                         rows: 1,
-                        columns: 2
+                        columns: vm.spreadsheets.length
                     }
                 };
 
