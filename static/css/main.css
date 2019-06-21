@@ -167,10 +167,12 @@ body {
     font-size: 12px;
 }
 
-/* Row Selector styling */
-#row_selector {
+/* Row Selector Vue Component */
+.row-selector {
     font-family: monospace;
+    white-space: pre;
 }
+
 
 .row-disabled {
     color: #555;

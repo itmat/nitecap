@@ -15,7 +15,7 @@
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
         $.ajax({
-            url: "/spreadsheets/get_spreadsheets",
+            url: "get_spreadsheets",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
             dataType: "json",
             contentType: "application/json",
@@ -54,23 +54,6 @@
         app.labels = spreadsheets[0].labels;
         app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
         app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
-        initialize();
-    }
-
-    function initialize() {
-
-        $("#primary_plot_name").text(app.spreadsheets[0].descriptive_names);
-
-        // Handles to the error modal on base.html
-        nitecap_error = $("#error-modal");
-        nitecap_error_message = $("#error-modal-message");
-
-        fold_days_checkbox = document.getElementById('fold_days_checkbox');
-
-        num_days = (Math.max.apply(null, app.spreadsheets[0].x_values) + 1) / app.spreadsheets[0].timepoints_per_day;
-        if (num_days > 1) {
-            $('#fold_days_box').show();
-        }
 
         function makeCoarseSlider(element, start_value, maximum) {
             element.slider({
@@ -82,30 +65,12 @@
                 range: "min",
                 slide: function (event, ui) {
                     app.selected_row = ui.value;
-                    rowSelector.selectRow(parseInt(ui.value));
-                    //$('#row_selector').focus();
                 }
             });
         }
 
         makeCoarseSlider($('#coarse_slider'), 0, app.labels.length - 1);
 
-        // Make the row selector
-        function onRowSelect(selection) {
-
-            app.selected_row = selection;
-
-            // Update the coarse slider
-            $("#coarse_slider").slider("option", "value", app.selected_row);
-
-            //updateStatsBox();
-            //redrawPlot();
-        }
-        let num_row_selections = 21; // Show this many rows at once
-        let el = document.getElementById("row_selector");
-        qs = app.labels.map( function (x) {return 1;} );
-        rowSelector = makeRowSelector(el,  app.labels, qs, app.filtered, app.sort_order, num_row_selections, onRowSelect);
-        rowSelector.selectRow(0);
 
         // Load the JTK values for each spreadsheet
         $.ajax({
@@ -237,8 +202,15 @@
             <div class='row'>
                 <div class='col-auto'>
                     <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
-                    <div id="row_selector" class="list-group" tabindex="0" style="white-space:pre">
-                     </div>
+                    <row-selector v-bind:sort-order="sort_order"
+                                  v-bind:filtered="filtered"
+                                  v-bind:num-rows="21"
+                                  v-bind:q-values="spreadsheets[0] ? spreadsheets[0].qs : []"
+                                  v-bind:selected-row="selected_row"
+                                  v-bind:labels="labels"
+                                  v-bind:label-max-length="35"
+                                  v-bind:select-row="selectRow">
+                    </row-selector>
                     <div class="form-check">
                         <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="hide_filtered_rows">
                         <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>
@@ -273,7 +245,7 @@
                         <option value="none">None</option>
                     </select>
                 </div>
-                <div class="form-check" id="fold_days_box" style="display:none">
+                <div class="form-check" id="fold_days_box" v-if="num_days > 1">
                     <input class="form-check-input" id="fold_days_checkbox" type="checkbox" v-model="plot.config.fold_days">
                     <label class="form-check-label" for="fold_days_checkbox">Overlay cycles</label>
                 </div>
@@ -549,6 +521,8 @@
 
 <!-- temporary inlining of Vue.JS dev version -->
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+<script src="{{url_for('static', filename='js/row_selector.js')}}"></script>
 
 <script>
     Vue.prototype.filter_data_list = [
@@ -885,7 +859,7 @@
                             return "Timepoint " + (i % spreadsheet.timepoints_per_day + 1);
                         });
                     } else if (x_label_style === 'infer') {
-                        let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
+                        let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
                         if (inferred !== null) {
                             let headings = inferred.times.map(function(t) {
                                 return inferred.format.make_label(t);
@@ -900,7 +874,7 @@
                             });
                         }
                     } else if (x_label_style === 'infer_wrapped') {
-                        let inferred = inferColumnTimes(spreadsheet.column_headers, num_days, spreadsheet.timepoints_per_day);
+                        let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
                         if (inferred !== null) {
                             let headings = inferred.times.map(function(t) {
                                 return inferred.format.make_label(t, true);
@@ -1186,6 +1160,10 @@
                 Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (this.selected_row+1)});
             },
 
+            selectRow: function(row) {
+                this.selected_row = row;
+            },
+
             onRowChange: function () {
                 this.redrawPlot();
             },
@@ -1228,7 +1206,7 @@
                     row = matching_rows[0];
                 }
 
-                rowSelector.selectRow(row);
+                app.selected_row = row;
             },
 
             setPCAPointStyles: function() {
@@ -1547,27 +1525,6 @@
                 });
                 return num_significant_below;
             },
-
-            row_labels: function() {
-                let sorter = this.sort_variable;
-                console.log(rowSelector);
-                if (sorter === 'jtk') {
-                    rowSelector.makeRowLabels(app.labels, app.spreadsheets[0].jtk_qs);
-                } else if (sorter === 'upside') {
-                    rowSelector.makeRowLabels(app.labels, app.upside_qs[0]);
-                } else if (sorter === 'two_way_anova') {
-                    rowSelector.makeRowLabels(app.labels, app.two_way_anova_qs);
-                } else if (sorter === 'anova') {
-                    rowSelector.makeRowLabels(app.labels, app.spreadsheets[0].anova_qs);
-                } else if (sorter === 'amplitude_change') {
-                    rowSelector.makeRowLabels(app.labels, app.amplitude_qs);
-                } else if (sorter === 'phase_change') {
-                    rowSelector.makeRowLabels(app.labels, app.phase_qs);
-                } else {
-                    rowSelector.makeRowLabels(app.labels, app.spreadsheets[0].qs);
-                }
-            },
-
         },
 
         watch: {
