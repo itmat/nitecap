@@ -167,6 +167,11 @@ body {
     font-size: 12px;
 }
 
+/* For working with vue.js */
+[v-cloak] {
+    display: none;
+}
+
 /* Row Selector Vue Component */
 .row-selector {
     font-family: monospace;

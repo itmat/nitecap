@@ -63,17 +63,21 @@ Vue.component('row-selector', {
         rows: function () {
             let vm = this;
             let rows_ = [];
-            for(let i = 0; i < vm.numRows; i++) {
+            let base_class = "list-group-item list-group-item-action py-0"
+           for(let i = 0; i < vm.numRows; i++) {
                 let idx = vm.sortOrder[i + vm.top];
                 if (idx > vm.fullLabels.length) {
-                    return {label: '-', filtered: true, selected: false, index: idx};
+                    return {label: '-', filtered: true, selected: false, index: idx, class:base_class};
                 }
 
+                let selected = vm.selectedRow == (i + vm.top);
+                let filtered = vm.filtered[idx];
                 rows_[i] = {
                     label: vm.fullLabels[idx],
-                    filtered: vm.filtered[idx],
-                    selected: vm.selectedRow == (i + vm.top),
+                    filtered: filtered,
+                    selected: selected,
                     index: idx,
+                    class: base_class + (selected ? ' active' : '') + (filtered ? ' row-disabled' : ''),
                 };
             }
             return rows_;
@@ -127,8 +131,9 @@ Vue.component('row-selector', {
     template: "<div class='list-group row-selector' tabindex='0'\
                    v-on:keydown.down.prevent='goDown' v-on:keydown.up.prevent='goUp' \
                    v-on:keydown.page-up.prevent='pageUp' v-on:keydown.page-down.prevent='pageDown'> \
-       <div v-for='row in rows' v-bind:disabled='row.filtered' \
-            v-bind:class='\"list-group-item list-group-item-action py-0 \" + (row.selected ? \"active\" : \"\")' \
+       <div v-for='row in rows'\
+            v-bind:disabled='row.filtered' \
+            v-bind:class='row.class'\
             v-on:click='selectRow(row.index)' \
             v-bind:key='row.index'\
             >{{row.label}}</div> \

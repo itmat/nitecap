@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
+
+<!-- temporary inlining of Vue.JS dev version -->
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
 <script>
     $(function () {
         $('[data-toggle="tooltip"]').tooltip()
@@ -155,7 +159,7 @@
 
 <p id="spreadsheet-comparison-page">
     <div class="row">
-        <p class="col-lg-12 h3" v-if="spreadsheets[1]">
+        <p class="col-lg-12 h3" v-if="spreadsheets[1]" v-cloak>
             {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
 
             <a v-bind:href="'download_comparison/'+spreadsheets[0].spreadsheet_id+','+spreadsheets[1].spreadsheet_id"
@@ -209,7 +213,8 @@
                                   v-bind:selected-row="selected_row"
                                   v-bind:labels="labels"
                                   v-bind:label-max-length="35"
-                                  v-bind:select-row="selectRow">
+                                  v-bind:select-row="selectRow"
+                                  v-cloak>
                     </row-selector>
                     <div class="form-check">
                         <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="hide_filtered_rows">
@@ -251,7 +256,7 @@
                 </div>
             </form>
             <button class="btn btn-primary mt-2" v-on:click="cycleSpreadsheets">Toggle Primary Plot</button>
-            <span>Currently: <span id="primary_plot_name">{{spreadsheets[0] ? spreadsheets[0].descriptive_name : "loading"}}</span></span>
+            <span>Currently: <span id="primary_plot_name" v-cloak>{{spreadsheets[0] ? spreadsheets[0].descriptive_name : "loading"}}</span></span>
         </div>
 
         <div class="col-auto">
@@ -383,7 +388,7 @@
     </div>
 
     <div class="row">
-        <div id="FiltersCard" class="col-auto">
+        <div id="FiltersCard" class="col-auto" v-on:keyup.enter="applyFilters">
             <div class="card">
                 <div class="card-header">
                     Filters
@@ -517,10 +522,6 @@
 
 {% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
 </div>
-
-
-<!-- temporary inlining of Vue.JS dev version -->
-<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 
 <script src="{{url_for('static', filename='js/row_selector.js')}}"></script>
 
@@ -825,7 +826,8 @@
             applyFilters: function() {
                 // Copy the filters that we last ran
                 // last_used_filters are the ones we actually filter on
-                this.last_used_filters = this.filters.slice();
+                // needs to be deep copy so we json-ify it and back
+                this.last_used_filters = JSON.parse(JSON.stringify(this.filters));
             },
 
             redrawPlot: function() {
