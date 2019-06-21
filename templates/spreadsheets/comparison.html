@@ -292,7 +292,7 @@
                             </tr>
                         </thead>
                         <tbody v-if="spreadsheets !== null">
-                            <template v-for="stat in stats_list">
+                            <template v-for="stat in useable_stats">
                                 <tr>
                                     <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
                                         {{stat.name}}
@@ -740,45 +740,54 @@
                  value: {p: "ps",
                          q: "qs"},
                   description: "Nitecap significance of rhythmicity for primary dataset.",
-                 per_spreadsheet: true},
+                 per_spreadsheet: true,
+                 num_spreadsheets:'any'},
                 {name: "JTK",
                  value: {p: "jtk_ps",
                          q: "jtk_qs"},
                  description: "JTK_cycle significance of rhythmicity for primary dataset.",
-                per_spreadsheet: true},
+                per_spreadsheet: true,
+                num_spreadsheets:'any'},
                 {name: "ANOVA",
                  value: {p: "anova_ps",
                          q: "anova_qs"},
                  description: "1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.",
-                 per_spreadsheet: true},
+                 per_spreadsheet: true,
+                 num_spreadsheets: 'any'},
                 {name: "Damping",
                  value: {p: "upside_ps",
                          q: "upside_qs"},
                  description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
-                 per_spreadsheet: true},
+                 per_spreadsheet: true,
+                 num_spreadsheets: 'multi'},
                 {name: "Two-way ANOVA",
                  value: {p: "two_way_anova_ps",
                          q: "two_way_anova_qs"},
                  description: "Two-way ANOVA test for difference in timepoint-effects across datasets",
-                 per_spreadsheet: false},
+                 per_spreadsheet: false,
+                 num_spreadsheets: 'multi'},
                 {name: "Phase Difference",
                  value: {p: "phase_ps",
                          q: "phase_qs"},
                  description: "Test for equality of phase between datasets through cosinor analysis (least squares fit)",
-                 per_spreadsheet: false},
+                 per_spreadsheet: false,
+                 num_spreadsheets: 'multi'},
                 {name: "Amplitude Difference",
                  value: {p: "amplitude_ps",
                          q: "amplitude_qs"},
                  description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit)",
-                 per_spreadsheet: false},
+                 per_spreadsheet: false,
+                 num_spreadsheets: 'multi'},
                 {name: "Amplitude",
                  value: "amplitudes",
                  description: "Amplitude of the variation.",
-                 per_spreadsheet: true},
+                 per_spreadsheet: true,
+                 num_spreadsheets: 'any'},
                 {name: "Peak-time",
                  value: "peak_times",
                  description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
-                 per_spreadsheet: true},
+                 per_spreadsheet: true,
+                 num_spreadsheets: 'any'},
             ],
 
             heatmap: {
@@ -1525,6 +1534,17 @@
                 });
                 return num_significant_below;
             },
+
+            useable_stats: function () {
+                let vm = this;
+                return this.stats_list.filter( function(stat) {
+                    if (stat.num_spreadsheets == 'multi') {
+                        return vm.spreadsheets.length > 1;
+                    } else {
+                        return true;
+                    }
+                });
+            },
         },
 
         watch: {
@@ -1543,7 +1563,7 @@
             "pca.config": {
                 handler: "runPCA",
                 deep: true
-            }
+            },
         },
     });
 
