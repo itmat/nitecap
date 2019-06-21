@@ -285,7 +285,7 @@
                     </select>
                     <table class="table table-sm">
                         <thead>
-                            <tr>
+                            <tr v-if="spreadsheets.length > 1">
                                 <th scope="col"></th>
                                 <th scope="col">Primary</th>
                                 <th scope="col">Secondary</th>
@@ -318,7 +318,8 @@
                                         </template>
                                         <template v-else>
                                             <td v-if="stats[stat.value] != null"
-                                                v-bind:title="String(stats[stat.value][row_index])">
+                                                v-bind:title="String(stats[stat.value][row_index])"
+                                                v-bind:colspan="spreadsheets.length">
                                                 {{util.formatNum(stats[stat.value][row_index], 4)}}
                                             </td>
                                             <td v-else>
@@ -341,14 +342,12 @@
                                         </template>
                                         <template v-else>
                                             <td v-if="stats[stat.value.p] != null"
-                                                v-bind:title="String(stats[stat.value.p][row_index])">
+                                                v-bind:title="String(stats[stat.value.p][row_index])"
+                                                v-bind:colspan="spreadsheets.length">
                                                 p: {{util.formatNum(stats[stat.value.p][row_index], 4)}}
                                             </td>
-                                            <td v-else>
+                                            <td v-else v-bind:colspan="spreadsheets.length">
                                                 loading
-                                            </td>
-
-                                            <td>
                                             </td>
                                         </template>
                                     </template>
@@ -368,13 +367,12 @@
                                     </template>
                                     <template v-else>
                                         <td v-if="stats[stat.value.q] != null"
-                                            v-bind:title="String(stats[stat.value.q][row_index])">
+                                            v-bind:title="String(stats[stat.value.q][row_index])"
+                                            v-bind:colspan="spreadsheets.length">
                                             q: {{util.formatNum(stats[stat.value.q][row_index], 4)}}
                                         </td>
-                                        <td v-else>
+                                        <td v-else v-bind:colspan="spreadsheets.length">
                                             loading
-                                        </td>
-                                        <td>
                                         </td>
                                     </template>
                                 </tr>
