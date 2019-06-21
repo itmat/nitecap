@@ -308,7 +308,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="spreadsheet in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value] != null"
-                                                    v-bind:title="toString(spreadsheet[stat.value][row_index])">
+                                                    v-bind:title="String(spreadsheet[stat.value][row_index])">
                                                     {{util.formatNum(spreadsheet[stat.value][row_index], 4)}}
                                                 </td>
                                                 <td v-else>
@@ -318,7 +318,7 @@
                                         </template>
                                         <template v-else>
                                             <td v-if="stats[stat.value] != null"
-                                                v-bind:title="toString(stats[stat.value][row_index])">
+                                                v-bind:title="String(stats[stat.value][row_index])">
                                                 {{util.formatNum(stats[stat.value][row_index], 4)}}
                                             </td>
                                             <td v-else>
@@ -331,7 +331,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="spreadsheet in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value.p] != null"
-                                                    v-bind:title="toString(spreadsheet[stat.value.p][row_index])">
+                                                    v-bind:title="String(spreadsheet[stat.value.p][row_index])">
                                                     p: {{util.formatNum(spreadsheet[stat.value.p][row_index], 4)}}
                                                 </td>
                                                 <td v-else>
@@ -341,7 +341,7 @@
                                         </template>
                                         <template v-else>
                                             <td v-if="stats[stat.value.p] != null"
-                                                v-bind:title="toString(stats[stat.value.p][row_index])">
+                                                v-bind:title="String(stats[stat.value.p][row_index])">
                                                 p: {{util.formatNum(stats[stat.value.p][row_index], 4)}}
                                             </td>
                                             <td v-else>
@@ -358,7 +358,7 @@
                                     <template v-if="stat.per_spreadsheet">
                                         <template v-for="spreadsheet in spreadsheets">
                                             <td v-if="spreadsheet[stat.value.q] != null"
-                                                v-bind:title="toString(spreadsheet[stat.value.q][row_index])">
+                                                v-bind:title="String(spreadsheet[stat.value.q][row_index])">
                                                 q: {{util.formatNum(spreadsheet[stat.value.q][row_index], 4)}}
                                             </td>
                                             <td v-else>
@@ -368,7 +368,7 @@
                                     </template>
                                     <template v-else>
                                         <td v-if="stats[stat.value.q] != null"
-                                            v-bind:title="toString(stats[stat.value.q][row_index])">
+                                            v-bind:title="String(stats[stat.value.q][row_index])">
                                             q: {{util.formatNum(stats[stat.value.q][row_index], 4)}}
                                         </td>
                                         <td v-else>
