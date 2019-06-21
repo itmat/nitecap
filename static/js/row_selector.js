@@ -67,13 +67,14 @@ Vue.component('row-selector', {
            for(let i = 0; i < vm.numRows; i++) {
                 let idx = vm.sortOrder[i + vm.top];
                 if (idx > vm.fullLabels.length) {
-                    return {label: '-', filtered: true, selected: false, index: idx, class:base_class};
+                    return {label: '-', rawLabel: '-', filtered: true, selected: false, index: idx, class:base_class};
                 }
 
                 let selected = vm.selectedRow == (i + vm.top);
                 let filtered = vm.filtered[idx];
                 rows_[i] = {
                     label: vm.fullLabels[idx],
+                    rawLabel: vm.labels[idx],
                     filtered: filtered,
                     selected: selected,
                     index: i + vm.top,
@@ -136,6 +137,7 @@ Vue.component('row-selector', {
             v-bind:class='row.class'\
             v-on:click='selectRow(row.index)' \
             v-bind:key='row.index'\
+            v-bind:title='row.rawLabel'\
             >{{row.label}}</div> \
     </div>",
 });
