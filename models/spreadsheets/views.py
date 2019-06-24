@@ -257,7 +257,7 @@ def access_not_permitted(endpoint, user, spreadsheet_id):
     return redirect(url_for('.display_spreadsheets'))
 
 
-@spreadsheet_blueprint.route('/show_spreadsheet/<int:spreadsheet_id>', methods=['GET'])
+@spreadsheet_blueprint.route('/show_spreadsheet/<spreadsheet_id>', methods=['GET'])
 @requires_account
 @timeit
 def show_spreadsheet(spreadsheet_id, user=None):
@@ -268,52 +268,37 @@ def show_spreadsheet(spreadsheet_id, user=None):
     :param user:  Returned by the decorator.  Account bearing user is required.
     """
 
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    errors = []
 
-    if not spreadsheet:
-        return access_not_permitted(show_spreadsheet.__name__, user, spreadsheet_id)
+    spreadsheets = []
 
-    # Populate
-    spreadsheet.init_on_load()
-
-    # In the case of an incompletely processed spreadsheet (e.g., the user uploaded a spreadsheet, got distracted and
-    # closed the browser only later to see the spreadsheet in his/her spreadsheet listing), the user must still match
-    # days and timepoints to columns.
-    if not spreadsheet.column_labels:
-        errors = [f"Days/timepoint were not yet matched to columns for spreadsheet '{spreadsheet.descriptive_name}'.  "
-                  f"You may have skipped a step.  Please re-edit your data."]
-        if user.is_visitor():
-            render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet, errors=errors)
+    try:
+        spreadsheet_ids = [int(ID) for ID in spreadsheet_id.split(',')]
+    except ValueError:
+        errors.append("Unknown spreadsheet id(s)")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
-    data = spreadsheet.get_raw_data()
+    if not spreadsheet_ids:
+        errors.append("No spreadsheets were provided")
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
-    ids = json.dumps(list(spreadsheet.get_ids()))
-    filters = spreadsheet.filters if spreadsheet.filters else []
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
 
-    args = dict( data=data.to_json(orient='values'),
-                 x_values=spreadsheet.x_values,
-                 x_labels=spreadsheet.x_labels,
-                 x_label_values=spreadsheet.x_label_values,
-                 qs=spreadsheet.df.nitecap_q.to_json(orient="values"),
-                 ps=spreadsheet.df.nitecap_p.to_json(orient="values"),
-                 tds=spreadsheet.df.total_delta.to_json(orient="values"),
-                 amplitudes=spreadsheet.df.amplitude.to_json(orient="values"),
-                 peak_times=spreadsheet.df.peak_time.to_json(orient="values"),
-                 anova_ps=spreadsheet.df.anova_p.to_json(orient="values"),
-                 anova_qs=spreadsheet.df.anova_q.to_json(orient="values"),
-                 filtered=spreadsheet.df.filtered_out.to_json(orient="values"),
-                 filters=filters,
-                 ids=ids,
-                 breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
-                 descriptive_name=spreadsheet.descriptive_name,
-                 timepoints_per_day=spreadsheet.timepoints,
-                 spreadsheet_id=spreadsheet_id,
-                 spreadsheet_note=spreadsheet.note,
-                 visitor=user.is_visitor(),
-                 column_headers=list(data.columns))
+        # Populate
+        spreadsheet.init_on_load()
 
-    return render_template('spreadsheets/spreadsheet_breakpoint_form.html',**args)
+        spreadsheets.append(spreadsheet)
+
+    #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
+    #if errors:
+    #    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    return render_template('spreadsheets/comparison.html',
+                           spreadsheet_ids=[int(ID) for ID in spreadsheet_ids],
+                           descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 
 @spreadsheet_blueprint.route('/get_spreadsheets', methods=['POST'])

@@ -20,7 +20,7 @@
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
         $.ajax({
-            url: "get_spreadsheets",
+            url: "/spreadsheets/get_spreadsheets",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
             dataType: "json",
             contentType: "application/json",
@@ -79,7 +79,7 @@
 
         // Load the JTK values for each spreadsheet
         $.ajax({
-            url: "jtk",
+            url: "/spreadsheets/jtk",
             data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
             dataType: "json",
             contentType: "application/json",
@@ -110,7 +110,7 @@
         // Load the Upside values
         if (app.spreadsheets.length > 1) {
             $.ajax({
-                url: "get_upside",
+                url: "/spreadsheets/get_upside",
                 data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
                 dataType: 'text json',
                 contentType: 'application/json',
@@ -153,18 +153,15 @@
 {% raw %}
 
 <div id="vue-app">
+    <div class="page-header">
+        <h1>Spreadsheet Viewer</h1>
+    </div>
 
-
-<div id="comparison-graph-page" class="page-header">
-    <h1>Spreadsheet Comparison</h1>
-</div>
-
-<p id="spreadsheet-comparison-page">
     <div class="row">
         <p class="col-lg-12 h3" v-if="spreadsheets[1]" v-cloak>
             {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
 
-            <a v-bind:href="'download_comparison/'+spreadsheets[0].spreadsheet_id+','+spreadsheets[1].spreadsheet_id"
+            <a v-bind:href="'/spreadsheets/download_comparison/'+spreadsheets[0].spreadsheet_id+','+spreadsheets[1].spreadsheet_id"
                     class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
@@ -172,10 +169,10 @@
 
         <p class="col-lg-12 h3" v-if="spreadsheets.length === 1">
             {{spreadsheets[0].descriptive_name}}
-            <a v-bind:href="'download?spreadsheet_id='+spreadsheets[0].spreadsheet_id" class="mx-3" download="processed_file.txt">
+            <a v-bind:href="'/spreadsheets/download?spreadsheet_id='+spreadsheets[0].spreadsheet_id" class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
-            <a v-bind:href="'collect_data?spreadsheet_id='+spreadsheets[0].spreadsheet_id">
+            <a v-bind:href="'/spreadsheets/collect_data?spreadsheet_id='+spreadsheets[0].spreadsheet_id">
                 <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
             </a>
             <a id='share_spreadsheet' href="#">
@@ -535,10 +532,9 @@
             </div>
         </div>
     </div>
-
+</div>
 
 {% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
-</div>
 
 <script src="{{url_for('static', filename='js/row_selector.js')}}"></script>
 
@@ -1337,7 +1333,7 @@
                 vm.pca.running = true;
 
                 $.ajax({
-                    url: "run_pca",
+                    url: "/spreadsheets/run_pca",
                     data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids,
                                           'selected_genes': selected_genes,
                                           'take_logtransform': vm.pca.config.logtransform,
