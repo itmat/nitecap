@@ -188,6 +188,12 @@ body {
     background-color: #BFBFBF;
 }
 
+/* stats box */
+.selected-sort-cell {
+    background-color: #007bff;
+    color: #FFF;
+}
+
 #spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {
     font-family: "Font Awesome 5 Free";
     content: "\f14a";
