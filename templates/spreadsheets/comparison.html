@@ -290,18 +290,6 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <label for="sort_select">Sort by:</label>
-                    <select id="sort_select" class="form-control form-control-sm"
-                            v-model="sort_variable">
-                         <option value="nitecap">Nitecap</option>
-                         <option value="jtk" v-bind:disabled="spreadsheets.length == 0 || spreadsheets[0].jtk_ps === null">JTK</option>
-                         <option value="anova">ANOVA</option>
-                         <option value="amplitude">Amplitude</option>
-                         <option value="upside" v-bind:disabled="spreadsheets.length == 0 || spreadsheets[0].updside_ps === null">Damping</option>
-                         <option value="two_way_anova" v-bind:disabled="stats.two_way_anova_ps === null">Two-way ANOVA</option>
-                         <option value="phase_change" v-bind:disabled="stats.phase_ps === null">Phase Difference</option>
-                         <option value="amplitude_change" v-bind:disabled="stats.amplitude_ps === null">Amplitude Difference</option>
-                    </select>
                     <table class="table table-sm">
                         <thead>
                             <tr v-if="spreadsheets.length > 1">
@@ -676,56 +664,6 @@
         formatNum: formatNum
     };
 
-    Vue.prototype.sorters = {
-        "nitecap": function(i,j) {
-            let a = app.spreadsheets[0].tds[i];
-            let b = app.spreadsheets[0].tds[j];
-            return compare(a,b,i,j);
-        },
-        "anova": function (i,j) {
-            // Sort anova p-values in ascending order
-            let a = app.spreadsheets[0].anova_ps[i];
-            let b = app.spreadsheets[0].anova_ps[j];
-            return compare(a,b,i,j);
-        },
-        "jtk": function (i,j) {
-            // Sort jtk p-values in ascending order
-            let a = app.spreadsheets[0].jtk_ps[i];
-            let b = app.spreadsheets[0].jtk_ps[j];
-            return compare(a,b,i,j);
-        },
-        "amplitude": function (i,j) {
-            // Sort amplitude values in descending order
-            let a = -app.spreadsheets[0].amplitudes[i];
-            let b = -app.spreadsheets[0].amplitudes[j];
-            return compare(a,b,i,j);
-        },
-        "upside": function (i,j) {
-            // Sort by ascending order
-            let a = app.spreadsheets[0].upside_ps[i];
-            let b = app.spreadsheets[0].upside_ps[j];
-            return compare(a,b,i,j);
-        },
-        "two_way_anova": function (i,j) {
-            // Sort by ascending order
-            let a = app.stats.two_way_anova_ps[i];
-            let b = app.stats.two_way_anova_ps[j];
-            return compare(a,b,i,j);
-        },
-        "amplitude_change": function (i,j) {
-            // Sort by ascending order
-            let a = app.stats.amplitude_ps[i];
-            let b = app.stats.amplitude_ps[j];
-            return compare(a,b,i,j);
-        },
-        "phase_change": function (i,j) {
-            // Sort by ascending order
-            let a = app.stats.phase_ps[i];
-            let b = app.stats.phase_ps[j];
-            return compare(a,b,i,j);
-        }
-    };
-
     let stats_list = [
         {name: "Nitecap",
          value: {p: "ps",
@@ -791,7 +729,6 @@
             hide_filtered_rows: false,
             spreadsheets: [],
             selected_row: 0,
-            sort_variable: "nitecap",
             sort_by: {stat: stats_list[0], spreadsheet_num: 0},
 
             search_value: '',
@@ -1533,7 +1470,6 @@
                     sort_direction = this.sort_by.stat.sort_direction;
                 }
 
-                console.log(value, sort_direction);
                 if (vm.sort_by.spreadsheet_num !== undefined) {
                     sorter = function (i,j) {
                         return compare(vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i] * sort_direction,
