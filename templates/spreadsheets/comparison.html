@@ -271,8 +271,6 @@
                     <label class="form-check-label" for="include_zero_checkbox">Include zero</label>
                 </div>
             </form>
-            <button class="btn btn-primary mt-2" v-on:click="cycleSpreadsheets">Toggle Primary Plot</button>
-            <span>Currently: <span id="primary_plot_name" v-cloak>{{spreadsheets[0] ? spreadsheets[0].descriptive_name : "loading"}}</span></span>
         </div>
 
         <div class="col-auto">
@@ -1151,11 +1149,6 @@
                 this.redrawPlot();
             },
 
-            cycleSpreadsheets: function() {
-                // Shifts spreadsheets over by one, cyclicly
-                // For just 2, it just swaps primary/secondary
-                this.spreadsheets.push(this.spreadsheets.shift());
-            },
             searchRows: function() {
                 let search_value = this.search_value.toLowerCase();
 
