@@ -1466,14 +1466,18 @@
 
                 if (vm.sort_by.spreadsheet_num !== undefined) {
                     sorter = function (i,j) {
-                        return compare(vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i] * sort_direction,
-                                       vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j] * sort_direction,
+                        let a = vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i];
+                        let b = vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j];
+                        return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
+                                       b ? b * sort_direction : b,
                                        i, j);
                     };
                 } else {
                     sorter = function (i,j) {
-                        return compare(vm.stats[value][i] * sort_direction,
-                                       vm.stats[value][j] * sort_direction,
+                        let a = vm.stats[value][i];
+                        let b = vm.stats[value][j];
+                        return compare(a ? a * sort_direction : b, // multiply by +/- 1 but not if null
+                                       b ? b * sort_direction : b,
                                        i, j);
                     };
                 }

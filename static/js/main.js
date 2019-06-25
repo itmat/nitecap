@@ -65,25 +65,20 @@ function compare(a,b, i,j) {
     if (isNaN(a) || a === null) {
         if (isNaN(b) || b === null) {
             // If both are Nans, then we preserve their order
-            if (i > j) {
-                return 1;
-            } else if (i < j) {
-                return -1;
-            } else {
-                return 0;
-            }
+            // so sort by their indexes instead
+            return i - j;
         } else {
             return 1;
         }
     } else if (isNaN(b) || b === null) {
         return -1;
     } else {
-        if (a > b) {
-            return 1;
-        } else if (a < b) {
-            return -1;
+        if (a === b) {
+            // If both are the same, then preserve their order
+            // and sort by their indexes instead (forces stable sorting)
+            return i -j;
         } else {
-            return 0;
+            return a - b;
         }
     }
 }
