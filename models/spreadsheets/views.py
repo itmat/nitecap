@@ -453,35 +453,24 @@ def download_comparison(id1, id2, user=None):
 
     spreadsheet_ids = [id1, id2]
 
-    spreadsheets = []
-    comparison_data = []
-    dfs = []
+    if not spreadsheet_ids:
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
-    # Check user ownership over these spreadsheets
-    user = User.find_by_email(session['email'])
+    spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user.id, request.path, spreadsheet_id))
-            return jsonify("spreadsheets not found"), 404
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
 
-        # Populate
-        spreadsheet.init_on_load()
+    #    Not currently being used.
+    #    # Populate
+    #    spreadsheet.init_on_load()
 
         spreadsheets.append(spreadsheet)
 
-        data = spreadsheet.df
-        data["compare_ids"] = list(spreadsheet.get_ids())
-        data = data.set_index("compare_ids")
-        data = data[~data.index.duplicated()]
-        dfs.append(data)
+    #dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-    # joined dataframe
-    common_columns = set(dfs[0].columns).intersection(set(dfs[1].columns))
-    df = dfs[0].join(dfs[1], how='inner', lsuffix='_0', rsuffix='_1')
-    df = df.sort_values(by=['total_delta_0'])
-    compare_ids = df.index.tolist()
-
+    comparison_data = []
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
         file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
@@ -491,12 +480,11 @@ def download_comparison(id1, id2, user=None):
             comparison_data.append(comp_data)
         except OSError: # Parquet file could not be read (hasn't been written yet)
             current_app.logger.info(f"Failed to download comparison spreadsheet since we can't load the file {primary_id}v{secondary_id}.comparison.parquet")
+            return jsonify("Computations not finished yet"), 500
 
-            # TODO: user should be able to try to re-download at a later point
-            #       so 404 is a bad error code to give here, but what should it be?
-            return jsonify("Computations not finished yet"), 404
-
-    df = df.join(comparison_data[0])
+    # TODO: what exactly should be in this dataset?
+    # Right now it's JUST the comparison data and not the base data from either spreadsheet
+    df = comparison_data[0].join(comparison_data[1], lsuffix="_AvB", rsuffix="_BvA")
 
     txt_data = io.StringIO()
     df.to_csv(txt_data, sep='\t')
