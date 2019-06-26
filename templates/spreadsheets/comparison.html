@@ -12,6 +12,9 @@
     PCA_HEIGHT = 800;
     PCA_SYMBOL = "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0";
     $(document).ready(function () {
+        // Handles to the error-handling modal
+        nitecap_error = $("#error-modal");
+        nitecap_error_message = $("#error-modal-message")
 
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
