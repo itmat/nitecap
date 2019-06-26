@@ -190,6 +190,35 @@
             </div>
         </div>
 
+        <div class="card">
+            <div class="card-header" id="headingNine">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseNine"
+                             aria-expanded="true" aria-controls="collapseNine">
+                        What is the "Phase Difference" statistic? What is the "Amplitude Difference" statistic?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseNine" class="collapse" aria-labelledby="headingNine" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        These are derived from the methods in Bingham, Arbogast, Cornelissen Guillaume, Lee, Halberg "Inferential Statistical Methods for Estimating and Comparing Cosinor Parameters," 1982.
+                        In particular, see equations 49 and 50, for the case where there are 2 datasets using the t-test versions.
+                    </p>
+                    <p>
+                        In short, these statistics are cosinor approaches based on linear least-squares fits of cosine and sine curves.
+                        The null hypothesis is that the phase (respectively, amplitude) parameters of the datasets are all equal for the phase (respectively amplitude) difference p-value.
+                        Hence a significant p-value allows the rejection of the null hypothesis that these parameters are the same across all datasets.
+                    </p>
+                    <p>
+                        In particular, note that if any one of the datasets has non-significant rhythmicity, the p-value for the phase test will be non-significant.
+                        This is desirable since the phase of a non-rhythmic feature is undefined.
+                        Hence this p-value is significant only when all are significantly rhythmic and the difference in their phases are significant.
+                        The amplitude of a non-sigificant rhythmicity should  be low and hence an amplitude difference is still meaningful and the test is more powerful.
+                    </p>
+                </div>
+            </div>
+        </div>
 
 </div>
 
