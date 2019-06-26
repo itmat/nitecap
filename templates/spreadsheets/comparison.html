@@ -171,7 +171,7 @@
             <a v-bind:href="'/spreadsheets/download?spreadsheet_id='+spreadsheets[0].spreadsheet_id" class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
-            <a v-bind:href="'/spreadsheets/collect_data?spreadsheet_id='+spreadsheets[0].spreadsheet_id">
+            <a v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
                 <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
             </a>
             <a id='share_spreadsheet' href="#">
