@@ -536,129 +536,6 @@
 <script src="{{url_for('static', filename='js/row_selector.js')}}"></script>
 
 <script>
-    Vue.prototype.filter_data_list = [
-        {values: function () {
-                         // Grand maximum across both datasets within each row
-                         let maxes = app.spreadsheets.map(function (spreadsheet) {
-                                return maximums(spreadsheet.data);
-                         });
-                         return maxes[0].map( function(row, i) {
-                            return Math.max(maxes[0][i], maxes[1][i]);
-                        });
-                    },
-                name: "Maximum value",
-                independent: true,
-                key:"max_value"},
-        {values: function () {
-                    // Grand means across both datasets within each row
-                    // TODO: better support for missing values (different numbers missing in each spreadsheet)
-                    let means = app.spreadsheets.map(function (spreadsheet) {
-                        return means(spreadsheet.data);
-                    });
-                    let a = app.spreadsheets[0].data[0].length;
-                    let b = app.spreadsheets[1].data[0].length;
-                    return means[0].map( function(row, i) {
-                        return (means[0][i]*a + means[1][i]*b) / (a + b);
-                    });
-                },
-                name: "Mean value",
-                independent: true,
-                key: "mean_value"},
-        {values: function () { return app.spreadsheets[0].ps; },
-                name: "Nitecap p Primary",
-                independent: false,
-                key: "nitecap_p0"},
-        {values: function () { return app.spreadsheets[0].qs; },
-                name: "Nitecap q Primary",
-                independent: false,
-                key: "nitecap_q0"},
-        {values: function () { return app.spreadsheets[0].jtk_ps; },
-                name: "JTK p Primary",
-                independent: false,
-                key: "jtk_p0"},
-        {values: function () { return app.spreadsheets[0].jtk_qs; },
-                name: "JTK q Primary",
-                independent: false,
-                key: "jtk_q0"},
-        {values: function () { return app.spreadsheets[0].anova_ps; },
-                name: "ANOVA p Primary",
-                independent: false,
-                key: "anova_p0"},
-        {values: function () { return app.spreadsheets[0].anova_qs; },
-                name: "ANOVA q Primary",
-                independent: false,
-                key: "anova_q0"},
-        {values: function () { return app.spreadsheets[0].amplitudes; },
-                name: "Amplitude Primary",
-                independent: false,
-                key: "amplitude0"},
-        {values: function () { return app.spreadsheets[0].peak_times; },
-                name: "Peak time Primary",
-                independent: false,
-                key: "peaktime0"},
-        {values: function () { return app.spreadsheets[1].ps; },
-                name: "Nitecap p Secondary",
-                independent: false,
-                key: "nitecap_p1"},
-        {values: function () { return app.spreadsheets[1].qs; },
-                name: "Nitecap q Secondary",
-                independent: false,
-                key: "nitecap_q1"},
-        {values: function () { return app.spreadsheets[1].jtk_ps; },
-                name: "JTK p Secondary",
-                independent: false,
-                key: "jtk_p1"},
-        {values: function () { return app.spreadsheets[1].jtk_qs; },
-                name: "JTK q Secondary",
-                independent: false,
-                key: "jtk_q1"},
-        {values: function () { return app.spreadsheets[1].anova_ps; },
-                name: "ANOVA p Secondary",
-                independent: false,
-                key: "anova_p1"},
-        {values: function () { return app.spreadsheets[1].anova_qs; },
-                name: "ANOVA q Secondary",
-                independent: false,
-                key: "anova_q1"},
-        {values: function () { return app.spreadsheets[1].amplitudes; },
-                name: "Amplitude Secondary",
-                independent: false,
-                key: "amplitude1"},
-        {values: function () { return app.spreadsheets[1].peak_times; },
-                name: "Peak time Secondary",
-                independent: false,
-                key: "peaktime1"},
-        {values:function () { return app.stats.two_way_anova_ps; },
-                  name: "Two-way ANOVA p",
-                  independent: false,
-                  key: "two_way_anova_p"},
-        {values:function () { return app.stats.two_way_anova_qs; },
-                  name: "Two-way ANOVA q",
-                  independent: false,
-                  key: "two_way_anova_q"},
-        {values:function () { return app.stats.phase_ps; },
-                  name: "Phase difference p",
-                  independent: false,
-                  key: "phase_difference_q"},
-        {values:function () { return app.stats.phase_qs; },
-                  name: "Phase difference q",
-                  independent: false,
-                  key: "phase_difference_p"},
-        {values:function () { return app.stats.amplitude_ps; },
-                  name: "Amplitude difference p",
-                  independent: false,
-                  key: "amplitude_difference_p"},
-        {values:function () { return app.stats.amplitude_qs; },
-                  name: "Amplitude difference q",
-                  independent: false,
-                key: "amplitude_difference_q"}
-    ];
-
-    Vue.prototype.filter_data = new Map();
-    Vue.prototype.filter_data_list.forEach( function(filter) {
-        Vue.prototype.filter_data.set(filter.key, filter);
-    });
-
     Vue.prototype.util = {
         formatNum: formatNum
     };
@@ -718,6 +595,36 @@
          description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
          per_spreadsheet: true,
          num_spreadsheets: 'any'},
+    ];
+
+    let filter_data_list_base = [
+        {values: function () {
+                         // Grand maximum across both datasets within each row
+                         let maxes = app.spreadsheets.map(function (spreadsheet) {
+                                return maximums(spreadsheet.data);
+                         });
+                         return maxes[0].map( function(row, i) {
+                            return Math.max(maxes[0][i], maxes[1][i]);
+                        });
+                    },
+                name: "Maximum value",
+                independent: true,
+                key:"max_value"},
+        {values: function () {
+                    // Grand means across both datasets within each row
+                    // TODO: better support for missing values (different numbers missing in each spreadsheet)
+                    let means = app.spreadsheets.map(function (spreadsheet) {
+                        return means(spreadsheet.data);
+                    });
+                    let a = app.spreadsheets[0].data[0].length;
+                    let b = app.spreadsheets[1].data[0].length;
+                    return means[0].map( function(row, i) {
+                        return (means[0][i]*a + means[1][i]*b) / (a + b);
+                    });
+                },
+                name: "Mean value",
+                independent: true,
+                key: "mean_value"},
     ];
 
     let app = new Vue({
@@ -1515,7 +1422,8 @@
                     if (isNaN(lower_bound) || lower_bound === null) {lower_bound = -Infinity;}
                     if (isNaN(upper_bound) || upper_bound === null) {upper_bound = Infinity;}
 
-                    let values = vm.filter_data.get(filter_value).values();
+                    let idx = vm.filter_data_list.map(function(filter) {return filter.key;} ).indexOf(filter_value);
+                    let values = vm.filter_data_list[idx].values();
                     filtered_out = filtered_out.map( function (x,i) {
                         return x || (values[i] < lower_bound) || (values[i] > upper_bound);
                     });
@@ -1550,6 +1458,74 @@
                         return true;
                     }
                 });
+            },
+
+            filter_data_list: function () {
+                // List of filters including the 'special' ones declared in filters_data_list_base
+                // and also those derived from the statistics in stats_list
+                let vm = this;
+
+                // Make a filter for each stat
+                let stat_filters = [];
+                vm.useable_stats.forEach( function (stat) {
+                    if (stat.per_spreadsheet) {
+                        let just_one = vm.spreadsheets.length === 1;
+                        vm.spreadsheets.forEach( function(spreadsheet, idx) {
+                            if (typeof stat.value === 'string') {
+                                let name = stat.name + ' ' + (just_one ? '' : idx + 1);
+                                stat_filters.push({
+                                     name: name,
+                                     values: function () {return spreadsheet[stat.value];},
+                                     independent: false,
+                                     key: name
+                                });
+                            } else {
+                                let name = stat.name + ' p ' + (just_one ? '' : idx + 1);
+                                stat_filters.push({
+                                     name: name,
+                                     values: function () {return spreadsheet[stat.value.p];},
+                                     independent: false,
+                                     key: name
+                                });
+
+                                name = stat.name + ' q ' + (just_one ? '' : idx + 1);
+                                stat_filters.push({
+                                     name: name,
+                                     values: function () {return spreadsheet[stat.value.q];},
+                                     independent: false,
+                                     key: name
+                                });
+                            }
+                        });
+                    } else {
+                        if (typeof stat.value === 'string') {
+                            stat_filters.push({
+                                 name: stat.name,
+                                 values: function () {return vm.stats[stat.value];},
+                                 independent: false,
+                                 key: stat.name
+                            });
+                        } else {
+                            stat_filters.push({
+                                 name: stat.name + ' p',
+                                 values: function () {return vm.stats[stat.value.p];},
+                                 independent: false,
+                                 key: stat.name + ' p',
+                            });
+
+                            stat_filters.push({
+                                 name: stat.name + ' q',
+                                 values: function () {return vm.stats[stat.value.q];},
+                                 independent: false,
+                                 key: stat.name + ' q',
+                            });
+                        }
+                    }
+
+                });
+
+                // Return all filters, including the 'base' ones and the ones derived from our statistics
+                return filter_data_list_base.concat(stat_filters);
             },
         },
 
