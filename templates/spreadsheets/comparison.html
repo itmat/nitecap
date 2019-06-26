@@ -583,7 +583,8 @@
           description: "Nitecap significance of rhythmicity for primary dataset.",
          per_spreadsheet: true,
          num_spreadsheets:'any',
-         sort_value:'tds'},
+         sort_value:'tds',
+         secondary_sort_value:'qs'},
         {name: "JTK",
          value: {p: "jtk_ps",
                  q: "jtk_qs"},
@@ -1415,16 +1416,29 @@
             },
 
             sort_function: function () {
+                // We sort by the value specified in sort_by
+                // We also have a 'secondary sort value' which is used purely as a null/not-null check
+                // So if secondary sort value is null then we will sort the value to the end as if the main value were null
+                // This solves the problem where q-values are null and being sorted to the front of the list particulary
+                // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
                 let vm = this;
                 let sorter = null;
                 let value = null;
+                let secondary_value = null;
 
                 if (this.sort_by.stat.sort_value !== undefined) {
                     value = this.sort_by.stat.sort_value;
+                    if (this.sort_by.stat.secondary_sort_value !== undefined) {
+                        secondary_value = this.sort_by.stat.secondary_sort_value;
+                    } else {
+                        secondary_value = value;
+                    }
                 } else if (typeof this.sort_by.stat.value === 'string') {
                     value = this.sort_by.stat.value;
+                    secondary_value = value;
                 } else {
                     value = this.sort_by.stat.value.p;
+                    secondary_value = this.sort_by.stat.value.q;
                 }
 
                 let sort_direction = 1;
@@ -1434,16 +1448,20 @@
 
                 if (vm.sort_by.spreadsheet_num !== undefined) {
                     sorter = function (i,j) {
-                        let a = vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i];
-                        let b = vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j];
+                        let a = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][i] &&
+                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i];
+                        let b = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][j] &&
+                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j];
                         return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
                                        b ? b * sort_direction : b,
                                        i, j);
                     };
                 } else {
                     sorter = function (i,j) {
-                        let a = vm.stats[value][i];
-                        let b = vm.stats[value][j];
+                        let a = vm.stats[secondary_value][i]
+                                    && vm.stats[value][i];
+                        let b = vm.stats[secondary_value][j]
+                                    && vm.stats[value][j];
                         return compare(a ? a * sort_direction : b, // multiply by +/- 1 but not if null
                                        b ? b * sort_direction : b,
                                        i, j);
