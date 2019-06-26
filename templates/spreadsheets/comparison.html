@@ -11,7 +11,6 @@
     PCA_WIDTH = 800;
     PCA_HEIGHT = 800;
     PCA_SYMBOL = "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0";
-
     $(document).ready(function () {
 
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
@@ -30,6 +29,7 @@
                 console.log(error);
             }
         });
+
     });
 
     function onSpreadsheetLoad(spreadsheets) {
@@ -168,13 +168,13 @@
 
         <p class="col-lg-12 h3" v-if="spreadsheets.length === 1">
             {{spreadsheets[0].descriptive_name}}
-            <a v-bind:href="'/spreadsheets/download?spreadsheet_id='+spreadsheets[0].spreadsheet_id" class="mx-3" download="processed_file.txt">
+            <a v-bind:href="'/spreadsheets/download/'+spreadsheets[0].spreadsheet_id" class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
             <a v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
                 <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
             </a>
-            <a id='share_spreadsheet' href="#">
+            <a id='share_spreadsheet' href="#" v-on:click="onShare">
                 <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
             </a>
         </p>
@@ -529,6 +529,31 @@
             </div>
         </div>
     </div>
+
+    <!-- MODALS -->
+    <div id="share_popup" class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-primary">
+            <h5 class="modal-title text-white">SHARE this spreadsheet</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span class="text-white" aria-hidden="true">&times;</span>
+            </button>
+          </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="share_url">Copy this URL and offer it to anyone with whom you'd like to share your
+                        spreadsheet data:</label>
+                    <textarea id="share_url" class="form-control" rows="6"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+      </div>
+    </div>
+
 </div>
 
 {% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
@@ -1316,6 +1341,30 @@
 
                 // Cleanup after 60s, they've presumably successfully downloaded the small svg
                 setTimeout(function () { URL.revokeObjectURL(url) }, 60000);
+            },
+
+
+            onShare: function() {
+                // Open Modal to share the spreadsheet
+                let spreadsheet_id = this.spreadsheets[0].spreadsheet_id;
+                let vm = this;
+                $.ajax({
+                    url: "{{url_for('spreadsheets.share')}}",
+                    data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': vm.selected_row}),
+                    dataType: "json",
+                    contentType: "application/json",
+                    type: 'POST',
+                    success: function (response) {
+                        let url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
+                        $("#share_url").val(url);
+                        $('#share_popup').modal()
+                    },
+                    error: function (request) {
+                        error_message = $.parseJSON(request.responseText).error;
+                        nitecap_error_message.text(error_message);
+                        nitecap_error.modal();
+                    }
+                });
             },
 
         },
