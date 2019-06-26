@@ -30,6 +30,9 @@
             error: function(error) {
                 console.log("Error loading spreadsheets");
                 console.log(error);
+
+                nitecap_error_message.text("Error loading spreadsheets");
+                nitecap_error.modal();
             }
         });
 
@@ -104,6 +107,9 @@
             error: function(error) {
                 console.log("Error loading JTK values");
                 console.log(error);
+
+                nitecap_error_message.text("Error loading JTK values");
+                nitecap_error.modal();
             }
         });
 
@@ -143,7 +149,9 @@
                 error: function(error) {
                     console.log("Error loading upside values");
                     console.log(error);
-                    response = error.responseText;
+
+                    nitecap_error_message.text("Error loading comparison statistics");
+                    nitecap_error.modal();
                 }
             });
         }
@@ -1311,8 +1319,9 @@
                     error: function (error) {
                         console.log("Error running PCA");
                         console.log(error);
-                        alert.text(error.responseText);
-                        alert.show();
+
+                        nitecap_error_message.text("Error running PCA");
+                        nitecap_error.modal();
                     },
                     complete: function() {
                         vm.pca.running = false;
