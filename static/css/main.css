@@ -212,3 +212,9 @@ body {
 .screenshot_examples .card-body {
     background-color: #F6F6F6;
 }
+
+
+div.required label:after {
+    content: " *";
+    color: red;
+}
