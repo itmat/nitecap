@@ -1,5 +1,8 @@
 import json
 import os
+import pathlib
+import shutil
+import sys
 import uuid
 from pathlib import Path
 import io
@@ -68,18 +71,6 @@ def upload_file():
         if errors:
             return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=errors)
 
-        # Rename the uploaded file to avoid any naming collisions and save it
-        extension = Path(upload_file.filename).suffix
-        new_filename = uuid.uuid4().hex + extension
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), new_filename)
-        upload_file.save(file_path)
-
-        # If the mime type validation fails, remove the uploaded file from the disk
-        file_mime_type, errors = validate_mime_type(file_path)
-        if errors:
-            os.remove(file_path)
-            return render_template('spreadsheets/upload_file.html', header_row=header_row ,errors=errors)
-
         # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
         user_id = None
         user_email = session['email'] if 'email' in session else None
@@ -102,7 +93,26 @@ def upload_file():
         # problem.
         if not user:
             current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
-            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
+            return render_template('spreadsheets/upload_file.html', header_row=header_row,
+                                   errors=[FILE_UPLOAD_ERROR])
+
+        file_mime_type = None
+        file_errors = []
+        directory_path = pathlib.Path(os.path.join(os.environ.get('UPLOAD_FOLDER'),
+                                                   f"user_{user_id}", f"{uuid.uuid4().hex}"))
+        directory_path.mkdir(parents=True, exist_ok=True)
+
+        # Rename the uploaded file and reattach the extension
+        extension = Path(upload_file.filename).suffix
+        file_path = os.path.join(directory_path, f"uploaded_spreadsheet{extension}")
+        upload_file.save(file_path)
+
+        # If the mime type validation fails, remove the uploaded file from the disk
+        file_mime_type, errors = validate_mime_type(file_path)
+        if errors:
+            shutil.rmtree(directory_path)
+            return render_template('spreadsheets/upload_file.html', header_row=header_row ,errors=errors)
+
 
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
@@ -116,13 +126,23 @@ def upload_file():
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_path,
+                                      spreadsheet_data_path=str(directory_path),
                                       user_id=user_id)
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
-            os.remove(file_path)
+            shutil.rmtree(directory_path)
             return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
 
         # Save the spreadsheet file to the database
+        spreadsheet.save_to_db()
+
+        # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
+        spreadsheet_data_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"user_{user_id}",
+                                             f"spreadsheet_{spreadsheet.id}")
+        os.rename(directory_path, spreadsheet_data_path)
+        spreadsheet.spreadsheet_data_path = str(spreadsheet_data_path)
+        spreadsheet.uploaded_file_path = str(os.path.join(spreadsheet_data_path, os.path.basename(file_path)))
+        spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
 
         return redirect(url_for('.collect_data', spreadsheet_id=spreadsheet.id))

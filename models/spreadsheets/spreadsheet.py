@@ -27,7 +27,6 @@ from timer_decorator import timeit
 
 NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p", "anova_q"]
 
-
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id = db.Column(db.Integer, primary_key=True)
@@ -48,18 +47,20 @@ class Spreadsheet(db.Model):
     last_access = db.Column(db.DateTime, nullable=False)
     ids_unique = db.Column(db.Boolean, nullable=False, default=0)
     note = db.Column(db.String(5000))
+    spreadsheet_data_path = db.Column(db.String(250))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
 
     ID_COLUMN = "ID"
     IGNORE_COLUMN = "Ignore"
     NON_DATA_COLUMNS = [ID_COLUMN, IGNORE_COLUMN]
+    PROCESSED_SPREADSHEET_FILENAME = "processed_spreadsheet.parquet"
 
     @timeit
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
                  breakpoint=None, num_replicates_str=None, last_access=None, user_id=None,
-                 date_uploaded=None, ids_unique=False, filters=''):
+                 date_uploaded=None, ids_unique=False, filters='', spreadsheet_data_path=''):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
         method (only __new__).  Many of the parameters are filled in only after the spreadsheet has been instantiated
@@ -102,30 +103,26 @@ class Spreadsheet(db.Model):
         self.num_replicates_str = num_replicates_str
         self.column_labels_str = column_labels_str
         self.breakpoint = breakpoint
-        self.last_access = last_access if last_access else datetime.datetime.utcnow()
+        self.last_access = last_access or datetime.datetime.utcnow()
         self.ids_unique = ids_unique
         self.note = ''
+        self.spreadsheet_data_path = spreadsheet_data_path
+        self.date_uploaded = date_uploaded or datetime.datetime.utcnow()
         self.user_id = user_id
 
-        # TODO This is a new spreadsheet.  I think the file_path will always be None.
-        if file_path is None:
-            self.set_df()
-            self.date_uploaded = datetime.datetime.utcnow()
-            self.file_path = uploaded_file_path + ".working.parquet"
-            self.update_dataframe()
-
-        # TODO Do we ever get here?
-        else:
-            if self.file_path.endswith("txt"):
-                self.df = pd.read_csv(self.file_path, sep='\t')
-            else:
-                self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
-
+    def setup_processed_spreadsheet(self):
+        """
+        Create a processed file that is more really uploaded (compared with Excel files).  This method should be done
+        only with a new Spreadsheet is being created - when no processed spreadsheet yet exists.
+        """
+        self.set_df()
+        self.file_path = os.path.join(self.spreadsheet_data_path, Spreadsheet.PROCESSED_SPREADSHEET_FILENAME)
+        self.update_dataframe()
 
     @timeit
     def init_on_load(self):
         """
-        The method that runs when SQLAlchemy reloads a Spreadsheet.  A pandas dataframe is rebuilt from the file
+        A pandas dataframe is rebuilt from the file
         holding processed version of the spreadsheet.  The number of replicates and the column labels are
         re-populated from delimited database strings and nitecap is re-computed if needed.
 
