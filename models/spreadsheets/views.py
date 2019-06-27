@@ -140,6 +140,9 @@ def upload_file():
         spreadsheet_data_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"user_{user_id}",
                                              f"spreadsheet_{spreadsheet.id}")
         os.rename(directory_path, spreadsheet_data_path)
+
+        # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
+        # updates.
         spreadsheet.spreadsheet_data_path = str(spreadsheet_data_path)
         spreadsheet.uploaded_file_path = str(os.path.join(spreadsheet_data_path, os.path.basename(file_path)))
         spreadsheet.setup_processed_spreadsheet()
@@ -450,8 +453,7 @@ def delete(user=None):
 
     try:
         spreadsheet.delete_from_db()
-        os.remove(spreadsheet.file_path)
-        os.remove(spreadsheet.uploaded_file_path)
+        shutil.rmtree(spreadsheet.spreadsheet_data_path)
     except Exception as e:
         current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
                                  f"expunged.", e)

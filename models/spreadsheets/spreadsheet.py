@@ -1,6 +1,7 @@
 import collections
 import datetime
 import os
+import shutil
 import uuid
 import subprocess
 from pandas.errors import ParserError
@@ -54,7 +55,9 @@ class Spreadsheet(db.Model):
     ID_COLUMN = "ID"
     IGNORE_COLUMN = "Ignore"
     NON_DATA_COLUMNS = [ID_COLUMN, IGNORE_COLUMN]
-    PROCESSED_SPREADSHEET_FILENAME = "processed_spreadsheet.parquet"
+    UPLOADED_SPREADSHEET_FILE_PART = "uploaded_spreadsheet"
+    PROCESSED_SPREADSHEET_FILE_PART = "processed_spreadsheet"
+    PROCESSED_SPREADSHEET_FILE_EXT =  "parquet"
 
     @timeit
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
@@ -112,11 +115,13 @@ class Spreadsheet(db.Model):
 
     def setup_processed_spreadsheet(self):
         """
-        Create a processed file that is more really uploaded (compared with Excel files).  This method should be done
-        only with a new Spreadsheet is being created - when no processed spreadsheet yet exists.
+        Create a processed file that is more readily uploaded (compared with Excel files).  This method should be done
+        only with a new Spreadsheet is being created de novo - when no processed spreadsheet yet exists.
         """
         self.set_df()
-        self.file_path = os.path.join(self.spreadsheet_data_path, Spreadsheet.PROCESSED_SPREADSHEET_FILENAME)
+        self.file_path = os.path.join(self.spreadsheet_data_path,
+                                      Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." +
+                                      Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT)
         self.update_dataframe()
 
     @timeit
@@ -589,22 +594,27 @@ class Spreadsheet(db.Model):
     @staticmethod
     def make_share_copy(spreadsheet, user_id):
         extension = Path(spreadsheet.original_filename).suffix
-        share_filename = uuid.uuid4().hex + extension
-        share_file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), share_filename)
-        copyfile(spreadsheet.uploaded_file_path, share_file_path)
+        share_directory_name = uuid.uuid4().hex
+        user_folder = os.path.join(os.environ.get('UPLOAD_FOLDER'), f'user_{user_id}')
+        share_spreadsheet_data_path = os.path.join(user_folder, share_directory_name)
+        shutil.copytree(spreadsheet.spreadsheet_data_path, share_spreadsheet_data_path)
+        share_uploaded_file_path = os.path.join(share_spreadsheet_data_path,
+                                                Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + extension)
         if spreadsheet.file_path.endswith("txt"):
-            share_processed_file_path = share_file_path + ".working.txt"
+            share_processed_file_name = os.path.splitext(Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + ".txt")
+            share_processed_file_path = os.path.join(share_spreadsheet_data_path, share_processed_file_name)
         else:
-            share_processed_file_path = share_file_path + ".working.parquet"
-        copyfile(spreadsheet.file_path, share_processed_file_path)
+            share_processed_file_path = os.path.join(share_spreadsheet_data_path,
+                                                     Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." +
+                                                     Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT)
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
                                   days=spreadsheet.days,
                                   timepoints=spreadsheet.timepoints,
                                   repeated_measures=spreadsheet.repeated_measures,
                                   header_row=spreadsheet.header_row,
-                                  original_filename=share_filename,
+                                  original_filename=spreadsheet.original_filename,
                                   file_mime_type=spreadsheet.file_mime_type,
-                                  uploaded_file_path=share_file_path,
+                                  uploaded_file_path=share_uploaded_file_path,
                                   date_uploaded=datetime.datetime.utcnow(),
                                   file_path=share_processed_file_path,
                                   column_labels_str=spreadsheet.column_labels_str,
@@ -612,7 +622,20 @@ class Spreadsheet(db.Model):
                                   num_replicates_str=spreadsheet.num_replicates_str,
                                   filters=spreadsheet.filters,
                                   last_access=None,
+                                  spreadsheet_data_path=share_spreadsheet_data_path,
                                   user_id=user_id)
+        spreadsheet_share.save_to_db()
+
+        # Recover the shared spreadsheet id and rename the spreadsheet directory accordingly.
+        spreadsheet_data_path = os.path.join(user_folder, f"spreadsheet_{spreadsheet_share.id}")
+        os.rename(share_spreadsheet_data_path, spreadsheet_data_path)
+
+        # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
+        # updates.
+        spreadsheet_share.spreadsheet_data_path = str(spreadsheet_data_path)
+        spreadsheet_share.uploaded_file_path = str(os.path.join(spreadsheet_data_path,
+                                                          Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + extension))
+        spreadsheet_share.file_path = str(os.path.join(spreadsheet_data_path, os.path.basename(share_processed_file_path)))
         spreadsheet_share.save_to_db()
         return spreadsheet_share
 
