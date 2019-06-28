@@ -1,7 +1,9 @@
-import datetime
+from datetime import datetime
 import os
 import shutil
 import sqlite3
+
+from dotenv import load_dotenv, find_dotenv
 
 
 def purge(rehearse, db):
@@ -18,8 +20,8 @@ def purge(rehearse, db):
 
     # Find the paths to all the visitors who last accessed the system more than VISITOR_SPREADSHEET_KEEP_LIMIT days
     # ago along with the ids of those visitors.
-    sql = f"SELECT id, last_access FROM users WHERE visitor is TRUE" \
-          f"  AND date(last_access) <= date('now', '-{visitor_keep_limit} days')"
+    sql = f"SELECT id, datetime(last_access) FROM users WHERE visitor is TRUE" \
+          f"  AND date(last_access) <= date('now', '-{visitor_keep_limit} days') ORDER BY id"
     print(sql)
     cursor.execute(sql)
     data = cursor.fetchall()
@@ -28,7 +30,6 @@ def purge(rehearse, db):
     if data:
         for datum in data:
             user_id, last_access = datum
-            last_datetime = last_access.strftime("%c")
             try:
                 sql = 'DELETE FROM spreadsheets WHERE spreadsheets.user_id=?'
                 if rehearse:
@@ -56,6 +57,7 @@ def purge(rehearse, db):
 
 
 if __name__ == '__main__':
+    load_dotenv(find_dotenv(usecwd=True))
     DATABASE_FILE = os.environ['DATABASE_FILE']
     DATABASE_FOLDER = os.environ.get('DATABASE_FOLDER', '')
     if DATABASE_FOLDER:
