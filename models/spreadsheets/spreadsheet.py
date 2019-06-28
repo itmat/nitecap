@@ -543,8 +543,7 @@ class Spreadsheet(db.Model):
         error_message = f"The data for spreadsheet {self.id} could not all be successfully expunged."
         try:
             self.delete_from_db()
-            os.remove(self.file_path)
-            os.remove(self.uploaded_file_path)
+            shutil.rmtree(self.spreadsheet_data_path)
         except Exception as e:
             current_app.logger.error(error_message, e)
             error = error_message
