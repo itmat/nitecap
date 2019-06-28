@@ -9,7 +9,7 @@ from dotenv import load_dotenv, find_dotenv
 def migrate(rehearse, db):
     upload_folder = os.environ["UPLOAD_FOLDER"]
     relocated_files = []
-    connection = sqlite3.connect(db)
+    connection = sqlite3.connect(db, isolation_level=None)
     cursor = connection.cursor()
 
     sql = 'SELECT user_id, id, uploaded_file_path, file_path FROM spreadsheets ORDER BY user_id'
@@ -33,9 +33,9 @@ def migrate(rehearse, db):
 
             # Add spreadsheet data folder to spreadsheet record
             if not rehearse:
-                sql = 'UPDATE spreadsheets SET spreadsheet_data_path = ? WHERE id = ?'
+                sql = "UPDATE spreadsheets SET spreadsheet_data_path = ? WHERE id = ?"
                 cursor.execute(sql, (spreadsheet_data_folder, spreadsheet_id))
-            print(f"\t\tUPDATE spreadsheets SET spreadsheet_data_path = {spreadsheet_data_folder} "
+            print(f"\t\tUPDATE spreadsheets SET spreadsheet_data_path = '{spreadsheet_data_folder}' "
                   f"WHERE id = {spreadsheet_id}")
 
             # Check for related uploaded spreadsheet file and if present, move it under new spreadsheet folder
@@ -51,9 +51,9 @@ def migrate(rehearse, db):
 
                 # Add new upload file path to spreadsheet record
                 if not rehearse:
-                    sql = 'UPDATE spreadsheets SET uploaded_file_path = ? WHERE id = ?'
+                    sql = "UPDATE spreadsheets SET uploaded_file_path = ? WHERE id = ?"
                     cursor.execute(sql, (new_uploaded_file_path, spreadsheet_id))
-                print(f"\t\tUPDATE spreadsheets SET uploaded_file_path = {new_uploaded_file_path} "
+                print(f"\t\tUPDATE spreadsheets SET uploaded_file_path = '{new_uploaded_file_path}' "
                       f"WHERE id = {spreadsheet_id}")
 
             else:
@@ -73,10 +73,10 @@ def migrate(rehearse, db):
 
                 # Add new processed file path to spreadsheet record
                 if not rehearse:
-                    sql = 'UPDATE spreadsheets SET file_path = ? WHERE id = ?'
+                    sql = "UPDATE spreadsheets SET file_path = ? WHERE id = ?"
                     cursor.execute(sql, (new_processed_file_path, spreadsheet_id))
                 print(
-                    f"\t\tUPDATE spreadsheets SET file_path = {new_processed_file_path} WHERE id = {spreadsheet_id}")
+                    f"\t\tUPDATE spreadsheets SET file_path = '{new_processed_file_path}' WHERE id = {spreadsheet_id}")
 
             else:
                 termcolor.cprint("\t\tMissing processed spreadsheet file or reference in record", 'red')
