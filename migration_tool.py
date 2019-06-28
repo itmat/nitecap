@@ -9,7 +9,7 @@ from dotenv import load_dotenv, find_dotenv
 def migrate(rehearse, db):
     upload_folder = os.environ["UPLOAD_FOLDER"]
     relocated_files = []
-    connection = sqlite3.connect(db, isolation_level=None)
+    connection = sqlite3.connect(db)
     cursor = connection.cursor()
 
     sql = 'SELECT user_id, id, uploaded_file_path, file_path FROM spreadsheets ORDER BY user_id'
@@ -35,6 +35,7 @@ def migrate(rehearse, db):
             if not rehearse:
                 sql = "UPDATE spreadsheets SET spreadsheet_data_path = ? WHERE id = ?"
                 cursor.execute(sql, (spreadsheet_data_folder, spreadsheet_id))
+                connection.commit()
             print(f"\t\tUPDATE spreadsheets SET spreadsheet_data_path = '{spreadsheet_data_folder}' "
                   f"WHERE id = {spreadsheet_id}")
 
@@ -53,11 +54,15 @@ def migrate(rehearse, db):
                 if not rehearse:
                     sql = "UPDATE spreadsheets SET uploaded_file_path = ? WHERE id = ?"
                     cursor.execute(sql, (new_uploaded_file_path, spreadsheet_id))
+                    connection.commit()
                 print(f"\t\tUPDATE spreadsheets SET uploaded_file_path = '{new_uploaded_file_path}' "
                       f"WHERE id = {spreadsheet_id}")
 
             else:
-                termcolor.cprint("\t\tMissing uploaded spreadsheet file or reference in record", 'red')
+                if not uploaded_file_path:
+                    termcolor.cprint(f"\t\tSpreadsheet {spreadsheet_id} missing uploaded spreadsheet reference", 'red')
+                else:
+                    termcolor.cprint(f"\t\tSpreadsheet {spreadsheet_id} missing uploaded spreadsheet file", 'red')
 
             # Check for related processed spreadsheet file and if present, move it under new spreadsheet folder
             print(f"\tOriginal processed file path: {processed_file_path}")
@@ -75,11 +80,15 @@ def migrate(rehearse, db):
                 if not rehearse:
                     sql = "UPDATE spreadsheets SET file_path = ? WHERE id = ?"
                     cursor.execute(sql, (new_processed_file_path, spreadsheet_id))
+                    connection.commit()
                 print(
                     f"\t\tUPDATE spreadsheets SET file_path = '{new_processed_file_path}' WHERE id = {spreadsheet_id}")
 
             else:
-                termcolor.cprint("\t\tMissing processed spreadsheet file or reference in record", 'red')
+                if not processed_file_path:
+                    termcolor.cprint(f"\t\tSpreadsheet {spreadsheet_id} missing processed spreadsheet reference", 'red')
+                else:
+                    termcolor.cprint(f"\t\tSpreadsheet {spreadsheet_id} missing processed spreadsheet file", 'red')
 
             print(180 * "-")
             relocated_files.extend([os.path.basename(uploaded_file_path), os.path.basename(processed_file_path)])
@@ -151,6 +160,8 @@ def migrate(rehearse, db):
         else:
             # A non-comparison file with no reference
             termcolor.cprint(f"\tFile {filepath} has no owner.  May be legecy data.", 'red')
+
+    connection.close()
 
 
 if __name__ == "__main__":
