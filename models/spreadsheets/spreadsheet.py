@@ -696,7 +696,20 @@ class Spreadsheet(db.Model):
                 errors.append("Timepoints must be the same for the comparison of multiple spreadsheets.")
         return errors
 
+    def get_spreadsheet_data_directory_name(self):
+        return os.path.basename(self.spreadsheet_data_path)
+
+    @staticmethod
+    def get_processed_spreadsheet_name():
+        return Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." + Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT
+
+    def get_uploaded_spreadsheet_name(self):
+        ext = os.path.splitext(self.uploaded_file_path)[1]
+        return  Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + ext
+
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
                         re.compile(r"ZT(\d+)"), re.compile(r"zt(\d+)"),
                         re.compile(r"(\d+)ZT"), re.compile(r"(\d+)zt")]
+
+

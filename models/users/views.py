@@ -121,8 +121,7 @@ def login_user():
             if 'email' in session:
                 prior_user = User.find_by_email(session['email'])
                 if prior_user and prior_user.is_visitor():
-                    for spreadsheet in prior_user.spreadsheets:
-                        spreadsheet.update_user(user.id)
+                    user.reassign_visitor_spreadsheets(prior_user)
 
             session.permanent=True
             session['email'] = user.email

@@ -1,8 +1,10 @@
 import datetime
+import pathlib
 import random
+import shutil
 import smtplib
 import string
-
+from string import Template
 from flask import url_for, request
 
 from security import check_encrypted_password, encrypt_password
@@ -28,6 +30,8 @@ class User(db.Model):
     last_access = db.Column(db.DateTime)
     visitor = db.Column(db.Boolean, default=True)
     activated=db.Column(db.Boolean, nullable=False, default=False)
+
+    USER_DIRECTORY_NAME_TEMPLATE = Template('user_$user_id')
 
     spreadsheet = db.relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan")
 
@@ -422,18 +426,10 @@ class User(db.Model):
 
     def delete(self):
         """
-        Removes this user from the database and discards any spreadsheets belonging to this user.  Spreadsheets that
-        are unsuccessfully removed from the disk are noted in the log only.
+        Removes this user from the database and discards the directory associated with this user.
         """
-        for spreadsheet in self.spreadsheets:
-            try:
-                spreadsheet.delete_from_db()
-                os.remove(spreadsheet.file_path)
-                os.remove(spreadsheet.uploaded_file_path)
-            except Exception as e:
-                current_app.logger.error(f"The data for spreadsheet {spreadsheet.id} could not all be successfully "
-                                         f"expunged. It may be orphaned.", e)
         self.delete_from_db()
+        shutil.rmtree(self.get_user_directory_path())
 
     @staticmethod
     def generate_password():
@@ -443,3 +439,42 @@ class User(db.Model):
         """
         return ''.join(random.choice(PASSWORD_CHAR_SET) for _ in range(PASSWORD_LENGTH))
 
+    def get_user_directory_path(self):
+        """
+        Helper method to identify the path to the user's directory where the user's spreadsheet data is maintained.
+        This directory path is constructed by convention - not saved to the db.
+        :return: path to the user's directory.
+        """
+        user_directory_name = User.USER_DIRECTORY_NAME_TEMPLATE.substitute(user_id=self.id)
+        return pathlib.Path(os.path.join(os.environ.get('UPLOAD_FOLDER'), user_directory_name))
+
+    def reassign_visitor_spreadsheets(self, visitor):
+        """
+        Now that a visitor has logged in, we need to move any work the visitor did over to the login account.  This
+        involves moving any spreadsheet data the visitor created over to the logged in account and updating that
+        spreadsheet metadata with the new user id and paths.  Additionally, now that the visitor account is abandoned,
+        we can throw away the related user db record and the directory associated with the visitor.
+        :param visitor: the visiting user account
+        """
+        visitor_directory_path = visitor.get_user_directory_path()
+        user_directory_path = self.get_user_directory_path()
+
+        # Iterate over all spreadsheets belonging to to visitor
+        for spreadsheet in visitor.spreadsheets:
+
+            # Create spreadsheet data directory under user directory and move vistor spreadsheet data there.
+            visitor_spreadsheet_directory_name = spreadsheet.get_spreadsheet_data_directory_name()
+            user_spreadsheet_data_path = os.path.join(user_directory_path, visitor_spreadsheet_directory_name)
+            shutil.move(spreadsheet.spreadsheet_data_path, user_spreadsheet_data_path)
+
+            # Update spreadsheet owner, repoint all spreadsheet paths to owner's directory and save
+            spreadsheet.user_id = self.id
+            spreadsheet.spreadsheet_data_path = user_spreadsheet_data_path
+            spreadsheet.uploaded_file_path = os.path.join(user_spreadsheet_data_path,
+                                                          spreadsheet.get_uploaded_spreadsheet_name())
+            spreadsheet.file_path = os.path.join(user_spreadsheet_data_path,
+                                                 spreadsheet.get_processed_spreadsheet_name())
+            spreadsheet.save_to_db()
+
+        # Finally discard the visitor directory path and remove the visitor from the database
+        visitor.delete()
