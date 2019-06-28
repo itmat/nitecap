@@ -128,7 +128,7 @@ def db_backup_job():
 
 def visitor_purge_job():
     logger.info('Visitor purge underway.')
-    ids = visitor_purge.purge(app.config['DATABASE'])
+    ids = visitor_purge.purge(True, app.config['DATABASE'])
     if ids:
         logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
     else:
