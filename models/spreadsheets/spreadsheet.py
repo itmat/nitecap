@@ -7,6 +7,7 @@ import subprocess
 from pandas.errors import ParserError
 from pathlib import Path
 import re
+from string import Template
 
 import pandas as pd
 import numpy
@@ -58,6 +59,7 @@ class Spreadsheet(db.Model):
     UPLOADED_SPREADSHEET_FILE_PART = "uploaded_spreadsheet"
     PROCESSED_SPREADSHEET_FILE_PART = "processed_spreadsheet"
     PROCESSED_SPREADSHEET_FILE_EXT =  "parquet"
+    SPREADSHEET_DIRECTORY_NAME_TEMPLATE = Template('spreadsheet_$spreadsheet_id')
 
     @timeit
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
@@ -696,14 +698,38 @@ class Spreadsheet(db.Model):
                 errors.append("Timepoints must be the same for the comparison of multiple spreadsheets.")
         return errors
 
+    def get_spreadsheet_data_directory_conventional_name(self):
+        """
+        Helper method to return the conventional name for this spreadsheet's data directory.  Note that the
+        spreadsheet's current spreadsheet data path may be a uuid because the spreadsheet data path is created before
+        the spreadsheet object is saved to the db.  So the spreadsheet id is not initially known.
+        :return: conventional name for spreadsheet directory.
+        """
+        return Spreadsheet.SPREADSHEET_DIRECTORY_NAME_TEMPLATE.substitute(spreadsheet_id=self.id)
+
     def get_spreadsheet_data_directory_name(self):
+        """
+        Helper method to obtain the spreadsheet data directory name from the spreadsheet data directory path.  Note that
+        this is either a uuid or the conventional name depending upon when it is called.
+        :return: spreadsheet data directory name
+        """
         return os.path.basename(self.spreadsheet_data_path)
 
     @staticmethod
     def get_processed_spreadsheet_name():
+        """
+        Helper method to assemble the processed spreadsheet name from the component parts of the file name, which
+        are both determined by convention here.
+        :return: processed spreadsheet name
+        """
         return Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." + Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT
 
     def get_uploaded_spreadsheet_name(self):
+        """
+        Helper method to assemble the uploaded spreadsheet name from the component parts of the file name.  The
+        extension will vary with the type of upload.
+        :return: uplodaded spreadsheet name
+        """
         ext = os.path.splitext(self.uploaded_file_path)[1]
         return  Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + ext
 

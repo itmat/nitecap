@@ -2,7 +2,6 @@ import json
 import os
 import pathlib
 import shutil
-import sys
 import uuid
 from pathlib import Path
 import io
@@ -36,6 +35,7 @@ FILE_UPLOAD_ERROR = "We are unable to load your spreadsheet at the present time.
 
 IMPROPER_ACCESS_TEMPLATE = Template('User $user_id attempted to apply the endpoint $endpoint to '
                                     'spreadsheet $spreadsheet_id.')
+
 
 # Specialized JSON encoder for us that allows:
 # A) the inclusion of pandas objects (anything with a to_json(orient='values') method)
@@ -96,8 +96,6 @@ def upload_file():
             return render_template('spreadsheets/upload_file.html', header_row=header_row,
                                    errors=[FILE_UPLOAD_ERROR])
 
-        file_mime_type = None
-        file_errors = []
         directory_path = pathlib.Path(os.path.join(os.environ.get('UPLOAD_FOLDER'),
                                                    f"user_{user_id}", f"{uuid.uuid4().hex}"))
         directory_path.mkdir(parents=True, exist_ok=True)
@@ -107,16 +105,15 @@ def upload_file():
         file_path = os.path.join(directory_path, f"uploaded_spreadsheet{extension}")
         upload_file.save(file_path)
 
-        # If the mime type validation fails, remove the uploaded file from the disk
+        # If the mime type validation fails, remove the directory containing the uploaded file from the disk
         file_mime_type, errors = validate_mime_type(file_path)
         if errors:
             shutil.rmtree(directory_path)
             return render_template('spreadsheets/upload_file.html', header_row=header_row ,errors=errors)
 
-
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
-        # may only be able to identify it when pandas fails to parse it while creating a spreadsheet object.
-        # We throw the file away and report the error.
+        # may only be able to identify it as such when pandas fails to parse it while creating a spreadsheet object.
+        # We throw the directory containing the file away and report the error.
         try:
             spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
                                       days=None,
@@ -133,18 +130,18 @@ def upload_file():
             shutil.rmtree(directory_path)
             return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
 
-        # Save the spreadsheet file to the database
+        # Save the spreadsheet file to the database using the temporary spreadsheet data path (using the uuid)
         spreadsheet.save_to_db()
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
-        spreadsheet_data_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"user_{user_id}",
-                                             f"spreadsheet_{spreadsheet.id}")
+        spreadsheet_data_path = os.path.join(user.get_user_directory_path(),
+                                             spreadsheet.get_spreadsheet_data_directory_conventional_name())
         os.rename(directory_path, spreadsheet_data_path)
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
-        spreadsheet.spreadsheet_data_path = str(spreadsheet_data_path)
-        spreadsheet.uploaded_file_path = str(os.path.join(spreadsheet_data_path, os.path.basename(file_path)))
+        spreadsheet.spreadsheet_data_path = spreadsheet_data_path
+        spreadsheet.uploaded_file_path = os.path.join(spreadsheet_data_path, os.path.basename(file_path))
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
 
@@ -473,6 +470,7 @@ def download_comparison(id1, id2, user=None):
     :param user:  Returned by the decorator.  Account bearing user is required.
     """
 
+    comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
     spreadsheet_ids = [id1, id2]
 
     if not spreadsheet_ids:
@@ -495,7 +493,7 @@ def download_comparison(id1, id2, user=None):
     comparison_data = []
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
+        file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
             comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
             current_app.logger.info(f"Loaded upside values from file {file_path}")
@@ -717,7 +715,12 @@ def compare(user=None):
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
 @timeit
-def get_upside():
+@ajax_requires_login
+def get_upside(user=None):
+    comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
+    if not os.path.exists(comparisons_directory):
+        os.makedirs(comparisons_directory, exist_ok=True)
+
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
@@ -740,7 +743,7 @@ def get_upside():
     anova_q = None
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-        file_path = os.path.join(os.environ.get('UPLOAD_FOLDER'), f"{primary_id}v{secondary_id}.comparison.parquet")
+        file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
             comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
             upside_ps.append(comp_data["upside_ps"].values.tolist())
