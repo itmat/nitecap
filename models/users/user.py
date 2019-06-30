@@ -431,7 +431,7 @@ class User(db.Model):
         share.  We also remove the user directory before removing the user since sqlite3 auto-increments to obtain ids
         and could potentially re-use this one if it is the last id generated.
         """
-        if self.get_user_directory_path():
+        if os.path.exists(self.get_user_directory_path()):
             shutil.rmtree(self.get_user_directory_path())
         self.delete_from_db()
 
