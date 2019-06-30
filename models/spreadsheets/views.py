@@ -96,8 +96,7 @@ def upload_file():
             return render_template('spreadsheets/upload_file.html', header_row=header_row,
                                    errors=[FILE_UPLOAD_ERROR])
 
-        directory_path = pathlib.Path(os.path.join(os.environ.get('UPLOAD_FOLDER'),
-                                                   f"user_{user_id}", f"{uuid.uuid4().hex}"))
+        directory_path = pathlib.Path(os.path.join(user.get_user_directory_path(), f"{uuid.uuid4().hex}"))
         directory_path.mkdir(parents=True, exist_ok=True)
 
         # Rename the uploaded file and reattach the extension
@@ -665,7 +664,7 @@ def consume_share(token):
         return render_template('spreadsheets/upload_file.html', errors=errors)
 
     # Create a copy of the sharing user's spreadsheet for the current user.nitecap
-    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user.id)
+    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user)
     if shared_spreadsheet:
         if row_index:
             shared_spreadsheet.breakpoint = row_index

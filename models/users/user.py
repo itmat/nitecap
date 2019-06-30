@@ -456,13 +456,12 @@ class User(db.Model):
         we can throw away the related user db record and the directory associated with the visitor.
         :param visitor: the visiting user account
         """
-        visitor_directory_path = visitor.get_user_directory_path()
         user_directory_path = self.get_user_directory_path()
 
         # Iterate over all spreadsheets belonging to to visitor
         for spreadsheet in visitor.spreadsheets:
 
-            # Create spreadsheet data directory under user directory and move vistor spreadsheet data there.
+            # Create spreadsheet data directory under user directory and move visitor spreadsheet data there.
             visitor_spreadsheet_directory_name = spreadsheet.get_spreadsheet_data_directory_name()
             user_spreadsheet_data_path = os.path.join(user_directory_path, visitor_spreadsheet_directory_name)
             shutil.move(spreadsheet.spreadsheet_data_path, user_spreadsheet_data_path)

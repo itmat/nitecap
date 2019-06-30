@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+from pathlib import Path
 
 import termcolor as termcolor
 from dotenv import load_dotenv, find_dotenv
@@ -42,9 +43,9 @@ def migrate(rehearse, db):
             # Check for related uploaded spreadsheet file and if present, move it under new spreadsheet folder
             print(f"\tOriginal uploaded file path: {uploaded_file_path}")
             if uploaded_file_path and os.path.exists(uploaded_file_path):
-                uploaded_file_ext = os.path.basename(os.path.splitext(uploaded_file_path)[1])
+                uploaded_file_ext = Path(os.path.basename(uploaded_file_path)).suffix
                 new_uploaded_file_path = os.path.join(spreadsheet_data_folder,
-                                                      f"uploaded_spreadsheet.{uploaded_file_ext}")
+                                                      f"uploaded_spreadsheet{uploaded_file_ext}")
                 # Relocate uploaded spreadsheet
                 if not rehearse:
                     os.rename(uploaded_file_path, new_uploaded_file_path)
@@ -67,9 +68,9 @@ def migrate(rehearse, db):
             # Check for related processed spreadsheet file and if present, move it under new spreadsheet folder
             print(f"\tOriginal processed file path: {processed_file_path}")
             if processed_file_path and os.path.exists(processed_file_path):
-                processed_file_ext = os.path.basename(os.path.splitext(processed_file_path)[1])
+                processed_file_ext = Path(os.path.basename(processed_file_path)).suffix
                 new_processed_file_path = os.path.join(spreadsheet_data_folder,
-                                                       f"processed_spreadsheet.{processed_file_ext}")
+                                                       f"processed_spreadsheet{processed_file_ext}")
 
                 # Relocate processed spreadsheet
                 if not rehearse:
@@ -171,4 +172,4 @@ if __name__ == "__main__":
     if DATABASE_FOLDER:
         DATABASE_FOLDER += os.sep
     DATABASE = DATABASE_FOLDER + DATABASE_FILE
-    migrate(True, DATABASE)
+    migrate(False, DATABASE)

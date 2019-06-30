@@ -593,50 +593,69 @@ class Spreadsheet(db.Model):
         self.update_dataframe()
 
     @staticmethod
-    def make_share_copy(spreadsheet, user_id):
+    def make_share_copy(spreadsheet, user):
+        """
+        Makes a complete copy of the spreadsheet to be shared by creating a new spreadsheet using the metadata
+        from the original spreadsheet and recursively copying over the directory of the original spreadsheet to
+        the new directory assigned to the share.
+        :param spreadsheet: the spreadsheet to be shared
+        :param user: the recipient of the share
+        :return: the new shared spreadsheet
+        """
+
+        # Get the user directory path for the user receiving the share and create that user directory if it doesn't
+        # already exist.
+        user_directory_path = user.get_user_directory_path()
+        user_directory_path.mkdir(parents=True, exist_ok=True)
+
+        # Create temporary paths for the share spreadsheet data directory and its included uploaded and processed
+        # files and copy over the original spreadsheet data directory.
+        temporary_share_spreadsheet_data_path = os.path.join(user_directory_path,  uuid.uuid4().hex)
+        shutil.copytree(spreadsheet.spreadsheet_data_path, temporary_share_spreadsheet_data_path)
+
         extension = Path(spreadsheet.original_filename).suffix
-        share_directory_name = uuid.uuid4().hex
-        user_folder = os.path.join(os.environ.get('UPLOAD_FOLDER'), f'user_{user_id}')
-        share_spreadsheet_data_path = os.path.join(user_folder, share_directory_name)
-        shutil.copytree(spreadsheet.spreadsheet_data_path, share_spreadsheet_data_path)
-        share_uploaded_file_path = os.path.join(share_spreadsheet_data_path,
-                                                Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + extension)
+        temporary_share_uploaded_file_path = os.path.join(temporary_share_spreadsheet_data_path,
+                                                          Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + extension)
         if spreadsheet.file_path.endswith("txt"):
-            share_processed_file_name = os.path.splitext(Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + ".txt")
-            share_processed_file_path = os.path.join(share_spreadsheet_data_path, share_processed_file_name)
+            temporary_share_processed_file_path = os.path.join(temporary_share_spreadsheet_data_path,
+                                                               Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + ".txt")
         else:
-            share_processed_file_path = os.path.join(share_spreadsheet_data_path,
-                                                     Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." +
-                                                     Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT)
+            temporary_share_processed_file_path = os.path.join(temporary_share_spreadsheet_data_path,
+                                                               Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." +
+                                                               Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT)
+
+        # Create the share object - all path reflect the temporary share paths (i.e., paths containing uuid)
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
-                                  days=spreadsheet.days,
-                                  timepoints=spreadsheet.timepoints,
-                                  repeated_measures=spreadsheet.repeated_measures,
-                                  header_row=spreadsheet.header_row,
-                                  original_filename=spreadsheet.original_filename,
-                                  file_mime_type=spreadsheet.file_mime_type,
-                                  uploaded_file_path=share_uploaded_file_path,
-                                  date_uploaded=datetime.datetime.utcnow(),
-                                  file_path=share_processed_file_path,
-                                  column_labels_str=spreadsheet.column_labels_str,
-                                  breakpoint=spreadsheet.breakpoint,
-                                  num_replicates_str=spreadsheet.num_replicates_str,
-                                  filters=spreadsheet.filters,
-                                  last_access=None,
-                                  spreadsheet_data_path=share_spreadsheet_data_path,
-                                  user_id=user_id)
+                                        days=spreadsheet.days,
+                                        timepoints=spreadsheet.timepoints,
+                                        repeated_measures=spreadsheet.repeated_measures,
+                                        header_row=spreadsheet.header_row,
+                                        original_filename=spreadsheet.original_filename,
+                                        file_mime_type=spreadsheet.file_mime_type,
+                                        uploaded_file_path=temporary_share_uploaded_file_path,
+                                        date_uploaded=datetime.datetime.utcnow(),
+                                        file_path=temporary_share_processed_file_path,
+                                        column_labels_str=spreadsheet.column_labels_str,
+                                        breakpoint=spreadsheet.breakpoint,
+                                        num_replicates_str=spreadsheet.num_replicates_str,
+                                        filters=spreadsheet.filters,
+                                        last_access=None,
+                                        spreadsheet_data_path=temporary_share_spreadsheet_data_path,
+                                        user_id=user.id)
         spreadsheet_share.save_to_db()
 
-        # Recover the shared spreadsheet id and rename the spreadsheet directory accordingly.
-        spreadsheet_data_path = os.path.join(user_folder, f"spreadsheet_{spreadsheet_share.id}")
-        os.rename(share_spreadsheet_data_path, spreadsheet_data_path)
+        # Recover the shared spreadsheet id and rename the spreadsheet data path accordingly.
+        spreadsheet_share_data_path = os.path.join(user_directory_path,
+                                             spreadsheet_share.get_spreadsheet_data_directory_conventional_name())
+        os.rename(temporary_share_spreadsheet_data_path, spreadsheet_share_data_path)
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
-        spreadsheet_share.spreadsheet_data_path = str(spreadsheet_data_path)
-        spreadsheet_share.uploaded_file_path = str(os.path.join(spreadsheet_data_path,
-                                                          Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + extension))
-        spreadsheet_share.file_path = str(os.path.join(spreadsheet_data_path, os.path.basename(share_processed_file_path)))
+        spreadsheet_share.spreadsheet_data_path = spreadsheet_share_data_path
+        spreadsheet_share.uploaded_file_path = os.path.join(spreadsheet_share_data_path,
+                                                            Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + extension)
+        spreadsheet_share.file_path = str(os.path.join(spreadsheet_share_data_path,
+                                                       os.path.basename(temporary_share_processed_file_path)))
         spreadsheet_share.save_to_db()
         return spreadsheet_share
 
@@ -730,11 +749,10 @@ class Spreadsheet(db.Model):
         :return: uplodaded spreadsheet name
         """
         ext = os.path.splitext(self.uploaded_file_path)[1]
-        return  Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + ext
+        return Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + ext
+
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
                         re.compile(r"ZT(\d+)"), re.compile(r"zt(\d+)"),
                         re.compile(r"(\d+)ZT"), re.compile(r"(\d+)zt")]
-
-
