@@ -371,7 +371,8 @@
                 });
             }
             else if($(this).data("source") === "button") {
-                let spreadsheet_ids = $(this).data('id');
+                let spreadsheet_ids = $(this).attr('data-id');
+                console.log(spreadsheet_ids);
                 confirm_delete_modal.modal('toggle');
                 $.ajax({
                     url: "{{url_for('spreadsheets.bulk_delete')}}",
