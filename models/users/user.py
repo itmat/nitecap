@@ -426,10 +426,14 @@ class User(db.Model):
 
     def delete(self):
         """
-        Removes this user from the database and discards the directory associated with this user.
+        Removes this user from the database and discards the directory associated with this user, if one exists.  A
+        user may have an account but no directory, in the case where s/he has never uploaded any data or consumed a
+        share.  We also remove the user directory before removing the user since sqlite3 auto-increments to obtain ids
+        and could potentially re-use this one if it is the last id generated.
         """
+        if self.get_user_directory_path():
+            shutil.rmtree(self.get_user_directory_path())
         self.delete_from_db()
-        shutil.rmtree(self.get_user_directory_path())
 
     @staticmethod
     def generate_password():
