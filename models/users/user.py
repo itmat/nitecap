@@ -450,7 +450,7 @@ class User(db.Model):
         :return: path to the user's directory.
         """
         user_directory_name = User.USER_DIRECTORY_NAME_TEMPLATE.substitute(user_id=self.id)
-        return pathlib.Path(os.path.join(os.environ.get('UPLOAD_FOLDER'), user_directory_name))
+        return str(pathlib.Path(os.path.join(os.environ.get('UPLOAD_FOLDER'), user_directory_name)))
 
     def reassign_visitor_spreadsheets(self, visitor):
         """
