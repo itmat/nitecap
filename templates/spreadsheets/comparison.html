@@ -303,7 +303,7 @@
                                 <th scope="col">Secondary</th>
                             </tr>
                         </thead>
-                        <tbody v-if="spreadsheets !== null">
+                        <tbody v-if="spreadsheets !== null" class="stats-box">
                             <template v-for="stat in useable_stats">
                                 <tr>
                                     <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
