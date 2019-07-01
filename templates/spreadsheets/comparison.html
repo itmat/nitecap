@@ -231,7 +231,7 @@
                     <row-selector v-bind:sort-order="sort_order"
                                   v-bind:filtered="filtered"
                                   v-bind:num-rows="21"
-                                  v-bind:q-values="spreadsheets[0] ? spreadsheets[0].qs : []"
+                                  v-bind:q-values="label_qs"
                                   v-bind:selected-row="selected_row"
                                   v-bind:labels="labels"
                                   v-bind:label-max-length="35"
@@ -1485,6 +1485,26 @@
                 }
 
                 return sort_order;
+            },
+
+            label_qs: function () {
+                let value = this.sort_by.stat.value;
+
+                if (typeof value === 'string') {
+                    // No inherent q-value for this sort value
+                    // we default to Nitecap of primary spreadsheet
+                    return this.spreadsheets[0] ? this.spreadsheets[0].ps : [];
+                }
+
+                if (this.sort_by.spreadsheet_num !== undefined) {
+                    let sp = this.spreadsheets[this.sort_by.spreadsheet_num];
+                    let vq = value.q;
+                    let vals = sp ? sp[vq]: [];
+                    return vals;
+                    return this.spreadsheets[this.sort_by.spreadsheet_num][value.q];
+                } else {
+                    return this.stats[value.q];
+                }
             },
 
             filtered: function () {
