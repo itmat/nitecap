@@ -738,7 +738,7 @@ def get_upside():
 
                 dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-                datasets = [df[spreadsheet.get_data_columns()].values for df, spreadsheet in zip(dfs, spreadsheets)]
+                datasets = [df[spreadsheet.get_data_columns(by_day=False)].values for df, spreadsheet in zip(dfs, spreadsheets)]
 
             # Run the actual upside calculation
             upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates_by_time, datasets[primary],
