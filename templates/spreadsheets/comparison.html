@@ -259,7 +259,9 @@
                         <option value="mean">Mean only</option>
                         <option value="mean_points">Points and Mean</option>
                         <option value="std">Standard Deviations</option>
+                        <option value="std_points">Standard Deviations and Points</option>
                         <option value="SEM">SEM</option>
+                        <option value="SEM_points">SEM and Points</option>
                     </select>
                 </div>
                 <div class="form-inline">
@@ -888,11 +890,37 @@
                         trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
                         trace.y = stats.means;
                         trace.error_y = {type: 'data', array:stats.stds, visible:true};
+                    } else if (plot_style === "std_points") {
+                        trace.mode = "lines";
+                        trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                        trace.y = stats.means;
+                        trace.error_y = {type: 'data', array:stats.stds, visible:true};
+                        traces.push({
+                            x: plot_x_values,
+                            y: raw_y_values,
+                            showlegend: false,
+                            type: 'scatter',
+                            mode: 'markers',
+                            marker: {color: spreadsheet_color},
+                        });
                     } else if (plot_style === "SEM") {
                         trace.mode = "lines";
                         trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
                         trace.y = stats.means;
                         trace.error_y = {type: 'data', array:stats.sems, visible:true};
+                    } else if (plot_style === "SEM_points") {
+                        trace.mode = "lines";
+                        trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                        trace.y = stats.means;
+                        trace.error_y = {type: 'data', array:stats.sems, visible:true};
+                        traces.push({
+                            x: plot_x_values,
+                            y: raw_y_values,
+                            type: 'scatter',
+                            showlegend: false,
+                            mode: 'markers',
+                            marker: {color: spreadsheet_color},
+                        });
                     }
 
                     traces.push(trace);
