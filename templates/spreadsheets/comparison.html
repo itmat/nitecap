@@ -641,7 +641,7 @@
                                 return maximums(spreadsheet.data);
                          });
                          return maxes[0].map( function(row, i) {
-                            return Math.max(maxes[0][i], maxes[1][i]);
+                            return Math.max.apply(null, maxes.map(function(max){return max[i];}));
                         });
                     },
                 name: "Maximum value",
@@ -649,15 +649,24 @@
                 key:"max_value"},
         {values: function () {
                     // Grand means across both datasets within each row
-                    // TODO: better support for missing values (different numbers missing in each spreadsheet)
-                    let means = app.spreadsheets.map(function (spreadsheet) {
-                        return means(spreadsheet.data);
+                    // skipping over NaN/null values
+                    let sums_ = app.spreadsheets.map(function(spreadsheet) {
+                        let summed_rows = sums(spreadsheet.data);
+                        return summed_rows;
                     });
-                    let a = app.spreadsheets[0].data[0].length;
-                    let b = app.spreadsheets[1].data[0].length;
-                    return means[0].map( function(row, i) {
-                        return (means[0][i]*a + means[1][i]*b) / (a + b);
+                    let total_sums = sums(sums_, 0);
+
+                    let nonnans = app.spreadsheets.map(function(spreadsheet) {
+                        return numValids(spreadsheet.data);
                     });
+                    let total_nonnans = sums(nonnans, 0);
+
+                    let divide = function(a,b) { return a/b; };
+
+                    let means = total_sums.map(function(sum, i) {
+                        return sum / total_nonnans[i];
+                    });
+                    return means;
                 },
                 name: "Mean value",
                 independent: true,

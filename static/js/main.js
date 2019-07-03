@@ -230,6 +230,61 @@ function means(table) {
     return table.map(mean);
 }
 
+// Util that takes a two-dim array-of-arrays and computes the sum of each row
+// NaNs are skipped (if all are NaN, then NaN is returned)
+// If axis=1,  then sums on each row in the table, ie does sum(table[i][j])  summing over j
+// If axis=0, then sums on the first axis, i.e. does sum(table[i][j]) summing over i
+function sums(table, axis) {
+    axis = axis !== undefined ? axis : 1;
+
+    function sum(row) {
+        let sum = 0;
+        let count = 0;
+        row.forEach( function(x) {
+            if (isNaN(x) || x === null) {
+                return;
+            }
+            sum += x;
+            count += 1;
+        } );
+
+        if (count === 0) {
+            return NaN;
+        }
+        return sum;
+    };
+
+    if (axis === 1) {
+        // Take the sum of data[i][*]
+        return table.map(sum);
+    } else if (axis === 0) {
+        // Select out data[*][j] and take the sum
+        return table[0].map( function (_,j) {
+            return sum(table.map( function(row) {
+                return row[j];
+            }));
+        });
+    } else {
+        return "axis must be 1 (default) or 0";
+    }
+}
+
+// Util that takes a two-dim array-of-arrays and computes the number of non-NaN elements
+// in each row
+function numValids(table) {
+    function count(row) {
+        let count = 0;
+        row.forEach( function(x) {
+            if( isNaN(x) || x === null ){
+                return;
+            }
+            count += 1;
+        });
+        return count;
+    }
+    return table.map(count);
+}
+
 // Util to pad a string with copies of a character
 function padEnd(string, length, character) {
     if (string.length > length) {
