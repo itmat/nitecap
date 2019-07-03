@@ -183,7 +183,7 @@ function rowStatsByTimepoint(row, times) {
     });
 
     var stds = variances.map(Math.sqrt);
-    var sems = stds.map(function (std, time) { return std / reps_per_timepoint[time]; });
+    var sems = stds.map(function (std, time) { return std / Math.sqrt(reps_per_timepoint[time]); });
 
     return {means: means, variances: variances, stds: stds,  sems:sems};
 }
