@@ -250,6 +250,9 @@
             <div class='p-3 float-right'>
                 <button class="btn btn-primary" v-on:click="downloadPlot">Download Plot</button>
             </div>
+            <div class='p-3 float-right'>
+                <button class="btn btn-primary btn-sm" v-on:click="shiftSpreadsheets">Reorder Spreadsheets</button>
+            </div>
             <form class="form-group">
                 <div class="form-inline">
                     <label for="plot_style_select">Plot style</label>
@@ -1415,6 +1418,14 @@
                         nitecap_error.modal();
                     }
                 });
+            },
+
+            shiftSpreadsheets: function () {
+                // Shifts through the spreadsheets in order
+                let spreadsheets = this.spreadsheets;
+                let first = spreadsheets[0];
+                let tail = spreadsheets.slice(1);
+                this.spreadsheets = tail.concat(first);
             },
 
         },
