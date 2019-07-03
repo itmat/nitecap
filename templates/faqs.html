@@ -41,7 +41,7 @@
                 <h5 class="mb-0">
                     <button class="btn btn-link" data-toggle="collapse" data-target="#collapseTwo"
                              aria-expanded="true" aria-controls="collapseTwo">
-                        Why are my ANOVA p-values blank?
+                        Why are my ANOVA p-values N/A?
                     </button>
                 </h5>
             </div>
@@ -70,7 +70,10 @@
                         Nitecap accepts most spreadsheets as is and supports Excel xls, xlsx spreadsheets (with your data in the first sheet in the file, if multiple sheets) as well as tab-separated and comma-separated files.
                         The data should be formatted with one column per sample and one row per one feature (e.g. gene, protein or other value measured).
                         Which column corresponds to which timepoint is set by the user after uploading the spreadsheet and no specific column headers are required.
-                        For convenience, if sample columns are labelled as ZT## or CT##  (e.g. CT0, CT4, CT8, CT12, ...) then the number values will be used to infer timepoints when possible.
+                        For convenience, if sample columns headers include ZT## or CT##  (e.g. CT0, CT4, CT8, CT12, ...) then the number values will be used to infer timepoints when possible and for labels of timepoints.
+                        Similarly, if the columns contains ##:## (e.g. 12:04) time values, then those will be used.
+                    </p>
+                    <p>
                         Additional columns are no problem and can be used to label the values by selecting ID and multiple columns may be used as ID columns.
                     </p>
                 </div>
@@ -159,9 +162,14 @@
                 <div class="card-body">
                     <p>
                         Nitecap is currently under development and has not yet been published, so no citation is yet possible.
+                        If you publish a work using Nitecap, please let <a href="mailto:thobr@sas.upenn.edu">let us know</a>.
                     </p>
                     <p>
                         If you use the JTK analysis results in your paper, the <a href="https://openwetware.org/wiki/HughesLab:JTK_Cycle">developers of JTK_cycle</a> ask users to cite <a href="http://www.ncbi.nlm.nih.gov/pubmed/20876817">their paper</a>.
+                    </p>
+                    <p>
+                        If you use phase and amplitude difference statistics, you can cite Bingham, Arbogast, Cornelissen Guillaume, Lee, Halberg "Inferential Statistical Methods for Estimating and Comparing Cosinor Parameters," 1982.
+
                     </p>
                 </div>
             </div>
@@ -179,12 +187,16 @@
             <div id="collapseEight" class="collapse" aria-labelledby="headingEight" data-parent="#faq_list">
                 <div class="card-body">
                     <p>
-                        There is a share button on every dataset which gives a URL that can be given to your colleagues to access the dataset.
+                        If you have logged into your account, there is a share button on every dataset which gives a URL that can be given to your colleagues to access the dataset.
                         Note that anyone with the URL can access it, so consider who you share it with.
                     </p>
                     <p>
                         When someone opens the link, they receive a copy of the dataset and none of the changes they make will be reflected in your copy.
                         If you modify your dataset, then that modification will go to anyone who clicks the link after your modification, but not for anyone who clicked before.
+                    </p>
+                    <p>
+                        Unfortunately we do not yet support sharing comparisons between multiple spreadsheets.
+                        Instead, you should share all the individual spreadsheets and if your colleague opens each spreadsheet link, they can perform a comparison by visiting their <a href="/spreadsheets/display_spreadsheets">spreadsheet list</a> page.
                     </p>
                 </div>
             </div>
@@ -214,7 +226,7 @@
                         In particular, note that if any one of the datasets has non-significant rhythmicity, the p-value for the phase test will be non-significant.
                         This is desirable since the phase of a non-rhythmic feature is undefined.
                         Hence this p-value is significant only when all are significantly rhythmic and the difference in their phases are significant.
-                        The amplitude of a non-sigificant rhythmicity should  be low and hence an amplitude difference is still meaningful and the test is more powerful.
+                        The amplitude of a non-significant rhythmicity should  be low and hence an amplitude difference is still meaningful and the test is more powerful.
                     </p>
                 </div>
             </div>
