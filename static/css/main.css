@@ -194,6 +194,10 @@ body {
     color: #FFF;
 }
 
+.stats-box td {
+    cursor: pointer;
+}
+
 #spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {
     font-family: "Font Awesome 5 Free";
     content: "\f14a";

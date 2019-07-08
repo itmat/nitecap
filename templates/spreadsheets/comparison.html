@@ -12,6 +12,9 @@
     PCA_HEIGHT = 800;
     PCA_SYMBOL = "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0";
     $(document).ready(function () {
+        // Handles to the error-handling modal
+        nitecap_error = $("#error-modal");
+        nitecap_error_message = $("#error-modal-message")
 
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
@@ -27,6 +30,9 @@
             error: function(error) {
                 console.log("Error loading spreadsheets");
                 console.log(error);
+
+                nitecap_error_message.text("Error loading spreadsheets");
+                nitecap_error.modal();
             }
         });
 
@@ -85,27 +91,25 @@
                 let jtk_ps = response['jtk_ps'];
                 let jtk_qs = response['jtk_qs'];
 
-                // Find the right spreadsheets and put each jtk_ps/qs into it
-                spreadsheet_ids.forEach(function(id, i) {
-                    app.spreadsheets.forEach(function(spreadsheet) {
-                        if (spreadsheet.spreadsheet_id == id) {
-                            // For Vue performance see VUE PERF NOTE
-                            Object.preventExtensions(jtk_ps[i]);
-                            Object.preventExtensions(jtk_qs[i]);
-                            spreadsheet.jtk_ps = jtk_ps[i];
-                            spreadsheet.jtk_qs = jtk_qs[i];
-                        }
-                    });
+                spreadsheets.forEach(function(spreadsheet, i) {
+                    // For Vue performance see VUE PERF NOTE
+                    Object.preventExtensions(jtk_ps[i]);
+                    Object.preventExtensions(jtk_qs[i]);
+                    spreadsheet.jtk_ps = jtk_ps[i];
+                    spreadsheet.jtk_qs = jtk_qs[i];
                 });
             },
             error: function(error) {
                 console.log("Error loading JTK values");
                 console.log(error);
+
+                nitecap_error_message.text("Error loading JTK values");
+                nitecap_error.modal();
             }
         });
 
         // Load the Upside values
-        if (app.spreadsheets.length > 1) {
+        if (spreadsheets.length > 1) {
             $.ajax({
                 url: "/spreadsheets/get_upside",
                 data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
@@ -122,7 +126,7 @@
                     upside_ps = response['upside_ps'];
                     upside_qs = response['upside_qs'];
 
-                    app.spreadsheets.forEach(function(spreadsheet, idx){
+                    spreadsheets.forEach(function(spreadsheet, idx){
                         Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
                         Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
                         spreadsheet.upside_ps = upside_ps[idx];
@@ -140,7 +144,9 @@
                 error: function(error) {
                     console.log("Error loading upside values");
                     console.log(error);
-                    response = error.responseText;
+
+                    nitecap_error_message.text("Error loading comparison statistics");
+                    nitecap_error.modal();
                 }
             });
         }
@@ -220,7 +226,7 @@
                     <row-selector v-bind:sort-order="sort_order"
                                   v-bind:filtered="filtered"
                                   v-bind:num-rows="21"
-                                  v-bind:q-values="spreadsheets[0] ? spreadsheets[0].qs : []"
+                                  v-bind:q-values="label_qs"
                                   v-bind:selected-row="selected_row"
                                   v-bind:labels="labels"
                                   v-bind:label-max-length="35"
@@ -233,12 +239,15 @@
                     </div>
                 </div>
             </div>
-            <div class='p-3'>
-                <button class="btn btn-primary" v-on:click="downloadPlot">Download Plot</button>
-            </div>
         </span>
         <div class='col-auto'>
             <span id="scatter_plot" style="width:625px;height:525px;vertical-align: top"></span>
+            <div class='p-3 float-right'>
+                <button class="btn btn-primary" v-on:click="downloadPlot">Download Plot</button>
+            </div>
+            <div class='p-3 float-right'>
+                <button class="btn btn-primary btn-sm" v-on:click="shiftSpreadsheets" v-if="spreadsheets.length > 1">Reorder Spreadsheets</button>
+            </div>
             <form class="form-group">
                 <div class="form-inline">
                     <label for="plot_style_select">Plot style</label>
@@ -248,7 +257,9 @@
                         <option value="mean">Mean only</option>
                         <option value="mean_points">Points and Mean</option>
                         <option value="std">Standard Deviations</option>
+                        <option value="std_points">Standard Deviations and Points</option>
                         <option value="SEM">SEM</option>
+                        <option value="SEM_points">SEM and Points</option>
                     </select>
                 </div>
                 <div class="form-inline">
@@ -292,7 +303,7 @@
                                 <th scope="col">Secondary</th>
                             </tr>
                         </thead>
-                        <tbody v-if="spreadsheets !== null">
+                        <tbody v-if="spreadsheets !== null" class="stats-box">
                             <template v-for="stat in useable_stats">
                                 <tr>
                                     <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
@@ -572,7 +583,8 @@
           description: "Nitecap significance of rhythmicity for primary dataset.",
          per_spreadsheet: true,
          num_spreadsheets:'any',
-         sort_value:'tds'},
+         sort_value:'tds',
+         secondary_sort_value:'qs'},
         {name: "JTK",
          value: {p: "jtk_ps",
                  q: "jtk_qs"},
@@ -629,7 +641,7 @@
                                 return maximums(spreadsheet.data);
                          });
                          return maxes[0].map( function(row, i) {
-                            return Math.max(maxes[0][i], maxes[1][i]);
+                            return Math.max.apply(null, maxes.map(function(max){return max[i];}));
                         });
                     },
                 name: "Maximum value",
@@ -637,15 +649,24 @@
                 key:"max_value"},
         {values: function () {
                     // Grand means across both datasets within each row
-                    // TODO: better support for missing values (different numbers missing in each spreadsheet)
-                    let means = app.spreadsheets.map(function (spreadsheet) {
-                        return means(spreadsheet.data);
+                    // skipping over NaN/null values
+                    let sums_ = app.spreadsheets.map(function(spreadsheet) {
+                        let summed_rows = sums(spreadsheet.data);
+                        return summed_rows;
                     });
-                    let a = app.spreadsheets[0].data[0].length;
-                    let b = app.spreadsheets[1].data[0].length;
-                    return means[0].map( function(row, i) {
-                        return (means[0][i]*a + means[1][i]*b) / (a + b);
+                    let total_sums = sums(sums_, 0);
+
+                    let nonnans = app.spreadsheets.map(function(spreadsheet) {
+                        return numValids(spreadsheet.data);
                     });
+                    let total_nonnans = sums(nonnans, 0);
+
+                    let divide = function(a,b) { return a/b; };
+
+                    let means = total_sums.map(function(sum, i) {
+                        return sum / total_nonnans[i];
+                    });
+                    return means;
                 },
                 name: "Mean value",
                 independent: true,
@@ -867,11 +888,37 @@
                         trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
                         trace.y = stats.means;
                         trace.error_y = {type: 'data', array:stats.stds, visible:true};
+                    } else if (plot_style === "std_points") {
+                        trace.mode = "lines";
+                        trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                        trace.y = stats.means;
+                        trace.error_y = {type: 'data', array:stats.stds, visible:true};
+                        traces.push({
+                            x: plot_x_values,
+                            y: raw_y_values,
+                            showlegend: false,
+                            type: 'scatter',
+                            mode: 'markers',
+                            marker: {color: spreadsheet_color},
+                        });
                     } else if (plot_style === "SEM") {
                         trace.mode = "lines";
                         trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
                         trace.y = stats.means;
                         trace.error_y = {type: 'data', array:stats.sems, visible:true};
+                    } else if (plot_style === "SEM_points") {
+                        trace.mode = "lines";
+                        trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
+                        trace.y = stats.means;
+                        trace.error_y = {type: 'data', array:stats.sems, visible:true};
+                        traces.push({
+                            x: plot_x_values,
+                            y: raw_y_values,
+                            type: 'scatter',
+                            showlegend: false,
+                            mode: 'markers',
+                            marker: {color: spreadsheet_color},
+                        });
                     }
 
                     traces.push(trace);
@@ -1258,7 +1305,7 @@
 
                 $.ajax({
                     url: "/spreadsheets/run_pca",
-                    data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids,
+                    data: JSON.stringify({'spreadsheet_ids': app.spreadsheet_ids,
                                           'selected_genes': selected_genes,
                                           'take_logtransform': vm.pca.config.logtransform,
                                           'take_zscore': vm.pca.config.zscore}),
@@ -1308,8 +1355,9 @@
                     error: function (error) {
                         console.log("Error running PCA");
                         console.log(error);
-                        alert.text(error.responseText);
-                        alert.show();
+
+                        nitecap_error_message.text("Error running PCA");
+                        nitecap_error.modal();
                     },
                     complete: function() {
                         vm.pca.running = false;
@@ -1367,6 +1415,14 @@
                 });
             },
 
+            shiftSpreadsheets: function () {
+                // Shifts through the spreadsheets in order
+                let spreadsheets = this.spreadsheets;
+                let first = spreadsheets[0];
+                let tail = spreadsheets.slice(1);
+                this.spreadsheets = tail.concat(first);
+            },
+
         },
 
         computed: {
@@ -1403,16 +1459,29 @@
             },
 
             sort_function: function () {
+                // We sort by the value specified in sort_by
+                // We also have a 'secondary sort value' which is used purely as a null/not-null check
+                // So if secondary sort value is null then we will sort the value to the end as if the main value were null
+                // This solves the problem where q-values are null and being sorted to the front of the list particulary
+                // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
                 let vm = this;
                 let sorter = null;
                 let value = null;
+                let secondary_value = null;
 
                 if (this.sort_by.stat.sort_value !== undefined) {
                     value = this.sort_by.stat.sort_value;
+                    if (this.sort_by.stat.secondary_sort_value !== undefined) {
+                        secondary_value = this.sort_by.stat.secondary_sort_value;
+                    } else {
+                        secondary_value = value;
+                    }
                 } else if (typeof this.sort_by.stat.value === 'string') {
                     value = this.sort_by.stat.value;
+                    secondary_value = value;
                 } else {
                     value = this.sort_by.stat.value.p;
+                    secondary_value = this.sort_by.stat.value.q;
                 }
 
                 let sort_direction = 1;
@@ -1422,16 +1491,20 @@
 
                 if (vm.sort_by.spreadsheet_num !== undefined) {
                     sorter = function (i,j) {
-                        let a = vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i];
-                        let b = vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j];
+                        let a = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][i] &&
+                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i];
+                        let b = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][j] &&
+                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j];
                         return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
                                        b ? b * sort_direction : b,
                                        i, j);
                     };
                 } else {
                     sorter = function (i,j) {
-                        let a = vm.stats[value][i];
-                        let b = vm.stats[value][j];
+                        let a = vm.stats[secondary_value][i]
+                                    && vm.stats[value][i];
+                        let b = vm.stats[secondary_value][j]
+                                    && vm.stats[value][j];
                         return compare(a ? a * sort_direction : b, // multiply by +/- 1 but not if null
                                        b ? b * sort_direction : b,
                                        i, j);
@@ -1455,6 +1528,26 @@
                 }
 
                 return sort_order;
+            },
+
+            label_qs: function () {
+                let value = this.sort_by.stat.value;
+
+                if (typeof value === 'string') {
+                    // No inherent q-value for this sort value
+                    // we default to Nitecap of primary spreadsheet
+                    return this.spreadsheets[0] ? this.spreadsheets[0].ps : [];
+                }
+
+                if (this.sort_by.spreadsheet_num !== undefined) {
+                    let sp = this.spreadsheets[this.sort_by.spreadsheet_num];
+                    let vq = value.q;
+                    let vals = sp ? sp[vq]: [];
+                    return vals;
+                    return this.spreadsheets[this.sort_by.spreadsheet_num][value.q];
+                } else {
+                    return this.stats[value.q];
+                }
             },
 
             filtered: function () {
@@ -1575,6 +1668,10 @@
 
                 // Return all filters, including the 'base' ones and the ones derived from our statistics
                 return filter_data_list_base.concat(stat_filters);
+            },
+
+            spreadsheet_ids: function() {
+                return this.spreadsheets.map( function(spreadsheet) {return spreadsheet.spreadsheet_id;});
             },
         },
 
