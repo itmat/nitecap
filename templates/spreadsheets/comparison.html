@@ -91,17 +91,12 @@
                 let jtk_ps = response['jtk_ps'];
                 let jtk_qs = response['jtk_qs'];
 
-                // Find the right spreadsheets and put each jtk_ps/qs into it
-                spreadsheet_ids.forEach(function(id, i) {
-                    app.spreadsheets.forEach(function(spreadsheet) {
-                        if (spreadsheet.spreadsheet_id == id) {
-                            // For Vue performance see VUE PERF NOTE
-                            Object.preventExtensions(jtk_ps[i]);
-                            Object.preventExtensions(jtk_qs[i]);
-                            spreadsheet.jtk_ps = jtk_ps[i];
-                            spreadsheet.jtk_qs = jtk_qs[i];
-                        }
-                    });
+                spreadsheets.forEach(function(spreadsheet, i) {
+                    // For Vue performance see VUE PERF NOTE
+                    Object.preventExtensions(jtk_ps[i]);
+                    Object.preventExtensions(jtk_qs[i]);
+                    spreadsheet.jtk_ps = jtk_ps[i];
+                    spreadsheet.jtk_qs = jtk_qs[i];
                 });
             },
             error: function(error) {
@@ -114,7 +109,7 @@
         });
 
         // Load the Upside values
-        if (app.spreadsheets.length > 1) {
+        if (spreadsheets.length > 1) {
             $.ajax({
                 url: "/spreadsheets/get_upside",
                 data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
@@ -131,7 +126,7 @@
                     upside_ps = response['upside_ps'];
                     upside_qs = response['upside_qs'];
 
-                    app.spreadsheets.forEach(function(spreadsheet, idx){
+                    spreadsheets.forEach(function(spreadsheet, idx){
                         Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
                         Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
                         spreadsheet.upside_ps = upside_ps[idx];
@@ -1310,7 +1305,7 @@
 
                 $.ajax({
                     url: "/spreadsheets/run_pca",
-                    data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids,
+                    data: JSON.stringify({'spreadsheet_ids': app.spreadsheet_ids,
                                           'selected_genes': selected_genes,
                                           'take_logtransform': vm.pca.config.logtransform,
                                           'take_zscore': vm.pca.config.zscore}),
@@ -1673,6 +1668,10 @@
 
                 // Return all filters, including the 'base' ones and the ones derived from our statistics
                 return filter_data_list_base.concat(stat_filters);
+            },
+
+            spreadsheet_ids: function() {
+                return this.spreadsheets.map( function(spreadsheet) {return spreadsheet.spreadsheet_id;});
             },
         },
 
