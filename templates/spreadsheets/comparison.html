@@ -875,6 +875,8 @@
 
             onRowChange: function () {
                 this.redrawPlot();
+
+                $('#coarse_slider').slider('value', this.selected_row);
             },
 
             searchRows: function() {
