@@ -194,41 +194,33 @@ Vue.component("heatmap-plot", {
     },
     
     template: '\
-    <div class="row">\
-        <div class="col card" id="heatmap_block">\
+        <div class="col card">\
             <div class="card-body">\
-                <div class="row" style="padding-top:2rem;padding-bottom:2rem">\
-                    <span class="col-lg-5">\
-                        <input type="hidden" id="row_index" name="row_index"/>\
-                        <button class="btn btn-primary" v-on:click="updateHeatmap">Generate Heatmap</button>\
-                    </span>\
-                </div>\
-\
+                <button class="btn btn-primary" v-on:click="updateHeatmap">Generate Heatmap</button>\
                 <div v-show="rendered">\
-                    <span class="col-lg-12">Number of items in heatmap: {{heatmap_labels.length}}</span>\
                     <div id="heatmap"></div>\
-                    <span class="col-lg-5">\
-                        <div class="form-check">\
+                    <div class="form-group form-inline">\
+                        <div class="form-check mx-3">\
                             <input class="form-check-input" id="combine_replicates" type="checkbox" v-model="config.combine_replicates">\
                             <label class="form-check-label" for="combine_replicates">Combine replicates</label>\
                         </div>\
     \
-                        <div class="form-check" v-if="num_days > 1">\
+                        <div class="form-check mx-3" v-if="num_days > 1">\
                             <input class="form-check-input" id="heatmap_fold_days" type="checkbox" v-model="config.fold_days">\
                             <label class="form-check-label" for="heatmap_fold_days">Overlay cycles</label>\
                         </div>\
     \
-                        <div class="form-check">\
+                        <div class="form-check mx-3">\
                             <input class="form-check-input" id="heatmap_show_labels" type="checkbox" v-model="config.show_labels">\
                             <label class="form-check-label" for="heatmap_show_labels">Show row labels</label>\
                         </div>\
-                    </span>\
+                    </div>\
                     <span>\
                         <button id="download_heatmap" class="btn btn-primary" v-on:click="downloadHeatmap">Download Heatmap</button>\
                     </span>\
+                    <span>Number of items in heatmap: {{heatmap_labels.length}}</span>\
                 </div> \
             </div>\
         </div>\
-    </div>\
     ',
 });

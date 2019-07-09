@@ -257,7 +257,6 @@ Vue.component('pca-plot', {
     },
 
     template: '\
-    <div>\
         <div class="col card">\
             <div class="card-body">\
                 <button id="run_pca" class="btn btn-primary"\
@@ -288,6 +287,5 @@ Vue.component('pca-plot', {
                 </span>\
             </div>\
         </div>\
-    </div>\
     ',
 });
