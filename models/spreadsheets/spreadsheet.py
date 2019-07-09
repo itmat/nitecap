@@ -606,7 +606,7 @@ class Spreadsheet(db.Model):
         # Get the user directory path for the user receiving the share and create that user directory if it doesn't
         # already exist.
         user_directory_path = user.get_user_directory_path()
-        user_directory_path.mkdir(parents=True, exist_ok=True)
+        Path(user_directory_path).mkdir(parents=True, exist_ok=True)
 
         # Create temporary paths for the share spreadsheet data directory and its included uploaded and processed
         # files and copy over the original spreadsheet data directory.
