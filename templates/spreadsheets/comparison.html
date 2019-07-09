@@ -474,6 +474,7 @@
         v-bind:spreadsheets="spreadsheets"
         v-bind:num_days="num_days"
         v-bind:selected_rows="selected_rows"
+        v-bind:timepoint_labels="timepoint_labels"
         v-bind:labels="labels">
     </heatmap-plot>
 
@@ -1216,6 +1217,15 @@
                 let vm = this;
 
                 return vm.spreadsheets.map( function(spreadsheet) {
+                    // Otherwise we default to "Timepoint 1", etc.
+                    let times = spreadsheet.x_label_values.filter(function(t) {
+                        if (t < spreadsheet.timepoints_per_day) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
+                    });
+
                     // Try to infer if possible
                     let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
                     if (inferred !== null) {
@@ -1223,18 +1233,13 @@
                             return inferred.format.make_label(t, true);
                         });
                         let labels = [];
-                        spreadsheet.x_values.forEach( function (time,i) {
+                       times.forEach( function (time,i) {
                             if (labels[time] === undefined) {
                                 labels[time] = headings[i];
                             }
                         });
                         return labels;
                     }
-
-                    // Otherwise we default to "Timepoint 1", etc.
-                    let times = vm.spreadsheets.map( function(spreadsheet) {
-                        return spreadsheet.x_label_values.filter(function(t) { if (t < spreadsheet.timepoints_per_day) { return 1; } else { return 0; } });
-                    });
 
                     return vm.spreadsheets.map( function(spreadsheet, idx) {
                         return times[idx].map( function(time) {

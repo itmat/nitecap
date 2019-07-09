@@ -20,6 +20,7 @@ Vue.component("heatmap-plot", {
         num_days: Number,
         selected_rows: Array,
         labels: Array,
+        timepoint_labels: Array,
     },
 
     methods: {
@@ -69,9 +70,7 @@ Vue.component("heatmap-plot", {
                 vm.data = meanZScores;
 
                 if (vm.config.fold_days) {
-                    vm.x_values = meanZScores.map( function (zscores) {
-                        return zscores[0].map( function(x,i) {return "Timepoint " + (i + 1);});
-                    });
+                    vm.x_values = vm.timepoint_labels;
                 } else {
                     vm.x_values = vm.spreadsheets.map( function(spreadsheet) {return spreadsheet.x_labels;} );
                 }
@@ -100,7 +99,7 @@ Vue.component("heatmap-plot", {
                             }
                             rep_counts[time] += 1;
 
-                            return "Timepoint " + (time + 1) + " Rep " + rep_counts[time];
+                            return vm.timepoint_labels[idx][time] + " Rep " + rep_counts[time];
                         });
                     });
                 } else {
