@@ -477,7 +477,10 @@
         v-bind:labels="labels">
     </heatmap-plot>
 
-    <pca-plot v-bind:spreadsheets="spreadsheets"> </PCA-plot>
+    <pca-plot
+        v-bind:spreadsheets="spreadsheets"
+        v-bind:timepoint_labels="timepoint_labels">
+    </PCA-plot>
 
     <!-- MODALS -->
     <div id="share_popup" class="modal" tabindex="-1" role="dialog">
@@ -1205,6 +1208,40 @@
 
             spreadsheet_ids: function() {
                 return this.spreadsheets.map( function(spreadsheet) {return spreadsheet.spreadsheet_id;});
+            },
+
+            timepoint_labels: function() {
+                // Labels to use for timepoints 0,1,2,...,timepoints_per_day-1
+                // ignoring the cycle/day number
+                let vm = this;
+
+                return vm.spreadsheets.map( function(spreadsheet) {
+                    // Try to infer if possible
+                    let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
+                    if (inferred !== null) {
+                        let headings = inferred.times.map(function(t) {
+                            return inferred.format.make_label(t, true);
+                        });
+                        let labels = [];
+                        spreadsheet.x_values.forEach( function (time,i) {
+                            if (labels[time] === undefined) {
+                                labels[time] = headings[i];
+                            }
+                        });
+                        return labels;
+                    }
+
+                    // Otherwise we default to "Timepoint 1", etc.
+                    let times = vm.spreadsheets.map( function(spreadsheet) {
+                        return spreadsheet.x_label_values.filter(function(t) { if (t < spreadsheet.timepoints_per_day) { return 1; } else { return 0; } });
+                    });
+
+                    return vm.spreadsheets.map( function(spreadsheet, idx) {
+                        return times[idx].map( function(time) {
+                            return "Timepoint " + (time + 1);
+                        });
+                    });
+                });
             },
         },
 

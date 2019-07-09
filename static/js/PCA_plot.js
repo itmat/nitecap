@@ -16,7 +16,8 @@ Vue.component('pca-plot', {
     },
 
     props: {
-        spreadsheets: Array
+        spreadsheets: Array,
+        timepoint_labels: Array,
     },
 
     methods: {
@@ -68,7 +69,7 @@ Vue.component('pca-plot', {
             info_layer.selectAll('.pca_legend_bg').remove();
 
             let times = vm.spreadsheets[0].x_label_values.filter(function(t) { if (t < vm.spreadsheets[0].timepoints_per_day) { return 1; } else { return 0; } });
-            let labels = times.map( function(t) {return "Timepoint " + (t + 1);} );
+            let labels = vm.timepoint_labels[0];
 
             if (times.length > 6) {
                 // If there are too many points to show all in the legend
