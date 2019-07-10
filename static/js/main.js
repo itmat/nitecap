@@ -357,7 +357,7 @@ var column_label_formats = [
             {format: new RegExp("(\\d+):(\\d\\d)"),
              make_label: function(x, wrapped) {
                 let hours = Math.floor(x/60);
-                let minutes = x - hours;
+                let minutes = x - 60*hours;
                 if (wrapped) { hours = hours % 24; }
                 return zeroPad(hours, 2) + ':' + zeroPad(minutes, 2);
              }}
