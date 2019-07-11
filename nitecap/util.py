@@ -146,7 +146,8 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
             # computes the Gramian A^T A and so squares the condition number
             # Idea is that we just need to mask out any nan values, but need to do it on both
             # sides of the equation AX = B
-            # Solving by A^T A X = A^T B but with the mask becomes A^T M A X = A^T M B
+            # Solving by A^T A X = A^T B but with the mask becomes A^T (M x A) X = A^T (M x B)
+            # where 'x' means the point-wise multiplication
             # Based on http://alexhwilliams.info/itsneuronalblog/2018/02/26/censored-lstsq/
             A = weighted_predictors[numpy.newaxis,:,:]
             A_T = A.swapaxes(1,2)
@@ -160,12 +161,20 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
             gramian = A_T @ (M * A)
             right_hand_side = A_T @ B
             try:
+                # Try the fastest way first, works if gramian is invertible
                 coeffs = numpy.linalg.solve(gramian, right_hand_side)
-            except numpy.linalg.LinAlgError:
+            except numpy.linalg.LinAlgError as e:
                 # Singular matrix, can't solve.
-                # Happens, for example, if too many timepoints (all?) are NaN
-                # We'll just spit out zero here then, for better or worse
-                coeffs = numpy.zeros((degree+1,1))
+                # Happens, for example, if too many timepoints (nearly all) are just NaN
+                # This can happen if ANY feature has nearly all NaNs
+                # So now we need to now do each feature individually, so that OK features are still handled
+                coeffs = numpy.empty(right_hand_side.shape)
+                for j in range(len(gramian)):
+                    try:
+                        coeffs[j] = numpy.linalg.solve(gramian[j], right_hand_side[j])
+                    except numpy.linalg.LinAlgError:
+                        # This was a problem feature, so we NaN it but not the others
+                        coeffs[j] = float("NaN")
 
         local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
         regression_value =  numpy.dot(local_predictor, coeffs)
