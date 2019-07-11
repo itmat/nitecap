@@ -296,8 +296,7 @@
                         <thead>
                             <tr v-if="spreadsheets.length > 1">
                                 <th scope="col"></th>
-                                <th scope="col">Primary</th>
-                                <th scope="col">Secondary</th>
+                                <th scope="col" v-for="name in descriptive_names">{{name}}</th>
                             </tr>
                         </thead>
                         <tbody v-if="spreadsheets !== null" class="stats-box">
@@ -754,7 +753,7 @@
                         x: plot_x_values, y: raw_y_values,
                         mode: 'markers',
                         marker: marker_settings,
-                        name: spreadsheet.descriptive_name,
+                        name: vm.descriptive_names[idx],
                         type: 'scatter',
                         'marker': {color: spreadsheet_color},
                         'line': {color: spreadsheet_color}
@@ -1274,6 +1273,53 @@
                         return "Day " + (Math.floor(time / spreadsheet.timepoints_per_day) + 1) + " Timepoint " + (time % spreadsheet.timepoints_per_day + 1);
                     });
                 });
+            },
+
+            descriptive_names: function() {
+                // Descriptive names for spreadsheets
+                // They are given descriptive names already but we want to isolate the part that is 'variable' between them
+                // for easier display
+                let names = this.spreadsheets.map( function(x) {return x.descriptive_name;});
+
+                if (names.length < 2) {
+                    // Can't simplify anything if there is only one!
+                    return names;
+                }
+
+                let split_names = names.map( function(x) { return x.split(" ");});
+
+                // Find the common prefix for all the names
+                // eg names "Tom Dataset WT" and "Tom Dataset KO"
+                // have prefix ["Tom", "Dataset"]
+                let prefix = split_names[0];
+                split_names.forEach(function(split_name) {
+                    let no_mismatch_yet = true;
+                    prefix = prefix.filter( function(word, i) {
+                        let match = word == split_name[i];
+                        if (!match) { no_mismatch_yet = false; }
+                        return match && no_mismatch_yet
+                    });
+                });
+
+                // Same as above, but find the common suffix for all the names
+                let suffix = split_names[0].slice(0).reverse();
+                split_names.forEach(function(split_name) {
+                    split_name.reverse();
+                    let no_mismatch_yet = true;
+                    suffix = suffix.filter( function(word, i) {
+                        let match = word == split_name[i];
+                        if (!match) { no_mismatch_yet = false; }
+                        return match && no_mismatch_yet
+                    });
+                    split_name.reverse(); // put it back
+                });
+                suffix = suffix.reverse();
+
+                // Re-build the names with the prefix and suffix removed
+                names = split_names.map( function(split_name) {
+                    return split_name.slice(prefix.length, split_name.length - suffix.length).join(" ");
+                });
+                return names;
             },
         },
 
