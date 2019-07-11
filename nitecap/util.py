@@ -124,7 +124,7 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
     finite_mask = numpy.isfinite(ys)
     contains_nans = not numpy.all(finite_mask)
 
-    # Sort points
+    # Iterate over all the points that we want regression value for
     for i,x in enumerate(regression_x_values):
         distances = numpy.abs(xs - x)
 
@@ -161,7 +161,7 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
             gramian = A_T @ (M * A)
             right_hand_side = A_T @ B
             try:
-                # Try the fastest way first, works if gramian is invertible
+                # Try the fastest way first, works if gramian is invertible for all features
                 coeffs = numpy.linalg.solve(gramian, right_hand_side)
             except numpy.linalg.LinAlgError as e:
                 # Singular matrix, can't solve.
@@ -175,6 +175,15 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
                     except numpy.linalg.LinAlgError:
                         # This was a problem feature, so we NaN it but not the others
                         coeffs[j] = float("NaN")
+
+            # Even when the gramian is invertible, we might have extremely unstable results if
+            # the only weighted points are very far away (eg: most timepoints are NaN and the
+            # only non-nan are far away on just one side), then the regression can go crazy by extrapolating
+            # So just NaN out any such coeffs
+            masked_weights = (M * tricube_distance[numpy.newaxis,:,numpy.newaxis])
+            highest_weight = numpy.nanmax(masked_weights, axis=1).flatten()
+            print(masked_weights.shape, highest_weight.shape, coeffs.shape)
+            coeffs[highest_weight < 0.8] = float("NaN") # Arbitrary tricube distance cutoff of 0.8, about 0.4 radii away
 
         local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
         regression_value =  numpy.dot(local_predictor, coeffs)
