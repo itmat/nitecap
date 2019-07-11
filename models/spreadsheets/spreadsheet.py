@@ -28,6 +28,7 @@ import nitecap
 from timer_decorator import timeit
 
 NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p", "anova_q"]
+MAX_JTK_COLUMNS = 85
 
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
@@ -367,33 +368,40 @@ class Spreadsheet(db.Model):
     @timeit
     def get_jtk(self):
         if "jtk_p" not in self.df.columns or "jtk_q" not in self.df.columns:
-            # Call out to an R script to run JTK
-            # write results to disk to pass the data to JTK
-            run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
-            jtk_source_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../JTK_CYCLEv3.1.R"))
-            data_file_path = f"/tmp/{uuid.uuid4()}"
-            self.get_raw_data().to_csv(data_file_path, sep="\t", index=False)
-            results_file_path = f"{data_file_path}.jtk_results"
+            if self.get_raw_data().shape[1] > MAX_JTK_COLUMNS:
+                # Can't compute JTK when there are too many columns
+                # it takes too long and will fail
+                self.df['jtk_p'] = float("NaN")
+                self.df['jtk_q'] = float("NaN")
+            else:
+                # Call out to an R script to run JTK
+                # write results to disk to pass the data to JTK
+                run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
+                jtk_source_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../JTK_CYCLEv3.1.R"))
+                data_file_path = f"/tmp/{uuid.uuid4()}"
+                self.get_raw_data().to_csv(data_file_path, sep="\t", index=False)
+                results_file_path = f"{data_file_path}.jtk_results"
 
-            # TODO: what value should we give here?
-            # probably doesn't matter if we aren't reporting JTK phase
-            hours_between_timepoints = 1
-            num_reps = ','.join(str(x) for x in self.num_replicates)
+                # TODO: what value should we give here?
+                # probably doesn't matter if we aren't reporting JTK phase
+                hours_between_timepoints = 1
+                num_reps = ','.join(str(x) for x in self.num_replicates)
 
-            res = subprocess.run(f"Rscript {run_jtk_file} {jtk_source_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
-                                    shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                res = subprocess.run(f"Rscript {run_jtk_file} {jtk_source_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
+                                        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            if res.returncode != 0:
-                raise RuntimeError(f"Error running JTK: \n {res.args.decode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
+                if res.returncode != 0:
+                    raise RuntimeError(f"Error running JTK: \n {res.args.decode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
-            results = pd.read_csv(results_file_path, sep='\t')
-            self.df["jtk_p"] = results.JTK_P
-            self.df["jtk_q"] = results.JTK_Q
+                results = pd.read_csv(results_file_path, sep='\t')
+                self.df["jtk_p"] = results.JTK_P
+                self.df["jtk_q"] = results.JTK_Q
 
-            self.update_dataframe()
+                self.update_dataframe()
 
-            os.remove(data_file_path)
-            os.remove(results_file_path)
+                os.remove(data_file_path)
+                os.remove(results_file_path)
+
         return self.df.jtk_p.tolist(), self.df.jtk_q.tolist()
 
     def clear_jtk(self):
