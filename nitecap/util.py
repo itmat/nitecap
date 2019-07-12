@@ -302,6 +302,9 @@ def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
     predictor_B = numpy.vstack([c_B,s_B,const_B]).T
 
     # Variances of predictor values (cos, sin)
+    # TODO: do these depend upon NaNs?
+    # i.e. we're masking out some timepoints, effectively, so the variances could change?
+    # It's unclear to me...
     X_A = numpy.sum( (c_A - numpy.mean(c_A))**2 )
     Z_A = numpy.sum( (s_A - numpy.mean(s_A))**2 )
     T_A = numpy.sum( (s_A - numpy.mean(s_A))*(c_A - numpy.mean(c_A)) ) # covariance

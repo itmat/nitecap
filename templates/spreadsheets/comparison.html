@@ -615,6 +615,15 @@
                 name: "Mean value",
                 independent: true,
                 key: "mean_value"},
+        {values: function () {
+                let missing = app.spreadsheets.map( function(spreadsheet) {
+                     return numNaNTimepoints(spreadsheet.data, spreadsheet.x_values);
+                });
+                return maximums(missing, axis=0);
+            },
+            name: "Missing Timepoints",
+            independent: true, // TODO: is this actually right?
+            key: "missing_timepoints"},
     ];
 
     let app = new Vue({

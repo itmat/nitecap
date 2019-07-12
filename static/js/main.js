@@ -188,6 +188,24 @@ function rowStatsByTimepoint(row, times) {
     return {means: means, variances: variances, stds: stds,  sems:sems};
 }
 
+function numNaNTimepoints(data, times) {
+    let num_nan = data.map( function(row) {
+        let all_nans = [];
+        times.map(function (time, i) {
+            if (all_nans[time] == undefined) {
+                all_nans[time] = true;
+            }
+
+            let value = row[i];
+            if (!(isNaN(value) || value === null)) {
+                all_nans[time] = false;
+            }
+        });
+        return all_nans;
+    });
+    return sums(num_nan);
+}
+
 // Util to compute maximum of an array along its axis
 // Apparently Math.max.apply can fail for large arrays
 var array_max = function (array) {
@@ -202,8 +220,24 @@ var array_min = function (array) {
 };
 
 // Util that takes a two-dim array-of-arrays and computes the maximum of each row
-function maximums(table) {
-    return table.map(array_max);
+// NOTE: does not skip NaNs
+//If axis=1, then max on each row in the table, i.e. does max(table[i][j]) iterating over j
+//If axis=0, then max on each row in the table, i.e. does max(table[i][j]) iterating over i
+function maximums(table, axis) {
+    axis = axis !== undefined ? axis : 1;
+
+    if (axis === 1) {
+        return table.map(array_max);
+    } else if (axis === 0) {
+        // Select out data[*][j] and take the max
+        return table[0].map( function (_,j) {
+            return array_max(table.map( function(row) {
+                return row[j];
+            }));
+        });
+    } else {
+        return "axis must be 0 or 1";
+    }
 }
 
 // Util that takes a two-dim array-of-arrays and computes the minimum of each row
