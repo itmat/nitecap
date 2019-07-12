@@ -182,7 +182,6 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
             # So just NaN out any such coeffs
             masked_weights = (M * tricube_distance[numpy.newaxis,:,numpy.newaxis])
             highest_weight = numpy.nanmax(masked_weights, axis=1).flatten()
-            print(masked_weights.shape, highest_weight.shape, coeffs.shape)
             coeffs[highest_weight < 0.8] = float("NaN") # Arbitrary tricube distance cutoff of 0.8, about 0.4 radii away
 
         local_predictor = numpy.array([x**j for j in range(degree+1)]).reshape((1,-1))
@@ -253,8 +252,8 @@ def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
 
     p_values = numpy.empty(combined_datasets.shape[0])
     for i in range(combined_datasets.shape[0]):
-        full_fit = sm.OLS(combined_datasets[i], full_model.T).fit()
-        restricted_fit = sm.OLS(combined_datasets[i], restricted_model.T).fit()
+        full_fit = sm.OLS(combined_datasets[i], full_model.T, missing='drop').fit()
+        restricted_fit = sm.OLS(combined_datasets[i], restricted_model.T, missing='drop').fit()
 
         f, p, df = full_fit.compare_f_test(restricted_fit)
         p_values[i] = p
