@@ -216,6 +216,7 @@ def anova(data):
             # Remove non-nans
             row = [row[j,:][finite_mask[j,:,i]]
                     for j in range(N_TIMEPOINTS)]
+            row = [group for group in row if len(group) > 0]
 
         p = scipy.stats.f_oneway(*row)[1]
         anova_p[i] = p
