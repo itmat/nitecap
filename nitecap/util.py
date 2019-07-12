@@ -287,12 +287,6 @@ def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
     assert data_A.shape[0] == data_B.shape[0]
     num_features = data_A.shape[0]
 
-    # Number of samples in each dataset
-    N_A = data_A.shape[1]
-    N_B = data_B.shape[1]
-    N = N_A + N_B
-    DoF = N - 6
-
     # Factor variables for the two replicates
     timepoints_A = numpy.array([i for i, num_reps in enumerate(num_reps_A) for j in range(num_reps)])
     timepoints_B = numpy.array([i for i, num_reps in enumerate(num_reps_B) for j in range(num_reps)])
@@ -330,11 +324,24 @@ def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
     p_amplitude = numpy.ones(num_features)
     p_phase = numpy.ones(num_features)
     for i in range(num_features):
+        # Number of samples in each dataset
+        # after dropping NaNs
+        N_A = numpy.isfinite(data_A[i]).sum()
+        N_B = numpy.isfinite(data_B[i]).sum()
+        N = N_A + N_B
+        DoF = N - 6
+
         # For each feature, perform Least-Squares fits
 
         # TODO: if no missing values, can actually compute all of these at once by passing in all of data_A (or maybe data_A.T)
-        x_A, resid_A, rank_A, sing_A = numpy.linalg.lstsq(predictor_A, data_A[i], rcond=None)
-        x_B, resid_B, rank_B, sing_B = numpy.linalg.lstsq(predictor_B, data_B[i], rcond=None)
+        #x_A, resid_A, rank_A, sing_A = numpy.linalg.lstsq(predictor_A, data_A[i], rcond=None)
+        #x_B, resid_B, rank_B, sing_B = numpy.linalg.lstsq(predictor_B, data_B[i], rcond=None)
+        res_A = sm.OLS(data_A[i], predictor_A, missing='drop').fit()
+        res_B = sm.OLS(data_B[i], predictor_B, missing='drop').fit()
+        x_A = res_A.params
+        resid_A = (res_A.resid**2).sum()
+        x_B = res_B.params
+        resid_B = (res_B.resid**2).sum()
 
         # Best-fit parameters
         beta_A, gamma_A, M_A = x_A
