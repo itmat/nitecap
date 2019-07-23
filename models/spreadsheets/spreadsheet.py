@@ -66,7 +66,7 @@ class Spreadsheet(db.Model):
     def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
                  breakpoint=None, num_replicates_str=None, last_access=None, user_id=None,
-                 date_uploaded=None, ids_unique=False, filters='', spreadsheet_data_path=''):
+                 date_uploaded=None, ids_unique=False, filters='', spreadsheet_data_path='', categorical_data=''):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
         method (only __new__).  Many of the parameters are filled in only after the spreadsheet has been instantiated
@@ -113,6 +113,7 @@ class Spreadsheet(db.Model):
         self.ids_unique = ids_unique
         self.note = ''
         self.spreadsheet_data_path = spreadsheet_data_path
+        self.categorical_data = categorical_data
         self.date_uploaded = date_uploaded or datetime.datetime.utcnow()
         self.user_id = user_id
 

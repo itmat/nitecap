@@ -1071,3 +1071,156 @@ def delete_visitor_spreadsheets():
                 errors.append(error)
     status_code = 500 if errors else 200
     return jsonify({'errors': errors}), status_code
+
+
+@spreadsheet_blueprint.route('/upload_mpv_file', methods=['GET', 'POST'])
+def upload_mpv_file():
+    current_app.logger.info('Uploading mpv spreadsheet')
+
+    errors = []
+
+    # Spreadsheet file form submitted
+    if request.method == 'POST':
+        data_row = request.form.get('data_row', None)
+        if not data_row or not data_row.isdigit() or int(data_row) < 1:
+            errors.append(f"The value of the first data row is required and must be a positive integer.")
+        upload_file = request.files.get('upload_file', None)
+        if not upload_file or not len(upload_file.filename):
+            errors.append(MISSING_SPREADSHEET_MESSAGE)
+        if not allowed_file(upload_file.filename):
+            errors.append(FILE_EXTENSION_ERROR)
+        if errors:
+            return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row, errors=errors)
+
+        # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
+        user_id = None
+        user_email = session['email'] if 'email' in session else None
+        if user_email:
+            user = User.find_by_email(user_email)
+            user_id = user.id if user else None
+
+        # If user is not logged in or has a current visitor accout, assign a visitor account to protect user's
+        # spreadsheet ownership.
+        else:
+            user = User.create_visitor()
+            if user:
+                # Visitor's session has a fixed expiry date.
+                session.permanent = True
+                session['email'] = user.email
+                session['visitor'] = True
+                user_id = user.id
+
+        # If we have no logged in user and a visitor account could not be generated, we have an internal
+        # problem.
+        if not user:
+            current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
+            return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row,
+                                   errors=[FILE_UPLOAD_ERROR])
+
+        directory_path = pathlib.Path(os.path.join(user.get_user_directory_path(), f"{uuid.uuid4().hex}"))
+        directory_path.mkdir(parents=True, exist_ok=True)
+
+        # Rename the uploaded file and reattach the extension
+        extension = Path(upload_file.filename).suffix
+        file_path = os.path.join(directory_path, f"uploaded_spreadsheet{extension}")
+        upload_file.save(file_path)
+
+        # If the mime type validation fails, remove the directory containing the uploaded file from the disk
+        file_mime_type, errors = validate_mime_type(file_path)
+        if errors:
+            shutil.rmtree(directory_path)
+            return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row, errors=errors)
+
+        # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
+        # may only be able to identify it as such when pandas fails to parse it while creating a spreadsheet object.
+        # We throw the directory containing the file away and report the error.
+        try:
+            spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
+                                      days=None,
+                                      timepoints=None,
+                                      repeated_measures=False,
+                                      header_row=int(data_row)-1,
+                                      original_filename=upload_file.filename,
+                                      file_mime_type=file_mime_type,
+                                      uploaded_file_path=file_path,
+                                      spreadsheet_data_path=str(directory_path),
+                                      user_id=user_id)
+        except NitecapException as ne:
+            current_app.logger.error(f"NitecapException {ne}")
+            shutil.rmtree(directory_path)
+            return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row, errors=[FILE_UPLOAD_ERROR])
+
+        # Save the spreadsheet file to the database using the temporary spreadsheet data path (using the uuid)
+        spreadsheet.save_to_db()
+
+        # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
+        spreadsheet_data_path = os.path.join(user.get_user_directory_path(),
+                                             spreadsheet.get_spreadsheet_data_directory_conventional_name())
+        os.rename(directory_path, spreadsheet_data_path)
+
+        # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
+        # updates.
+        spreadsheet.spreadsheet_data_path = spreadsheet_data_path
+        spreadsheet.uploaded_file_path = os.path.join(spreadsheet_data_path, os.path.basename(file_path))
+        spreadsheet.setup_processed_spreadsheet()
+        spreadsheet.save_to_db()
+
+        return redirect(url_for('.collect_mpv_data', spreadsheet_id=spreadsheet.id))
+
+    # Display spreadsheet file form
+    return render_template('spreadsheets/upload_mpv_file.html')
+
+@spreadsheet_blueprint.route('/collect_mpv_data/<spreadsheet_id>', methods=['GET', 'POST'])
+@requires_account
+def collect_mpv_data(spreadsheet_id, user=None):
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+    # TODO - cheating must remove to db eventually
+    spreadsheet.categorical_data = ''
+
+    # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
+    # spreadsheet list (in the case of a logged in user) or to the upload form (in the case of a visitor).
+    if not spreadsheet:
+        return access_not_permitted(collect_data.__name__, user, spreadsheet_id)
+
+    # Set up the dataframe
+    spreadsheet.set_df()
+
+    # Spreadsheet data form submitted.
+    if request.method == 'POST':
+
+        errors = validate_mpv_spreadsheet_data(request.form)
+        if errors:
+            return render_template('spreadsheets/collect_data.html', errors=errors, spreadsheet=spreadsheet)
+
+        #spreadsheet.identify_columns(column_labels)
+        #spreadsheet.set_ids_unique()
+        spreadsheet.save_to_db()
+        spreadsheet.init_on_load()
+        #spreadsheet.clear_jtk()
+        #spreadsheet.compute_nitecap()
+        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+    return render_template('spreadsheets/collect_mpv_data.html', spreadsheet=spreadsheet)
+
+@timeit
+def validate_mpv_spreadsheet_data(form_data, spreadsheet):
+    """
+    Helper method to collect form data and validate it
+    :param form_data: the form dictionary from requests
+    :return: a tuple consisting of the form data and an array of error msgs.  An empty array indicates no errors
+    """
+
+    # Gather data
+    spreadsheet.descriptive_name = form_data.get('descriptive_name', None)
+    spreadsheet.categorical_data = form_data.get('categorical_data', '')
+    spreadsheet.column_labels = [value for key, value in form_data.items() if key.startswith('col')]
+
+    # Check data for errors
+    errors = []
+    if not spreadsheet.descriptive_name:
+        errors.append(f"A descriptive name is required.")
+    error = spreadsheet.validate(spreadsheet.column_labels)
+    if error:
+        errors.append(error)
+
+    return errors

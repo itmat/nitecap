@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script>
+
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+    });
+
+    $(document).ready ( function() {
+
+        /*
+         * Example Categorical JSON object:
+         * [
+         *   { variable: 'gender',
+         *     choices: [
+         *       {name: 'male', short_name: 'm'},
+         *       {name: 'female', short_name: 'f'}]
+         *   },
+         *   { variable: 'age',
+         *     choices: [
+         *      {name: 'young', short_name: 'y'},
+         *      {name: 'old', short_name: 'o'}
+         *     ]
+         *   }
+         * ]
+         */
+
+        {#  raw/endraw needed to make jinga ignore this code.  This is a Mustache template. #}
+        {% raw %}
+        var template = "<div class='row my-1'>\n" +
+            "             <div class='col-2'>\n" +
+            "               <label for='categoricalVariable_{{ var_number }}'>Categorical Variable {{ ctr }}:" +
+            "               </label>\n" +
+            "             </div>\n" +
+            "             <div class='col-2'>\n" +
+            "               <input type='text' id='categoricalVariable_{{ var_number }}'" +
+            "                      name='categoricalVariable_{{ var_number }}' class='form-control'" +
+            "                      value='' />\n" +
+            "             </div>\n" +
+            "             <div class='col-4'>\n" +
+            "             <div class='dropdown'>\n" +
+            "               <button type='button' class='btn btn-primary dropdown-toggle' data-toggle='dropdown'>\n" +
+            "                 Options\n" +
+            "               </button>\n" +
+            "               <div style='background-color: #eee' class='container-fluid dropdown-menu'>\n" +
+            "                 <div class='row m-1'>" +
+            "                   <div class='col-2'>\n" +
+            "                     <label for='choiceName_{{ var_number }}_1'>Name:</label>\n" +
+            "                   </div>\n" +
+            "                   <div class='col-4'>\n" +
+            "                     <input type='text' id='choiceName_{{ var_number }}_1'" +
+            "                            name='choiceName_{{ var_number }}_1' class='form-control' value='' />\n" +
+            "                   </div>\n" +
+            "                   <div class='col-2'>\n" +
+            "                     <label for='choiceShort_{{ var_number }}_1'>Abbrev.:</label>\n" +
+            "                   </div>\n" +
+            "                   <div class='col-2'>\n" +
+            "                     <input type='text' id='choiceShort_{{ var_number }}_1'" +
+            "                            name='choiceShort_{{ var_number }}_1' class='form-control' value='' />\n" +
+            "                   </div>\n" +
+            "                 </div>\n" +
+            "                 <div class='row m-1'>" +
+            "                   <div class='col-2'>\n" +
+            "                     <label for='choiceName_{{ var_number }}_2'>Name:</label>\n" +
+            "                   </div>\n" +
+            "                   <div class='col-4'>\n" +
+            "                     <input type='text' id='choiceName_{{ var_number }}_2'" +
+            "                            name='choiceName_{{ var_number }}_2' class='form-control' value='' />\n" +
+            "                   </div>\n" +
+            "                   <div class='col-2'>\n" +
+            "                     <label for='choiceShort_{{ var_number }}_2'>Abbrev.:</label>\n" +
+            "                   </div>\n" +
+            "                   <div class='col-2'>\n" +
+            "                     <input type='text' id='choiceShort_{{ var_number }}_2'" +
+            "                            name='choiceShort_{{ var_number }}_2' class='form-control' value='' />\n" +
+            "                   </div>\n" +
+            "                 </div>\n" +
+            "               </div>\n" +
+            "               <button type='button' id='categoryDelete_{{ var_number }}'" +
+            "                       class='category-delete btn btn-danger'>" +
+            "                 Delete" +
+            "               </button>\n" +
+            "             </div>\n" +
+            "           </div>";
+        {% endraw %}
+
+        let categorical_data = {{ spreadsheet.categorical_data | tojson }};
+        let categorical_data_ctr = categorical_data.length;
+
+        let categorialDataElement = $("#categorical_data");
+
+        let add_categorical_variable = $("#add_categorical_variable");
+
+        add_categorical_variable.on("click", function() {
+            let html = Mustache.render(template, {'var_number': categorical_data_ctr, 'ctr': categorical_data_ctr + 1});
+            //console.log(html);
+            categorialDataElement.append(html);
+            categorical_data_ctr++;
+            $(".category-choices").on("click", function(e) {
+                let select_choices = $("#select_choices_modal");
+
+            });
+            $(".category-delete").on("click", function(e) {
+                $(e.target).parent().parent().remove();
+            });
+        });
+
+
+
+    });
+</script>
+
+<div class="page-header">
+    <h1>
+        Collect MPV Data
+        <small>Indicate additional spreadsheet metadata including the categorical variables to use</small>
+    </h1>
+</div>
+
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+    <p class="text-danger">* required</p>
+
+<form method="post" action="{{ url_for('spreadsheets.collect_mpv_data', spreadsheet_id = spreadsheet.id) }}">
+    <div class="form-group required">
+        <label for="descriptive_name">Enter Descriptive Name for the Spreadsheet Data:</label>
+        <input type="text" id="descriptive_name" name="descriptive_name" class="form-control"
+               value="{{spreadsheet.descriptive_name or ''}}" style="width:40rem" maxlength="250" />
+    </div>
+    <div id="categorical_data" class="form-group">
+        <label>Categorical Data:</label>
+        <a id="add_categorical_variable" class="ml-3 help-pointer text-primary">
+            <i class="fas fa-plus" data-toggle="tooltip" data-placement="top" title="Add a categorical variable">
+            </i>
+        </a>
+    </div>
+    <p>
+        Shown are the first 10 rows of your data. Please indicate those columns that represent ids and timepoints.
+        Use the same label from the droplist for each replicate. All columns not representing timepoints
+        or ids should be set to 'Ignore'.
+    </p>
+    <div class="topScroll">
+        <div></div>
+    </div>
+    <div class="bottomScroll">
+        <div>
+            <table class="table table-striped table-bordered table-sm">
+                <tr>
+                    {% for heading in spreadsheet.df.columns %}
+                    <th>{{ heading }}</th>
+                    {% endfor %}
+                </tr>
+                <tr id="selectors" style="visibility: {{ 'visible' if days and timepoints else 'hidden' }}">
+                    {% for heading in spreadsheet.df.columns %}
+                    <th>
+                        <select style="font-size: 10px" name="col{{ loop.index }}" id="col{{ loop.index }}">
+                            <!-- filled in later -->
+                        </select>
+                    </th>
+                    {% endfor %}
+                </tr>
+                {% for record in spreadsheet.get_sample_dataframe() %}
+                <tr>
+                    {% for value in record %}
+                    <td>{{ value }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+{% endblock %}

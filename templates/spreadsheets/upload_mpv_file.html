@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script>
+    $(document).ready(function () {
+        let form = $('form');
+        let button = $("button");
+        button.prop('disabled', false);
+        button.html('Submit');
+        form.submit(function (e) {
+            e.preventDefault();
+            button.prop('disabled', true);
+            button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                        "</span>Loading...");
+            e.currentTarget.submit();
+        });
+    });
+</script>
+
+<div class="page-header">
+    <h1>Load MPV Spreadsheet File <small>Expecting csv, tsv, txt, xls or xlsx fomats only</small></h1>
+</div>
+
+
+    <p>We first need your mpv spreadsheet file</p>
+
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="badge badge-info">Notes</div>
+        <div class="server-notes">
+            {% for message in messages %}
+                <div>{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<p class="text-danger">* required</p>
+
+<form action="{{ url_for('spreadsheets.upload_mpv_file') }}" method="post" enctype="multipart/form-data">
+    <div class="form-group required">
+        <label for="data_row">The First Row of Data:</label>
+        <input type="number" id="data_row" name="data_row" class="form-control" value="{{data_row or 2}}"
+               style="width:15rem" required />
+    </div>
+    <div class="form-group required">
+        <label for="upload_file">MPV Spreadsheet File:</label>
+        <input type="file" id="upload_file" name="upload_file" required>
+    </div>
+    <button type="submit" class="btn btn-primary">
+        Submit
+    </button>
+</form>
+
+<div class="alert alert-warning smaller-text" role="alert">
+    <h2>Please Note:</h2>
+    <p>
+        While we endeavor to protect the data uploaded to this site, we make no guarantees as to its
+        security, and sensitive data (such as anything covered by HIPAA) should not be uploaded.
+    </p>
+</div>
+{% endblock %}
