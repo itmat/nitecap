@@ -9,6 +9,13 @@
 
     $(document).ready ( function() {
 
+        // List of elements
+        let nitecap_form = $('form');
+        let nitecap_table = $('form table');
+        let submit_button = $("form button");
+        let nitecap_error = $("#error-modal");
+        let nitecap_error_message = $("#error-modal-message");
+
         /*
          * Example Categorical JSON object:
          * [
@@ -35,8 +42,8 @@
             "             </div>\n" +
             "             <div class='col-2'>\n" +
             "               <input type='text' id='categoricalVariable_{{ var_number }}'" +
-            "                      name='categoricalVariable_{{ var_number }}' class='form-control'" +
-            "                      value='' />\n" +
+            "                      name='categoricalVariable_{{ var_number }}' class='cat-var form-control'" +
+            "                      value='{{ var_value }}' />\n" +
             "             </div>\n" +
             "             <div class='col-4'>\n" +
             "             <div class='dropdown'>\n" +
@@ -47,18 +54,20 @@
             "                 {{#choice_numbers}}" +
             "                   <div class='row m-1'>" +
             "                     <div class='col-2'>\n" +
-            "                       <label for='choiceName_{{ var_number }}_{{ choice_number }}'>Name:</label>\n" +
+            "                       <label for='choiceName_{{ var_number }}_{{choice_number}}'>Name:</label>\n" +
             "                     </div>\n" +
             "                     <div class='col-4'>\n" +
-            "                       <input type='text' id='choiceName_{{ var_number }}_{{  choice_number }}'" +
-            "                              name='choiceName_{{ var_number }}_{{ choice_number }}' class='form-control' value='' />\n" +
+            "                       <input type='text' id='choiceName_{{ var_number }}_{{choice_number}}'" +
+            "                              name='choiceName_{{ var_number }}_{{choice_number}}'" +
+            "                              class='choice form-control' value='{{ choice_name }}' />\n" +
             "                     </div>\n" +
             "                     <div class='col-2'>\n" +
-            "                       <label for='choiceShort_{{ var_number }}_{{ choice_number }}'>Abbrev.:</label>\n" +
+            "                       <label for='choiceShort_{{ var_number }}_{{choice_number}}'>Abbrev.:</label>\n" +
             "                     </div>\n" +
             "                     <div class='col-2'>\n" +
-            "                       <input type='text' id='choiceShort_{{ var_number }}_{{  choice_number }}'" +
-            "                              name='choiceShort_{{ var_number }}_{{ choice_number }}' class='form-control' value='' />\n" +
+            "                       <input type='text' id='choiceShort_{{ var_number }}_{{choice_number}}'" +
+            "                              name='choiceShort_{{ var_number }}_{{choice_number}}'" +
+            "                              class='choice form-control' value='{{ choice_short }}' />\n" +
             "                     </div>\n" +
             "                   </div>\n" +
             "                 {{/choice_numbers}}" +
@@ -71,21 +80,48 @@
             "           </div>";
         {% endraw %}
 
+        let categorialDataElement = $("#categorical_data");
+
         let categorical_data = {{ spreadsheet.categorical_data | tojson }};
+        /* Test data
+        let categorical_data = [
+            { variable: 'gender',
+              choices: [
+                {name: 'male', short_name: 'm'},
+                {name: 'female', short_name: 'f'}]
+            },
+            { variable: 'age',
+              choices: [
+               {name: 'young', short_name: 'y'},
+               {name: 'old', short_name: 'o'}
+              ]
+            }
+        ];
+        */
+
         let categorical_data_ctr = categorical_data.length;
 
-        let categorialDataElement = $("#categorical_data");
+        if(categorical_data) {
+            categorical_data.forEach(function(item, index) {
+                let template_data = {
+                    'var_number': index,
+                    'var_value': item['variable'],
+                    'ctr': index + 1,
+                    'choice_numbers': createChoiceList(item['choices'])
+                };
+                let html = Mustache.render(template, template_data);
+                categorialDataElement.append(html);
+            });
+        }
 
         let add_categorical_variable = $("#add_categorical_variable");
 
         add_categorical_variable.on("click", function() {
-            let fillRange = (start, end) => {
-                return Array(end - start + 1).fill().map((item, index) => start + index);
-            };
-            template_data = {
+            let template_data = {
                 'var_number': categorical_data_ctr,
+                'var_value': '',
                 'ctr': categorical_data_ctr + 1,
-                'choice_numbers': createSeqList(5)
+                'choice_numbers': createChoiceList(getEmptyChoiceList(5))
             };
             let html = Mustache.render(template, template_data);
             //console.log(html);
@@ -94,15 +130,31 @@
             $(".category-delete").on("click", function(e) {
                 $(e.target).parent().parent().parent().remove();
             });
+
         });
 
-        function createSeqList(n) {
-            let sequential_list = [];
-            for(let i = 1; i <= n; i++) {
-                sequential_list.push(i);
+        function getEmptyChoiceList(n) {
+            let empty_choice_list = [];
+            let empty_choice_item = {name: '', short_name: ''};
+            for(let i = 0; i < n; i++) {
+                empty_choice_list.push(empty_choice_item)
             }
+            return empty_choice_list;
+        }
+
+        function createChoiceList(choices) {
+            let sequential_list = [];
+            choices.forEach(function(item, index){
+                sequential_list.push({
+                    "choice_number":index,
+                    "choice_name": item['name'],
+                    "choice_short": item['short_name']
+                });
+            });
             return sequential_list;
         }
+
+
     });
 </script>
 

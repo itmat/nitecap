@@ -1202,7 +1202,7 @@ def collect_mpv_data(spreadsheet_id, user=None):
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/collect_mpv_data.html', spreadsheet=spreadsheet)
 
-@timeit
+
 def validate_mpv_spreadsheet_data(form_data, spreadsheet):
     """
     Helper method to collect form data and validate it
@@ -1222,5 +1222,6 @@ def validate_mpv_spreadsheet_data(form_data, spreadsheet):
     error = spreadsheet.validate(spreadsheet.column_labels)
     if error:
         errors.append(error)
-
     return errors
+
+
