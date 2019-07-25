@@ -85,17 +85,24 @@
             template_data = {
                 'var_number': categorical_data_ctr,
                 'ctr': categorical_data_ctr + 1,
-                'choice_numbers': [1,2,3,4,5]
+                'choice_numbers': createSeqList(5)
             };
             let html = Mustache.render(template, template_data);
             //console.log(html);
             categorialDataElement.append(html);
             categorical_data_ctr++;
             $(".category-delete").on("click", function(e) {
-                $(e.target).parent().parent().remove();
+                $(e.target).parent().parent().parent().remove();
             });
         });
 
+        function createSeqList(n) {
+            let sequential_list = [];
+            for(let i = 1; i <= n; i++) {
+                sequential_list.push(i);
+            }
+            return sequential_list;
+        }
     });
 </script>
 
