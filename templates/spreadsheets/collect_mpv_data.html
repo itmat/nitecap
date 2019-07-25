@@ -41,41 +41,27 @@
             "             <div class='col-4'>\n" +
             "             <div class='dropdown'>\n" +
             "               <button type='button' class='btn btn-primary dropdown-toggle' data-toggle='dropdown'>\n" +
-            "                 Options\n" +
+            "                 Possible Values\n" +
             "               </button>\n" +
             "               <div style='background-color: #eee' class='container-fluid dropdown-menu'>\n" +
-            "                 <div class='row m-1'>" +
-            "                   <div class='col-2'>\n" +
-            "                     <label for='choiceName_{{ var_number }}_1'>Name:</label>\n" +
+            "                 {{#choice_numbers}}" +
+            "                   <div class='row m-1'>" +
+            "                     <div class='col-2'>\n" +
+            "                       <label for='choiceName_{{ var_number }}_{{ choice_number }}'>Name:</label>\n" +
+            "                     </div>\n" +
+            "                     <div class='col-4'>\n" +
+            "                       <input type='text' id='choiceName_{{ var_number }}_{{  choice_number }}'" +
+            "                              name='choiceName_{{ var_number }}_{{ choice_number }}' class='form-control' value='' />\n" +
+            "                     </div>\n" +
+            "                     <div class='col-2'>\n" +
+            "                       <label for='choiceShort_{{ var_number }}_{{ choice_number }}'>Abbrev.:</label>\n" +
+            "                     </div>\n" +
+            "                     <div class='col-2'>\n" +
+            "                       <input type='text' id='choiceShort_{{ var_number }}_{{  choice_number }}'" +
+            "                              name='choiceShort_{{ var_number }}_{{ choice_number }}' class='form-control' value='' />\n" +
+            "                     </div>\n" +
             "                   </div>\n" +
-            "                   <div class='col-4'>\n" +
-            "                     <input type='text' id='choiceName_{{ var_number }}_1'" +
-            "                            name='choiceName_{{ var_number }}_1' class='form-control' value='' />\n" +
-            "                   </div>\n" +
-            "                   <div class='col-2'>\n" +
-            "                     <label for='choiceShort_{{ var_number }}_1'>Abbrev.:</label>\n" +
-            "                   </div>\n" +
-            "                   <div class='col-2'>\n" +
-            "                     <input type='text' id='choiceShort_{{ var_number }}_1'" +
-            "                            name='choiceShort_{{ var_number }}_1' class='form-control' value='' />\n" +
-            "                   </div>\n" +
-            "                 </div>\n" +
-            "                 <div class='row m-1'>" +
-            "                   <div class='col-2'>\n" +
-            "                     <label for='choiceName_{{ var_number }}_2'>Name:</label>\n" +
-            "                   </div>\n" +
-            "                   <div class='col-4'>\n" +
-            "                     <input type='text' id='choiceName_{{ var_number }}_2'" +
-            "                            name='choiceName_{{ var_number }}_2' class='form-control' value='' />\n" +
-            "                   </div>\n" +
-            "                   <div class='col-2'>\n" +
-            "                     <label for='choiceShort_{{ var_number }}_2'>Abbrev.:</label>\n" +
-            "                   </div>\n" +
-            "                   <div class='col-2'>\n" +
-            "                     <input type='text' id='choiceShort_{{ var_number }}_2'" +
-            "                            name='choiceShort_{{ var_number }}_2' class='form-control' value='' />\n" +
-            "                   </div>\n" +
-            "                 </div>\n" +
+            "                 {{/choice_numbers}}" +
             "               </div>\n" +
             "               <button type='button' id='categoryDelete_{{ var_number }}'" +
             "                       class='category-delete btn btn-danger'>" +
@@ -93,20 +79,22 @@
         let add_categorical_variable = $("#add_categorical_variable");
 
         add_categorical_variable.on("click", function() {
-            let html = Mustache.render(template, {'var_number': categorical_data_ctr, 'ctr': categorical_data_ctr + 1});
+            let fillRange = (start, end) => {
+                return Array(end - start + 1).fill().map((item, index) => start + index);
+            };
+            template_data = {
+                'var_number': categorical_data_ctr,
+                'ctr': categorical_data_ctr + 1,
+                'choice_numbers': [1,2,3,4,5]
+            };
+            let html = Mustache.render(template, template_data);
             //console.log(html);
             categorialDataElement.append(html);
             categorical_data_ctr++;
-            $(".category-choices").on("click", function(e) {
-                let select_choices = $("#select_choices_modal");
-
-            });
             $(".category-delete").on("click", function(e) {
                 $(e.target).parent().parent().remove();
             });
         });
-
-
 
     });
 </script>
