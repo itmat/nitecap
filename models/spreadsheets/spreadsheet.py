@@ -764,12 +764,24 @@ class Spreadsheet(db.Model):
         return Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + ext
 
     def get_categorical_data_labels(self):
+        """
+        Generate possible select options from the categorical data provided for the spreadsheet.  The option list
+        contains the id column option and the ignore column option by default.
+        :return: list of options to offer for the select inputs of the form requiring the user to specify column
+        definitions.
+        """
         labels = [Spreadsheet.ID_COLUMN, Spreadsheet.IGNORE_COLUMN]
+
+        # One bin per categorical variable.  Each bin contains the possible values for that categorical variable.
         category_bins = []
         categorical_data = json.loads(self.categorical_data)
         for item in categorical_data:
+
+            # Using only the long name for the option list
             values = [value['name'] for value in item['values']]
             category_bins.append(values)
+
+        # Get all combinations across the bins and stringify
         label_data = [' '.join(label_tuple) for label_tuple in list(itertools.product(*category_bins))]
         labels.extend(label_data)
         return labels

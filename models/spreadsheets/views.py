@@ -1232,19 +1232,51 @@ def validate_mpv_spreadsheet_data(form_data, spreadsheet):
     return errors
 
 def collect_and_validate_categorical_data(form_data):
+    """
+    Collect the categorical data and convert into a JSON object that can be stringified and stored in the database
+    record for the spreadsheet.  Additionally validate that each categorical variable specified has at least 2
+    possible values.  An example of the JSON object to be stringified:
+        [
+            {
+                variable: 'pet',
+                values: [
+                    {
+                        name: dog,
+                        short_name: d
+                    },
+                    {
+                        name: cat,
+                        short_name: c
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+    :param form_data: form inputs
+    :return: the JSON list (as above) containing the categorical data and a list of errors.  The error list is either
+    empty or contains one or more error messages.
+    """
     errors = []
     categorical_data = []
     categorical_variables = {int(key.split("_")[1]): value for key, value in form_data.items()
                              if key.startswith('categoricalVariable')}
+
+    # note that categorical variable inputs are of the form 'categoricalVariable_n' where n is the index or position
+    # of that categorical variable.
     for pos, var_name in categorical_variables.items():
-        print(pos, var_name)
+
+        # note that possible value inputs are of the form 'choiceName_i_j' or 'choiceShort_i_j' where i is the index
+        # or position of the parent categorical variable and j is the index/position of the possible value.
         if var_name:
             value_names = {int(key.split("_")[2]): value for key, value in form_data.items()
                            if key.startswith(f'choiceName_{pos}')}
             value_short_names = {int(key.split("_")[2]): value for key, value in form_data.items()
                            if key.startswith(f'choiceShort_{pos}')}
-
             values = []
+
+            # It is permitted for the user not to fill in both the long and short names of a possible value.  In
+            # such instances, the input provided is applied to both.
             for index in range(0, max([len(value_names.keys()), len(value_short_names.keys())])):
                 value_name = value_names[index]
                 value_short_name = value_short_names[index]
@@ -1256,6 +1288,8 @@ def collect_and_validate_categorical_data(form_data):
                     value_short_name = value_name
                 value_item = {'name': value_name, 'short_name': value_short_name}
                 values.append(value_item)
+
+            # Each categorical variable should have at least 2 possible values.
             if not values or len(values) < 2:
                 errors.append(f"Categorical variable {var_name} must have at least 2 possible values.")
             categorical_data.append({"variable": var_name, "values": values})
