@@ -466,6 +466,18 @@ class Spreadsheet(db.Model):
                                 f" Missing timepoint {', '.join(str(time) for time in missing)}")
         return errors
 
+    def validate_categorical(self, column_labels):
+        """ Check spreadhseet columns for consistency, in an MPV (categorical) spreadsheet
+
+        Verify that every possible group combination has at least one column
+        """
+        errors = []
+        data_labels = self.get_categorical_data_labels()
+        for data_label in data_labels:
+            if data_label not in column_labels:
+                errors.append(f"Missing columns of type {data_label}")
+        return errors
+
     def get_sample_dataframe(self):
         mini_df = self.df[:10]
         return mini_df.values.tolist()

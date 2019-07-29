@@ -1188,7 +1188,6 @@ def collect_mpv_data(spreadsheet_id, user=None):
         return access_not_permitted(collect_data.__name__, user, spreadsheet_id)
 
     categorical_data_labels = spreadsheet.get_categorical_data_labels()
-    print(categorical_data_labels)
 
     # Set up the dataframe
     spreadsheet.set_df()
@@ -1196,9 +1195,9 @@ def collect_mpv_data(spreadsheet_id, user=None):
     # Spreadsheet data form submitted.
     if request.method == 'POST':
 
-        errors = validate_mpv_spreadsheet_data(request.form)
+        errors = validate_mpv_spreadsheet_data(request.form, spreadsheet)
         if errors:
-            return render_template('spreadsheets/collect_data.html', errors=errors, labels=categorical_data_labels,
+            return render_template('spreadsheets/collect_mpv_data.html', errors=errors, labels=categorical_data_labels,
                                    spreadsheet=spreadsheet)
 
         #spreadsheet.identify_columns(column_labels)
@@ -1226,7 +1225,7 @@ def validate_mpv_spreadsheet_data(form_data, spreadsheet):
     errors = []
     if not spreadsheet.descriptive_name:
         errors.append(f"A descriptive name is required.")
-    error = spreadsheet.validate(spreadsheet.column_labels)
+    error = spreadsheet.validate_categorical(spreadsheet.column_labels)
     if error:
         errors.append(error)
     return errors
