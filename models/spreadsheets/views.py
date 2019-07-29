@@ -1256,8 +1256,8 @@ def collect_and_validate_categorical_data(form_data):
                     value_short_name = value_name
                 value_item = {'name': value_name, 'short_name': value_short_name}
                 values.append(value_item)
-            if not values:
-                errors.append(f"Categorical variable {var_name} has no possible values.")
+            if not values or len(values) < 2:
+                errors.append(f"Categorical variable {var_name} must have at least 2 possible values.")
             categorical_data.append({"variable": var_name, "values": values})
     return categorical_data, errors
 
