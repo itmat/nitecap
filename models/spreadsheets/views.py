@@ -1188,7 +1188,6 @@ def collect_mpv_data(spreadsheet_id, user=None):
         return access_not_permitted(collect_data.__name__, user, spreadsheet_id)
 
     categorical_data_labels = spreadsheet.get_categorical_data_labels()
-    print(categorical_data_labels)
 
     # Set up the dataframe
     spreadsheet.set_df()

@@ -77,7 +77,7 @@
                     <th>
                         <select style="font-size: 10px" name="col{{ loop.index }}" id="col{{ loop.index }}">
                             {% for item in labels %}
-                                <option value="item">{{ item }}</option>
+                                <option value="item" {% if loop.index == 1 %}selected=true{% endif %}>{{ item }}</option>
                             {% endfor %}
                         </select>
                     </th>
