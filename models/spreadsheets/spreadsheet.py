@@ -782,7 +782,7 @@ class Spreadsheet(db.Model):
         :return: list of options to offer for the select inputs of the form requiring the user to specify column
         definitions.
         """
-        labels = [Spreadsheet.ID_COLUMN, Spreadsheet.IGNORE_COLUMN]
+        labels = [Spreadsheet.IGNORE_COLUMN, Spreadsheet.ID_COLUMN]
 
         # One bin per categorical variable.  Each bin contains the possible values for that categorical variable.
         category_bins = []
