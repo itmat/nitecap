@@ -2,18 +2,136 @@
 {% block content %}
 
 <script>
+
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+    });
+
     $(document).ready(function () {
+
+
+
         let form = $('form');
-        let button = $("button");
-        button.prop('disabled', false);
-        button.html('Submit');
+        let submit_button = $("#submit_form");
+        submit_button.prop('disabled', false);
+        submit_button.html('Submit');
+
         form.submit(function (e) {
             e.preventDefault();
-            button.prop('disabled', true);
-            button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+            submit_button.prop('disabled', true);
+            submit_button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
                         "</span>Loading...");
             e.currentTarget.submit();
         });
+
+
+        {#  raw/endraw needed to make jinga ignore this code.  This is a Mustache template. #}
+        {% raw %}
+        let variable_template = "<div class='row my-1'>\n" +
+            "             <div class='col-2'>\n" +
+            "               <label for='categoricalVariable_{{ var_number }}'>Categorical Variable Name:" +
+            "               </label>\n" +
+            "             </div>\n" +
+            "             <div class='col-2'>\n" +
+            "               <input type='text' id='categoricalVariable_{{ var_number }}'" +
+            "                      name='categoricalVariable_{{ var_number }}' class='cat-var form-control'" +
+            "                      value='' />\n" +
+            "             </div>\n" +
+            "             <div class='col-4'>\n" +
+            "             <div class='dropdown'>\n" +
+            "               <button type='button' class='btn btn-primary dropdown-toggle' data-toggle='dropdown'>\n" +
+            "                 Possible Values\n" +
+            "               </button>\n" +
+            "               <div id='valuesList_{{  var_number }}' style='background-color: #eee' class='container-fluid dropdown-menu'>\n" +
+            "                 <button type='button' id='addPossibleValue_{{ var_number }}'" +
+            "                         class='add_possible_value ml-2 mb-2 btn btn-primary'>\n" +
+            "                   Add a Possible Value\n" +
+            "                   <i class='ml-2 fas fa-plus'></i>\n" +
+            "                 </button>\n" +
+            "               </div>\n" +
+            "               <button type='button' id='categoryDelete_{{ var_number }}'" +
+            "                       class='category-delete btn btn-danger'>" +
+            "                 Delete" +
+            "               </button>\n" +
+            "             </div>\n" +
+            "           </div>";
+
+        let value_template = "<div class='row m-1'>\n" +
+            "                            <div class='col-2'>\n" +
+            "                              <label for='choiceName_{{ variable_ctr }}_{{ value_ctr }}'>\n" +
+            "                                Name:\n" +
+            "                              </label>\n" +
+            "                            </div>\n" +
+            "                            <div class='col-4'>\n" +
+            "                              <input type='text' id='choiceName_{{ variable_ctr }}_{{ value_ctr }}'\n" +
+            "                                     name='choiceName_{{ variable_ctr }}_{{ value_ctr }}'\n" +
+            "                                     class='choice form-control' value='' />\n" +
+            "                            </div>\n" +
+            "                            <div class='col-2'>\n" +
+            "                                <label for='choiceShort_{{ variable_ctr }}_{{ value_ctr }}'>\n" +
+            "                                  Abbrev.:\n" +
+            "                                </label>\n" +
+            "                            </div>\n" +
+            "                            <div class='col-3'>\n" +
+            "                              <input type='text' id='choiceShort_{{ variable_ctr }}_{{ value_ctr }}'\n" +
+            "                                     name='choiceShort_{{ variable_ctr }}_{{ value_ctr }}'\n" +
+            "                                     class='choice form-control' value='' />\n" +
+            "                            </div>\n" +
+            "                        </div>\n";
+        {% endraw %}
+
+        let categorialDataElement = $("#categorical_data");
+
+        let categorical_data = {{ categorical_data | tojson }};
+        let categorical_data_ctr = categorical_data.length;
+
+        // Tracks id counters for categorical variables and possible values;
+
+        let variable_value_counts = [];
+        categorical_data.forEach(function(item, index) {
+           variable_value_counts[index+1] = item['values'].length;
+        });
+
+        let add_categorical_variable = $("#add_categorical_variable");
+
+        add_categorical_variable.on("click", function() {
+            let template_data = {
+                'var_number': variable_value_counts.length + 1
+            };
+            let html = Mustache.render(variable_template, template_data);
+            //console.log(html);
+            categorialDataElement.append(html);
+            variable_value_counts[variable_value_counts.length + 1] = 0;
+
+            $(".category-delete").on("click", function(e) {
+                $(e.target).parent().parent().parent().remove();
+            });
+
+            $(".add_possible_value").on("click", function(e) {
+                e.stopPropagation();
+                let variable_ctr = e.target.id.split("_")[1];
+                let template_data = {variable_ctr: variable_ctr, value_ctr: variable_value_counts[variable_ctr]};
+                let html = Mustache.render(value_template, template_data);
+                $("#valuesList_" + variable_ctr).append(html);
+                variable_value_counts[variable_ctr]++;
+            });
+        });
+
+        $(".category-delete").on("click", function(e) {
+            $(e.target).parent().parent().parent().remove();
+        });
+
+        $(".add_possible_value").on("click", function(e) {
+            e.stopPropagation();
+            let variable_ctr = e.target.id.split("_")[1];
+            console.log(variable_ctr);
+            let template_data = {variable_ctr: variable_ctr, value_ctr: variable_value_counts[variable_ctr]};
+            let html = Mustache.render(value_template, template_data);
+
+            $("#valuesList_" + variable_ctr).append(html);
+            variable_value_counts[variable_ctr]++;
+        });
+
     });
 </script>
 
@@ -21,9 +139,7 @@
     <h1>Load MPV Spreadsheet File <small>Expecting csv, tsv, txt, xls or xlsx fomats only</small></h1>
 </div>
 
-
-    <p>We first need your mpv spreadsheet file</p>
-
+    <p>We first need your mpv spreadsheet file and how it is categorized</p>
 
 {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -48,16 +164,83 @@
 <p class="text-danger">* required</p>
 
 <form action="{{ url_for('spreadsheets.upload_mpv_file') }}" method="post" enctype="multipart/form-data">
-    <div class="form-group required">
-        <label for="data_row">The First Row of Data:</label>
-        <input type="number" id="data_row" name="data_row" class="form-control" value="{{data_row or 2}}"
-               style="width:15rem" required />
-    </div>
-    <div class="form-group required">
-        <label for="upload_file">MPV Spreadsheet File:</label>
-        <input type="file" id="upload_file" name="upload_file" required>
-    </div>
-    <button type="submit" class="btn btn-primary">
+    <fieldset class="border border-primary rounded p-3 mb-3">
+        <legend class="w-auto">Spreadsheet File</legend>
+        <div class="form-group required">
+            <label for="data_row">The First Row of Data:</label>
+            <input type="number" id="data_row" name="data_row" class="form-control" value="{{data_row or 2}}"
+                   style="width:15rem" required />
+        </div>
+        <div class="form-group required">
+            <label for="upload_file">MPV Spreadsheet File:</label>
+            <input type="file" id="upload_file" name="upload_file" required>
+        </div>
+    </fieldset>
+    <fieldset class="border border-primary rounded p-3 mb-3">
+        <legend class="w-auto">Categorical Data</legend>
+        <div id="categorical_data" class="form-group">
+            <button type="button" id="add_categorical_variable" class="mb-2 btn btn-primary">
+                Add a Categorical Variable
+                <i class="ml-2 fas fa-plus"></i>
+            </button>
+            {% for item in categorical_data %}
+                {% set variable_loop = loop %}
+                <div class='row my-1'>
+
+                    <!-- Categorical Variable -->
+                    <div class='col-2'>
+                        <label for='categoricalVariable_{{ loop.index }}'>Categorical Variable Name:</label>
+                    </div>
+                    <div class='col-2'>
+                        <input type='text' id='categoricalVariable_{{ loop.index }}'
+                               name='categoricalVariable_{{ loop.index }}' class='cat-var form-control'
+                               value='{{ item["variable"] }}'/>
+                    </div>
+
+                    <!-- Possible Value for Categorical Variable -->
+                    <div class='col-4'>
+                        <div class='dropdown'>
+                            <button type='button' class='btn btn-primary dropdown-toggle' data-toggle='dropdown'>
+                                Possible Values
+                            </button>
+                            <div id="valuesList_{{ variable_loop.index }}" style='background-color: #eee' class='container-fluid dropdown-menu'>
+                                <button type="button" id="addPossibleValue_{{ variable_loop.index }}"
+                                        class="add_possible_value ml-2 mb-2 btn btn-primary">
+                                    Add a Possible Value
+                                    <i class="ml-2 fas fa-plus"></i>
+                                </button>
+                                {% for possible_value in item['values'] %}
+                                    <div class='row m-1'>
+                                        <div class='col-2'>
+                                            <label for='choiceName_{{ variable_loop.index }}_{{ loop.index }}'>Name:</label>
+                                        </div>
+                                        <div class='col-4'>
+                                            <input type='text' id='choiceName_{{ variable_loop.index }}_{{ loop.index }}'
+                                                   name='choiceName_{{ variable_loop.index }}_{{ loop.index }}'
+                                                   class='choice form-control' value='{{ possible_value["name"] }}'/>
+                                        </div>
+                                        <div class='col-2'>
+                                            <label for='choiceShort_{{ variable_loop.index }}_{{ loop.index }}'>Abbrev.:</label>
+                                        </div>
+                                        <div class='col-3'>
+                                            <input type='text' id='choiceShort_{{ variable_loop.index }}_{{ loop.index }}'
+                                                   name='choiceShort_{{ variable_loop.index }}_{{ loop.index }}'
+                                                class='choice form-control' value='{{ possible_value["short_name"] }}'/>
+                                        </div>
+                                    </div>
+                                {%  endfor %}
+                            </div>
+                            <button type='button' id='categoryDelete_{{ variable_loop.index }}'
+                                    class='category-delete btn btn-danger'>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {%  endfor %}
+        </div>
+    </fieldset>
+    <button type="submit" id="submit_form" class="btn btn-primary">
         Submit
     </button>
 </form>

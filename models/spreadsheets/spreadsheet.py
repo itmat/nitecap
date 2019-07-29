@@ -1,5 +1,7 @@
 import collections
 import datetime
+import itertools
+import json
 import os
 import shutil
 import uuid
@@ -51,6 +53,7 @@ class Spreadsheet(db.Model):
     ids_unique = db.Column(db.Boolean, nullable=False, default=0)
     note = db.Column(db.String(5000))
     spreadsheet_data_path = db.Column(db.String(250))
+    categorical_data = db.Column(db.String(5000))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
 
@@ -759,6 +762,17 @@ class Spreadsheet(db.Model):
         """
         ext = os.path.splitext(self.uploaded_file_path)[1]
         return Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + ext
+
+    def get_categorical_data_labels(self):
+        labels = [Spreadsheet.ID_COLUMN, Spreadsheet.IGNORE_COLUMN]
+        category_bins = []
+        categorical_data = json.loads(self.categorical_data)
+        for item in categorical_data:
+            values = [value['name'] for value in item['values']]
+            category_bins.append(values)
+        label_data = [' '.join(label_tuple) for label_tuple in list(itertools.product(*category_bins))]
+        labels.extend(label_data)
+        return labels
 
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),

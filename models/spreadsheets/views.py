@@ -1078,6 +1078,7 @@ def upload_mpv_file():
     current_app.logger.info('Uploading mpv spreadsheet')
 
     errors = []
+    categorical_data = []
 
     # Spreadsheet file form submitted
     if request.method == 'POST':
@@ -1089,8 +1090,13 @@ def upload_mpv_file():
             errors.append(MISSING_SPREADSHEET_MESSAGE)
         if not allowed_file(upload_file.filename):
             errors.append(FILE_EXTENSION_ERROR)
+        categorical_data, categorical_data_errors = collect_and_validate_categorical_data(request.form)
+        print(categorical_data)
+        if categorical_data_errors:
+            errors.extend(categorical_data_errors)
         if errors:
-            return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row, errors=errors)
+            return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row,
+                                   categorical_data=categorical_data, errors=errors)
 
         # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
         user_id = None
@@ -1144,6 +1150,7 @@ def upload_mpv_file():
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_path,
                                       spreadsheet_data_path=str(directory_path),
+                                      categorical_data=json.dumps(categorical_data),
                                       user_id=user_id)
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
@@ -1168,20 +1175,20 @@ def upload_mpv_file():
         return redirect(url_for('.collect_mpv_data', spreadsheet_id=spreadsheet.id))
 
     # Display spreadsheet file form
-    return render_template('spreadsheets/upload_mpv_file.html')
+    return render_template('spreadsheets/upload_mpv_file.html', categorical_data=categorical_data)
 
 @spreadsheet_blueprint.route('/collect_mpv_data/<spreadsheet_id>', methods=['GET', 'POST'])
 @requires_account
 def collect_mpv_data(spreadsheet_id, user=None):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
-    # TODO - cheating must remove to db eventually
-    spreadsheet.categorical_data = ''
-
     # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
     # spreadsheet list (in the case of a logged in user) or to the upload form (in the case of a visitor).
     if not spreadsheet:
         return access_not_permitted(collect_data.__name__, user, spreadsheet_id)
+
+    categorical_data_labels = spreadsheet.get_categorical_data_labels()
+    print(categorical_data_labels)
 
     # Set up the dataframe
     spreadsheet.set_df()
@@ -1191,7 +1198,8 @@ def collect_mpv_data(spreadsheet_id, user=None):
 
         errors = validate_mpv_spreadsheet_data(request.form)
         if errors:
-            return render_template('spreadsheets/collect_data.html', errors=errors, spreadsheet=spreadsheet)
+            return render_template('spreadsheets/collect_data.html', errors=errors, labels=categorical_data_labels,
+                                   spreadsheet=spreadsheet)
 
         #spreadsheet.identify_columns(column_labels)
         #spreadsheet.set_ids_unique()
@@ -1200,7 +1208,7 @@ def collect_mpv_data(spreadsheet_id, user=None):
         #spreadsheet.clear_jtk()
         #spreadsheet.compute_nitecap()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
-    return render_template('spreadsheets/collect_mpv_data.html', spreadsheet=spreadsheet)
+    return render_template('spreadsheets/collect_mpv_data.html', labels=categorical_data_labels, spreadsheet=spreadsheet)
 
 
 def validate_mpv_spreadsheet_data(form_data, spreadsheet):
@@ -1212,7 +1220,6 @@ def validate_mpv_spreadsheet_data(form_data, spreadsheet):
 
     # Gather data
     spreadsheet.descriptive_name = form_data.get('descriptive_name', None)
-    spreadsheet.categorical_data = form_data.get('categorical_data', '')
     spreadsheet.column_labels = [value for key, value in form_data.items() if key.startswith('col')]
 
     # Check data for errors
@@ -1223,5 +1230,40 @@ def validate_mpv_spreadsheet_data(form_data, spreadsheet):
     if error:
         errors.append(error)
     return errors
+
+def collect_and_validate_categorical_data(form_data):
+    errors = []
+    categorical_data = []
+    categorical_variables = {int(key.split("_")[1]): value for key, value in form_data.items()
+                             if key.startswith('categoricalVariable')}
+    for pos, var_name in categorical_variables.items():
+        print(pos, var_name)
+        if var_name:
+            value_names = {int(key.split("_")[2]): value for key, value in form_data.items()
+                           if key.startswith(f'choiceName_{pos}')}
+            value_short_names = {int(key.split("_")[2]): value for key, value in form_data.items()
+                           if key.startswith(f'choiceShort_{pos}')}
+
+            values = []
+            for index in range(0, max([len(value_names.keys()), len(value_short_names.keys())])):
+                value_name = value_names[index]
+                value_short_name = value_short_names[index]
+                if not value_name and not value_short_name:
+                    continue
+                if not value_name:
+                    value_name = value_short_name
+                if not value_short_name:
+                    value_short_name = value_name
+                value_item = {'name': value_name, 'short_name': value_short_name}
+                values.append(value_item)
+            if not values:
+                errors.append(f"Categorical variable {var_name} has no possible values.")
+            categorical_data.append({"variable": var_name, "values": values})
+    return categorical_data, errors
+
+
+
+
+
 
 
