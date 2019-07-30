@@ -174,7 +174,7 @@
             <form class="form-group">
                 <div class="form-inline">
                     <label for="plot_style_select">Plot style</label>
-                    <select id="plot_style_select" value="basketweave" class="form-control form-control-sm" v-model="plot.config.style">
+                    <select id="plot_style_select" value="bars_points_std" class="form-control form-control-sm" v-model="plot.config.style">
                         <option value="points">Points</option>
                         <option value="mean">Mean only</option>
                         <option value="mean_points">Points and Mean</option>
@@ -519,7 +519,7 @@
 
             plot: {
                 config: {
-                    style: "mean_points",
+                    style: "bars_points_std",
                     include_zero: false,
                 },
                 first_render: true,
@@ -676,6 +676,7 @@
                             x: stats.means.map(function(x,i) { return i;} ),
                             y: stats.means,
                             error_y: {type: 'data', array:stats.stds, visible:true},
+                            showlegend: false,
                         };
                         traces.push(bar_trace);
                         trace.marker.color = 'black';
