@@ -178,6 +178,8 @@
                         <option value="points">Points</option>
                         <option value="mean">Mean only</option>
                         <option value="mean_points">Points and Mean</option>
+                        <option value="bars_std">Bars and Standard Deviations</option>
+                        <option value="bars_points_std">Bars, Points, and Standard Deviations</option>
                         <option value="std">Standard Deviations</option>
                         <option value="std_points">Standard Deviations and Points</option>
                         <option value="SEM">SEM</option>
@@ -648,8 +650,24 @@
                             mode: 'markers',
                             marker: {color: spreadsheet_color},
                         });
+                    } else if (plot_style === "bars_points_std") {
+                        let bar_trace = {
+                            type: 'bar',
+                            x: stats.means.map(function(x,i) { return i;} ),
+                            y: stats.means,
+                            error_y: {type: 'data', array:stats.stds, visible:true},
+                        };
+                        traces.push(bar_trace);
+                        trace.marker.color = 'black';
+                    } else if (plot_style === "bars_std") {
+                        let bar_trace = {
+                            type: 'bar',
+                            x: stats.means.map(function(x,i) { return i;} ),
+                            y: stats.means,
+                            error_y: {type: 'data', array:stats.stds, visible:true},
+                        };
+                        trace = bar_trace;
                     }
-
                     traces.push(trace);
 
                 });
