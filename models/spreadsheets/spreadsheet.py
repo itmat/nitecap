@@ -757,7 +757,7 @@ class Spreadsheet(db.Model):
         :return: uplodaded spreadsheet name
         """
         ext = os.path.splitext(self.uploaded_file_path)[1]
-        return Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + "." + ext
+        return Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + ext
 
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
