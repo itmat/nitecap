@@ -385,6 +385,19 @@
         </div>
     </div>
 
+    <div class="row">
+        <div class='col-auto'>
+            <span id="fc_plot" style="width:625px;height:525px;vertical-align: top"></span>
+            <div class='p-3 float-right'>
+                <button class="btn btn-primary" v-on:click="redrawFCPlot">Run FC Plot</button>
+            </div>
+            <div class='p-3 float-right'>
+                <label for="pseudo_count_input">Pseudo Count:</label>
+                <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></text>
+            </div>
+        </div>
+    </div>
+
     <!-- MODALS -->
     <div id="share_popup" class="modal" tabindex="-1" role="dialog">
       <div class="modal-dialog" role="document">
@@ -509,7 +522,14 @@
                     style: "mean_points",
                     include_zero: false,
                 },
-                first_render: false,
+                first_render: true,
+            },
+
+            fc_plot: {
+                config: {
+                    pseudo_count: 1,
+                },
+                first_render: true,
             },
 
         },
@@ -686,9 +706,9 @@
                     }
                 };
 
-                if (vm.first_render) {
+                if (vm.plot.first_render) {
                     Plotly.newPlot('scatter_plot', traces, layout);
-                    vm.first_render = false;
+                    vm.plot.first_render = false;
                 } else {
                     Plotly.react('scatter_plot', traces, layout);
                 }
@@ -775,6 +795,68 @@
                 let first = spreadsheets[0];
                 let tail = spreadsheets.slice(1);
                 this.spreadsheets = tail.concat(first);
+            },
+
+            redrawFCPlot: function() {
+                let vm = this;
+                let spreadsheet = vm.spreadsheets[0];
+                let pseudo_count = vm.fc_plot.config.pseudo_count;
+
+                // For now, we just compare the groups 0 and 1 whatever they are
+                let compute_mean = function(group) {
+                    return spreadsheet.data.map( function(row) {
+                        let sum = 0;
+                        let count = 0
+                        row.forEach(function(x,i) {
+                            if (spreadsheet.group_assignments[i] === group) {
+                                sum += x;
+                                count += 1;
+                            }
+                        });
+                        return sum / count;
+                    });
+                };
+                let means1 = compute_mean(0);
+                let means2 = compute_mean(1);
+
+                //let log_ratios = means1.map(function(x,i) {
+                //    return Math.log2(means1[i] / means2[i]);
+                //});
+                let log_means  = means1.map(function(x,i) {
+                    return Math.log2((means1[i] + means2[i])/2);
+                });
+                let log_afc = means1.map(function(x,i) { // Log2 adjusted fold change using given pseudo_count
+                    return Math.log2((means1[i] + pseudo_count) / (means2[i] + pseudo_count));
+                });
+
+                // Default values for the different plot styles to override
+                let trace = {
+                    x: log_means,
+                    y: log_afc,
+                    type: 'scattergl',
+                    mode: 'markers',
+                    name: "MvA",
+                    marker: {color: 'black', size:2},
+                };
+
+                    // Pick data and styling based off the plot_style_select value
+                let layout = {
+                    hovermode: 'closest',
+                    title: "MvA",
+                    xaxis: {
+                    },
+                    yaxis: {
+                    }
+                };
+
+
+                let traces = [trace];
+                if (vm.fc_plot.first_render) {
+                    Plotly.newPlot('fc_plot', traces, layout);
+                    vm.fc_plot.first_render = false;
+                } else {
+                    Plotly.react('fc_plot', traces, layout);
+                }
             },
 
         },
@@ -1097,6 +1179,11 @@
 
             "plot.config": {
                 handler: "redrawPlot",
+                deep: true
+            },
+
+            "fc_plot.config": {
+                handler: "redrawFCPlot",
                 deep: true
             },
         },
