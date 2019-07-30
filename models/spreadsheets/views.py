@@ -319,6 +319,43 @@ def show_spreadsheet(spreadsheet_id, user=None):
                            spreadsheet_ids=[int(ID) for ID in spreadsheet_ids],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
+@spreadsheet_blueprint.route('/show_mpv_spreadsheet/<spreadsheet_id>', methods=['GET'])
+@requires_account
+@timeit
+def show_mpv_spreadsheet(spreadsheet_id, user=None):
+    """
+    Standard endpoint - retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
+    method is available to any user with an account (standard user or visitor).
+    :param spreadsheet_id: the id of the spreadsheet whose results are to be displayed.
+    :param user:  Returned by the decorator.  Account bearing user is required.
+    """
+
+    errors = []
+
+    spreadsheets = []
+
+    try:
+        spreadsheet_ids = [int(ID) for ID in spreadsheet_id.split(',')]
+    except ValueError:
+        errors.append("Unknown spreadsheet id(s)")
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    if not spreadsheet_ids:
+        errors.append("No spreadsheets were provided")
+        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
+
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
+
+        # Populate
+        spreadsheet.init_on_load()
+
+        spreadsheets.append(spreadsheet)
+
+    return render_template('spreadsheets/show_mpv_spreadsheet.html',
+                           spreadsheet_ids=[int(ID) for ID in spreadsheet_ids])
 
 @spreadsheet_blueprint.route('/get_spreadsheets', methods=['POST'])
 @timeit
@@ -373,6 +410,62 @@ def get_spreadsheets(user=None):
                      column_headers=spreadsheet.get_data_columns(),
                      jtk_ps=None,
                      jtk_qs=None,
+                    )
+        spreadsheet_values.append(values)
+
+    return dumps(spreadsheet_values)
+
+@spreadsheet_blueprint.route('/get_mpv_spreadsheets', methods=['POST'])
+@timeit
+@ajax_requires_account
+def get_mpv_spreadsheets(user=None):
+    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
+    assert len(spreadsheet_ids) == 1
+
+    if not spreadsheet_ids:
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
+
+    spreadsheets = []
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            return access_not_permitted(compare.__name__, user, spreadsheet_id)
+
+        # Populate
+        spreadsheet.init_on_load()
+
+        spreadsheets.append(spreadsheet)
+
+    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+
+    # TODO: should load JTK ps and qs here if available, currently just report them as None
+
+    # Gather all values except for the actual numerical data
+    # Which is handled separately
+    spreadsheet_values = []
+    for spreadsheet, df in zip(spreadsheets, dfs):
+        possible_assignments =  spreadsheet.get_categorical_data_labels()[2:] # dropping Ignore and ID
+        column_labels = spreadsheet.column_labels
+        group_assignments = [possible_assignments.index(label) for label in column_labels
+                                if label not in spreadsheet.NON_DATA_COLUMNS]
+        x_label_values = [i for i,label in enumerate(possible_assignments)]
+        values = dict(
+                     data=df[spreadsheet.get_mpv_data_columns()],
+                     categories=spreadsheet.categorical_data,
+                     group_assignments=group_assignments,
+                     possible_assignments=possible_assignments,
+                     x_label_values=x_label_values,
+                     anova_ps=[], # TODO no anova
+                     anova_qs=[], #      (for now)
+                     filtered=df.filtered_out,
+                     filters=spreadsheet.filters if spreadsheet.filters else [],
+                     labels=combined_index.to_list(),
+                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
+                     descriptive_name=spreadsheet.descriptive_name,
+                     spreadsheet_id=spreadsheet.id,
+                     spreadsheet_note=spreadsheet.note,
+                     visitor=user.is_visitor(),
+                     column_headers=spreadsheet.get_data_columns(),
                     )
         spreadsheet_values.append(values)
 
@@ -1200,13 +1293,12 @@ def collect_mpv_data(spreadsheet_id, user=None):
             return render_template('spreadsheets/collect_mpv_data.html', errors=errors, labels=categorical_data_labels,
                                    spreadsheet=spreadsheet)
 
+        # TODO: do we need to do anything else that identify_columns does?
         #spreadsheet.identify_columns(column_labels)
-        #spreadsheet.set_ids_unique()
+        spreadsheet.set_ids_unique()
         spreadsheet.save_to_db()
         spreadsheet.init_on_load()
-        #spreadsheet.clear_jtk()
-        #spreadsheet.compute_nitecap()
-        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+        return redirect(url_for('.show_mpv_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/collect_mpv_data.html', labels=categorical_data_labels, spreadsheet=spreadsheet)
 
 
@@ -1220,6 +1312,8 @@ def validate_mpv_spreadsheet_data(form_data, spreadsheet):
     # Gather data
     spreadsheet.descriptive_name = form_data.get('descriptive_name', None)
     spreadsheet.column_labels = [value for key, value in form_data.items() if key.startswith('col')]
+    spreadsheet.column_labels_str = ','.join(spreadsheet.column_labels)
+    print(f"Giving column labels from form: {spreadsheet.column_labels}")
 
     # Check data for errors
     errors = []

@@ -173,10 +173,11 @@ class Spreadsheet(db.Model):
         self.num_replicates = None if not self.num_replicates_str \
              else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
+
         if self.column_labels_str:
             self.identify_columns(self.column_labels)
 
-            if any(column not in self.df.columns for column in NITECAP_DATA_COLUMNS):
+            if any(column not in self.df.columns for column in NITECAP_DATA_COLUMNS) and not self.categorical_data:
                 # Run our statistics if we have selected the column labels and are
                 # missing any output (eg: if we added more outputs, this will update spreadsheets,
                 # or if somehow a spreadsheet was never computed)
@@ -210,6 +211,9 @@ class Spreadsheet(db.Model):
             raise NitecapException("The file provided could not be parsed.")
 
     def identify_columns(self, column_labels):
+        if self.categorical_data:
+            # Categorical / MPV spreadsheet
+            return
 
         # column labels saved as comma delimited string in db
         self.column_labels_str = ",".join(column_labels)
@@ -236,6 +240,8 @@ class Spreadsheet(db.Model):
         return self.df[data_columns]
 
     def get_data_columns(self, by_day=True):
+        if self.categorical_data:
+            return self.get_mpv_data_columns()
         # Order the columns by chronological order
         filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
                             if label not in Spreadsheet.NON_DATA_COLUMNS]
@@ -243,6 +249,15 @@ class Spreadsheet(db.Model):
             sorter = lambda col_label: self.label_to_daytime(col_label[1])
         else:
             sorter = lambda col_label: self.label_to_daytime(col_label[1], False)
+        ordered_columns = sorted(filtered_columns, key = sorter)
+        return [column for column, label in ordered_columns]
+
+    def get_mpv_data_columns(self):
+        # Order the columns by group
+        possible_labels = self.get_categorical_data_labels()
+        filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
+                            if label not in Spreadsheet.NON_DATA_COLUMNS]
+        sorter = lambda col_label: possible_labels.index(col_label[1])
         ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
 
