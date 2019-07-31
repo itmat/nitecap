@@ -30,6 +30,7 @@ import nitecap
 from timer_decorator import timeit
 
 NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p", "anova_q"]
+CATEGORICAL_DATA_COLUMNS = ["anova_p", "anova_q"]
 MAX_JTK_COLUMNS = 85
 
 class Spreadsheet(db.Model):
@@ -182,6 +183,8 @@ class Spreadsheet(db.Model):
                 # missing any output (eg: if we added more outputs, this will update spreadsheets,
                 # or if somehow a spreadsheet was never computed)
                 self.compute_nitecap()
+            elif self.categorical_data and any(column not in self.df.columns for column in CATEGORICAL_DATA_COLUMNS):
+                self.compute_categorical()
 
     @timeit
     def set_df(self):
@@ -213,6 +216,10 @@ class Spreadsheet(db.Model):
     def identify_columns(self, column_labels):
         if self.categorical_data:
             # Categorical / MPV spreadsheet
+            self.possible_assignments = self.get_categorical_data_labels()[2:] # dropping Ignore and ID
+            group_assignments = [self.possible_assignments.index(label) for label in column_labels
+                                    if label not in self.NON_DATA_COLUMNS]
+            self.group_assignments = sorted(group_assignments) # Must sort since data is passed to the client sorted by assignments
             return
 
         # column labels saved as comma delimited string in db
@@ -348,6 +355,19 @@ class Spreadsheet(db.Model):
         self.df["anova_p"] = anova_p
         self.df["anova_q"] = anova_q
         self.df = self.df.sort_values(by="total_delta")
+        self.update_dataframe()
+
+    @timeit
+    def compute_categorical(self):
+        # Runs ANOVA-style computations on the data
+        data = self.get_raw_data()
+        filtered_out = self.df.filtered_out.values.astype("bool")
+
+        ps = nitecap.util.anova_on_groups(data.values, self.group_assignments)
+        qs = nitecap.util.BH_FDR(ps)
+        qs[filtered_out] = float("NaN")
+        self.df["anova_p"] = ps
+        self.df["anova_q"] = qs
         self.update_dataframe()
 
     @timeit

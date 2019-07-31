@@ -438,29 +438,21 @@ def get_mpv_spreadsheets(user=None):
 
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-    # TODO: should load JTK ps and qs here if available, currently just report them as None
-
     # Gather all values except for the actual numerical data
     # Which is handled separately
     spreadsheet_values = []
     for spreadsheet, df in zip(spreadsheets, dfs):
-        possible_assignments =  spreadsheet.get_categorical_data_labels()[2:] # dropping Ignore and ID
-
         column_labels = spreadsheet.column_labels
-        # TODO: move group_assigments computation to Spreadsheet object
-        group_assignments = [possible_assignments.index(label) for label in column_labels
-                                if label not in spreadsheet.NON_DATA_COLUMNS]
-        group_assignments = sorted(group_assignments) # Must sort since data is passed to the client sorted by assignments
 
-        x_label_values = [i for i,label in enumerate(possible_assignments)]
+        x_label_values = [i for i,label in enumerate(spreadsheet.possible_assignments)]
         values = dict(
                      data=df[spreadsheet.get_mpv_data_columns()],
                      categories=spreadsheet.categorical_data,
-                     group_assignments=group_assignments,
-                     possible_assignments=possible_assignments,
+                     group_assignments=spreadsheet.group_assignments,
+                     possible_assignments=spreadsheet.possible_assignments,
                      x_label_values=x_label_values,
-                     anova_ps=[], # TODO no anova
-                     anova_qs=[], #      (for now)
+                     anova_ps=df['anova_p'],
+                     anova_qs=df['anova_q'],
                      filtered=df.filtered_out,
                      filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
@@ -1298,7 +1290,8 @@ def collect_mpv_data(spreadsheet_id, user=None):
                                    spreadsheet=spreadsheet)
 
         # TODO: do we need to do anything else that identify_columns does?
-        #spreadsheet.identify_columns(column_labels)
+        # TODO: move group_assigments computation to Spreadsheet object
+        spreadsheet.identify_columns(column_labels)
         spreadsheet.set_ids_unique()
         spreadsheet.save_to_db()
         spreadsheet.init_on_load()
