@@ -380,25 +380,36 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="row">
         <div class='col-auto'>
-            <span id="fc_plot" style="width:625px;height:525px;vertical-align: top"></span>
-            <div class='p-3 float-right'>
-                <button class="btn btn-primary" v-on:click="redrawFCPlot">Run FC Plot</button>
-            </div>
-            <div class="form-inline">
-                <label for="plot_style_select">Plot style</label>
-                <select id="plot_style_select" class="form-control form-control-sm w-auto" v-model="fc_plot.config.style">
-                    <option value="mva">MvA</option>
-                    <option value="rank">Rank-Rank</option>
-                </select>
+            <div class="card">
+                <div class="card-header">
+                    Adjusted Fold Change
+                    <a id="FCHelp" class="text-primary help-pointer ml-3"
+                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                       title="Adjusted Fold Change Help"
+                       data-content="Display plots related to analyzing the behavior of various possible pseudo-counts and their effect upon the adjusted fold change. Adjusted fold change is defined as (mean1 + C) / (mean2 + C) where C is the pseudo-count, and mean1 and mean2 are the means of the two conditions being compared.">
+                        <i class="fas fa-info-circle"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <span id="fc_plot" style="width:625px;height:525px;vertical-align: top"></span>
+                    <div class='p-3 float-right'>
+                        <button class="btn btn-primary" v-on:click="redrawFCPlot">Run FC Plot</button>
+                    </div>
+                    <div class="form-inline">
+                        <label for="plot_style_select">Plot style</label>
+                        <select id="plot_style_select" class="form-control form-control-sm w-auto" v-model="fc_plot.config.style">
+                            <option value="mva">MvA</option>
+                            <option value="rank">Rank-Rank</option>
+                        </select>
 
-            </div>
-            <div class="form-inline">
-                <label for="pseudo_count_input">Pseudo Count:</label>
-                <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></text>
+                    </div>
+                    <div class="form-inline">
+                        <label for="pseudo_count_input">Pseudo Count:</label>
+                        <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></text>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
