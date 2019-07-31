@@ -391,7 +391,15 @@
             <div class='p-3 float-right'>
                 <button class="btn btn-primary" v-on:click="redrawFCPlot">Run FC Plot</button>
             </div>
-            <div class='p-3 float-right'>
+            <div class="form">
+                <label for="plot_style_select">Plot style</label>
+                <select id="plot_style_select" class="form-control form-control-sm" v-model="fc_plot.config.style">
+                    <option value="mva">MvA</option>
+                    <option value="rank">Rank-Rank</option>
+                </select>
+
+            </div>
+            <div class="form">
                 <label for="pseudo_count_input">Pseudo Count:</label>
                 <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></text>
             </div>
@@ -528,6 +536,7 @@
             fc_plot: {
                 config: {
                     pseudo_count: 1,
+                    style: "mva",
                 },
                 first_render: true,
             },
@@ -802,6 +811,7 @@
                 let vm = this;
                 let spreadsheet = vm.spreadsheets[0];
                 let pseudo_count = vm.fc_plot.config.pseudo_count;
+                let plot_style = vm.fc_plot.config.style;
 
                 // For now, we just compare the groups 0 and 1 whatever they are
                 let compute_mean = function(group) {
@@ -820,9 +830,6 @@
                 let means1 = compute_mean(0);
                 let means2 = compute_mean(1);
 
-                //let log_ratios = means1.map(function(x,i) {
-                //    return Math.log2(means1[i] / means2[i]);
-                //});
                 let log_means  = means1.map(function(x,i) {
                     return Math.log2((means1[i] + means2[i])/2);
                 });
@@ -830,28 +837,60 @@
                     return Math.log2((means1[i] + pseudo_count) / (means2[i] + pseudo_count));
                 });
 
-                // Default values for the different plot styles to override
-                let trace = {
-                    x: log_means,
-                    y: log_afc,
-                    type: 'scattergl',
-                    mode: 'markers',
-                    name: "MvA",
-                    marker: {color: 'black', size:2},
-                };
+                let traces;
+                let layout;
+                if (plot_style === "mva") {
+                     traces = [{
+                        x: log_means,
+                        y: log_afc,
+                        type: 'scattergl',
+                        mode: 'markers',
+                        name: "MvA",
+                        marker: {color: 'black', size:2},
+                        text: spreadsheet.labels,
+                    }];
 
-                    // Pick data and styling based off the plot_style_select value
-                let layout = {
-                    hovermode: 'closest',
-                    title: "MvA",
-                    xaxis: {
-                    },
-                    yaxis: {
-                    }
-                };
+                    layout = {
+                        hovermode: 'closest',
+                        title: "MvA",
+                        xaxis: {
+                            title: "log2((mean1 + mean2)/2)",
+                        },
+                        yaxis: {
+                            title: "log2((mean1+C)/(mean2+C))",
+                        }
+                    };
+                } else if (plot_style === "rank") {
+                    let C = 1;
+                    let log_ratios = means1.map(function(x,i) {
+                        return Math.log2((means1[i]+C) / (means2[i]+C));
+                    });
+
+                    let ranks = rankArray(log_ratios.map(Math.abs), -1);
+                    let ranks_AFC = rankArray(log_afc.map(Math.abs), -1);
+                    traces = [{
+                        x: ranks.map(Math.log10),
+                        y: ranks_AFC.map(Math.log10),
+                        name: "Rank-Rank",
+                        type: 'scattergl',
+                        mode: 'markers',
+                        marker: {color: 'black', size:2},
+                        text: spreadsheet.labels,
+                    }];
+
+                    layout = {
+                        hovermode: 'closest',
+                        title: "Rank-Rank",
+                        xaxis: {
+                            title: "log10 Ranks (C="+C+")",
+                        },
+                        yaxis: {
+                            title: "log10 Ranks (C=" + pseudo_count + ")",
+                        }
+                    };
+                }
 
 
-                let traces = [trace];
                 if (vm.fc_plot.first_render) {
                     Plotly.newPlot('fc_plot', traces, layout);
                     vm.fc_plot.first_render = false;

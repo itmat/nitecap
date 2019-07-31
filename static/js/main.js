@@ -319,6 +319,24 @@ function numValids(table) {
     return table.map(count);
 }
 
+// Util to compute the ranks of an array, i.e. order in which they will be sorted
+// 'array' is the numerical array to rank
+// 'direction' is +/- 1, positive if sorting ascending (rank 0 = smallest), negative if descendin
+function rankArray(array, direction) {
+    direction = direction !== undefined ? direction : 1;
+
+    let sort_order =  array.map( function(x,i) {return i;} );
+    sort_order = sort_order.sort(function(i,j) {
+        return direction*(array[i] - array[j]);
+    });
+
+    let ranks = new Array(array.lengths);
+    sort_order.forEach(function(i,j) {
+        ranks[i] = j;
+    });
+    return ranks;
+}
+
 // Util to pad a string with copies of a character
 function padEnd(string, length, character) {
     if (string.length > length) {
