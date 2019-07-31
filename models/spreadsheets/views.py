@@ -1289,9 +1289,6 @@ def collect_mpv_data(spreadsheet_id, user=None):
             return render_template('spreadsheets/collect_mpv_data.html', errors=errors, labels=categorical_data_labels,
                                    spreadsheet=spreadsheet)
 
-        # TODO: do we need to do anything else that identify_columns does?
-        # TODO: move group_assigments computation to Spreadsheet object
-        spreadsheet.identify_columns(column_labels)
         spreadsheet.set_ids_unique()
         spreadsheet.save_to_db()
         spreadsheet.init_on_load()
