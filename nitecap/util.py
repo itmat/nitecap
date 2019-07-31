@@ -222,6 +222,49 @@ def anova(data):
         anova_p[i] = p
     return anova_p
 
+def anova_on_groups(data, group_assignments):
+    '''
+    Perform an ANOVA test and return p-values
+
+    `data`: an array of shape N x k. Each row is one measurement
+    `group_assignments`: an array or list of length k, with categorical values.
+
+    returns: array of shape N of p-values for test of equality of the categorical values
+    '''
+
+    N_FEATURES = data.shape[0]
+    N_MEASURES = data.shape[1]
+    assert len(group_assignments) == N_MEASURES
+
+    # Create design matrix (predictors)
+    groups = numpy.array(list(set(group_assignments)))
+    predictors = numpy.empty(shape=(len(groups), N_MEASURES))
+    for i, group in enumerate(groups):
+        predictors[i] = (group_assignments == group)
+
+    # Design matrix of the restricted design (no group information)
+    restricted_predictors = numpy.ones(shape=(1,N_MEASURES))
+
+    fit = sm.OLS(data.T, predictors.T, missing='drop').fit()
+    restricted_fit = sm.OLS(data.T, restricted_predictors.T, missing='drop').fit()
+
+    def compare_f_test(fit, restricted):
+        # Work-around for statsmodels issue when the endog matrix is 2d
+        def ssr(fit):
+            return numpy.sum(fit.wresid * fit.wresid, axis=0)
+        ssr_full = ssr(fit)
+        ssr_restr = ssr(restricted)
+        df_full = fit.df_resid
+        df_restr = restricted.df_resid
+
+        df_diff = (df_restr - df_full)
+        f_value = (ssr_restr - ssr_full) / df_diff / ssr_full * df_full
+        p_value = scipy.stats.f.sf(f_value, df_diff, df_full)
+        return f_value, p_value, df_diff
+    f,ps,df = compare_f_test(fit, restricted_fit)
+
+    return ps
+
 def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
     '''
     Perform two-way ANOVA between two conditions, A and B
