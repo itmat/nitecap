@@ -445,9 +445,13 @@ def get_mpv_spreadsheets(user=None):
     spreadsheet_values = []
     for spreadsheet, df in zip(spreadsheets, dfs):
         possible_assignments =  spreadsheet.get_categorical_data_labels()[2:] # dropping Ignore and ID
+
         column_labels = spreadsheet.column_labels
+        # TODO: move group_assigments computation to Spreadsheet object
         group_assignments = [possible_assignments.index(label) for label in column_labels
                                 if label not in spreadsheet.NON_DATA_COLUMNS]
+        group_assignments = sorted(group_assignments) # Must sort since data is passed to the client sorted by assignments
+
         x_label_values = [i for i,label in enumerate(possible_assignments)]
         values = dict(
                      data=df[spreadsheet.get_mpv_data_columns()],
