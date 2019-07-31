@@ -186,9 +186,6 @@
                         <option value="SEM_points">SEM and Points</option>
                     </select>
                 </div>
-                <div class="form-inline">
-                    <label for="plot_x_label_style">Plot x-axis labels</label>
-                </div>
                 <div class="form-check">
                     <input class="form-check-input" id="include_zero_checkbox" type="checkbox" v-model="plot.config.include_zero">
                     <label class="form-check-label" for="include_zero_checkbox">Include zero</label>
@@ -391,15 +388,15 @@
             <div class='p-3 float-right'>
                 <button class="btn btn-primary" v-on:click="redrawFCPlot">Run FC Plot</button>
             </div>
-            <div class="form">
+            <div class="form-inline">
                 <label for="plot_style_select">Plot style</label>
-                <select id="plot_style_select" class="form-control form-control-sm" v-model="fc_plot.config.style">
+                <select id="plot_style_select" class="form-control form-control-sm w-auto" v-model="fc_plot.config.style">
                     <option value="mva">MvA</option>
                     <option value="rank">Rank-Rank</option>
                 </select>
 
             </div>
-            <div class="form">
+            <div class="form-inline">
                 <label for="pseudo_count_input">Pseudo Count:</label>
                 <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></text>
             </div>
@@ -593,10 +590,11 @@
                         x: plot_x_values, y: raw_y_values,
                         mode: 'markers',
                         marker: marker_settings,
-                        name: vm.descriptive_names[idx],
                         type: 'scatter',
-                        'marker': {color: spreadsheet_color},
-                        'line': {color: spreadsheet_color}
+                        marker: {color: spreadsheet_color},
+                        line: {color: spreadsheet_color},
+                        showlegend: false,
+                        name: ' ',
                     };
 
                     // Pick data and styling based off the plot_style_select value
@@ -628,6 +626,7 @@
                     } else if (plot_style === "points") {
                         trace.x = plot_x_values;
                         trace.y = raw_y_values;
+                        trace.text = spreadsheet.column_headers;
                     } else if (plot_style === "mean") {
                         trace.mode = "lines";
                         trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
@@ -635,6 +634,7 @@
                     } else if (plot_style === "mean_points") {
                         trace.x = plot_x_values;
                         trace.y = raw_y_values;
+                        trace.text = spreadsheet.column_headers;
                         traces.push({ // The mean value trace
                             x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
                             y: stats.means,
@@ -660,6 +660,7 @@
                             type: 'scatter',
                             mode: 'markers',
                             marker: {color: spreadsheet_color},
+                            text: spreadsheet.column_headers,
                         });
                     } else if (plot_style === "SEM") {
                         trace.mode = "lines";
@@ -678,6 +679,7 @@
                             showlegend: false,
                             mode: 'markers',
                             marker: {color: spreadsheet_color},
+                            text: spreadsheet.column_headers,
                         });
                     } else if (plot_style === "bars_points_std") {
                         let bar_trace = {
@@ -686,6 +688,7 @@
                             y: stats.means,
                             error_y: {type: 'data', array:stats.stds, visible:true},
                             showlegend: false,
+                            name: 'mean',
                         };
                         traces.push(bar_trace);
                         trace.marker.color = 'black';
@@ -695,6 +698,7 @@
                             x: stats.means.map(function(x,i) { return i;} ),
                             y: stats.means,
                             error_y: {type: 'data', array:stats.stds, visible:true},
+                            name: 'mean',
                         };
                         trace = bar_trace;
                     }
