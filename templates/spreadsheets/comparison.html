@@ -797,6 +797,7 @@
                     } else if (plot_style === "points") {
                         trace.x = plot_x_values;
                         trace.y = raw_y_values;
+                        trace.text = spreadsheet.column_headers;
                     } else if (plot_style === "mean") {
                         trace.mode = "lines";
                         trace.x = stats.means.map( function (x,i) {return i;} ); // Just 0,1,2,3...
@@ -804,6 +805,7 @@
                     } else if (plot_style === "mean_points") {
                         trace.x = plot_x_values;
                         trace.y = raw_y_values;
+                        trace.text = spreadsheet.column_headers;
                         traces.push({ // The mean value trace
                             x: stats.means.map( function (x,i) {return i;} ), // Just 0,1,2,3...
                             y: stats.means,
@@ -826,6 +828,7 @@
                             x: plot_x_values,
                             y: raw_y_values,
                             showlegend: false,
+                            text: spreadsheet.column_headers,
                             type: 'scatter',
                             mode: 'markers',
                             marker: {color: spreadsheet_color},
@@ -843,6 +846,7 @@
                         traces.push({
                             x: plot_x_values,
                             y: raw_y_values,
+                            text: spreadsheet.column_headers,
                             type: 'scatter',
                             showlegend: false,
                             mode: 'markers',
