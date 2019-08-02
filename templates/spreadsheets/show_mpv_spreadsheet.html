@@ -727,6 +727,7 @@
                             text: spreadsheet.column_headers,
                         });
                     } else if (plot_style === "bars_points_std") {
+                        trace.text = spreadsheet.column_headers;
                         let bar_trace = {
                             type: 'bar',
                             x: stats.means.map(function(x,i) { return i;} ),
