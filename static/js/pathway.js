@@ -61,10 +61,11 @@ function test_pathway(selected_set, pathway, background_list) {
             }
         });
     }
-    return hypergeometric_test(background_list.size,
+    let p = hypergeometric_test(background_list.size,
                     pathway.size,
                     selected_set.size,
                     intersection_size);
+    return {p: p, overlap: intersection_size};
 }
 
 function test_pathways(selected_set, background_list, pathways) {
@@ -73,7 +74,15 @@ function test_pathways(selected_set, background_list, pathways) {
 
     // Compute p values of each pathway
     let ps = pathways.map( function (pathway) {
-        return {name: pathway.name, url: pathway.url, p: test_pathway(selected_set, pathway.ids, background_list)};
+        let result = test_pathway(selected_set, pathway.ids, background_list);
+        return {name: pathway.name,
+                url: pathway.url,
+                p: result.p,
+                overlap: result.overlap,
+                background_size: background_list.size,
+                selected_set_size: selected_set.size,
+                pathway_size: pathway.ids.size,
+        };
     });
     return ps;
 }

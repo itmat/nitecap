@@ -432,13 +432,15 @@
                     <div>
                         <table>
                             <thead>
-                            <tr> <th scope="col">Name</th> <th scope="col">p-value</th> </tr>
+                            <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> </tr>
                             </thead>
                             <tbody>
                                 <template v-for="pathway in pathway_analysis.top_pathways">
                                     <tr>
                                         <td><a v-bind:href="pathway.url">{{ pathway.name }}</a></td>
                                         <td>{{util.formatNum(pathway.p, 4)}} </td>
+                                        <td>{{pathway.overlap}} </td>
+                                        <td>{{pathway.pathway_size}} </td>
                                     </tr>
                                 </template>
                             </tbody>
