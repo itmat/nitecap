@@ -951,7 +951,7 @@
 
             runPathwayAnalysis: function() {
                 let vm = this;
-                let selected_indexes = vm.sort_order.slice(0,vm.selected_row);
+                let selected_indexes = vm.sort_order.slice(0,vm.selected_row+1);
                 selected_indexes = selected_indexes.filter( function(i) { return !vm.filtered[i]; });
                 let id_set = selected_indexes.map( function(i) {
                     return vm.labels[i];

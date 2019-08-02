@@ -10,7 +10,7 @@ function factorial(k) {
 
 let log_factorials = {};
 function log_factorial(k) {
-    if (k <= 1) { return 1; }
+    if (k <= 1) { return 0; }
     if (k < 100) {
         if (log_factorials[k] === undefined) { log_factorials[k] = log_factorial(k-1) + Math.log(k); }
         return log_factorials[k];
@@ -36,27 +36,40 @@ function hypergeometric_prob(background_size, set_size, sample_size, intersectio
 function hypergeometric_test(background_size, set_size, sample_size, intersection_size) {
     // Probability of getting at least `intersection_size` under random sampling
     let p = 0;
-    for (let k = intersection_size; k <= sample_size; k++) {
+    let max_intersection = Math.min(set_size, sample_size);
+    for (let k = intersection_size; k <= max_intersection; k++) {
         p += hypergeometric_prob(background_size, set_size, sample_size, k);
     }
     return p;
 }
 
 function test_pathway(selected_set, pathway, background_list) {
+    // Compute size of overlap of pathway and the selected set
     let intersection_size = 0;
-    selected_set.forEach(function(id) {
-        if (pathway.has(id)) {
-            intersection_size += 1;
-        }
-    });
-    return hypergeometric_test(background_list.length,
+    if (selected_set.size < pathway.size) {
+        // Pick whether selected_set or pathway should be used as the reference
+        // to compare to. Faster to iterate over the smaller one
+        selected_set.forEach(function(id) {
+            if (pathway.has(id)) {
+                intersection_size += 1;
+            }
+        });
+    } else {
+        pathway.forEach(function(id) {
+            if (selected_set.has(id)) {
+                intersection_size += 1;
+            }
+        });
+    }
+    return hypergeometric_test(background_list.size,
                     pathway.size,
-                    selected_set.length,
+                    selected_set.size,
                     intersection_size);
 }
 
 function test_pathways(selected_set, background_list, pathways) {
-    selected_set = selected_set.map(function(id) {return id.toUpperCase();});
+    selected_set = new Set(selected_set.map(function(id) {return id.toUpperCase();}));
+    background_list = new Set(background_list.map(function(id) {return id.toUpperCase();}));
 
     // Compute p values of each pathway
     let ps = pathways.map( function (pathway) {
