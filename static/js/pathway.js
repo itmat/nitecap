@@ -8,16 +8,13 @@ function factorial(k) {
     return factorials[k];
 }
 
-let log_factorials = {};
+let log_factorials = [0,0];
 function log_factorial(k) {
     if (k <= 1) { return 0; }
-    if (k < 100) {
-        if (log_factorials[k] === undefined) { log_factorials[k] = log_factorial(k-1) + Math.log(k); }
-        return log_factorials[k];
-    }
     if (log_factorials[k] === undefined) {
-        // Stirlings approximation for large k
-        log_factorials[k] = k * Math.log(k) - k + Math.log(2 * Math.PI * k) / 2;
+        for(let i = log_factorials.length; i <= k; i++) {
+            log_factorials[i] = log_factorials[i-1] + Math.log(i);
+        }
     }
     return log_factorials[k];
 }
@@ -61,6 +58,7 @@ function test_pathway(selected_set, pathway, background_list) {
             }
         });
     }
+
     let p = hypergeometric_test(background_list.size,
                     pathway.size,
                     selected_set.size,
