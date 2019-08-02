@@ -45,17 +45,19 @@ function hypergeometric_test(background_size, set_size, sample_size, intersectio
 function test_pathway(selected_set, pathway, background_list) {
     let intersection_size = 0;
     selected_set.forEach(function(id) {
-        if (pathway.indexOf(id.toUpperCase()) >= 0) {
+        if (pathway.has(id)) {
             intersection_size += 1;
         }
     });
     return hypergeometric_test(background_list.length,
-                    pathway.length,
+                    pathway.size,
                     selected_set.length,
                     intersection_size);
 }
 
 function test_pathways(selected_set, background_list, pathways) {
+    selected_set = selected_set.map(function(id) {return id.toUpperCase();});
+
     // Compute p values of each pathway
     let ps = pathways.map( function (pathway) {
         return {name: pathway.name, url: pathway.url, p: test_pathway(selected_set, pathway.ids, background_list)};
@@ -64,14 +66,14 @@ function test_pathways(selected_set, background_list, pathways) {
 }
 
 function restrict_pathways(pathways, background_list) {
-    background_list = background_list.map( function( id) { return id.toUpperCase(); });
+    background_list = new Set(background_list.map( function( id) { return id.toUpperCase(); }));
     // Restrict pathways to those ids that appear in our background list
     return pathways.map( function(pathway) {
         return {name: pathway.name,
                 url: pathway.url,
-                ids: pathway.ids.filter( function(id) {
-                        return background_list.indexOf(id) >= 0;
-                    })
+                ids: new Set(pathway.ids.filter( function(id) {
+                        return background_list.has(id);
+                    }))
                 };
     });
 }
