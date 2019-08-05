@@ -449,6 +449,45 @@
                 </div>
             </div>
         </div>
+
+        <div id="ComparisonCard" class="col-auto">
+            <div class="card">
+                <div class="card-header">
+                    Create Comparison
+                    <a id="comapreHelp" class="text-primary help-pointer ml-3"
+                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                       title="Compare Help"
+                       data-content="Create comparisons of specific conditions.">
+                        <i class="fas fa-info-circle"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="first_compare_selector">
+                        First group for comparison:
+                        </label>
+                        <select id="first_compare_selector" v-model="comparison_box.first_group">
+                            <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                {{ group.name }}
+                            </option>
+                        </select>
+
+                        <label for="second_compare_selector">
+                        Second group for comparison:
+                        </label>
+                        <select id="second_compare_selector" v-model="comparison_box.second_group">
+                            <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                {{ group.name }}
+                            </option>
+                        </select>
+
+                        <button type="button" class="btn btn-primary" v-on:click="createComparison">
+                            Create Comparison
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MODALS -->
@@ -560,6 +599,7 @@
             search_value: '',
 
             stats_list: stats_list,
+            stats_vars_order: ['p', 'q', 'AFC'], // Order in which to display stats sub-variables
 
             stats: {
             },
@@ -584,6 +624,11 @@
 
             pathway_analysis: {
                 top_pathways: [],
+            },
+
+            comparison_box: {
+                first_group: '',
+                second_group: '',
             },
         },
 
@@ -967,6 +1012,57 @@
                 }).slice(0,10);
             },
 
+            createComparison: function() {
+                let vm = this;
+                let spreadsheet = vm.spreadsheets[0];
+                let first_group = vm.groups[vm.comparison_box.first_group];
+                let second_group = vm.groups[vm.comparison_box.second_group];
+                let comparison_name = first_group.name + ' v ' + second_group.name;
+
+                // TODO: should we use THIS pseudo-count or another one?
+                let pseudo_count = vm.fc_plot.config.pseudo_count;
+
+                function column_in_group(col_index, group) {
+                    let in_group = true;
+                    group.variables.forEach(function(variable) {
+                        if (spreadsheet.group_membership[variable.variable][col_index] != variable.number) {
+                            in_group = false;
+                        }
+                    });
+                    return in_group;
+                }
+
+                let compute_mean = function(group) {
+                    return spreadsheet.data.map( function(row) {
+                        let sum = 0;
+                        let count = 0
+                        row.forEach(function(x,i) {
+                            if (column_in_group(i, group)) {
+                                sum += x;
+                                count += 1;
+                            }
+                        });
+                        return sum / count;
+                    });
+                };
+                let means1 = compute_mean(first_group);
+                let means2 = compute_mean(second_group);
+
+                let log_afc = means1.map(function(x,i) { // Log2 adjusted fold change using given pseudo_count
+                    return Math.log2((means1[i] + pseudo_count) / (means2[i] + pseudo_count));
+                });
+
+                // TODO: this needs to create a NEW fold-change for each comparison run
+                vm.stats[comparison_name + " AFC"] = log_afc;
+
+                vm.stats_list.push({
+                     name: comparison_name,
+                     value: comparison_name + " AFC",
+                     description: "Comparison of group '" + first_group.name + "' and '" + second_group.name + "'",
+                     per_spreadsheet: false,
+                     num_spreadsheets: 'any',
+                });
+            },
         },
 
         computed: {
@@ -1078,9 +1174,7 @@
                 let value = this.sort_by.stat.value;
 
                 if (typeof value === 'string') {
-                    // No inherent q-value for this sort value
-                    // we default to Nitecap of primary spreadsheet
-                    return this.spreadsheets[0] ? this.spreadsheets[0].ps : [];
+                    return null;
                 }
 
                 if (this.sort_by.spreadsheet_num !== undefined) {
@@ -1284,6 +1378,36 @@
             pathways: function () {
                 // Restricts pathways to the set of genes we have in our file
                 return restrict_pathways(PATHWAYS, this.labels);
+            },
+
+            groups: function () {
+                // List of possible groups to consider
+                // Eg: "WT Female" or just "WT" including both male and female
+                let vm = this;
+                if (vm.spreadsheets.length == 0) {  return []; }
+
+                let categories = vm.spreadsheets[0].categories;
+                let groups = [];
+                categories.forEach(function(category) {
+                    let values = category.values.map(function(value, idx) {
+                        return {
+                            name: value.name,
+                            variables: [{variable: category.variable, value: value, number: idx}],
+                        };
+                    });
+                    let new_groups = values;
+                    values.forEach(function(value) {
+                        let with_new_value = groups.map( function(group) {
+                            return {
+                                name: group.name + " " + value,
+                                variables: group.variables.concat([{variable: category.variable, value: value, number: idx}]),
+                            };
+                        } );
+                        new_groups = new_groups.concat(with_new_value);
+                    });
+                    groups = groups.concat(new_groups);
+                });
+                return groups;
             },
         },
 
