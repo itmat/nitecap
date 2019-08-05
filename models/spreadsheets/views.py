@@ -439,6 +439,7 @@ def get_mpv_spreadsheets(user=None):
                      data=df[spreadsheet.get_mpv_data_columns()],
                      categories=spreadsheet.categorical_data,
                      group_assignments=spreadsheet.group_assignments,
+                     group_membership=spreadsheet.group_membership,
                      possible_assignments=spreadsheet.possible_assignments,
                      x_label_values=x_label_values,
                      anova_ps=df['anova_p'],

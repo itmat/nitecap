@@ -217,9 +217,18 @@ class Spreadsheet(db.Model):
         if self.categorical_data:
             # Categorical / MPV spreadsheet
             self.possible_assignments = self.get_categorical_data_labels()[2:] # dropping Ignore and ID
-            group_assignments = [self.possible_assignments.index(label) for label in column_labels
-                                    if label not in self.NON_DATA_COLUMNS]
-            self.group_assignments = sorted(group_assignments) # Must sort since data is passed to the client sorted by assignments
+            data_columns = self.get_data_columns(indexes=True)
+            self.group_assignments = [self.possible_assignments.index(column_labels[col]) for col in data_columns]
+
+            # Generate the group-membership data for each category variable
+            categorical_data = json.loads(self.categorical_data)
+            category_labels = [{'variable': category['variable'],
+                                 'labels':  [value['name'] for value in category['values']]}
+                                for category in categorical_data]
+            column_labels = [column_labels[col].split(',') for col in data_columns]
+            self.group_membership = [{'variable': category['variable'],
+                                        'membership': [category['labels'].index(labels[num]) for labels in column_labels]}
+                                        for num, category in enumerate(category_labels)]
             return
 
         # column labels saved as comma delimited string in db
@@ -246,12 +255,24 @@ class Spreadsheet(db.Model):
         data_columns = self.get_data_columns()
         return self.df[data_columns]
 
-    def get_data_columns(self, by_day=True):
+    def get_data_columns(self, by_day=True, indexes=False):
+        ''' Returns list of data columns
+
+        If indexes=True, then the results are the integer indexes into the DF corresponding
+        to the data columns, otherwise defaults to giving the strings of the column names.
+        For Nitecap timeseries data, by_day=True data columns are ordered by day and time,
+        if by_day=False, then they are ordered by time-of-day alone, grouping across days.
+        '''
         if self.categorical_data:
-            return self.get_mpv_data_columns()
+            return self.get_mpv_data_columns(indexes=indexes)
         # Order the columns by chronological order
-        filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
-                            if label not in Spreadsheet.NON_DATA_COLUMNS]
+        if not indexes:
+            filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
+                                if label not in Spreadsheet.NON_DATA_COLUMNS]
+        else:
+            filtered_columns = [(index, label) for (index, column), label in zip(enumerate(self.df.columns), self.column_labels)
+                                if label not in Spreadsheet.NON_DATA_COLUMNS]
+
         if by_day:
             sorter = lambda col_label: self.label_to_daytime(col_label[1])
         else:
@@ -259,11 +280,15 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
 
-    def get_mpv_data_columns(self):
+    def get_mpv_data_columns(self, indexes=False):
         # Order the columns by group
         possible_labels = self.get_categorical_data_labels()
-        filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
-                            if label not in Spreadsheet.NON_DATA_COLUMNS]
+        if not indexes:
+            filtered_columns = [(column, label) for column, label in zip(self.df.columns, self.column_labels)
+                                if label not in Spreadsheet.NON_DATA_COLUMNS]
+        else:
+            filtered_columns = [(index, label) for (index, column), label in zip(enumerate(self.df.columns), self.column_labels)
+                                if label not in Spreadsheet.NON_DATA_COLUMNS]
         sorter = lambda col_label: possible_labels.index(col_label[1])
         ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
