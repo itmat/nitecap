@@ -1005,7 +1005,6 @@
                 // This solves the problem where q-values are null and being sorted to the front of the list particulary
                 // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
                 let vm = this;
-                let sorter = null;
                 let value = null;
                 let secondary_value = null;
 
@@ -1030,26 +1029,22 @@
                 }
 
                 if (vm.sort_by.spreadsheet_num !== undefined) {
-                    sorter = function (i,j) {
-                        let a = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][i] &&
-                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i];
-                        let b = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][j] &&
-                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j];
-                        return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
-                                       b ? b * sort_direction : b,
-                                       i, j);
-                    };
+                    if (vm.spreadsheets.length > 0) {
+                        value = vm.spreadsheets[vm.sort_by.spreadsheet_num][value];
+                        secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value];
+                    }
                 } else {
-                    sorter = function (i,j) {
-                        let a = vm.stats[secondary_value][i]
-                                    && vm.stats[value][i];
-                        let b = vm.stats[secondary_value][j]
-                                    && vm.stats[value][j];
-                        return compare(a ? a * sort_direction : b, // multiply by +/- 1 but not if null
-                                       b ? b * sort_direction : b,
-                                       i, j);
-                    };
+                    value = vm.stats[value];
+                    secondary_value = vm.stats[secondary_value];
                 }
+
+                let sorter = function (i,j) {
+                    let a = secondary_value[i] && value[i];
+                    let b = secondary_value[j] && value[j];
+                    return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
+                                   b ? b * sort_direction : b,
+                                   i, j);
+                };
 
                 return sorter;
             },
