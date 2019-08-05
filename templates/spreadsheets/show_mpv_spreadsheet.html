@@ -407,7 +407,7 @@
                     </div>
                     <div class="form-inline">
                         <label for="pseudo_count_input">Pseudo Count:</label>
-                        <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></text>
+                        <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></input>
                     </div>
                 </div>
             </div>
@@ -484,6 +484,15 @@
                         <button type="button" class="btn btn-primary" v-on:click="createComparison">
                             Create Comparison
                         </button>
+
+                        <template v-for="(comparison, i) in comparisons">
+                            <h4>{{comparison.name}}</h4>
+                                <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
+                                <input v-bind:id="'comparison_pseudo_count_input'+i"
+                                       type="number"
+                                        v-model.lazy.number="comparison.pseudo_count">
+                                </input>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -605,6 +614,8 @@
             },
 
             labels: [],
+
+            comparisons: [],
 
             plot: {
                 config: {
@@ -1020,7 +1031,7 @@
                 let comparison_name = first_group.name + ' v ' + second_group.name;
 
                 // TODO: should we use THIS pseudo-count or another one?
-                let pseudo_count = vm.fc_plot.config.pseudo_count;
+                let pseudo_count = 1;
 
                 function column_in_group(col_index, group) {
                     let in_group = true;
@@ -1048,9 +1059,12 @@
                 let means1 = compute_mean(first_group);
                 let means2 = compute_mean(second_group);
 
-                let log_afc = means1.map(function(x,i) { // Log2 adjusted fold change using given pseudo_count
-                    return Math.log2((means1[i] + pseudo_count) / (means2[i] + pseudo_count));
-                });
+                function compute_log_afc(pseudo_count) {
+                    return means1.map(function(x,i) { // Log2 adjusted fold change using given pseudo_count
+                        return Math.log2((means1[i] + pseudo_count) / (means2[i] + pseudo_count));
+                    });
+                };
+                let log_afc = compute_log_afc(pseudo_count);
 
                 // TODO: this needs to create a NEW fold-change for each comparison run
                 vm.stats[comparison_name + " AFC"] = log_afc;
@@ -1062,6 +1076,19 @@
                      per_spreadsheet: false,
                      num_spreadsheets: 'any',
                 });
+
+                let comparison = {
+                    name: comparison_name,
+                    log_AFC: log_afc,
+                    pseudo_count: 1,
+                };
+                vm.comparisons.push(comparison);
+                // Must recalculate the statistic if we update psuedo_count
+                // I don't see any way to make log_AFC a computed property since it is created dynamically, so we watch instead
+                vm.$watch(function(){return comparison.pseudo_count},
+                          function(pseudo_count) {
+                            comparison.log_AFC = compute_log_afc(pseudo_count);
+                        });
             },
         },
 
@@ -1105,7 +1132,6 @@
                 // This solves the problem where q-values are null and being sorted to the front of the list particulary
                 // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
                 let vm = this;
-                let sorter = null;
                 let value = null;
                 let secondary_value = null;
 
@@ -1130,26 +1156,22 @@
                 }
 
                 if (vm.sort_by.spreadsheet_num !== undefined) {
-                    sorter = function (i,j) {
-                        let a = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][i] &&
-                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][i];
-                        let b = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value][j] &&
-                                    vm.spreadsheets[vm.sort_by.spreadsheet_num][value][j];
-                        return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
-                                       b ? b * sort_direction : b,
-                                       i, j);
-                    };
+                    if (vm.spreadsheets.length > 0) {
+                        value = vm.spreadsheets[vm.sort_by.spreadsheet_num][value];
+                        secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value];
+                    }
                 } else {
-                    sorter = function (i,j) {
-                        let a = vm.stats[secondary_value][i]
-                                    && vm.stats[value][i];
-                        let b = vm.stats[secondary_value][j]
-                                    && vm.stats[value][j];
-                        return compare(a ? a * sort_direction : b, // multiply by +/- 1 but not if null
-                                       b ? b * sort_direction : b,
-                                       i, j);
-                    };
+                    value = vm.stats[value];
+                    secondary_value = vm.stats[secondary_value];
                 }
+
+                let sorter = function (i,j) {
+                    let a = secondary_value[i] && value[i];
+                    let b = secondary_value[j] && value[j];
+                    return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
+                                   b ? b * sort_direction : b,
+                                   i, j);
+                };
 
                 return sorter;
             },
