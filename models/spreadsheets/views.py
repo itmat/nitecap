@@ -306,11 +306,6 @@ def show_spreadsheet(spreadsheet_id, user=None):
         if not spreadsheet:
             return access_not_permitted(compare.__name__, user, spreadsheet_id)
 
-        # Populate
-        spreadsheet.init_on_load()
-
-        spreadsheets.append(spreadsheet)
-
     #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     #if errors:
     #    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
@@ -348,11 +343,6 @@ def show_mpv_spreadsheet(spreadsheet_id, user=None):
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
             return access_not_permitted(compare.__name__, user, spreadsheet_id)
-
-        # Populate
-        spreadsheet.init_on_load()
-
-        spreadsheets.append(spreadsheet)
 
     return render_template('spreadsheets/show_mpv_spreadsheet.html',
                            spreadsheet_ids=[int(ID) for ID in spreadsheet_ids])
@@ -786,11 +776,6 @@ def compare(user=None):
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
             return access_not_permitted(compare.__name__, user, spreadsheet_id)
-
-        # Populate
-        spreadsheet.init_on_load()
-
-        spreadsheets.append(spreadsheet)
 
     #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     #if errors:
