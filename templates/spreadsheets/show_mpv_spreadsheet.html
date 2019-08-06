@@ -1060,14 +1060,15 @@
                 let means2 = compute_mean(second_group);
 
                 function compute_log_afc(pseudo_count) {
-                    return means1.map(function(x,i) { // Log2 adjusted fold change using given pseudo_count
+                    let log_afc = means1.map(function(x,i) { // Log2 adjusted fold change using given pseudo_count
                         return Math.log2((means1[i] + pseudo_count) / (means2[i] + pseudo_count));
                     });
+                    return log_afc;
                 };
                 let log_afc = compute_log_afc(pseudo_count);
 
                 // TODO: this needs to create a NEW fold-change for each comparison run
-                vm.stats[comparison_name + " AFC"] = log_afc;
+                vm.$set(vm.stats, comparison_name + " AFC", log_afc);
 
                 vm.stats_list.push({
                      name: comparison_name,
@@ -1087,8 +1088,10 @@
                 // Must recalculate the statistic if we update psuedo_count
                 // I don't see any way to make log_AFC a computed property since it is created dynamically, so we watch instead
                 vm.$watch(function(){return comparison.pseudo_count},
-                          function(pseudo_count) {
+                          function(pseudo_count, old) {
                             comparison.log_AFC = compute_log_afc(pseudo_count);
+                            // TODO: this is a kinda hacky approach, since we're doubling up the fold-change information
+                            vm.stats[comparison_name + " AFC"] = comparison.log_AFC;
                           });
             },
         },
