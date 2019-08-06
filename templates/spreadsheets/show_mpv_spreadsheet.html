@@ -634,6 +634,7 @@
             },
 
             pathway_analysis: {
+                pathways: [],
                 top_pathways: [],
             },
 
@@ -1018,9 +1019,10 @@
                 let background_set = vm.labels;
 
                 let analysis =  test_pathways(id_set, background_set, vm.pathways);
-                vm.pathway_analysis.top_pathways = analysis.sort( function(p1, p2) {
+                vm.pathway_analysis.pathways = analysis.sort( function(p1, p2) {
                     return p1.p - p2.p;
-                }).slice(0,10);
+                });
+                vm.pathway_analysis.top_pathways = vm.pathway_analysis.pathways.slice(0,10);
             },
 
             createComparison: function() {
