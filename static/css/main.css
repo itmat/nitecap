@@ -189,13 +189,18 @@ body {
 }
 
 /* stats box */
-.selected-sort-cell {
+.selected-stat-cell {
     background-color: #007bff;
     color: #FFF;
+    min-width: 8em;
 }
 
 .stats-box td {
     cursor: pointer;
+}
+
+.stat-cell {
+    min-width: 8em;
 }
 
 #spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {

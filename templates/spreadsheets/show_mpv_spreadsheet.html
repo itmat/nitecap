@@ -230,7 +230,7 @@
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value] != null"
                                                     v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
-                                                    v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-sort-cell' : ''"
+                                                    v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value][row_index])">
                                                     {{util.formatNum(spreadsheet[stat.value][row_index], 4)}}
                                                 </td>
@@ -243,7 +243,7 @@
                                             <td v-if="stats[stat.value] != null"
                                                 v-bind:title="String(stats[stat.value][row_index])"
                                                 v-on:click="sort_by = {stat:stat}"
-                                                v-bind:class="stat === sort_by.stat ? 'selected-sort-cell' : ''"
+                                                v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 {{util.formatNum(stats[stat.value][row_index], 4)}}
                                             </td>
@@ -258,7 +258,7 @@
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value.p] != null"
                                                     v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
-                                                    v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-sort-cell' : ''"
+                                                    v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value.p][row_index])">
                                                     p: {{util.formatNum(spreadsheet[stat.value.p][row_index], 4)}}
                                                 </td>
@@ -271,7 +271,7 @@
                                             <td v-if="stats[stat.value.p] != null"
                                                 v-bind:title="String(stats[stat.value.p][row_index])"
                                                 v-on:click="sort_by = {stat:stat}"
-                                                v-bind:class="stat === sort_by.stat ? 'selected-sort-cell' : ''"
+                                                v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 p: {{util.formatNum(stats[stat.value.p][row_index], 4)}}
                                             </td>
@@ -287,7 +287,7 @@
                                         <template v-for="(spreadsheet, i) in spreadsheets">
                                             <td v-if="spreadsheet[stat.value.q] != null"
                                                 v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
-                                                v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-sort-cell' : ''"
+                                                v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:title="String(spreadsheet[stat.value.q][row_index])">
                                                 q: {{util.formatNum(spreadsheet[stat.value.q][row_index], 4)}}
                                             </td>
@@ -300,7 +300,7 @@
                                         <td v-if="stats[stat.value.q] != null"
                                             v-bind:title="String(stats[stat.value.q][row_index])"
                                             v-on:click="sort_by = {stat:stat}"
-                                            v-bind:class="stat === sort_by.stat ? 'selected-sort-cell' : ''"
+                                            v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                             v-bind:colspan="spreadsheets.length">
                                             q: {{util.formatNum(stats[stat.value.q][row_index], 4)}}
                                         </td>
@@ -1083,12 +1083,13 @@
                     pseudo_count: 1,
                 };
                 vm.comparisons.push(comparison);
+
                 // Must recalculate the statistic if we update psuedo_count
                 // I don't see any way to make log_AFC a computed property since it is created dynamically, so we watch instead
                 vm.$watch(function(){return comparison.pseudo_count},
                           function(pseudo_count) {
                             comparison.log_AFC = compute_log_afc(pseudo_count);
-                        });
+                          });
             },
         },
 
