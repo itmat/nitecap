@@ -203,6 +203,10 @@ body {
     min-width: 8em;
 }
 
+.stat-cell:hover {
+    background-color: #EEE;
+}
+
 #spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {
     font-family: "Font Awesome 5 Free";
     content: "\f14a";
