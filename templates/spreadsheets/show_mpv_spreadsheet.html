@@ -7,7 +7,6 @@
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 
 <script>
-
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -440,7 +439,7 @@
                             <tbody>
                                 <template v-for="pathway in pathway_analysis.top_pathways">
                                     <tr>
-                                        <td><a v-bind:href="pathway.url">{{ pathway.name }}</a></td>
+                                        <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,MAX_PATHWAY_NAME_LENGTH) }}</a></td>
                                         <td>{{util.formatNum(pathway.p, 4)}} </td>
                                         <td>{{pathway.overlap}} </td>
                                         <td>{{pathway.pathway_size}} </td>
@@ -609,6 +608,8 @@
             sort_by: {stat: stats_list[0], spreadsheet_num: 0},
 
             search_value: '',
+
+            MAX_PATHWAY_NAME_LENGTH: 45,
 
             stats_list: stats_list,
             stats_vars_order: ['p', 'q', 'AFC'], // Order in which to display stats sub-variables
