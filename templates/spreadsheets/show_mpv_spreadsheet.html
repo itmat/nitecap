@@ -426,8 +426,11 @@
                 </div>
                 <div class="card-body">
                     <span id="fc_plot" style="width:625px;height:525px;vertical-align: top"></span>
-                    <div class='p-3 float-right'>
-                        <button class="btn btn-primary" v-on:click="runPathwayAnalysis">Run Pathway Analysis</button>
+                    <div class="form-check form-inline">
+                        <input class="form-check-input" id="run_pathway_continuous" type="checkbox" v-model="pathway_analysis.config.continuous">
+                        <label class="form-check-label" for="run_pathway_continuous">Update continuously</label>
+
+                        <button class="btn btn-primary m-3" v-on:click="runPathwayAnalysis">Run Pathway Analysis</button>
                     </div>
                     <div>
                         <table class="table table-sm">
@@ -634,6 +637,9 @@
             },
 
             pathway_analysis: {
+                config: {
+                    continuous: false,
+                },
                 pathways: [],
                 top_pathways: [],
             },
@@ -1450,7 +1456,10 @@
         },
 
         watch: {
-            row_index: "onRowChange",
+            row_index: ["onRowChange",
+                function () {
+                    if (app.pathway_analysis.config.continuous) { app.runPathwayAnalysis();}
+                }],
 
             "plot.config": {
                 handler: "redrawPlot",
@@ -1460,6 +1469,12 @@
             "fc_plot.config": {
                 handler: "redrawFCPlot",
                 deep: true
+            },
+
+            sort_order: function() {
+                if (app.pathway_analysis.config.continuous) {
+                    app.runPathwayAnalysis();
+                }
             },
         },
     });
