@@ -1411,23 +1411,33 @@
             groups: function () {
                 // List of possible groups to consider
                 // Eg: "WT Female" or just "WT" including both male and female
+                // And stores their "variables" i.e. what values they require for each variable
+                // So eg: for "WT Female" want [{variable: "Genotype", value: "WT", number: 0}, {variable: "Gender", value: "Female", number: 0}]
+                // where number is the index of the value inside that variable (eg: "Genotype" is ["WT", "KO"] then WT has number 0, KO number)
                 let vm = this;
                 if (vm.spreadsheets.length == 0) {  return []; }
 
                 let categories = vm.spreadsheets[0].categories;
                 let groups = [];
                 categories.forEach(function(category) {
+                    // Create the 'top-level' groups for this category
+                    // I.e. Genotype = "WT" (gender unspecified)
                     let values = category.values.map(function(value, idx) {
                         return {
                             name: value.name,
                             variables: [{variable: category.variable, value: value, number: idx}],
                         };
                     });
-                    let new_groups = values;
-                    values.forEach(function(value) {
+                    let new_groups = values; // The groups we are adding from this iteration
+
+                    values.forEach(function(value, idx) {
+                        // Now add lower-level groups for this category
+                        // Eg: if we already have the top-level group Gender=Female, then we add
+                        //  a group that is Gender=Female, Genotype=WT
+                        // We generate these based off all the groups already added
                         let with_new_value = groups.map( function(group) {
                             return {
-                                name: group.name + " " + value,
+                                name: group.name + " " + value.name,
                                 variables: group.variables.concat([{variable: category.variable, value: value, number: idx}]),
                             };
                         } );

@@ -225,7 +225,7 @@ class Spreadsheet(db.Model):
             category_labels = [{'variable': category['variable'],
                                  'labels':  [value['name'] for value in category['values']]}
                                 for category in categorical_data]
-            column_labels = [column_labels[col].split(',') for col in data_columns]
+            column_labels = [column_labels[col].split(' ') for col in data_columns]
             self.group_membership = {category['variable']: [category['labels'].index(labels[num]) for labels in column_labels]
                                         for num, category in enumerate(category_labels)}
             return
