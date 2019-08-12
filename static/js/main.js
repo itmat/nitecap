@@ -527,7 +527,7 @@ function guessColumnLabels(columns, days, timepoints) {
 }
 
 function getLabelOptions(days, timepoints) {
-    let options = ["Ignore", "ID", "Additional Stat"];
+    let options = ["Ignore", "ID", "Stat"];
     for(let i = 0; i < days; i++) {
         for(let j = 0; j < timepoints; j++) {
             options.push("Day" + (i+1) + " Timepoint" + (j+1));
@@ -535,3 +535,17 @@ function getLabelOptions(days, timepoints) {
     }
     return options;
 };
+
+// Polyfill for Object.entries for IE support
+// From MDN https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries
+if (!Object.entries) {
+  Object.entries = function( obj ){
+    var ownProps = Object.keys( obj ),
+        i = ownProps.length,
+        resArray = new Array(i); // preallocate the Array
+    while (i--)
+      resArray[i] = [ownProps[i], obj[ownProps[i]]];
+
+    return resArray;
+  };
+}

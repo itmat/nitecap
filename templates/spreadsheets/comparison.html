@@ -60,6 +60,22 @@
         app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
         app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
 
+        // Update stats_list with the Additional Stat Columns of the spreadsheets
+        app.spreadsheets.forEach(function(spreadsheet) {
+            Object.entries(spreadsheet.stat_values).forEach(function(entry) {
+                let key = entry[0];
+                let value = entry[1];
+                app.stats[key] = value;
+                app.stats_list.push({
+                    name: key,
+                    value: key,
+                    description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
+                    per_spreadsheet: false,
+                });
+            });
+        });
+
+
         function makeCoarseSlider(element, start_value, maximum) {
             element.slider({
                 orientation: "horizontal",

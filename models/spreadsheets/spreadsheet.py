@@ -277,6 +277,8 @@ class Spreadsheet(db.Model):
             sorter = lambda col_label: self.label_to_daytime(col_label[1])
         else:
             sorter = lambda col_label: self.label_to_daytime(col_label[1], False)
+        print("filtered_columns:", filtered_columns)
+        print([self.label_to_daytime(col[1]) for col in filtered_columns])
         ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
 
