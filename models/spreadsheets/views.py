@@ -400,6 +400,7 @@ def get_spreadsheets(user=None):
                      column_headers=spreadsheet.get_data_columns(),
                      jtk_ps=None,
                      jtk_qs=None,
+                     stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                     )
         spreadsheet_values.append(values)
 
@@ -453,6 +454,7 @@ def get_mpv_spreadsheets(user=None):
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
                      column_headers=spreadsheet.get_data_columns(),
+                     stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                     )
         spreadsheet_values.append(values)
 

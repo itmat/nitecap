@@ -207,6 +207,22 @@ body {
     background-color: #EEE;
 }
 
+/* Top Pathways */
+
+.swap-list-move {
+  transition: transform 0.3s;
+}
+
+.swap-list-item-enter, .swap-list-item-leave-to {
+    transition: transform 2.3s;
+    transform: translateY(100px);
+}
+
+.swap-list-item-leave-active {
+    position:absolute;
+}
+
+
 #spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {
     font-family: "Font Awesome 5 Free";
     content: "\f14a";

@@ -527,7 +527,7 @@ function guessColumnLabels(columns, days, timepoints) {
 }
 
 function getLabelOptions(days, timepoints) {
-    let options = ["Ignore", "ID"];
+    let options = ["Ignore", "ID", "Additional Stat"];
     for(let i = 0; i < days; i++) {
         for(let j = 0; j < timepoints; j++) {
             options.push("Day" + (i+1) + " Timepoint" + (j+1));

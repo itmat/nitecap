@@ -60,7 +60,8 @@ class Spreadsheet(db.Model):
 
     ID_COLUMN = "ID"
     IGNORE_COLUMN = "Ignore"
-    NON_DATA_COLUMNS = [ID_COLUMN, IGNORE_COLUMN]
+    STAT_COLUMN = "Stat"
+    NON_DATA_COLUMNS = [IGNORE_COLUMN, ID_COLUMN, STAT_COLUMN]
     UPLOADED_SPREADSHEET_FILE_PART = "uploaded_spreadsheet"
     PROCESSED_SPREADSHEET_FILE_PART = "processed_spreadsheet"
     PROCESSED_SPREADSHEET_FILE_EXT =  "parquet"
@@ -216,7 +217,7 @@ class Spreadsheet(db.Model):
     def identify_columns(self, column_labels):
         if self.categorical_data:
             # Categorical / MPV spreadsheet
-            self.possible_assignments = self.get_categorical_data_labels()[2:] # dropping Ignore and ID
+            self.possible_assignments = self.get_categorical_data_labels()[len(Spreadsheet.NON_DATA_COLUMNS):] # dropping non-data columns
             data_columns = self.get_data_columns(indexes=True)
             self.group_assignments = [self.possible_assignments.index(column_labels[col]) for col in data_columns]
 
@@ -394,6 +395,12 @@ class Spreadsheet(db.Model):
         self.df["anova_q"] = qs
         self.update_dataframe()
 
+    def get_stat_values(self):
+        ''' Return dictionary of extra 'stat' values provided as STAT_COLUMNS in the uploaded spreadsheet '''
+        stat_columns = [column for column, label in zip(self.df.columns, self.column_labels)
+                            if label == Spreadsheet.STAT_COLUMN]
+        return self.df[stat_columns]
+
     @timeit
     def update_dataframe(self):
         if self.file_path.endswith("txt"):
@@ -545,9 +552,9 @@ class Spreadsheet(db.Model):
 
         # If days or timepoints are not set, just provide an ignore column option.
         if not self.days or not self.timepoints:
-            return [Spreadsheet.IGNORE_COLUMN]
+            return Spreadsheet.NON_DATA_COLUMNS
 
-        return ['Ignore'] + ['ID'] + [f"Day{day + 1} Timepoint{timepoint + 1}"
+        return Spreadsheet.NON_DATA_COLUMNS + [f"Day{day + 1} Timepoint{timepoint + 1}"
                                     for day in range(self.days)
                                     for timepoint in range(self.timepoints)]
 
@@ -841,7 +848,7 @@ class Spreadsheet(db.Model):
         :return: list of options to offer for the select inputs of the form requiring the user to specify column
         definitions.
         """
-        labels = [Spreadsheet.IGNORE_COLUMN, Spreadsheet.ID_COLUMN]
+        labels = Spreadsheet.NON_DATA_COLUMNS.copy()
 
         # One bin per categorical variable.  Each bin contains the possible values for that categorical variable.
         category_bins = []

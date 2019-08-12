@@ -432,19 +432,17 @@
                         <button class="btn btn-primary m-3" v-on:click="runPathwayAnalysis">Run Pathway Analysis</button>
                     </div>
                     <div>
-                        <table class="table table-sm">
+                        <table class="table table-sm" v-if="pathway_analysis.top_pathways.length > 0">
                             <thead>
                             <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> </tr>
                             </thead>
-                            <tbody>
-                                <template v-for="pathway in pathway_analysis.top_pathways">
-                                    <tr>
-                                        <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,MAX_PATHWAY_NAME_LENGTH) }}</a></td>
-                                        <td>{{util.formatNum(pathway.p, 4)}} </td>
-                                        <td>{{pathway.overlap}} </td>
-                                        <td>{{pathway.pathway_size}} </td>
-                                    </tr>
-                                </template>
+                            <tbody is="transition-group" name="swap-list">
+                                <tr v-for="pathway in pathway_analysis.top_pathways" v-bind:key="pathway.name" class="swap-list-item">
+                                    <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,MAX_PATHWAY_NAME_LENGTH) }}</a></td>
+                                    <td>{{util.formatNum(pathway.p, 4)}} </td>
+                                    <td>{{pathway.overlap}} </td>
+                                    <td>{{pathway.pathway_size}} </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
