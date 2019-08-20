@@ -420,8 +420,11 @@
 
                     </div>
                     <div class="form-inline">
-                        <label for="pseudo_count_input">Pseudo Count:</label>
-                        <input id="pseudo_count_input" type="number" v-model.lazy.number="fc_plot.config.pseudo_count"></input>
+                        <label for="select-afc-comparison">Comparison</label>
+                        <select id="select-afc-comparison" class="form-control form-control-sm w-auto" v-model="fc_plot.config.comparison">
+                            <option value="null">None</option>
+                            <option v-for="comparison in comparisons" v-bind:value="comparison.name" v-bind:key="comparison.name">{{comparison.name}}</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -652,6 +655,7 @@
             fc_plot: {
                 config: {
                     pseudo_count: 1,
+                    comparison: null,
                     style: "mva",
                 },
                 first_render: true,
@@ -1111,6 +1115,8 @@
                     name: comparison_name,
                     log_AFC: log_afc,
                     pseudo_count: 1,
+                    means1: means1,
+                    means2: means2,
                 };
                 vm.comparisons.push(comparison);
 
