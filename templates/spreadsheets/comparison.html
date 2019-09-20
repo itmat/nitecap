@@ -257,6 +257,7 @@
                         <option value="std_points">Standard Deviations and Points</option>
                         <option value="SEM">SEM</option>
                         <option value="SEM_points">SEM and Points</option>
+                        <option value="repeated_measures">Repated Measures</option>
                     </select>
                 </div>
                 <div class="form-inline">
@@ -847,6 +848,36 @@
                             showlegend: false,
                             mode: 'markers',
                             marker: {color: spreadsheet_color},
+                        });
+                    } else if (plot_style == "repeated_measures") {
+                        trace.mode = "lines";
+                        // Collect the data by replicate
+                        let data_by_trace = [];
+                        let start_of_value = 0;
+                        let last_value = 0;
+                        spreadsheet.x_values.forEach( function(x,i) {
+                            if (x == 0) {
+                                // Start new trace
+                                data_by_trace[i] = [];
+                            }
+                            if (x > last_value) {
+                                start_of_value = i;
+                                last_value = x;
+                            }
+                            let rep_num = i - start_of_value;
+                            data_by_trace[rep_num].push(raw_y_values[i]);
+                        });
+                        trace = {};
+
+                        // Add one trace per replicate
+                        data_by_trace.forEach( function(trace,i) {
+                            traces.push({
+                                x: trace.map( function(x,i) {return i;}),
+                                y: trace,
+                                type: 'lines',
+                                showlegend: false,
+                                line: {color: spreadsheet_color},
+                            });
                         });
                     }
 
