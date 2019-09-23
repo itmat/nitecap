@@ -8,7 +8,7 @@ import util
 # Always generate the same random data
 numpy.random.seed(3)
 
-REPEATED_MEASURES = True
+REPEATED_MEASURES = False
 
 N_TIMEPOINTS = 6 # 6 timepoints total per cycle (ie day)
 N_REPS = 8 # 4 replicates per timepoint
