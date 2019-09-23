@@ -203,7 +203,7 @@ def total_delta(data, contains_nans = "check", repeated_measures=False):
         if contains_nans:
             # normalization factor for the missing values
             # Missing values give 0 diffs so we must account for that
-            total_delta *= number_nonnan[:,numpy.newaxis, numpy.newaxis,:] / (N_TIMEPOINTS * N_REPS)
+            total_delta *= number_nonnan / (N_TIMEPOINTS * N_REPS)
 
         # Normalization across genes
         # by the absolute differences from the replicate's median value

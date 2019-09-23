@@ -293,7 +293,8 @@ class Spreadsheet(db.Model):
         numpy.random.seed(1)
 
         # Main nitecap computation
-        td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days)
+        td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days,
+                                                 repeated_measures=self.repeated_measures)
 
         # Apply q-value computation but just for the features surviving filtering
         good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
@@ -575,7 +576,8 @@ class Spreadsheet(db.Model):
 
             # Main nitecap computation
             # Perform on all the features for sorting purposes
-            td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days)
+            td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days,
+                                                     repeated_measures=self.repeated_measures)
 
             # Apply q-value computation but just for the features surviving filtering
             good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
