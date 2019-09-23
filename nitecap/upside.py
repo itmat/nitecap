@@ -13,6 +13,8 @@ A gene is said to 'dampen' from condition A to condition B if this p-value is sm
 
 import numpy
 
+from . import util
+
 # Number of permutations to take for permuted test statistics
 N_PERMS = 2_000
 # Number of permutations to compute at one go, reduce this number to reduce memory useage
@@ -53,7 +55,6 @@ def main(num_replicates_A, data_A, num_replicates_B, data_B, repeated_measures=F
 
         num_perms_done += num_perms
 
-    
     # p-values of the (non-permuted) data
     ps = (numpy.sum(perm_stat >= stat, axis=0) + 1)/ (perm_stat.shape[0]+1)
 
@@ -139,12 +140,17 @@ def upside_statistic(num_reps, data, repeated_measures=False):
                                                 for i in range(len(time_starts)-1)]
     
     # Average all replicates within each time
-    averages = numpy.array([numpy.sum(data[:,:,time_slice],axis=2)/(num_rep)
+    averages = numpy.array([numpy.nanmean(data[:,:,time_slice],axis=2)
                                     for (time_slice, num_rep) in zip(times, num_reps)])
 
     # Sum of absolute differences of adjacent timepoints
     abs_diffs = numpy.abs(averages[1:] - averages[:-1])
-    sum_abs_diffs = numpy.sum(abs_diffs, axis=0)  + numpy.abs(averages[0] - averages[-1])
+    wrap_around_diff = numpy.abs(averages[0] - averages[-1])
+
+    util.zero_nans(abs_diffs)
+    util.zero_nans(wrap_around_diff)
+
+    sum_abs_diffs = numpy.sum(abs_diffs, axis=0)   + wrap_around_diff
 
     if converted_to_3dim:
         # If given 2d array, output 1d array

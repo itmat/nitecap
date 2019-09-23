@@ -4,7 +4,7 @@ import numpy
 import nitecap
 
 TARGET_FDR = 0.1
-REPEATED_MEASURES = True
+REPEATED_MEASURES = False
 
 ###### Parameters for generated data
 # Always generate the same random data

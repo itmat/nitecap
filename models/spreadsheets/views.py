@@ -763,10 +763,17 @@ def get_upside(user=None):
                 dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
                 datasets = [df[spreadsheet.get_data_columns(by_day=False)].values for df, spreadsheet in zip(dfs, spreadsheets)]
+            repeated_measures = spreadsheets[0].repeated_measures
+            for spreadsheet in spreadsheets:
+                if spreadsheet.repeated_measures != repeated_measures:
+                    error = f"Attempted comparison of Spreadsheets {primary_id} and {secondary_id} that do not match in whether they are repeated measures."
+                    current_app.logger.warn(error)
+                    return jsonify({"error": error}), 500
 
             # Run the actual upside calculation
             upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates_by_time, datasets[primary],
-                                           spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
+                                           spreadsheets[secondary].num_replicates_by_time, datasets[secondary],
+                                            repeated_measures=repeated_measures)
             upside_q = nitecap.util.BH_FDR(upside_p)
 
             if anova_p is None:
