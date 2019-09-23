@@ -852,21 +852,28 @@
                     } else if (plot_style == "repeated_measures") {
                         trace.mode = "lines";
                         // Collect the data by replicate
+                        // Replicates have to be ordered the same
+                        // I.e. First rep is first in all timepoints
                         let data_by_trace = [];
-                        let start_of_value = 0;
+                        let rep_counts = [];
                         let last_value = 0;
-                        spreadsheet.x_values.forEach( function(x,i) {
-                            if (x == 0) {
-                                // Start new trace
-                                data_by_trace[i] = [];
+                        plot_x_values.forEach( function(x,i) {
+                            // Count how many we've seen before at this time
+                            if (rep_counts[x] === undefined) {
+                                rep_counts[x] = 0;
                             }
-                            if (x > last_value) {
-                                start_of_value = i;
-                                last_value = x;
+                            let rep_num = rep_counts[x];
+                            rep_counts[x] += 1;
+
+                            if (data_by_trace[rep_num] === undefined) {
+                                data_by_trace[rep_num] = []; // Start new trace
                             }
-                            let rep_num = i - start_of_value;
+                            // Add this reading to the trace for the replicate
                             data_by_trace[rep_num].push(raw_y_values[i]);
                         });
+
+
+                        // Skip the default trace
                         trace = {};
 
                         // Add one trace per replicate
