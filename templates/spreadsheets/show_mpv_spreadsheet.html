@@ -395,6 +395,7 @@
             </div>
         </div>
 
+        <!--
         <div class='col-auto'>
             <div class="card">
                 <div class="card-header">
@@ -429,6 +430,7 @@
                 </div>
             </div>
         </div>
+        -->
 
         <div class='col-auto'>
             <div class="card">
@@ -475,36 +477,40 @@
                     <a id="comapreHelp" class="text-primary help-pointer ml-3"
                        data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                        title="Compare Help"
-                       data-content="Create comparisons of specific conditions.">
+                       data-content="Create comparisons of specific conditions. Adds a log Fold Change statistic to statistic panel sorting by fold change between the two selected conditions. A psuedo-count is added to both values to prevent division by zero and to give more accurate estimates of effect sizes.">
                         <i class="fas fa-info-circle"></i>
                     </a>
                 </div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label for="first_compare_selector">
-                        First group for comparison:
-                        </label>
-                        <select id="first_compare_selector" v-model="comparison_box.first_group">
-                            <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                {{ group.name }}
-                            </option>
-                        </select>
+                        <div>
+                            <label for="first_compare_selector">
+                            First group for comparison:
+                            </label>
+                            <select id="first_compare_selector" v-model="comparison_box.first_group">
+                                <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                    {{ group.name }}
+                                </option>
+                            </select>
+                        </div>
 
-                        <label for="second_compare_selector">
-                        Second group for comparison:
-                        </label>
-                        <select id="second_compare_selector" v-model="comparison_box.second_group">
-                            <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                {{ group.name }}
-                            </option>
-                        </select>
+                        <div>
+                            <label for="second_compare_selector">
+                            Second group for comparison:
+                            </label>
+                            <select id="second_compare_selector" v-model="comparison_box.second_group">
+                                <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                    {{ group.name }}
+                                </option>
+                            </select>
+                        </div>
 
                         <button type="button" class="btn btn-primary" v-on:click="createComparison">
                             Create Comparison
                         </button>
 
                         <template v-for="(comparison, i) in comparisons">
-                            <h4>{{comparison.name}}</h4>
+                            <h6>{{comparison.name}}</h6>
                                 <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
                                 <input v-bind:id="'comparison_pseudo_count_input'+i"
                                        type="number"
