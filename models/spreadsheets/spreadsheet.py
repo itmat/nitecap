@@ -737,6 +737,7 @@ class Spreadsheet(db.Model):
                                         column_labels_str=spreadsheet.column_labels_str,
                                         breakpoint=spreadsheet.breakpoint,
                                         num_replicates_str=spreadsheet.num_replicates_str,
+                                        categorical_data=spreadsheet.categorical_data,
                                         filters=spreadsheet.filters,
                                         last_access=None,
                                         spreadsheet_data_path=temporary_share_spreadsheet_data_path,
