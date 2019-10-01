@@ -668,20 +668,21 @@ def share(user=None):
 
     # Collect json data
     json_data = request.get_json()
-    spreadsheet_id = json_data.get('spreadsheet_id', None)
+    spreadsheet_ids = json_data.get('spreadsheet_ids', None)
     row_index = json_data.get('row_index', 0)
 
     # Bad data
-    if not spreadsheet_id:
+    if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
     # Attempt to access spreadsheet not owned.
-    if not user.find_user_spreadsheet_by_id(spreadsheet_id):
-        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user.id, request.path, spreadsheet_id))
-        return jsonify({"errors": SPREADSHEET_NOT_FOUND_MESSAGE}, 404)
+    for spreadsheet_id in spreadsheet_ids:
+        if not user.find_user_spreadsheet_by_id(spreadsheet_id):
+            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user.id, request.path, spreadsheet_ids))
+            return jsonify({"errors": SPREADSHEET_NOT_FOUND_MESSAGE}, 404)
 
-    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_id} and row index {row_index}")
-    return jsonify({'share': user.get_share_token(spreadsheet_id, row_index)})
+    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_ids} and row index {row_index}")
+    return jsonify({'share': user.get_share_token(spreadsheet_ids, row_index)})
 
 
 @spreadsheet_blueprint.route('/share/<string:token>', methods=['GET'])
@@ -696,14 +697,17 @@ def consume_share(token):
     :param token: the share token given to the receiving user
     """
     errors = []
-    sharing_user, spreadsheet_id, row_index = User.verify_share_token(token)
-    current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_id}")
-    spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
+    sharing_user, spreadsheet_ids, row_index = User.verify_share_token(token)
+    current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_ids}")
+    spreadsheets = []
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
 
-    if not spreadsheet or not sharing_user:
-        errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
-                      "another share")
-        return render_template('spreadsheets/upload_file.html', errors=errors)
+        if not spreadsheet or not sharing_user:
+            errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
+                          "another share")
+            return render_template('spreadsheets/upload_file.html', errors=errors)
+        spreadsheets.append(spreadsheet)
 
     # Identify the account of the current user.  If no account exists, create a visitor account.
     user = None
@@ -724,15 +728,17 @@ def consume_share(token):
         return render_template('spreadsheets/upload_file.html', errors=errors)
 
     # Create a copy of the sharing user's spreadsheet for the current user.nitecap
-    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user)
-    if shared_spreadsheet:
-        if row_index:
-            shared_spreadsheet.breakpoint = row_index
-            shared_spreadsheet.save_to_db()
-        return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=shared_spreadsheet.id))
+    shared_spreadsheet_ids = []
+    for spreadsheet in spreadsheets:
+        shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user)
+        if shared_spreadsheet:
+            shared_spreadsheet_ids.append(shared_spreadsheet.id)
+        else:
+            errors.append("The spreadsheet could not be shared.")
+            return render_template('spreadsheets/upload_file.html', errors=errors)
 
-    errors.append("The spreadsheet could not be shared.")
-    return render_template('spreadsheets/upload_file.html', errors=errors)
+    spreadsheet_ids_str = ','.join(str(id) for id in shared_spreadsheet_ids)
+    return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet_ids_str))
 
 
 @spreadsheet_blueprint.route('/compare', methods=['GET'])
@@ -769,7 +775,7 @@ def compare(user=None):
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
 @timeit
-@ajax_requires_login
+@ajax_requires_account
 def get_upside(user=None):
     comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
     if not os.path.exists(comparisons_directory):

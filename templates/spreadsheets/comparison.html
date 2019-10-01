@@ -183,6 +183,10 @@
                     class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
+
+            <a id='share_spreadsheet' href="#" v-on:click="onShare">
+                <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+            </a>
         </p>
 
         <p class="col-lg-12 h3" v-if="spreadsheets.length === 1">
@@ -988,11 +992,10 @@
 
             onShare: function() {
                 // Open Modal to share the spreadsheet
-                let spreadsheet_id = this.spreadsheets[0].spreadsheet_id;
                 let vm = this;
                 $.ajax({
                     url: "{{url_for('spreadsheets.share')}}",
-                    data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': vm.selected_row}),
+                    data: JSON.stringify({'spreadsheet_ids': vm.spreadsheet_ids, 'row_index': vm.selected_row}),
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',
