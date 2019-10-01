@@ -1,4 +1,5 @@
 import smtplib
+import sys
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
@@ -50,6 +51,12 @@ logger.addHandler(file_handler)
 if not app.debug:
     app.logger.addHandler(mail_handler)
 
+# Check python version and paths:
+logger.debug("Python version")
+logger.debug(sys.version)
+logger.debug("Python paths")
+for python_path in sys.path:
+    logger.debug(python_path)
 
 @app.before_first_request
 def create_tables():

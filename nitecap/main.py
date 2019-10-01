@@ -36,7 +36,7 @@ N_PERMS_PER_RUN = 20
 descriptive_stats = collections.namedtuple("DescriptiveStats", ["amplitude", "peak_time", "trough_time"])
 
 ### the main function of nitecap which encapsulates all the work
-def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PERMS, output="minimal"):
+def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PERMS, output="minimal", repeated_measures=False):
     '''Identify circadian behavior in `data`
 
     `data` is an numpy array with the following format:
@@ -47,6 +47,8 @@ def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PER
     timepoints_per_cycle is the number of timepoints measured per cycle (eg: every four hours gives 6 timespoints per day)
     num_replicates is the number of replicates at each timepoint, or is a list of replicates at each timepoint
     num_cycles is the number of cycles worth of data present
+    repeated_measures is whether the data is collected on the same subjects repeatedly. Leave as False if
+        each measurement is independent
 
     If output == "minimal" then output (q,td) where:
     `q` is a numpy array with a q value
@@ -57,7 +59,6 @@ def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PER
     `perm_td` is a numpy array with total_delta statitics of features with permuted time points
             useful for diagnostics of the nitecap method on ones data and plotting results
 
-    The assumption is that all timepoints are independent samples (no repeated measures on the same individual)
     Technical replicates may be used, so long as all replicates within a single timepoint are either all technical
     replicates or are all biological replicates
     '''
@@ -65,7 +66,7 @@ def main(data, timepoints_per_cycle, num_replicates, num_cycles, N_PERMS = N_PER
     data = numpy.array(data)
     data_formatted = reformat_data(data, timepoints_per_cycle, num_replicates, num_cycles)
 
-    td, perm_td = nitecap_statistics(data_formatted, num_cycles, N_PERMS)
+    td, perm_td = nitecap_statistics(data_formatted, num_cycles, N_PERMS, repeated_measures=repeated_measures)
     q, p = FDR(td, perm_td)
     if output == "full":
         return q, td, perm_td
@@ -129,7 +130,7 @@ def FDR(td, perm_td, single_tailed=True):
     unsort_order = numpy.argsort(sort_order)
     return q[unsort_order], ps
 
-def total_delta(data, contains_nans = "check"):
+def total_delta(data, contains_nans = "check", repeated_measures=False):
     # Data without permutations is expected to be 3 dimensional (timepoints, reps, genes)
     # so add a dimension to it represent that it is "one permutation" so the code is consistent
     if data.ndim == 3:
@@ -145,42 +146,73 @@ def total_delta(data, contains_nans = "check"):
 
     (N_PERMS, N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
 
-    ### COMPUTE IN C:
-    total_delta = numpy.empty((N_PERMS, N_GENES), dtype="double")
-    sum_abs_differences(data, total_delta)
-    if contains_nans:
-        # total_delta above counts a pair with a NaN as 0 difference
-        # Need to renormalize by the number of pairings so that all genes are comparable
-        # even if there are different numbers of NaNs in each
-        possible_pairs = N_TIMEPOINTS * N_REPS * N_REPS
-        non_nan_per_timepoint =  numpy.sum(~numpy.isnan(data[0]), axis=1)
+    if repeated_measures == False:
+        # Compute the usual (non-repeated measures statistic)
+        ### COMPUTE IN C:
+        total_delta = numpy.empty((N_PERMS, N_GENES), dtype="double")
+        sum_abs_differences(data, total_delta)
+        if contains_nans:
+            # total_delta above counts a pair with a NaN as 0 difference
+            # Need to renormalize by the number of pairings so that all genes are comparable
+            # even if there are different numbers of NaNs in each
+            possible_pairs = N_TIMEPOINTS * N_REPS * N_REPS
+            non_nan_per_timepoint =  numpy.sum(~numpy.isnan(data[0]), axis=1)
 
-        # Compute the average number of pairings across all possible permutations
-        # I.e. we are computing:
-        # sum_{i = 1...n} sum_{sigma in PermutationGroup_n} x_{sigma_i} x_{sigma_{i+1}}
-        # where x_i is the number of non-nulls at timepoint i (in the identity permutation)
-        # (and treating sigma_{n+1} = sigma_{1}, i.e. cyclic indexing)
-        # This is proportional to the sum_{i = 1 ..n} sum_{j != i} x_i x_j
-        # which is what we compute here and then average out among all permutations
-        all_pairwise_products = numpy.sum(non_nan_per_timepoint)**2 - numpy.sum(non_nan_per_timepoint**2)
-        avg_num_pairs = all_pairwise_products / (N_TIMEPOINTS-1)
+            # Compute the average number of pairings across all possible permutations
+            # I.e. we are computing:
+            # sum_{i = 1...n} sum_{sigma in PermutationGroup_n} x_{sigma_i} x_{sigma_{i+1}}
+            # where x_i is the number of non-nulls at timepoint i (in the identity permutation)
+            # (and treating sigma_{n+1} = sigma_{1}, i.e. cyclic indexing)
+            # This is proportional to the sum_{i = 1 ..n} sum_{j != i} x_i x_j
+            # which is what we compute here and then average out among all permutations
+            all_pairwise_products = numpy.sum(non_nan_per_timepoint)**2 - numpy.sum(non_nan_per_timepoint**2)
+            avg_num_pairs = all_pairwise_products / (N_TIMEPOINTS-1)
 
-        total_delta *= possible_pairs / avg_num_pairs
-        #TODO: this could give NaN outputs if any timepoint has 0 non-nans
-    ####
+            total_delta *= possible_pairs / avg_num_pairs
+            #TODO: this could give NaN outputs if any timepoint has 0 non-nans
+        ####
 
-    # Now compute the normalization factor
-    # NOTE: this computation assumes that all the permutations have the same median
-    # i.e. that they really are permutations and not just unrelated data
-    med = numpy.nanmedian(data[0], axis=(0,1)).reshape((1, 1, N_GENES)) #Median of each gene
-    med_diffs = data[0] - med
-    numpy.abs(med_diffs, out=med_diffs)
-    if contains_nans:
-        util.zero_nans(med_diffs)
-    max_delta = numpy.sum( med_diffs, axis=(0,1) )
-    # Given a normalization factor of 0, we'll get a warning below
-    # So replace it with 1 since the result will have total_delta = 0 anyway
-    max_delta[max_delta == 0.0] = 1.0
+        # Now compute the normalization factor
+        # NOTE: this computation assumes that all the permutations have the same median
+        # i.e. that they really are permutations and not just unrelated data
+        med = numpy.nanmedian(data[0], axis=(0,1)).reshape((1, 1, N_GENES)) #Median of each gene
+        med_diffs = data[0] - med
+        numpy.abs(med_diffs, out=med_diffs)
+        if contains_nans:
+            util.zero_nans(med_diffs)
+        max_delta = numpy.sum( med_diffs, axis=(0,1) )
+        # Given a normalization factor of 0, we'll get a warning below
+        # So replace it with 1 since the result will have total_delta = 0 anyway
+        max_delta[max_delta == 0.0] = 1.0
+
+    else:
+        # For repeated_measures we need to compute differently
+        # 1) Take only the absolute differences of adjacent timepoints within the same replicate
+        # 2) Normalize by taking sum of absolute differences between each value and median within the same replicate
+        # This is a smaller compute (unless only 1 replicate) so we won't do it in C
+        data_cycled = numpy.concatenate( (data[:,1:], data[:,:1]), axis=1 )
+        diffs = numpy.abs(data - data_cycled)
+
+        # Need to manually zero out the nans we get
+        if contains_nans:
+            number_nonnan = numpy.sum(numpy.isfinite(diffs), axis=(1,2))
+            util.zero_nans(diffs)
+
+        total_delta = numpy.sum(diffs, axis=(1,2))
+
+        if contains_nans:
+            # normalization factor for the missing values
+            # Missing values give 0 diffs so we must account for that
+            total_delta *= number_nonnan / (N_TIMEPOINTS * N_REPS)
+
+        # Normalization across genes
+        # by the absolute differences from the replicate's median value
+        med = numpy.nanmedian(data[0], axis=0).reshape((1, N_REPS, N_GENES))
+        med_diffs = numpy.abs(data[0] - med)
+        if contains_nans:
+            util.zero_nans(med_diffs)
+        max_delta = numpy.sum(med_diffs, axis=(0,1))
+        max_delta[max_delta == 0.0] = 1.0 # To avoid a warning, see above.
 
     statistic =  total_delta / max_delta
     if no_permutations:
@@ -188,11 +220,13 @@ def total_delta(data, contains_nans = "check"):
     else:
         return statistic
 
-def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS):
+def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS, repeated_measures=False):
     ''' Compute total_delta statistic and permutation versions of this statistic
 
         `data` is data formatted as by reformat_data(data, timepoints_per_cycle, num_reps, num_cycles)
         `num_cylces` is the number of cycles in the data, eg 2 if data is 48hours
+        `repeated_measures` is whether the data is from the same subjects repeatedly measured. Leave False
+            if each measurement is independent.
         '''
 
     (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
@@ -201,7 +235,7 @@ def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS):
     contains_nans = numpy.isnan(data).any()
 
     data_folded = fold_days(data, num_cycles)
-    td = total_delta(data_folded, contains_nans)
+    td = total_delta(data_folded, contains_nans, repeated_measures=repeated_measures)
 
     # Run N_PERMS_PER_RUN permutations repeatedly until we get a total of N_PERMS
     num_perms_done = 0
@@ -214,7 +248,7 @@ def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS):
         perm_data = permute_timepoints(data, num_perms)
         perm_data_folded = fold_days(perm_data, num_cycles)
 
-        perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(perm_data_folded, contains_nans)
+        perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(perm_data_folded, contains_nans, repeated_measures=repeated_measures)
 
         num_perms_done += num_perms
 

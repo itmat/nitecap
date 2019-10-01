@@ -8,8 +8,10 @@ import util
 # Always generate the same random data
 numpy.random.seed(3)
 
+REPEATED_MEASURES = False
+
 N_TIMEPOINTS = 6 # 6 timepoints total per cycle (ie day)
-N_REPS = 4 # 4 replicates per timepoint
+N_REPS = 8 # 4 replicates per timepoint
 N_CYCLES = 1 # One day of data
 
 # Sampling every 4 hours
@@ -32,6 +34,10 @@ AMPLITUDES.shape = (1,1,N_GENES)
 
 DATA_MEANS = (WAVEFORM * AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS
 
+if REPEATED_MEASURES:
+    # Each replicate gets a random additive amount ontop
+    DATA_MEANS = DATA_MEANS + DATA_MEANS[0] * numpy.random.uniform(0.0, 0.2, size=(1, N_REPS, N_GENES))
+
 ###### Create the random data
 data = numpy.random.poisson(DATA_MEANS, size=(N_TIMEPOINTS, N_REPS, N_GENES))
 data = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all replicates in a timepoint
@@ -41,6 +47,9 @@ DAMPENED_AMPLITUDES = AMPLITUDES.copy()
 DAMPENED_AMPLITUDES[:,:,:N_DAMPENED] *= numpy.random.random(N_DAMPENED) * 0.75
 MEAN_RATIOS =  1#numpy.exp(numpy.random.uniform(-0.3,0.3))
 DAMPENED_DATA_MEANS = (WAVEFORM * DAMPENED_AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS * MEAN_RATIOS
+if REPEATED_MEASURES:
+    # Each replicate gets a random additive amount ontop
+    DAMPENED_DATA_MEANS = DAMPENED_DATA_MEANS + DAMPENED_DATA_MEANS[0] * numpy.random.uniform(0.0, 0.2, size=(1, N_REPS, N_GENES))
 data_B = numpy.random.poisson(DAMPENED_DATA_MEANS, size=(N_TIMEPOINTS,  N_REPS, N_GENES))
 data_B = data_B.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all replicates in a timepoint
 
@@ -50,13 +59,14 @@ start = time.time()
 ##### Run upside
 # We use this instead for plotting results
 ps = upside.main([N_REPS]*N_TIMEPOINTS, data,
-                         [N_REPS]*N_TIMEPOINTS, data_B)
+                 [N_REPS]*N_TIMEPOINTS, data_B,
+                 repeated_measures=REPEATED_MEASURES)
 ##### End upside
 
 # Finish timing
 end = time.time()
 print(f"Ran upside on {N_GENES} genes in {end-start:.2f} seconds")
-print(f"Estimate {numpy.sum(ps)*2} nulls out of {N_GENES}")
+print(f"Estimate {numpy.sum(ps)*2:0.1f} nulls out of {N_GENES}")
 
 # FDR computations
 qs = util.BH_FDR(ps)

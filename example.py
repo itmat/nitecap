@@ -4,6 +4,7 @@ import numpy
 import nitecap
 
 TARGET_FDR = 0.1
+REPEATED_MEASURES = False
 
 ###### Parameters for generated data
 # Always generate the same random data
@@ -36,10 +37,14 @@ AMPLITUDES.shape = (1,1,N_GENES)
 DATA_MEANS = (WAVEFORM * AMPLITUDES * AVG_DEPTHS) + AVG_DEPTHS
 DATA_MEANS *= numpy.random.uniform(1 - TIMEPOINT_NOISE, 1 + TIMEPOINT_NOISE, size=(N_TIMEPOINTS, 1, N_GENES))
 
+if REPEATED_MEASURES:
+    # For repeated measures, each replicate gets a random constant added to its mean
+    DATA_MEANS = DATA_MEANS + DATA_MEANS[0] * numpy.random.uniform(0.0, 1.5, size=(1, N_REPS, N_GENES))
 
 ###### Create the random data
 data = numpy.random.poisson(DATA_MEANS, size=(N_TIMEPOINTS, N_REPS, N_GENES))
 data = data.reshape( (N_TIMEPOINTS * N_REPS, N_GENES) ).swapaxes(0,1)#Group all replicates in a timepoint
+
 
 # timing measurement
 start = time.time()
@@ -49,7 +54,9 @@ start = time.time()
 #q, td = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES)
 
 # We use this instead for plotting results
-q, td, perm_td  = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")
+q, td, perm_td  = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES,
+                                output="full", # For display purposes
+                                repeated_measures=REPEATED_MEASURES,)
 ##### End nitecap
 
 # Finish timing
