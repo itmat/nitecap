@@ -305,47 +305,25 @@ def show_spreadsheet(spreadsheet_id, user=None):
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
             return access_not_permitted(compare.__name__, user, spreadsheet_id)
+        spreadsheets.append(spreadsheet)
+
+    is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
+    if any(is_categorical) and not all(is_categorical):
+        flash("Spreadsheets must all be categorical or all time-series.")
+        return redict(url_for('.display_spreadsheets'))
 
     #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     #if errors:
     #    return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
-    return render_template('spreadsheets/comparison.html',
-                           spreadsheet_ids=[int(ID) for ID in spreadsheet_ids],
+    if all(is_categorical):
+        return render_template('spreadsheets/show_mpv_spreadsheet.html',
+                           spreadsheet_ids=spreadsheet_ids,
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
-
-@spreadsheet_blueprint.route('/show_mpv_spreadsheet/<spreadsheet_id>', methods=['GET'])
-@requires_account
-@timeit
-def show_mpv_spreadsheet(spreadsheet_id, user=None):
-    """
-    Standard endpoint - retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
-    method is available to any user with an account (standard user or visitor).
-    :param spreadsheet_id: the id of the spreadsheet whose results are to be displayed.
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    """
-
-    errors = []
-
-    spreadsheets = []
-
-    try:
-        spreadsheet_ids = [int(ID) for ID in spreadsheet_id.split(',')]
-    except ValueError:
-        errors.append("Unknown spreadsheet id(s)")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-    if not spreadsheet_ids:
-        errors.append("No spreadsheets were provided")
-        return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
-
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        if not spreadsheet:
-            return access_not_permitted(compare.__name__, user, spreadsheet_id)
-
-    return render_template('spreadsheets/show_mpv_spreadsheet.html',
-                           spreadsheet_ids=[int(ID) for ID in spreadsheet_ids])
+    else:
+        return render_template('spreadsheets/comparison.html',
+                           spreadsheet_ids=spreadsheet_ids,
+                           descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 @spreadsheet_blueprint.route('/get_spreadsheets', methods=['POST'])
 @timeit
@@ -1175,7 +1153,6 @@ def upload_mpv_file():
         if not allowed_file(upload_file.filename):
             errors.append(FILE_EXTENSION_ERROR)
         categorical_data, categorical_data_errors = collect_and_validate_categorical_data(request.form)
-        print(categorical_data)
         if categorical_data_errors:
             errors.extend(categorical_data_errors)
         if errors:
@@ -1287,7 +1264,7 @@ def collect_mpv_data(spreadsheet_id, user=None):
         spreadsheet.set_ids_unique()
         spreadsheet.save_to_db()
         spreadsheet.init_on_load()
-        return redirect(url_for('.show_mpv_spreadsheet', spreadsheet_id=spreadsheet.id))
+        return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
     return render_template('spreadsheets/collect_mpv_data.html', labels=categorical_data_labels, spreadsheet=spreadsheet)
 
 
@@ -1302,7 +1279,6 @@ def validate_mpv_spreadsheet_data(form_data, spreadsheet):
     spreadsheet.descriptive_name = form_data.get('descriptive_name', None)
     spreadsheet.column_labels = [value for key, value in form_data.items() if key.startswith('col')]
     spreadsheet.column_labels_str = ','.join(spreadsheet.column_labels)
-    print(f"Giving column labels from form: {spreadsheet.column_labels}")
 
     # Check data for errors
     errors = []

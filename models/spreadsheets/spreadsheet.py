@@ -62,6 +62,7 @@ class Spreadsheet(db.Model):
     IGNORE_COLUMN = "Ignore"
     STAT_COLUMN = "Stat"
     NON_DATA_COLUMNS = [IGNORE_COLUMN, ID_COLUMN, STAT_COLUMN]
+    OPTIONAL_COLUMNS = [IGNORE_COLUMN, STAT_COLUMN]
     UPLOADED_SPREADSHEET_FILE_PART = "uploaded_spreadsheet"
     PROCESSED_SPREADSHEET_FILE_PART = "processed_spreadsheet"
     PROCESSED_SPREADSHEET_FILE_EXT =  "parquet"
@@ -186,6 +187,10 @@ class Spreadsheet(db.Model):
                 self.compute_nitecap()
             elif self.categorical_data and any(column not in self.df.columns for column in CATEGORICAL_DATA_COLUMNS):
                 self.compute_categorical()
+
+    def is_categorical(self):
+        ''' Returns True if this is a Categorical (MPV) spreadsheet. False if not.'''
+        return self.categorical_data != ''
 
     @timeit
     def set_df(self):
@@ -543,7 +548,7 @@ class Spreadsheet(db.Model):
         errors = []
         data_labels = self.get_categorical_data_labels()
         for data_label in data_labels:
-            if data_label not in column_labels:
+            if data_label not in column_labels and data_label not in Spreadsheet.OPTIONAL_COLUMNS:
                 errors.append(f"Missing columns of type {data_label}")
         return errors
 
