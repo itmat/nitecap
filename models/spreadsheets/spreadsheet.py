@@ -190,7 +190,7 @@ class Spreadsheet(db.Model):
 
     def is_categorical(self):
         ''' Returns True if this is a Categorical (MPV) spreadsheet. False if not.'''
-        return self.categorical_data != ''
+        return bool(self.categorical_data)
 
     @timeit
     def set_df(self):
