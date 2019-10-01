@@ -165,6 +165,10 @@
 
 <form action="{{ url_for('spreadsheets.upload_mpv_file') }}" method="post" enctype="multipart/form-data">
     <fieldset class="border border-primary rounded p-3 mb-3">
+        <p class="alert alert-warning" role="alert"> BETA For uploading categorical spreadsheets, for data where samples are divied into various discrete categories,
+            unlike the time-series data appropriate for the standard Nitecap spreadsheets.
+            Supports arbitrary factors, for example you can have both a genotype factor and a gender factor.
+        </p>
         <legend class="w-auto">Spreadsheet File</legend>
         <div class="form-group required">
             <label for="data_row">The First Row of Data:</label>
