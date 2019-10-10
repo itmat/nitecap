@@ -5,6 +5,7 @@
     $(document).ready ( function() {
 
         columns = {{ (spreadsheet.df.columns.tolist()) | safe }};
+        default_selections_str = "{{ spreadsheet.column_labels_str | safe }}";
 
         {% if not spreadsheet.days or not spreadsheet.timepoints %}
             $("#selectors").css("visibility", "hidden");
@@ -64,8 +65,15 @@
 
         days.on('change', updateLabels);
         timepoints.on('change', updateLabels);
-        updateLabels();
 
+        // Initialize selections
+        if (default_selections_str) {
+            let options = getLabelOptions(days.val(), timepoints.val());
+            let default_selections = default_selections_str.split(",");
+            populate_selects(options, default_selections);
+        } else {
+            updateLabels();
+        }
 
         // Form Submitted
         nitecap_form.on('submit', function (e) {
@@ -177,10 +185,10 @@
     <div class="form-group">
         Repeated Measures?
         <label class="radio-inline">
-            <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y"> Yes
+            <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y" {{"checked" if spreadsheet.repeated_measures else ''}}> Yes
         </label>
         <label class="radio-inline">
-            <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" checked> No
+            <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" {{"checked" if not spreadsheet.repeated_measures else ''}}> No
         </label>
     </div>
     <p>

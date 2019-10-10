@@ -188,6 +188,9 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.clear_jtk()
         spreadsheet.compute_nitecap()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
+
+    spreadsheet.init_on_load()
+    print(f"Spreadsheet column labels: {spreadsheet.column_labels}")
     return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet)
 
 

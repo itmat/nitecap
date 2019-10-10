@@ -457,7 +457,7 @@ function inferColumnTimes(columns, days, timepoints) {
             num_matches: best_num_matches};
 }
 
-function guessColumnLabels(columns, days, timepoints) {
+function guessColumnLabels(columns, days, timepoints, defaults) {
     let inferred = inferColumnTimes(columns, days, timepoints);
 
     if (inferred  === null) {
@@ -523,7 +523,7 @@ function guessColumnLabels(columns, days, timepoints) {
     }
 
     // No selections, we have uneven timepoints
-    return columns.map( function(x) {return "Ignore";} );
+    return defaults;
 }
 
 function getLabelOptions(days, timepoints) {
