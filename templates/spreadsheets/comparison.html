@@ -1321,22 +1321,26 @@
 
                     // Try to infer if possible from column headers
                     let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
+                    let headings = null;
                     if (inferred !== null) {
-                        let headings = inferred.times.map(function(t) {
+                        headings = inferred.times.map(function(t) {
                             return inferred.format.make_label(t);
                         });
-                        let labels = [];
-                       times.forEach( function (time,i) {
-                            if (labels[time] === undefined) {
-                                labels[time] = headings[i];
-                            }
+                    } else {
+                        headings = times.map( function(time) {
+                            return "Day " + (Math.floor(time / spreadsheet.timepoints_per_day) + 1) + " Timepoint " + (time % spreadsheet.timepoints_per_day + 1);
                         });
-                        return labels;
                     }
 
-                    return times.map( function(time) {
-                        return "Day " + (Math.floor(time / spreadsheet.timepoints_per_day) + 1) + " Timepoint " + (time % spreadsheet.timepoints_per_day + 1);
+                    // Return only one heading per time
+                    // by dropping repeated times
+                    let labels = [];
+                    times.forEach( function (time,i) {
+                         if (labels[time] === undefined) {
+                             labels[time] = headings[i];
+                         }
                     });
+                    return labels;
                 });
             },
 
