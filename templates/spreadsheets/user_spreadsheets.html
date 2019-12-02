@@ -235,7 +235,7 @@
             // Call the server with the spreadsheet id so that the server may return a link that can be shared.
             $.ajax({
                 url: "{{url_for('spreadsheets.share')}}",
-                data: JSON.stringify({'spreadsheet_id': spreadsheet_id}),
+                data: JSON.stringify({'spreadsheet_ids': [spreadsheet_id]}),
                 dataType: "json",
                 contentType: "application/json",
                 type: 'POST',
