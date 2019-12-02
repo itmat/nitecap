@@ -38,6 +38,9 @@ def main(num_replicates_A, data_A, num_replicates_B, data_B, repeated_measures=F
     """
 
     assert data_A.shape[0] == data_B.shape[0]
+    assert data_A.shape[1] == sum(num_replicates_A)
+    assert data_B.shape[1] == sum(num_replicates_B)
+
     N_FEATURES = data_A.shape[0]
 
     stat = upside_statistic(num_replicates_A, data_A, repeated_measures=repeated_measures)
