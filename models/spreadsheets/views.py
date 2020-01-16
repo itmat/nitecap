@@ -700,14 +700,21 @@ def consume_share(token):
     :param token: the share token given to the receiving user
     """
     errors = []
-    sharing_user, spreadsheet_ids, row_index = User.verify_share_token(token)
+    result = User.verify_share_token(token)
+    if result is None:
+        current_app.logger.error(f"No valid user present in shared token")
+        errors.append("The token you received does not work.  It may have been mangled in transit.  Please request "
+                      "another share")
+        return render_template('spreadsheets/upload_file.html', errors=errors)
+    sharing_user, spreadsheet_ids, row_index  = result
+
     current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_ids}")
     spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
 
         if not spreadsheet or not sharing_user:
-            errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
+            errors.append("The token you received does not work.  It may have been mangled in transit.  Please request "
                           "another share")
             return render_template('spreadsheets/upload_file.html', errors=errors)
         spreadsheets.append(spreadsheet)
