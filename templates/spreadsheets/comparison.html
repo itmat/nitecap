@@ -148,6 +148,8 @@
 
                     app.stats.two_way_anova_ps = response['two_way_anova_ps'];
                     app.stats.two_way_anova_qs = response['two_way_anova_qs'];
+                    app.stats.main_effect_ps = response['main_effect_ps'];
+                    app.stats.main_effect_qs = response['main_effect_qs'];
                     app.stats.phase_ps = response['phase_ps'];
                     app.stats.phase_qs = response['phase_qs'];
                     app.stats.amplitude_ps = response['amplitude_ps'];
@@ -574,6 +576,12 @@
          description: "Two-way ANOVA test for difference in timepoint-effects across datasets",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
+        {name: "Main Effect Diff",
+         value: {p: "main_effect_ps",
+                 q: "main_effect_qs"},
+         description: "Main effect test of difference between the two datasets in the two-way ANOVA",
+         per_spreadsheet: false,
+         num_spreadsheets: 'multi'},
         {name: "Phase Difference",
          value: {p: "phase_ps",
                  q: "phase_qs"},
@@ -668,6 +676,8 @@
                 phase_qs: null,
                 two_way_anova_ps: null,
                 two_way_anova_qs: null,
+                main_effect_ps: null,
+                main_effect_qs: null,
             },
 
             labels: [],

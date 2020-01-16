@@ -275,6 +275,10 @@ def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
     `num_replicates_B` is a list of integers indicating how many replicates there are from each timepoint in dataset B
     `data_B` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_B)
             containing the values of the condition B
+
+    Returns:
+    `interaction_p_value` - array length num_features containing p-values for the time-and-dataset interaction
+    `main_effect_p_value` - array length num_features containing p-values for the difference between datasets
     '''
 
     assert len(num_reps_A) == len(num_reps_B)
@@ -289,20 +293,33 @@ def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
     dataset = [0 for _ in timepoints_A] + [1 for _ in timepoints_B]
     intercept = [1 for _ in dataset]
     interaction = numpy.array(dataset)*timepoints
+
+    # Run three models, one is the full interaction time-and-dataset model
+    # the restricted model has no interaction between time and dataset
+    # and the base model is just time
+    # comparing full to restricted gives the interaction p-value
+    # comparing restricted to base gives the main-effect p-value between the two datasets
     full_model = numpy.vstack( (timepoints, dataset, interaction, intercept) )
     restricted_model = numpy.vstack( (timepoints, dataset, intercept) )
+    base_model = numpy.vstack( (timepoints, intercept) )
 
     combined_datasets = numpy.concatenate((data_A, data_B), axis=1)
 
-    p_values = numpy.empty(combined_datasets.shape[0])
+    # Fit models and compute p-values for each gene
+    interaction_p_values = numpy.empty(combined_datasets.shape[0])
+    main_effect_p_values = numpy.empty(combined_datasets.shape[0])
     for i in range(combined_datasets.shape[0]):
         full_fit = sm.OLS(combined_datasets[i], full_model.T, missing='drop').fit()
         restricted_fit = sm.OLS(combined_datasets[i], restricted_model.T, missing='drop').fit()
+        base_fit = sm.OLS(combined_datasets[i], base_model.T, missing='drop').fit()
 
         f, p, df = full_fit.compare_f_test(restricted_fit)
-        p_values[i] = p
+        interaction_p_values[i] = p
 
-    return p_values
+        f, p, df = restricted_fit.compare_f_test(base_fit)
+        main_effect_p_values[i] = p
+
+    return interaction_p_values, main_effect_p_values
 
 def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
     '''
