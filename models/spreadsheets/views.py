@@ -823,13 +823,13 @@ def get_upside(user=None):
             anova_p = comp_data["two_way_anova_ps"]
             anova_q = comp_data["two_way_anova_qs"]
             phase_p = comp_data["phase_ps"]
-            main_effect_p = comp_data["two_way_anova_ps"]
-            main_effect_q = comp_data["two_way_anova_qs"]
+            main_effect_p = comp_data["main_effect_ps"]
+            main_effect_q = comp_data["main_effect_qs"]
             phase_q = comp_data["phase_qs"]
             amplitude_p = comp_data["amplitude_ps"]
             amplitude_q = comp_data["amplitude_qs"]
             current_app.logger.info(f"Loaded upside values from file {file_path}")
-        except OSError: # Parquet file could not be read (hasn't been written yet)
+        except (OSError, KeyError) as e: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
                 # Populate all
                 for spreadsheet in spreadsheets:
