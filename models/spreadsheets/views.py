@@ -381,6 +381,11 @@ def get_spreadsheets(user=None):
                      column_headers=spreadsheet.get_data_columns(),
                      jtk_ps=None,
                      jtk_qs=None,
+                     cosinor_ps=df.cosinor_p,
+                     cosinor_qs=df.cosinor_q,
+                     cosinor_x0s=df.cosinor_x0,
+                     cosinor_x1s=df.cosinor_x1,
+                     cosinor_x2s=df.cosinor_x2,
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                     )
         spreadsheet_values.append(values)
