@@ -29,7 +29,8 @@ import copy
 import nitecap
 from timer_decorator import timeit
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p", "anova_q"]
+NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p",
+                        "anova_p", "anova_q", "cosinor_p", "cosinor_q", "cosinor_x0", "cosinor_x1", "cosinor_x2"]
 CATEGORICAL_DATA_COLUMNS = ["anova_p", "anova_q"]
 MAX_JTK_COLUMNS = 85
 
