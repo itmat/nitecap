@@ -1108,9 +1108,15 @@
                 // So if secondary sort value is null then we will sort the value to the end as if the main value were null
                 // This solves the problem where q-values are null and being sorted to the front of the list particulary
                 // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
+
+                // display_value is the value array that should be monotonic in the sort order
+                // which are convenient for the user to look at.
+                // In particular, Nitecap sorts by the nitecap statistic but users want to see the q-value
+                // and other methods sort by p-value but users want q-value
                 let vm = this;
                 let value = null;
                 let secondary_value = null;
+                let display_value = null;
 
                 if (this.sort_by.stat.sort_value !== undefined) {
                     value = this.sort_by.stat.sort_value;
@@ -1119,12 +1125,15 @@
                     } else {
                         secondary_value = value;
                     }
+                    display_value = secondary_value;
                 } else if (typeof this.sort_by.stat.value === 'string') {
                     value = this.sort_by.stat.value;
                     secondary_value = value;
+                    display_value = value;
                 } else {
                     value = this.sort_by.stat.value.p;
                     secondary_value = this.sort_by.stat.value.q;
+                    display_value = secondary_value;
                 }
 
                 let sort_direction = 1;
@@ -1136,10 +1145,12 @@
                     if (vm.spreadsheets.length > 0) {
                         value = vm.spreadsheets[vm.sort_by.spreadsheet_num][value];
                         secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value];
+                        display_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][display_value];
                     }
                 } else {
                     value = vm.stats[value];
                     secondary_value = vm.stats[secondary_value];
+                    display_value = vm.stats[display_value];
                 }
 
                 let sorter = function (i,j) {
@@ -1150,7 +1161,7 @@
                                    i, j);
                 };
 
-                return {"func": sorter, "value": value, "sort_direction": sort_direction};
+                return {"func": sorter, "value": value,  "display_value":display_value, "sort_direction": sort_direction};
             },
 
             sort_order: function () {
@@ -1440,18 +1451,18 @@
 
             cutoff: {
                 get: function() {
-                    return this.sort_function.value[this.selected_row];
+                    return this.sort_function.display_value[this.selected_row];
                 },
                 set: function(value) {
                     let app = this;
-                    let sort_values = app.sort_function.value;
+                    let sort_values = app.sort_function.display_value;
                     let num_less_than = 0;
                     sort_values.forEach(function(v) {
-                        if ((app.sort_function.sort_direction * value) > (app.sort_function.sort_direction * v)) {
+                        if ((app.sort_function.sort_direction * v) <= (app.sort_function.sort_direction * value)) {
                             num_less_than++;
                         }
                     });
-                    app.selected_row = Math.min(num_less_than, sort_values.length - 1);
+                    app.selected_row = Math.max(num_less_than-1, 0);
                 }
             },
 
