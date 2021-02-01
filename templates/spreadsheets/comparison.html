@@ -998,7 +998,7 @@
             },
 
             searchRows: function() {
-                let search_value = this.search_value.toLowerCase();
+                let search_value = this.search_value.toLowerCase().trim();
 
                 // Pull out row indexes matching our search_value
                 let matching_rows = app.labels.map( function(unused, index) {
