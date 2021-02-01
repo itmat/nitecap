@@ -205,9 +205,13 @@
         </p>
     </div>
     <div class="row">
-        <span class="form-group col-lg-9">
+        <span class="form-group col-lg-5">
             Number of selected rows:
-            <input type="number" v-model="num_below"></input>
+            <input type="number" v-model.number="num_below"></input>
+        </span>
+        <span class="form-group col-lg-5">
+            Cutoff:
+            <input v-model.lazy.number="cutoff"></input>
         </span>
     </div>
 
@@ -1146,14 +1150,14 @@
                                    i, j);
                 };
 
-                return sorter;
+                return {"func": sorter, "value": value, "sort_direction": sort_direction};
             },
 
             sort_order: function () {
                 let vm = this;
 
                 let sort_order =  this.labels.map( function(x,i) {return i;} );
-                sort_order = sort_order.sort(this.sort_function);
+                sort_order = sort_order.sort(this.sort_function.func);
 
                 if (this.hide_filtered_rows) {
                     // Move filtered items from the sort_order to the back of the list  to hide them
@@ -1433,6 +1437,24 @@
                 });
                 return names;
             },
+
+            cutoff: {
+                get: function() {
+                    return this.sort_function.value[this.selected_row];
+                },
+                set: function(value) {
+                    let app = this;
+                    let sort_values = app.sort_function.value;
+                    let num_less_than = 0;
+                    sort_values.forEach(function(v) {
+                        if ((app.sort_function.sort_direction * value) > (app.sort_function.sort_direction * v)) {
+                            num_less_than++;
+                        }
+                    });
+                    app.selected_row = Math.min(num_less_than, sort_values.length - 1);
+                }
+            },
+
         },
 
         watch: {
