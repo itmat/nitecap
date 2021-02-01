@@ -1170,8 +1170,8 @@
 
                 if (typeof value === 'string') {
                     // No inherent q-value for this sort value
-                    // we default to Nitecap of primary spreadsheet
-                    return this.spreadsheets[0] ? this.spreadsheets[0].ps : [];
+                    // drop the "Q:" label
+                    return null;
                 }
 
                 if (this.sort_by.spreadsheet_num !== undefined) {
