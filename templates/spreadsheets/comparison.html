@@ -1451,7 +1451,7 @@
 
             cutoff: {
                 get: function() {
-                    return this.sort_function.display_value[this.selected_row];
+                    return this.sort_function.display_value[this.sort_order[this.selected_row]];
                 },
                 set: function(value) {
                     let app = this;
