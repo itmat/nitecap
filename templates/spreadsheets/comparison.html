@@ -1153,6 +1153,12 @@
                     display_value = vm.stats[display_value];
                 }
 
+                if (display_value !== null && vm.spreadsheets.length > 0) {
+                    display_value = display_value.map( function(x,i) {
+                        return secondary_value[i] && display_value[i];
+                    });
+                }
+
                 let sorter = function (i,j) {
                     let a = secondary_value[i] && value[i];
                     let b = secondary_value[j] && value[j];
