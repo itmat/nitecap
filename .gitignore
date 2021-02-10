@@ -1,5 +1,6 @@
 __pycache__
 *.pyc
+*.pyd
 
 *.sw[a-p]
 venv*
@@ -14,4 +15,5 @@ build/
 .env
 nitecap.db
 cwl_*
-
+app_data/uploads/*
+app_data/db/*
