@@ -1153,6 +1153,12 @@
                     display_value = vm.stats[display_value];
                 }
 
+                if (display_value !== null && vm.spreadsheets.length > 0) {
+                    display_value = display_value.map( function(x,i) {
+                        return secondary_value[i] && display_value[i];
+                    });
+                }
+
                 let sorter = function (i,j) {
                     let a = secondary_value[i] && value[i];
                     let b = secondary_value[j] && value[j];
@@ -1456,14 +1462,15 @@
                 set: function(value) {
                     let app = this;
                     let sort_values = app.sort_function.display_value;
-                    let num_less_than = 0;
-                    sort_values.forEach(function(v) {
-                        if ((app.sort_function.sort_direction * v) <= (app.sort_function.sort_direction * value)) {
-                            num_less_than++;
+                    let i = 0;
+                    for(; i < sort_values.length; i++) {
+                        let v = sort_values[app.sort_order[i]];
+                        if ((app.sort_function.sort_direction * v) > (app.sort_function.sort_direction * value)) {
+                            break;
                         }
-                    });
-                    app.selected_row = Math.max(num_less_than-1, 0);
-                }
+                    }
+                    app.selected_row = Math.max(i-1, 0);
+                },
             },
 
         },
