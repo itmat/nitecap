@@ -106,17 +106,18 @@
                     // Notify the user of any non-unique ids and then submit the form once the user acknowledges.
                     success: function (response) {
                         let non_unique_ids = response['non-unique_ids'];
-                        if (non_unique_ids && non_unique_ids.length > 0) {
-                            let warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
-                            if (non_unique_ids.length > 5) {
-                                warning += non_unique_ids.slice(0, 5).join(', ');
-                                warning += ", ... and " + (non_unique_ids.length - 5) + " other";
-                                warning += non_unique_ids.length - 5 > 1 ? "s." : "."
-                            } else {
-                                warning += non_unique_ids.join(',');
-                            }
-                            alert(warning);
-                        }
+                        // No longer giving this alert since for most users, non-unique ids are not a problem
+                        //if (non_unique_ids && non_unique_ids.length > 0) {
+                        //    let warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
+                        //    if (non_unique_ids.length > 5) {
+                        //        warning += non_unique_ids.slice(0, 5).join(', ');
+                        //        warning += ", ... and " + (non_unique_ids.length - 5) + " other";
+                        //        warning += non_unique_ids.length - 5 > 1 ? "s." : "."
+                        //    } else {
+                        //        warning += non_unique_ids.join(',');
+                        //    }
+                        //    alert(warning);
+                        //}
 
                         // Only when form is about to be submitted should the submit button is disabled
                         submit_button.prop('disabled', true);
