@@ -43,6 +43,7 @@ sudo apt-get install python3.6-venv
 sudo apt-get install apache2-dev
 sudo apt-get install python3.6-dev
 sudo apt-get install r-base
+sudo apt-get install opendkim opendkim-tools
 ```
 Note that the python 3 version that ships with Ubuntu 16.04 is v3.5 and we need v3.6.  The apache version obtained
 here is 2.4.18.  
@@ -245,6 +246,77 @@ To restart the server after a code change run
 ```python
 sudo service apache2 restart
 ```
+
+# Use DKIM on sendmail
+
+Following https://meumobi.github.io/sendmail/2015/09/18/install-configure-dkim-sendmail-debian.html. First, generate the keys
+```
+sudo mkdir -p /etc/opendkim/keys/nitecap
+sudo opendkim-genkey -D /etc/opendkim/keys/nitecap -d nitecap.org -s default
+sudo chown -R opendkim:opendkim /etc/opendkim/keys/nitecap
+sudo chmod 640 /etc/opendkim/keys/nitecap/default.private
+sudo chmod 644 /etc/opendkim/keys/nitecap/default.txt
+```
+Edit `/etc/opendkim.conf` and add these to the end:
+```
+AutoRestart             Yes
+AutoRestartRate         10/1h
+UMask                   002
+Syslog                  yes
+SyslogSuccess           Yes
+LogWhy                  Yes
+
+Canonicalization        relaxed/simple
+
+ExternalIgnoreList      refile:/etc/opendkim/TrustedHosts
+InternalHosts           refile:/etc/opendkim/TrustedHosts
+KeyTable                refile:/etc/opendkim/KeyTable
+SigningTable            refile:/etc/opendkim/SigningTable
+
+Mode                    sv
+PidFile                 /var/run/opendkim/opendkim.pid
+SignatureAlgorithm      rsa-sha256
+
+UserID                  opendkim:opendkim
+
+Socket  inet:8891@127.0.0.1
+
+Domain nitecap.org
+Selector default
+```
+Also need to edit default config file in `/etc/default/opendkim` to first comment out the existing `SOCKET=` line and then add
+```
+SOCKET="inet:8891@localhost"
+```
+Create and edit `/etc/opendkim/KeyTable` and add:
+```
+default._domainkey.nitecap.org nitecap.org:default:/etc/opendkim/keys/nitecap/default.private
+```
+Create and edit `/etc/opendkim/SigningTable` and add:
+```
+*@nitecap.org default._domainkey.nitecap.org
+```
+Create and edit: `/etc/opendkim/TrustedHosts` and add
+```
+127.0.0.1
+localhost
+nitecap.org
+```
+Now configure sendmail. Edit `/etc/mail/sendmail.mc` and add:
+```
+INPUT_MAIL_FILTER(`opendkim', `S=inet:8891@127.0.0.1')
+```
+Then run
+```
+sendmailconfig
+```
+Now run
+```
+service opendkim start
+service sendmail restart
+```
+The DNS record must be updated to use the new key. Log in at https://slmp-550-101.slc.westdc.net:2083/cpsess5500231750/frontend/paper_lantern/zone_editor/index.html?login=1&post_login=91595785784593#/manage?domain=nitecap.org and create/update a record with with the contents `/etc/opendkim/keys/nitecap/default.txt`.
+
 
 # Database Issues
 
