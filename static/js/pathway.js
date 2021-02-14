@@ -72,15 +72,14 @@ function test_pathways(selected_set, background_list, pathways) {
 
     // Compute p values of each pathway
     let ps = pathways.map( function (pathway) {
-        let result = test_pathway(selected_set, pathway.ids, background_list);
-        return {name: pathway.name,
-                url: pathway.url,
-                p: result.p,
-                overlap: result.overlap,
-                background_size: background_list.size,
-                selected_set_size: selected_set.size,
-                pathway_size: pathway.ids.size,
-        };
+        let result = test_pathway(selected_set, pathway.feature_ids, background_list);
+        Object.assign(result, pathway);
+        Object.assign(result, {
+            background_size: background_list.size,
+            selected_set_size: selected_set.size,
+            pathway_size: pathway.feature_ids.size,
+        });
+        return result;
     });
     return ps;
 }
@@ -89,11 +88,12 @@ function restrict_pathways(pathways, background_list) {
     background_list = new Set(background_list.map( function( id) { return id.toUpperCase(); }));
     // Restrict pathways to those ids that appear in our background list
     return pathways.map( function(pathway) {
-        return {name: pathway.name,
-                url: pathway.url,
-                ids: new Set(pathway.ids.filter( function(id) {
-                        return background_list.has(id);
-                    }))
-                };
+        let p = Object.assign({}, pathway);
+        Object.assign(p, {
+            feature_ids: new Set(pathway.feature_ids.filter( function(id) {
+                return background_list.has(id);
+            })),
+        });
+        return p;
     });
 }
