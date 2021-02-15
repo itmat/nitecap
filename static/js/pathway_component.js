@@ -101,6 +101,13 @@ Vue.component( 'pathway-analysis', {
                 this.runPathwayAnalysis();
             }
         },
+
+        "config.continuous": function() {
+            let vm = this;
+            if (vm.full_pathways != [] && vm.config.continuous) {
+                this.runPathwayAnalysis();
+            }
+        },
     },
 
     template: `<div class="card">
