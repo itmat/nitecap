@@ -2,17 +2,29 @@ Vue.component( 'pathway-analysis', {
     data: function () {
         return {
             all_databases: {
-                "ensembl_go_musmusculus": {
+                "Ensembl_GO_HSapiens": {
+                    url: "/static/json/hsapiens.ensembl_gene_id.GO.pathways.json",
+                    species: "Mus musculus",
+                    id_types: "Ensembl Genes",
+                    pathways: "GO",
+                },
+                "Ensembl_GO_MMusculus": {
                     url: "/static/json/mmusculus.ensembl_gene_id.GO.pathways.json",
+                    species: "Mus musculus",
+                    id_types: "Ensembl Genes",
+                    pathways: "GO",
+                },
+                "Ensembl_GO_DMelanogaster": {
+                    url: "/static/json/dmelanogaster.ensembl_gene_id.GO.pathways.json",
                     species: "Mus musculus",
                     id_types: "Ensembl Genes",
                     pathways: "GO",
                 },
             },
             results: [],
-            database_id: "none",
             full_pathways: [],
             config: {
+                database_id: "none",
                 continuous: false,
                 MAX_PATHWAY_NAME_LENGTH: 45,
             },
@@ -52,14 +64,19 @@ Vue.component( 'pathway-analysis', {
     },
 
     watch: {
-        database_id: function () {
+        "config.database_id": function () {
             let vm = this;
-            if (vm.database_id == "none") {
-                vm.pathways == [];
+
+            // Clear any existing pathways loaded
+            vm.full_pathways = [];
+
+            // Nothing chosen, done
+            if (vm.config.database_id == "none") {
                 return;
             }
 
-            let db_data = vm.all_databases[vm.database_id];
+            // Load the new pathways
+            let db_data = vm.all_databases[vm.config.database_id];
             fetch(db_data.url+"?v="+Math.random())
                 .then(function(res) {return res.json()})
                 .then(function(res) {
@@ -77,17 +94,31 @@ Vue.component( 'pathway-analysis', {
             <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-3"
                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                title="Pathway Analysis Help"
-               data-content="Run pathway analysis using the genes selected above">
+               data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background.">
                 <i class="fas fa-info-circle"></i>
             </a>
         </div>
+
         <div class="card-body">
             <div class="form-check form-inline">
+                <label class="form-check-label" for="database_id_selector">Pathway Database</label>
+                <select name="database_id_selector" id="database_id_selector" v-model="config.database_id">
+                    <option 
+                        v-for="(db, db_id) in all_databases"
+                        v-bind:value="db_id">
+                        {{db_id}}
+                    </option>
+                </select>
+
+                <button class="btn btn-primary m-3"
+                    v-on:click="runPathwayAnalysis"
+                    v-bind:disabled="full_pathways.length == 0">
+                    Run Pathway Analysis
+                </button>
                 <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
                 <label class="form-check-label" for="run_continuously">Update continuously</label>
-
-                <button class="btn btn-primary m-3" v-on:click="runPathwayAnalysis">Run Pathway Analysis</button>
             </div>
+
             <div>
                 <table class="table table-sm" v-if="top_pathways.length > 0">
                     <thead>

@@ -19,6 +19,9 @@ for (species in species.list) {
                 name = name_1006,
                 definition = definition_1006,
                 go_namespace = namespace_1003) %>%
+            filter(
+                go_id != ""
+                ) %>%
             group_by(go_id, name, definition, go_namespace) %>%
             summarise(
                 feature_ids = list(ensembl_gene_id),
