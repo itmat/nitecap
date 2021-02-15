@@ -27,6 +27,7 @@ Vue.component( 'pathway-analysis', {
                 database_id: "none",
                 continuous: false,
                 MAX_PATHWAY_NAME_LENGTH: 45,
+                search_pattern: '',
             },
         };
     },
@@ -54,7 +55,10 @@ Vue.component( 'pathway-analysis', {
     computed: {
         top_pathways: function() {
             // Top results from pathway analysis
-            return this.results.slice(0,10);
+            let pattern = this.config.search_pattern.toUpperCase();
+            return this.results.filter(function(x) {
+                return x.name.toUpperCase().includes(pattern);
+            }).slice(0,10);
         },
 
         pathways: function() {
@@ -128,6 +132,8 @@ Vue.component( 'pathway-analysis', {
                 </button>
                 <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
                 <label class="form-check-label" for="run_continuously">Update continuously</label>
+
+
             </div>
 
             <div>
@@ -144,6 +150,14 @@ Vue.component( 'pathway-analysis', {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="form-inline">
+                <label for="results_search">Search</label>
+                <input class="form-control form-control-sm ml-2" type="text" name="results_search"
+                       placeholder="Search for pathways" v-model="config.search_pattern"
+                       />
+                </div>
             </div>
         </div>
     </div>`,
