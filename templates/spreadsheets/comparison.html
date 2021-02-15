@@ -498,7 +498,7 @@
 
         <pathway-analysis
             v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
-            v-bind:background="spreadsheets[0] ? spreadsheets[0].labels.filter( function(label, i) {return !spreadsheets[0].filtered[i];}) : []"
+            v-bind:background="background_ids"
             >
         </pathway-analysis>
 
@@ -1261,6 +1261,12 @@
                 return vm.sort_order.filter( function(row_num,rank) {
                     return (rank <= vm.selected_row) & (!vm.filtered[row_num]);
                 } );
+            },
+
+            background_ids: function() {
+                let vm = this;
+                if (vm.spreadsheets.length == 0) { return []; }
+                return vm.spreadsheets[0].labels.filter( function(label, i) {return !vm.spreadsheets[0].filtered[i];});
             },
 
             useable_stats: function () {

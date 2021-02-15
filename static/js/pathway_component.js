@@ -39,14 +39,14 @@ Vue.component( 'pathway-analysis', {
 
     methods:{
         "runPathwayAnalysis": function() {
-            let background = this.background;
-            let foreground = this.foreground.filter(function(x) {
-                return (background.indexOf(x) >= 0);
-            });
-            let analysis =  test_pathways(foreground, background, this.pathways);
-            this.results = analysis.sort( function(p1, p2) {
+            let analysis =  test_pathways(this.foreground, this.background, this.pathways);
+            let results = analysis.sort( function(p1, p2) {
                 return p1.p - p2.p;
             });
+            // Freeze it so that it's non-reactive.
+            // Adding reactivity is too slow
+            Object.freeze(results);
+            this.results = results;
         },
 
     },
@@ -59,7 +59,10 @@ Vue.component( 'pathway-analysis', {
 
         pathways: function() {
             // Pathways that have been restricted to our background set
-            return restrict_pathways(this.full_pathways, this.background)
+            console.log("Re-restricting pathways");
+            let pathways = restrict_pathways(this.full_pathways, this.background)
+            Object.preventExtensions(pathways); // Contents aren't reactive
+            return pathways;
         },
     },
 
@@ -80,6 +83,7 @@ Vue.component( 'pathway-analysis', {
             fetch(db_data.url+"?v="+Math.random())
                 .then(function(res) {return res.json()})
                 .then(function(res) {
+                    Object.preventExtensions(res); // Contents aren't reactive
                     vm.full_pathways = res;
                 })
                 .catch(function(err){

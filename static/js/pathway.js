@@ -67,8 +67,11 @@ function test_pathway(selected_set, pathway, background_list) {
 }
 
 function test_pathways(selected_set, background_list, pathways) {
-    selected_set = new Set(selected_set.map(function(id) {return id.toUpperCase();}));
+    // Capitalize background
     background_list = new Set(background_list.map(function(id) {return id.toUpperCase();}));
+
+    // Capitalize and intersect with background
+    selected_set = new Set(selected_set.filter(function(id) { return background_list.has(id); }).map(function(id) {return id.toUpperCase();}));
 
     // Compute p values of each pathway
     let ps = pathways.map( function (pathway) {
