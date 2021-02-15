@@ -1,5 +1,5 @@
 library(biomaRt);
-library(dpylr);
+library(dplyr);
 library(jsonlite);
 
 species.list <- c("mmusculus", "hsapiens", "dmelanogaster");
