@@ -86,6 +86,13 @@ Vue.component( 'pathway-analysis', {
                     console.log("ERROR loading pathways ", err);
                 });
         },
+
+        "foreground": function() {
+            let vm = this;
+            if (vm.full_pathways != [] && vm.config.continuous) {
+                this.runPathwayAnalysis();
+            }
+        },
     },
 
     template: `<div class="card">
