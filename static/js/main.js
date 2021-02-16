@@ -399,6 +399,27 @@ var column_label_formats = [
                 if (wrapped) {x = x % 24;}
                 return zeroPad(x,2)+'zt';
             }},
+            // Formats with HR, eg 00hr
+            {format: new RegExp("HR(\\d+)"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return 'HR'+zeroPad(x,2);
+            }},
+            {format: new RegExp("hr(\\d+)"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return 'hr'+zeroPad(x,2);
+            }},
+            {format: new RegExp("(\\d+)HR"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return zeroPad(x,2)+'HR';
+            }},
+            {format: new RegExp("(\\d+)hr"),
+             make_label: function(x, wrapped) {
+                if (wrapped) {x = x % 24;}
+                return zeroPad(x,2)+'hr';
+            }},
             // Just numbers, nothing else
             {format: new RegExp("^(\\d+)$"),
              make_label: function(x, wrapped) {
@@ -457,7 +478,7 @@ function inferColumnTimes(columns, days, timepoints) {
             num_matches: best_num_matches};
 }
 
-function guessColumnLabels(columns, days, timepoints) {
+function guessColumnLabels(columns, days, timepoints, defaults) {
     let inferred = inferColumnTimes(columns, days, timepoints);
 
     if (inferred  === null) {
@@ -523,7 +544,7 @@ function guessColumnLabels(columns, days, timepoints) {
     }
 
     // No selections, we have uneven timepoints
-    return columns.map( function(x) {return "Ignore";} );
+    return defaults;
 }
 
 function getLabelOptions(days, timepoints) {

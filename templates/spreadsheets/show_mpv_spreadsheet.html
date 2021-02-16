@@ -928,7 +928,7 @@
                 let vm = this;
                 $.ajax({
                     url: "{{url_for('spreadsheets.share')}}",
-                    data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': vm.selected_row}),
+                    data: JSON.stringify({'spreadsheet_ids': [spreadsheet_id], 'row_index': vm.selected_row}),
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',

@@ -5,6 +5,7 @@
     $(document).ready ( function() {
 
         columns = {{ (spreadsheet.df.columns.tolist()) | safe }};
+        default_selections_str = "{{ spreadsheet.column_labels_str | safe }}";
 
         {% if not spreadsheet.days or not spreadsheet.timepoints %}
             $("#selectors").css("visibility", "hidden");
@@ -64,8 +65,15 @@
 
         days.on('change', updateLabels);
         timepoints.on('change', updateLabels);
-        updateLabels();
 
+        // Initialize selections
+        if (default_selections_str) {
+            let options = getLabelOptions(days.val(), timepoints.val());
+            let default_selections = default_selections_str.split(",");
+            populate_selects(options, default_selections);
+        } else {
+            updateLabels();
+        }
 
         // Form Submitted
         nitecap_form.on('submit', function (e) {
@@ -98,17 +106,18 @@
                     // Notify the user of any non-unique ids and then submit the form once the user acknowledges.
                     success: function (response) {
                         let non_unique_ids = response['non-unique_ids'];
-                        if (non_unique_ids && non_unique_ids.length > 0) {
-                            let warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
-                            if (non_unique_ids.length > 5) {
-                                warning += non_unique_ids.slice(0, 5).join(', ');
-                                warning += ", ... and " + (non_unique_ids.length - 5) + " other";
-                                warning += non_unique_ids.length - 5 > 1 ? "s." : "."
-                            } else {
-                                warning += non_unique_ids.join(',');
-                            }
-                            alert(warning);
-                        }
+                        // No longer giving this alert since for most users, non-unique ids are not a problem
+                        //if (non_unique_ids && non_unique_ids.length > 0) {
+                        //    let warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
+                        //    if (non_unique_ids.length > 5) {
+                        //        warning += non_unique_ids.slice(0, 5).join(', ');
+                        //        warning += ", ... and " + (non_unique_ids.length - 5) + " other";
+                        //        warning += non_unique_ids.length - 5 > 1 ? "s." : "."
+                        //    } else {
+                        //        warning += non_unique_ids.join(',');
+                        //    }
+                        //    alert(warning);
+                        //}
 
                         // Only when form is about to be submitted should the submit button is disabled
                         submit_button.prop('disabled', true);
@@ -177,10 +186,10 @@
     <div class="form-group">
         Repeated Measures?
         <label class="radio-inline">
-            <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y"> Yes
+            <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y" {{"checked" if spreadsheet.repeated_measures else ''}}> Yes
         </label>
         <label class="radio-inline">
-            <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" checked> No
+            <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" {{"checked" if not spreadsheet.repeated_measures else ''}}> No
         </label>
     </div>
     <p>

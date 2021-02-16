@@ -393,17 +393,17 @@ class User(db.Model):
         """
         return self.visitor
 
-    def get_share_token(self, spreadsheet_id, row_index=0):
+    def get_share_token(self, spreadsheet_ids, row_index=0):
         """
         Uses a serializer and the website secret key to encrypt the id of the spreadsheet to be shared and the id of
         the users doing the sharing into a token.  The token has no expiration.  So the user with whom the token is
         shared may use it repeatedly.
-        :param spreadsheet_id: the id of the spreadsheet to share
+        :param spreadsheet_ids: the ids of the spreadsheets to share
         :param row_index: the spreadsheet row to share (optional - only when on a display page).  Otherwise 0.
         :return: token to pass along to the receiving user
         """
         s = Serializer(os.environ['SECRET_KEY'])
-        return s.dumps({'user_id': self.id, 'spreadsheet_id': spreadsheet_id, 'row_index': row_index}).decode('utf-8')
+        return s.dumps({'user_id': self.id, 'spreadsheet_ids': spreadsheet_ids, 'row_index': row_index}).decode('utf-8')
 
     @staticmethod
     def verify_share_token(token):
@@ -420,7 +420,7 @@ class User(db.Model):
             user = User.find_by_id(user_id)
             if not user:
                 return None
-            return user, s.loads(token)['spreadsheet_id'], s.loads(token)['row_index']
+            return user, s.loads(token)['spreadsheet_ids'], s.loads(token)['row_index']
         except:
             return None
 

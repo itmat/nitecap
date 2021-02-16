@@ -148,6 +148,8 @@
 
                     app.stats.two_way_anova_ps = response['two_way_anova_ps'];
                     app.stats.two_way_anova_qs = response['two_way_anova_qs'];
+                    app.stats.main_effect_ps = response['main_effect_ps'];
+                    app.stats.main_effect_qs = response['main_effect_qs'];
                     app.stats.phase_ps = response['phase_ps'];
                     app.stats.phase_qs = response['phase_qs'];
                     app.stats.amplitude_ps = response['amplitude_ps'];
@@ -183,6 +185,10 @@
                     class="mx-3" download="processed_file.txt">
                 <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
             </a>
+
+            <a id='share_spreadsheet' href="#" v-on:click="onShare">
+                <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+            </a>
         </p>
 
         <p class="col-lg-12 h3" v-if="spreadsheets.length === 1">
@@ -199,9 +205,13 @@
         </p>
     </div>
     <div class="row">
-        <span class="form-group col-lg-9">
+        <span class="form-group col-lg-5">
             Number of selected rows:
-            <input type="number" v-model="num_below"></input>
+            <input type="number" v-model.number="num_below"></input>
+        </span>
+        <span class="form-group col-lg-5">
+            Cutoff:
+            <input v-model.lazy.number="cutoff"></input>
         </span>
     </div>
 
@@ -274,6 +284,7 @@
                         <option value="SEM">SEM</option>
                         <option value="SEM_points">SEM and Points</option>
                         <option value="repeated_measures">Repated Measures</option>
+                        <option value="cosinor">Cosinor</option>
                     </select>
                 </div>
                 <div class="form-inline">
@@ -570,6 +581,12 @@
          description: "Two-way ANOVA test for difference in timepoint-effects across datasets",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
+        {name: "Main Effect Diff",
+         value: {p: "main_effect_ps",
+                 q: "main_effect_qs"},
+         description: "Main effect test of difference between the two datasets in the two-way ANOVA",
+         per_spreadsheet: false,
+         num_spreadsheets: 'multi'},
         {name: "Phase Difference",
          value: {p: "phase_ps",
                  q: "phase_qs"},
@@ -593,6 +610,12 @@
          description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
          per_spreadsheet: true,
          num_spreadsheets: 'any'},
+        {name: "Cosinor",
+         value: {p: "cosinor_ps",
+                 q: "cosinor_qs"},
+         description: "Cosinor significance of rhythmicity for primary dataset.",
+         per_spreadsheet: true,
+         num_spreadsheets:'any'},
     ];
 
     let filter_data_list_base = [
@@ -664,6 +687,8 @@
                 phase_qs: null,
                 two_way_anova_ps: null,
                 two_way_anova_qs: null,
+                main_effect_ps: null,
+                main_effect_qs: null,
             },
 
             labels: [],
@@ -906,6 +931,32 @@
                                 line: {color: spreadsheet_color},
                             });
                         });
+                    } else if (plot_style == "cosinor") {
+                        // number of sampling points used for plotting cosinor
+                        const sampling_density = 120;
+
+                        let t = [];
+                        for (let i = 0; i <= sampling_density; i++)
+                            t.push(24*vm.num_days*i/sampling_density);
+
+                        let x0 = spreadsheet.cosinor_x0s[row_index];
+                        let x1 = spreadsheet.cosinor_x1s[row_index];
+                        let x2 = spreadsheet.cosinor_x2s[row_index];
+
+                        let y = t.map(t => x0 + x1*Math.cos(2*Math.PI*t/24) + x2*Math.sin(2*Math.PI*t/24));
+
+                        // rescale to match the other plots
+                        for (let i = 0; i < t.length; i++)
+                            t[i] *= spreadsheet.timepoints_per_day/24;
+
+                        traces.push({
+                            x: t, y,
+                            mode: "lines",
+                            type: "scatter",
+                            line: {color: spreadsheet_color},
+                            opacity: 0.2,
+                            name: "Cosinor fit",
+                        });
                     }
 
                     traces.push(trace);
@@ -951,7 +1002,7 @@
             },
 
             searchRows: function() {
-                let search_value = this.search_value.toLowerCase();
+                let search_value = this.search_value.toLowerCase().trim();
 
                 // Pull out row indexes matching our search_value
                 let matching_rows = app.labels.map( function(unused, index) {
@@ -988,11 +1039,10 @@
 
             onShare: function() {
                 // Open Modal to share the spreadsheet
-                let spreadsheet_id = this.spreadsheets[0].spreadsheet_id;
                 let vm = this;
                 $.ajax({
                     url: "{{url_for('spreadsheets.share')}}",
-                    data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'row_index': vm.selected_row}),
+                    data: JSON.stringify({'spreadsheet_ids': vm.spreadsheet_ids, 'row_index': vm.selected_row}),
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',
@@ -1058,9 +1108,15 @@
                 // So if secondary sort value is null then we will sort the value to the end as if the main value were null
                 // This solves the problem where q-values are null and being sorted to the front of the list particulary
                 // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
+
+                // display_value is the value array that should be monotonic in the sort order
+                // which are convenient for the user to look at.
+                // In particular, Nitecap sorts by the nitecap statistic but users want to see the q-value
+                // and other methods sort by p-value but users want q-value
                 let vm = this;
                 let value = null;
                 let secondary_value = null;
+                let display_value = null;
 
                 if (this.sort_by.stat.sort_value !== undefined) {
                     value = this.sort_by.stat.sort_value;
@@ -1069,12 +1125,15 @@
                     } else {
                         secondary_value = value;
                     }
+                    display_value = secondary_value;
                 } else if (typeof this.sort_by.stat.value === 'string') {
                     value = this.sort_by.stat.value;
                     secondary_value = value;
+                    display_value = value;
                 } else {
                     value = this.sort_by.stat.value.p;
                     secondary_value = this.sort_by.stat.value.q;
+                    display_value = secondary_value;
                 }
 
                 let sort_direction = 1;
@@ -1086,10 +1145,18 @@
                     if (vm.spreadsheets.length > 0) {
                         value = vm.spreadsheets[vm.sort_by.spreadsheet_num][value];
                         secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value];
+                        display_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][display_value];
                     }
                 } else {
                     value = vm.stats[value];
                     secondary_value = vm.stats[secondary_value];
+                    display_value = vm.stats[display_value];
+                }
+
+                if (display_value !== null && vm.spreadsheets.length > 0) {
+                    display_value = display_value.map( function(x,i) {
+                        return secondary_value[i] && display_value[i];
+                    });
                 }
 
                 let sorter = function (i,j) {
@@ -1100,14 +1167,14 @@
                                    i, j);
                 };
 
-                return sorter;
+                return {"func": sorter, "value": value,  "display_value":display_value, "sort_direction": sort_direction};
             },
 
             sort_order: function () {
                 let vm = this;
 
                 let sort_order =  this.labels.map( function(x,i) {return i;} );
-                sort_order = sort_order.sort(this.sort_function);
+                sort_order = sort_order.sort(this.sort_function.func);
 
                 if (this.hide_filtered_rows) {
                     // Move filtered items from the sort_order to the back of the list  to hide them
@@ -1124,8 +1191,8 @@
 
                 if (typeof value === 'string') {
                     // No inherent q-value for this sort value
-                    // we default to Nitecap of primary spreadsheet
-                    return this.spreadsheets[0] ? this.spreadsheets[0].ps : [];
+                    // drop the "Q:" label
+                    return null;
                 }
 
                 if (this.sort_by.spreadsheet_num !== undefined) {
@@ -1318,22 +1385,26 @@
 
                     // Try to infer if possible from column headers
                     let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
+                    let headings = null;
                     if (inferred !== null) {
-                        let headings = inferred.times.map(function(t) {
+                        headings = inferred.times.map(function(t) {
                             return inferred.format.make_label(t);
                         });
-                        let labels = [];
-                       times.forEach( function (time,i) {
-                            if (labels[time] === undefined) {
-                                labels[time] = headings[i];
-                            }
+                    } else {
+                        headings = times.map( function(time) {
+                            return "Day " + (Math.floor(time / spreadsheet.timepoints_per_day) + 1) + " Timepoint " + (time % spreadsheet.timepoints_per_day + 1);
                         });
-                        return labels;
                     }
 
-                    return times.map( function(time) {
-                        return "Day " + (Math.floor(time / spreadsheet.timepoints_per_day) + 1) + " Timepoint " + (time % spreadsheet.timepoints_per_day + 1);
+                    // Return only one heading per time
+                    // by dropping repeated times
+                    let labels = [];
+                    times.forEach( function (time,i) {
+                         if (labels[time] === undefined) {
+                             labels[time] = headings[i];
+                         }
                     });
+                    return labels;
                 });
             },
 
@@ -1383,6 +1454,25 @@
                 });
                 return names;
             },
+
+            cutoff: {
+                get: function() {
+                    return this.sort_function.display_value[this.sort_order[this.selected_row]];
+                },
+                set: function(value) {
+                    let app = this;
+                    let sort_values = app.sort_function.display_value;
+                    let i = 0;
+                    for(; i < sort_values.length; i++) {
+                        let v = sort_values[app.sort_order[i]];
+                        if ((app.sort_function.sort_direction * v) > (app.sort_function.sort_direction * value)) {
+                            break;
+                        }
+                    }
+                    app.selected_row = Math.max(i-1, 0);
+                },
+            },
+
         },
 
         watch: {
