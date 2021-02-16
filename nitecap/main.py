@@ -1,4 +1,6 @@
 import collections
+import itertools
+import math
 
 import numpy
 from . import util
@@ -237,6 +239,22 @@ def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS, repeated_measure
     data_folded = fold_days(data, num_cycles)
     td = total_delta(data_folded, contains_nans, repeated_measures=repeated_measures)
 
+    # If the total number of permutations possible is less than N_PERMS
+    # then we just run all possible distinct permutations, for a deterministic p-value
+    # Distinct perms: since our statistic is independent of cyclic permutations and mirroring
+    # we can count distinct perms by fixing the first timepoint and dividing by two
+    num_perms_distinct = int(math.factorial(N_TIMEPOINTS-1)/2)
+    if N_PERMS >= num_perms_distinct:
+        # Enumerate all permutations out at once, as indexes
+        # Since statistic is independent of cyclic permutations, we can fix the first
+        # timepoint. Since independent of mirroring, only need "ascending" permutations
+        permutations = [[0] + list(p) for p in itertools.permutations(range(1,N_TIMEPOINTS))
+                            if p[0] < p[-1]]
+        assert num_perms_distinct == len(permutations)
+        N_PERMS = num_perms_distinct
+    else:
+        permutations = None
+
     # Run N_PERMS_PER_RUN permutations repeatedly until we get a total of N_PERMS
     num_perms_done = 0
     perm_td = numpy.empty((N_PERMS, N_GENES))
@@ -244,10 +262,19 @@ def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS, repeated_measure
         if num_perms_done >= N_PERMS:
             break
 
+        # Number of permutations to do this time - usually is N_PERMS_PER_RUN
         num_perms = min(N_PERMS - num_perms_done, N_PERMS_PER_RUN)
-        perm_data = permute_timepoints(data, num_perms)
+
+        if permutations is not None:
+            these_permutations = permutations[num_perms_done:num_perms_done+num_perms]
+        else:
+            these_permutations = num_perms
+
+        # Prepare the permuted data
+        perm_data = permute_timepoints(data, these_permutations)
         perm_data_folded = fold_days(perm_data, num_cycles)
 
+        # Actually compute the statistics
         perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(perm_data_folded, contains_nans, repeated_measures=repeated_measures)
 
         num_perms_done += num_perms
@@ -258,18 +285,28 @@ def nitecap_statistics(data, num_cycles = 1, N_PERMS = N_PERMS, repeated_measure
     perm_td = perm_td - meds
     return td, perm_td
 
-def permute_timepoints(data, N_PERMS = None):
+def permute_timepoints(data, permutations = None):
     # Take data with shape (N_timespoints, N_reps)
     # and return a permutation which randomizes the timepoints
     # but not the samples within a timepoint - replicates stay together
-    if N_PERMS is None:
+    # permutations is one of:
+    #    None (default): just run one random permutation
+    #    an int: run that many random permutations
+    #    a list of permutations: use the permutation provided in the list
+
+    if permutations is None:
         new_data = data.copy()
         numpy.random.shuffle(new_data)
         return new_data
-    else:
-        perm_data = numpy.broadcast_to(data, (N_PERMS,*data.shape)).copy()
+    elif type(permutations) is int:
+        perm_data = numpy.broadcast_to(data, (permutations,*data.shape)).copy()
         # Shuffle (in place) each "permutation" along timepoints
-        [numpy.random.shuffle(perm_data[i]) for i in range(N_PERMS)]
+        [numpy.random.shuffle(perm_data[i]) for i in range(permutations)]
+        return perm_data
+    else: # Permutations is an array of permutations
+        perm_data = numpy.broadcast_to(data, (len(permutations),*data.shape)).copy()
+        for i, permutation in enumerate(permutations):
+            perm_data[i] = perm_data[i, permutation]
         return perm_data
 
 def permute_and_reflect(data):

@@ -29,13 +29,13 @@ traces = [
 
 # Each trace above gets copied this many times and has noise added to it
 N_COPIES = 20
-NOISE = 0.6
+NOISE = 0.2
 N_TIMEPOINTS = 6
 N_REPS = 1
 N_CYCLES = 1
 
 data = numpy.concatenate([numpy.repeat(trace, N_COPIES).reshape((-1,N_COPIES)).T for trace in traces])
-data += NOISE * numpy.random.random(data.shape)
+data += NOISE * numpy.random.normal(size=data.shape)
 
 # Run nitecap
 q, td, perm_td  = nitecap.main(data, N_TIMEPOINTS, N_REPS, N_CYCLES, output="full")
