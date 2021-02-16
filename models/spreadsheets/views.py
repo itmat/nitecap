@@ -381,6 +381,11 @@ def get_spreadsheets(user=None):
                      column_headers=spreadsheet.get_data_columns(),
                      jtk_ps=None,
                      jtk_qs=None,
+                     cosinor_ps=df.cosinor_p,
+                     cosinor_qs=df.cosinor_q,
+                     cosinor_x0s=df.cosinor_x0,
+                     cosinor_x1s=df.cosinor_x1,
+                     cosinor_x2s=df.cosinor_x2,
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                     )
         spreadsheet_values.append(values)
@@ -700,14 +705,21 @@ def consume_share(token):
     :param token: the share token given to the receiving user
     """
     errors = []
-    sharing_user, spreadsheet_ids, row_index = User.verify_share_token(token)
+    result = User.verify_share_token(token)
+    if result is None:
+        current_app.logger.error(f"No valid user present in shared token")
+        errors.append("The token you received does not work.  It may have been mangled in transit.  Please request "
+                      "another share")
+        return render_template('spreadsheets/upload_file.html', errors=errors)
+    sharing_user, spreadsheet_ids, row_index  = result
+
     current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_ids}")
     spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
 
         if not spreadsheet or not sharing_user:
-            errors.append("The token you received does not work.  It may have been mangled in transit.  Please request"
+            errors.append("The token you received does not work.  It may have been mangled in transit.  Please request "
                           "another share")
             return render_template('spreadsheets/upload_file.html', errors=errors)
         spreadsheets.append(spreadsheet)
@@ -804,6 +816,8 @@ def get_upside(user=None):
 
     anova_p = None
     anova_q = None
+    main_effect_p = None
+    main_effect_q = None
     for primary, secondary in [(0, 1), (1, 0)]:
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
         file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
@@ -814,11 +828,13 @@ def get_upside(user=None):
             anova_p = comp_data["two_way_anova_ps"]
             anova_q = comp_data["two_way_anova_qs"]
             phase_p = comp_data["phase_ps"]
+            main_effect_p = comp_data["main_effect_ps"]
+            main_effect_q = comp_data["main_effect_qs"]
             phase_q = comp_data["phase_qs"]
             amplitude_p = comp_data["amplitude_ps"]
             amplitude_q = comp_data["amplitude_qs"]
             current_app.logger.info(f"Loaded upside values from file {file_path}")
-        except OSError: # Parquet file could not be read (hasn't been written yet)
+        except (OSError, KeyError) as e: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
                 # Populate all
                 for spreadsheet in spreadsheets:
@@ -840,11 +856,12 @@ def get_upside(user=None):
                                             repeated_measures=repeated_measures)
             upside_q = nitecap.util.BH_FDR(upside_p)
 
-            if anova_p is None:
+            if anova_p is None or main_effect_p is None:
                 # Run two-way anova
-                anova_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates_by_time, datasets[primary],
+                anova_p, main_effect_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates_by_time, datasets[primary],
                                                      spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
                 anova_q = nitecap.util.BH_FDR(anova_p)
+                main_effect_q = nitecap.util.BH_FDR(main_effect_p)
 
                 # Run Cosinor analysis
                 amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].num_replicates_by_time, datasets[primary],
@@ -857,6 +874,8 @@ def get_upside(user=None):
             comp_data["upside_qs"] = upside_q
             comp_data["two_way_anova_ps"] = anova_p
             comp_data["two_way_anova_qs"] = anova_q
+            comp_data["main_effect_ps"] = main_effect_p
+            comp_data["main_effect_qs"] = main_effect_q
             comp_data["phase_ps"] = phase_p
             comp_data["phase_qs"] = phase_q
             comp_data["amplitude_ps"] = amplitude_p
@@ -874,6 +893,8 @@ def get_upside(user=None):
                 'upside_qs': upside_qs,
                 'two_way_anova_ps': anova_p.tolist(),
                 'two_way_anova_qs': anova_q.tolist(),
+                'main_effect_ps': main_effect_p.tolist(),
+                'main_effect_qs': main_effect_q.tolist(),
                 'phase_ps': phase_p.tolist(),
                 'phase_qs': phase_q.tolist(),
                 'amplitude_ps': amplitude_p.tolist(),

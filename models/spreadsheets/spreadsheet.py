@@ -29,7 +29,8 @@ import copy
 import nitecap
 from timer_decorator import timeit
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p", "anova_p", "anova_q"]
+NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p",
+                        "anova_p", "anova_q", "cosinor_p", "cosinor_q", "cosinor_x0", "cosinor_x1", "cosinor_x2"]
 CATEGORICAL_DATA_COLUMNS = ["anova_p", "anova_q"]
 MAX_JTK_COLUMNS = 85
 
@@ -381,6 +382,14 @@ class Spreadsheet(db.Model):
             anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
             anova_q = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
 
+        cosinor_X, cosinor_p = nitecap.cosinor.fit(data_formatted, self.days)
+
+        self.df["cosinor_p"] = cosinor_p
+        self.df["cosinor_q"] = nitecap.util.BH_FDR(cosinor_p)
+        self.df["cosinor_x0"] = cosinor_X[0,:]
+        self.df["cosinor_x1"] = cosinor_X[1,:]
+        self.df["cosinor_x2"] = cosinor_X[2,:]
+        
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
@@ -469,7 +478,7 @@ class Spreadsheet(db.Model):
                                         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 if res.returncode != 0:
-                    raise RuntimeError(f"Error running JTK: \n {res.args.decode('ascii')} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
+                    raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
                 results = pd.read_csv(results_file_path, sep='\t')
                 self.df["jtk_p"] = results.JTK_P
