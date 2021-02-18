@@ -395,6 +395,12 @@
             </div>
         </div>
 
+        <pathway-analysis
+            v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
+            v-bind:background="background_ids"
+            >
+        </pathway-analysis>
+
         <!--
         <div class='col-auto'>
             <div class="card">
@@ -432,43 +438,6 @@
         </div>
         -->
 
-        <div class='col-auto'>
-            <div class="card">
-                <div class="card-header">
-                    Pathway Analysis
-                    <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-3"
-                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                       title="Pathway Analysis Help"
-                       data-content="Run pathway analysis using the genes selected above">
-                        <i class="fas fa-info-circle"></i>
-                    </a>
-                </div>
-                <div class="card-body">
-                    <span id="fc_plot" style="width:625px;height:525px;vertical-align: top"></span>
-                    <div class="form-check form-inline">
-                        <input class="form-check-input" id="run_pathway_continuous" type="checkbox" v-model="pathway_analysis.config.continuous">
-                        <label class="form-check-label" for="run_pathway_continuous">Update continuously</label>
-
-                        <button class="btn btn-primary m-3" v-on:click="runPathwayAnalysis">Run Pathway Analysis</button>
-                    </div>
-                    <div>
-                        <table class="table table-sm" v-if="pathway_analysis.top_pathways.length > 0">
-                            <thead>
-                            <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> </tr>
-                            </thead>
-                            <tbody is="transition-group" name="swap-list">
-                                <tr v-for="pathway in pathway_analysis.top_pathways" v-bind:key="pathway.name" class="swap-list-item">
-                                    <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,MAX_PATHWAY_NAME_LENGTH) }}</a></td>
-                                    <td>{{util.formatNum(pathway.p, 4)}} </td>
-                                    <td>{{pathway.overlap}} </td>
-                                    <td>{{pathway.pathway_size}} </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <div id="ComparisonCard" class="col-auto">
             <div class="card">
@@ -555,7 +524,7 @@
 <script src="{{url_for('static', filename='js/PCA_plot.js')}}"></script>
 <script src="{{url_for('static', filename='js/heatmap_plot.js')}}"></script>
 <script src="{{url_for('static', filename='js/pathway.js')}}"></script>
-<script src="{{url_for('static', filename='js/pathway_list.js')}}"></script>
+<script src="{{url_for('static', filename='js/pathway_component.js')}}"></script>
 
 <script>
     Vue.prototype.util = {
@@ -665,14 +634,6 @@
                     style: "mva",
                 },
                 first_render: true,
-            },
-
-            pathway_analysis: {
-                config: {
-                    continuous: false,
-                },
-                pathways: [],
-                top_pathways: [],
             },
 
             comparison_box: {
@@ -1045,23 +1006,6 @@
                 }
             },
 
-
-            runPathwayAnalysis: function() {
-                let vm = this;
-                let selected_indexes = vm.sort_order.slice(0,vm.selected_row+1);
-                selected_indexes = selected_indexes.filter( function(i) { return !vm.filtered[i]; });
-                let id_set = selected_indexes.map( function(i) {
-                    return vm.labels[i];
-                }); 
-                let background_set = vm.labels;
-
-                let analysis =  test_pathways(id_set, background_set, vm.pathways);
-                vm.pathway_analysis.pathways = analysis.sort( function(p1, p2) {
-                    return p1.p - p2.p;
-                });
-                vm.pathway_analysis.top_pathways = vm.pathway_analysis.pathways.slice(0,10);
-            },
-
             createComparison: function() {
                 let vm = this;
                 let spreadsheet = vm.spreadsheets[0];
@@ -1390,6 +1334,11 @@
                 return this.spreadsheets.map( function(spreadsheet) {return spreadsheet.spreadsheet_id;});
             },
 
+            background_ids: function() {
+                let vm = this;
+                if (vm.spreadsheets.length == 0) { return []; }
+                return vm.spreadsheets[0].labels.filter( function(label, i) {return !vm.spreadsheets[0].filtered[i];});
+            },
 
             descriptive_names: function() {
                 // Descriptive names for spreadsheets
@@ -1443,11 +1392,6 @@
                 return this.spreadsheets[0].possible_assignments;
             },
 
-            pathways: function () {
-                // Restricts pathways to the set of genes we have in our file
-                return restrict_pathways(PATHWAYS, this.labels);
-            },
-
             groups: function () {
                 // List of possible groups to consider
                 // Eg: "WT Female" or just "WT" including both male and female
@@ -1490,11 +1434,6 @@
         },
 
         watch: {
-            row_index: ["onRowChange",
-                function () {
-                    if (app.pathway_analysis.config.continuous) { app.runPathwayAnalysis();}
-                }],
-
             "plot.config": {
                 handler: "redrawPlot",
                 deep: true
@@ -1503,12 +1442,6 @@
             "fc_plot.config": {
                 handler: "redrawFCPlot",
                 deep: true
-            },
-
-            sort_order: function() {
-                if (app.pathway_analysis.config.continuous) {
-                    app.runPathwayAnalysis();
-                }
             },
         },
     });
