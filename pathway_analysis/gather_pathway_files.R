@@ -2,9 +2,13 @@ library(biomaRt);
 library(dplyr);
 library(jsonlite);
 
+# TODO: update this when you run this file
+work.dir <- "C:/Users/tgb/nitecap/"
+
 species.list <- c("mmusculus", "hsapiens", "dmelanogaster");
 kegg.species.list <- c("mmu", "hsa", "dme");
-id_types <- c("ensembl_gene_id"); #TODO: to include any different ID types, we would have to update the group_by function
+#TODO: to include any different ID types, we would have to update the group_by function
+id_types <- c("ensembl_gene_id");
 ensembl_mart <- useMart("ensembl");
 
 # Use this to check the avialable datasets (to find species)
@@ -12,11 +16,13 @@ ensembl_mart <- useMart("ensembl");
 
 # Load the child-parent GO ontology relationships
 # Table of child->parent relationships mapping GO id's to each other
-go_parents <- read.table("C:/Users/tgb/nitecap/processed_obo.txt", sep="\t", header=TRUE);
+go_parents <- read.table(paste(work.dir, "pathway_analysis/processed_obo.txt", sep=''), sep="\t", header=TRUE);
 
 # GO term definitions
-go_definitions <- read.table("C:/Users/tgb/nitecap/go_definitions.txt", sep="\t", header=TRUE, quote="");
+# Generate from running process_obo_file.py
+go_definitions <- read.table(paste(work.dir, "pathway_analysis/go_definitions.txt", sep=''), sep="\t", header=TRUE, quote="");
 
+# Gather the GO terms from ENSEMBL
 for (species in species.list) {
     mart <- useDataset(paste(species, "_gene_ensembl", sep=''), ensembl_mart);
     for (id_type in id_types) {
@@ -42,7 +48,7 @@ for (species in species.list) {
             rename(pathway = go_id);
         objectified$url = paste("https://www.ebi.ac.uk/QuickGO/term/", objectified$pathway);
 
-        write_json(objectified, paste("C:/Users/tgb/nitecap/static/json/", species, ".", id_type, ".GO.pathways.json", sep=''));
+        write_json(objectified, paste(work.dir, "static/json/", species, ".", id_type, ".GO.pathways.json", sep=''));
     }
 }
 
@@ -62,13 +68,14 @@ for (i in seq_len(length(kegg.species.list))) {
                                     sub("[^:]*:", '', kegg_pathway_info$pathway),
                                     sep='')
 
-
+    # Kegg gives pathways to us in its own IDs, we first need to convert those to NCBI/Entrez gene ids
     kegg_to_ncbi <- keggConv(kegg.species, "ncbi-geneid");
     kegg_to_ncbi <- data.frame(list("kegg_geneid"=unname(kegg_to_ncbi), "ncbi_geneid"=names(kegg_to_ncbi)));
     kegg_pathways_ncbi <- kegg_pathways %>%
         left_join(kegg_to_ncbi) %>%
         select(c("ncbi_geneid", "pathway"));
 
+    # Convert NCBI/Entrez gene ids to Ensembl IDs
     mart <- useDataset(paste(species, "_gene_ensembl", sep=''), ensembl_mart);
     ncbi_to_ensembl <- getBM(attributes=c("ensembl_gene_id", "entrezgene_id"), mart=mart);
     ncbi_to_ensembl$ncbi_geneid = paste("ncbi-geneid:", ncbi_to_ensembl$entrezgene_id, sep='');
@@ -77,9 +84,10 @@ for (i in seq_len(length(kegg.species.list))) {
         select(c("ensembl_gene_id", "pathway"))  %>%
         drop_na();
 
+    # Output as JSON
     objectified <- kegg_pathways_ensembl %>%
         group_by(pathway) %>%
         summarise(feature_ids = list(ensembl_gene_id),) %>%
         left_join(kegg_pathway_info);
-    write_json(objectified, paste("C:/Users/tgb/nitecap/static/json/", species, ".ensembl_gene_id.KEGG.pathways.json", sep=''));
+    write_json(objectified, paste(work.dir, "/static/json/", species, ".ensembl_gene_id.KEGG.pathways.json", sep=''));
 }
