@@ -2,9 +2,24 @@ Vue.component( 'pathway-analysis', {
     data: function () {
         return {
             all_databases: {
+                "Ensembl_KEGG_HSapiens": {
+                    url: "/static/json/hsapiens.ensembl_gene_id.KEGG.pathways.json",
+                    species: "Homo sapiens",
+                    pathways: "KEGG",
+                },
+                "Ensembl_KEGG_MMusculus": {
+                    url: "/static/json/mmusculus.ensembl_gene_id.KEGG.pathways.json",
+                    species: "Mus musculus",
+                    pathways: "KEGG",
+                },
+                "Ensembl_KEGG_DMelanogaster": {
+                    url: "/static/json/dmelanogaster.ensembl_gene_id.KEGG.pathways.json",
+                    species: "Drosophila melanogaster",
+                    pathways: "KEGG",
+                },
                 "Ensembl_GO_HSapiens": {
                     url: "/static/json/hsapiens.ensembl_gene_id.GO.pathways.json",
-                    species: "Mus musculus",
+                    species: "Homo sapiens",
                     id_types: "Ensembl Genes",
                     pathways: "GO",
                 },
@@ -16,7 +31,7 @@ Vue.component( 'pathway-analysis', {
                 },
                 "Ensembl_GO_DMelanogaster": {
                     url: "/static/json/dmelanogaster.ensembl_gene_id.GO.pathways.json",
-                    species: "Mus musculus",
+                    species: "Drosophila melanogaster",
                     id_types: "Ensembl Genes",
                     pathways: "GO",
                 },
@@ -43,6 +58,11 @@ Vue.component( 'pathway-analysis', {
             let analysis =  test_pathways(this.foreground, this.background, this.pathways);
             let results = analysis.sort( function(p1, p2) {
                 return p1.p - p2.p;
+            });
+            results.forEach( function (result) {
+                if (result.name === undefined) {
+                    result.name = "Unkown Pathway";
+                }
             });
             // Freeze it so that it's non-reactive.
             // Adding reactivity is too slow
@@ -149,8 +169,8 @@ Vue.component( 'pathway-analysis', {
                     <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> </tr>
                     </thead>
                     <tbody is="transition-group" name="swap-list">
-                        <tr v-for="pathway in top_pathways" v-bind:key="pathway.name" class="swap-list-item">
-                            <td><a v-bind:href="'https://www.ebi.ac.uk/QuickGO/term/'+pathway.go_id">{{ pathway.name.slice(0,this.MAX_PATHWAY_NAME_LENGTH) }}</a></td>
+                        <tr v-for="pathway in top_pathways" v-bind:key="pathway.pathway" class="swap-list-item">
+                            <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,this.MAX_PATHWAY_NAME_LENGTH) }}</a></td>
                             <td>{{util.formatNum(pathway.p, 4)}} </td>
                             <td>{{pathway.overlap}} </td>
                             <td>{{pathway.pathway_size}} </td>
