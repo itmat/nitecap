@@ -29,8 +29,20 @@ Vue.component( 'pathway-analysis', {
                     id_types: "Ensembl Genes",
                     pathways: "GO",
                 },
+                "Ensembl_Homology_GO_MMusculus": {
+                    url: "/static/json/mmusculus.ensembl_gene_id.GO.homology_pathways.json",
+                    species: "Mus musculus",
+                    id_types: "Ensembl Genes",
+                    pathways: "GO",
+                },
                 "Ensembl_GO_DMelanogaster": {
                     url: "/static/json/dmelanogaster.ensembl_gene_id.GO.pathways.json",
+                    species: "Drosophila melanogaster",
+                    id_types: "Ensembl Genes",
+                    pathways: "GO",
+                },
+                "Ensembl_Homology_GO_DMelanogaster": {
+                    url: "/static/json/dmelanogaster.ensembl_gene_id.GO.homology_pathways.json",
                     species: "Drosophila melanogaster",
                     id_types: "Ensembl Genes",
                     pathways: "GO",

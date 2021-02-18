@@ -22,6 +22,8 @@ go_parents <- read.table(paste(work.dir, "pathway_analysis/processed_obo.txt", s
 # Generate from running process_obo_file.py
 go_definitions <- read.table(paste(work.dir, "pathway_analysis/go_definitions.txt", sep=''), sep="\t", header=TRUE, quote="");
 
+human_pathways <- getBM(attributes=c("ensembl_gene_id", "go_id"), mart=useDataset("hsapiens_gene_ensembl", ensembl_mart);
+
 # Gather the GO terms from ENSEMBL
 for (species in species.list) {
     mart <- useDataset(paste(species, "_gene_ensembl", sep=''), ensembl_mart);
@@ -46,9 +48,39 @@ for (species in species.list) {
             left_join(go_definitions, by="go_id") %>%
             replace_na(list(name = "unkown pathway")) %>%
             rename(pathway = go_id);
-        objectified$url = paste("https://www.ebi.ac.uk/QuickGO/term/", objectified$pathway);
+        objectified$url = paste("https://www.ebi.ac.uk/QuickGO/term/", objectified$pathway, sep='');
 
         write_json(objectified, paste(work.dir, "static/json/", species, ".", id_type, ".GO.pathways.json", sep=''));
+
+        # If not human, we get homologous genes and form pathways from those
+        if (species != "hsapiens") {
+            homologs <- getBM(attributes=c(id_type, "hsapiens_homolog_ensembl_gene"), mart=mart);
+            homolog_pathways <- human_pathways %>%
+                inner_join(homologs, by=c("ensembl_gene_id" = "hsapiens_homolog_ensembl_gene")) %>%
+                filter(go_id != "") %>%
+                select(ensembl_gene_id.y, go_id) %>%
+                rename(ensembl_gene_id = ensembl_gene_id.y);
+
+            # If a gene is annotated to a GO term, also annotate it to parent terms
+            with_parents <- homolog_pathways %>%
+                left_join(go_parents, by=c("go_id" = "child")) %>%
+                select(id_type, "parent") %>%
+                rename(go_id = parent) %>%
+                distinct()
+            all_annotations <- bind_rows(homolog_pathways, with_parents) %>% distinct()
+
+
+            # Output as json, grouping by the GO terms
+            objectified <- all_annotations %>%
+                group_by(go_id) %>%
+                summarise(feature_ids = list(ensembl_gene_id),) %>%
+                left_join(go_definitions, by="go_id") %>%
+                replace_na(list(name = "unkown pathway")) %>%
+                rename(pathway = go_id);
+            objectified$url = paste("https://www.ebi.ac.uk/QuickGO/term/", objectified$pathway, sep='');
+
+            write_json(objectified, paste(work.dir, "static/json/", species, ".", id_type, ".GO.homology_pathways.json", sep=''));
+        }
     }
 }
 
