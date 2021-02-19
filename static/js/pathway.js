@@ -11,12 +11,14 @@ function factorial(k) {
 let log_factorials = [0,0];
 function log_factorial(k) {
     if (k <= 1) { return 0; }
-    if (log_factorials[k] === undefined) {
+    let res = log_factorials[k];
+    if (res === undefined) {
         for(let i = log_factorials.length; i <= k; i++) {
             log_factorials[i] = log_factorials[i-1] + Math.log(i);
         }
+        res = log_factorials[k];
     }
-    return log_factorials[k];
+    return res;
 }
 
 function log_choose(n,k) {

@@ -56,6 +56,8 @@ Vue.component( 'pathway-analysis', {
                 database_id: "none",
                 continuous: false,
                 MAX_PATHWAY_NAME_LENGTH: 45,
+                MAX_PATHWAY_SIZE: 10000,
+                MIN_PATHWAY_SIZE: 10,
                 search_pattern: '',
             },
         };
@@ -147,17 +149,28 @@ Vue.component( 'pathway-analysis', {
     computed: {
         top_pathways: function() {
             // Top results from pathway analysis
+            let results = this.results;
             let pattern = this.config.search_pattern.toUpperCase();
-            return this.results.filter(function(x) {
-                return x.name.toUpperCase().includes(pattern);
-            }).slice(0,10);
+            if (pattern != '') {
+                results = results.filter(function(x) {
+                    return x.name.toUpperCase().includes(pattern);
+                })
+            }
+            return results.slice(0,10);
         },
 
         pathways: function() {
+            let vm = this;
             // Pathways that have been restricted to our background set
             console.log("Re-restricting pathways");
             let pathways = restrict_pathways(this.full_pathways, this.background)
-            Object.preventExtensions(pathways); // Contents aren't reactive
+
+            // Further filter out pathways with extreme size
+            pathways = pathways.filter(function(pathway) {
+                return ((pathway.feature_ids.size >= vm.config.MIN_PATHWAY_SIZE) &&
+                        (pathway.feature_ids.size <= vm.config.MAX_PATHWAY_SIZE));
+            });
+            Object.freeze(pathways); // Contents aren't reactive
             return pathways;
         },
     },
