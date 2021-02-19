@@ -50,6 +50,8 @@ Vue.component( 'pathway-analysis', {
             },
             results: [],
             full_pathways: [],
+            used_background: [], // Background list used in latest analysis
+            used_foreground: [], // Foreground list used in latest analysis
             config: {
                 database_id: "none",
                 continuous: false,
@@ -67,8 +69,8 @@ Vue.component( 'pathway-analysis', {
 
     methods:{
         "runPathwayAnalysis": function() {
-            let analysis =  test_pathways(this.foreground, this.background, this.pathways);
-            let results = analysis.sort( function(p1, p2) {
+            let tests =  test_pathways(this.foreground, this.background, this.pathways);
+            let results = tests['results'].sort( function(p1, p2) {
                 return p1.p - p2.p;
             });
             results.forEach( function (result) {
@@ -80,6 +82,64 @@ Vue.component( 'pathway-analysis', {
             // Adding reactivity is too slow
             Object.freeze(results);
             this.results = results;
+
+            this.used_background = tests.background;
+            this.used_foreground = tests.foreground;
+        },
+
+        download_top_pathway: function(i) {
+            // Prepare and download 1 pathway result
+            let vm = this;
+            let pathway = this.top_pathways[i];
+            let results = [
+                ["pathway",  pathway.pathway],
+                ["pathway_name",  pathway.name],
+                ["pathway_url",  pathway.url],
+                ["pathway_size",  pathway.feature_ids.size],
+                ["foreground_size",  this.used_foreground.size],
+                ["background_size",  this.used_background.size],
+                ["pathway",  Array.from(pathway.feature_ids)],
+                ["foreground",  Array.from(this.used_foreground)],
+                ["intersection",  Array.from(pathway.feature_ids).filter(function(x) { return vm.used_foreground.has(x);})],
+            ];
+            // Generate tab-separated file containing the info
+            let result_tsv = results.map(function (entries) {
+                let name = entries[0];
+                let value = entries[1];
+                if (Array.isArray(value)) {
+                    value = value.join("\t");
+                }
+                return name + "\t" + value
+            }).join('\n');
+
+
+            let el = document.createElement('a');
+            el.setAttribute('href', 'data:text/plain;charset=utf-8,'  + encodeURIComponent(result_tsv));
+            el.setAttribute('download', "pathway_results."+pathway.pathway+".txt");
+            el.style.display='none';
+            document.body.appendChild(el);
+            el.click();
+            document.body.removeChild(el);
+        },
+
+        download_pathway_results: function(i) {
+            // Prepare and download pathway result summary
+            let vm = this;
+            let values = ["pathway", "name", "url", "p", "overlap", "pathway_size", "selected_set_size", "background_size"];
+            // Generate tab-separated file containing the info
+            let header = values.join('\t') + '\n';
+            let result_tsv = header + vm.results.map(function (result) {
+                return values.map(function(val) { return result[val]; }).join('\t');
+            }).join('\n');
+
+
+            let el = document.createElement('a');
+            el.setAttribute('href', 'data:text/plain;charset=utf-8,'  + encodeURIComponent(result_tsv));
+            el.setAttribute('download', "pathway_results.txt");
+            el.style.display='none';
+            document.body.appendChild(el);
+            el.click();
+            document.body.removeChild(el);
         },
 
     },
@@ -178,14 +238,15 @@ Vue.component( 'pathway-analysis', {
             <div>
                 <table class="table table-sm" v-if="top_pathways.length > 0">
                     <thead>
-                    <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> </tr>
+                    <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> <th>Download</th> </tr>
                     </thead>
                     <tbody is="transition-group" name="swap-list">
-                        <tr v-for="pathway in top_pathways" v-bind:key="pathway.pathway" class="swap-list-item">
+                        <tr v-for="(pathway,i) in top_pathways" v-bind:key="pathway.pathway" class="swap-list-item">
                             <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,this.MAX_PATHWAY_NAME_LENGTH) }}</a></td>
                             <td>{{util.formatNum(pathway.p, 4)}} </td>
                             <td>{{pathway.overlap}} </td>
                             <td>{{pathway.pathway_size}} </td>
+                            <td> <button v-on:click="download_top_pathway(i)" type="button" class="btn btn-secondary btn-sm" >Download</button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -196,7 +257,7 @@ Vue.component( 'pathway-analysis', {
                 <input class="form-control form-control-sm ml-2" type="text" name="results_search"
                        placeholder="Search for pathways" v-model="config.search_pattern"
                        />
-                </div>
+                <button v-on:click="download_pathway_results" type="button" class="btn btn-secondary btn-sm ml-5" >Download Results</button>
             </div>
         </div>
     </div>`,

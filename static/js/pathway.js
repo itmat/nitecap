@@ -84,7 +84,7 @@ function test_pathways(selected_set, background_list, pathways) {
         });
         return result;
     });
-    return ps;
+    return {"results": ps, "background": background_list, "foreground": selected_set};
 }
 
 function restrict_pathways(pathways, background_list) {
