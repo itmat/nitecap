@@ -60,6 +60,15 @@ Vue.component( 'pathway-analysis', {
                 MIN_PATHWAY_SIZE: 10,
                 search_pattern: '',
             },
+            worker: null,
+            worker_busy: false,
+            // next message to send the worker when not busy
+            // only ever queue up to 1 message, just discard any others
+            queued_state: null,
+            // The values we're currently working with
+            running_state: null,
+            // The state used for the last results obtained
+            last_ran_state: null,
         };
     },
 
@@ -71,22 +80,31 @@ Vue.component( 'pathway-analysis', {
 
     methods:{
         "runPathwayAnalysis": function() {
-            let tests =  test_pathways(this.foreground, this.background, this.pathways);
-            let results = tests['results'].sort( function(p1, p2) {
-                return p1.p - p2.p;
-            });
-            results.forEach( function (result) {
-                if (result.name === undefined) {
-                    result.name = "Unkown Pathway";
-                }
-            });
-            // Freeze it so that it's non-reactive.
-            // Adding reactivity is too slow
-            Object.freeze(results);
-            this.results = results;
+            // Grab but don't use pathways
+            // this forces them to be recomputed and set to worker
+            let pathways = this.pathways; 
 
-            this.used_background = tests.background;
-            this.used_foreground = tests.foreground;
+            let message = {
+                type: "run_analysis",
+                foreground: this.foreground,
+                background: this.background,
+            };
+            let state = {
+                message: message,
+                pathways: this.pathways,
+                foreground: this.foreground,
+                background: this.background,
+            };
+            Object.freeze(state);// non-reactive
+            Object.freeze(message);// non-reactive
+
+            if (!this.worker_busy) {
+                this.worker.postMessage(message);
+                this.worker_busy = true;
+                this.running_state = state;
+            } else {
+                this.queued_state = state;
+            }
         },
 
         download_top_pathway: function(i) {
@@ -98,11 +116,11 @@ Vue.component( 'pathway-analysis', {
                 ["pathway_name",  pathway.name],
                 ["pathway_url",  pathway.url],
                 ["pathway_size",  pathway.feature_ids.size],
-                ["foreground_size",  this.used_foreground.size],
-                ["background_size",  this.used_background.size],
+                ["foreground_size",  this.last_run_state.foreground.size],
+                ["background_size",  this.last_runn_state.background.size],
                 ["pathway",  Array.from(pathway.feature_ids)],
-                ["foreground",  Array.from(this.used_foreground)],
-                ["intersection",  Array.from(pathway.feature_ids).filter(function(x) { return vm.used_foreground.has(x);})],
+                ["foreground",  Array.from(this.last_run_state.foreground)],
+                ["intersection",  Array.from(pathway.feature_ids).filter(function(x) { return vm.last_run_state.foreground.has(x);})],
             ];
             // Generate tab-separated file containing the info
             let result_tsv = results.map(function (entries) {
@@ -170,9 +188,58 @@ Vue.component( 'pathway-analysis', {
                 return ((pathway.feature_ids.size >= vm.config.MIN_PATHWAY_SIZE) &&
                         (pathway.feature_ids.size <= vm.config.MAX_PATHWAY_SIZE));
             });
+
+            // Convert to a Map
+            pathways = new Map(pathways.map(function(pathway) {
+                return [pathway.pathway, pathway];
+            }));
             Object.freeze(pathways); // Contents aren't reactive
+
+            // Send pathways to the worker thread
+            this.worker.postMessage({
+                type: "set_pathways",
+                pathways: pathways,
+            });
+            console.log("Messaging worker...");
             return pathways;
         },
+    },
+
+    created: function() {
+        let vm = this;
+        vm.worker = new Worker('/static/js/pathway_worker.js');
+        vm.worker.onmessage = function(message) {
+            console.log("Received message: ", message.data);
+            vm.last_run_state = vm.running_state;
+
+            let results = message.data.results;
+            results.forEach( function (result) {
+                let pathway = vm.running_state.pathways.get(result.pathway);
+                Object.assign(result, pathway);
+                Object.assign(result, {
+                    background_size: vm.last_run_state.background.size,
+                    selected_set_size: vm.last_run_state.foreground.size,
+                    pathway_size: pathway.feature_ids.size,
+                });
+                if (result.name === undefined) {
+                    // Give names to unknown pathways that are just their IDs
+                    result.name = result.pathway;
+                }
+            });
+            Object.freeze(results);
+            vm.results = results;
+            vm.running_state = null;
+
+            vm.worker_busy = false;
+
+            if (vm.queued_state !== null) {
+                // Finished the previous message, now do the queued one
+                vm.worker.postMessage(vm.queued_state.message);
+                vm.running_state = vm.queued_state;
+                vm.queued_state = null;
+                vm.worker_busy = true;
+            }
+        };
     },
 
     watch: {
@@ -198,6 +265,13 @@ Vue.component( 'pathway-analysis', {
                 .catch(function(err){
                     console.log("ERROR loading pathways ", err);
                 });
+        },
+
+        "full_pathways": function() {
+            let vm = this;
+            if (vm.full_pathways != [] && vm.config.continuous) {
+                this.runPathwayAnalysis();
+            }
         },
 
         "foreground": function() {

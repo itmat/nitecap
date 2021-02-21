@@ -76,14 +76,9 @@ function test_pathways(selected_set, background_list, pathways) {
     selected_set = new Set(selected_set.filter(function(id) { return background_list.has(id); }).map(function(id) {return id.toUpperCase();}));
 
     // Compute p values of each pathway
-    let ps = pathways.map( function (pathway) {
+    let ps = Array.from(pathways.values(), function (pathway) {
         let result = test_pathway(selected_set, pathway.feature_ids, background_list);
-        Object.assign(result, pathway);
-        Object.assign(result, {
-            background_size: background_list.size,
-            selected_set_size: selected_set.size,
-            pathway_size: pathway.feature_ids.size,
-        });
+        result.pathway = pathway.pathway;
         return result;
     });
     return {"results": ps, "background": background_list, "foreground": selected_set};
