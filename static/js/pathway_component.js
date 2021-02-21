@@ -256,7 +256,7 @@ Vue.component( 'pathway-analysis', {
 
             // Load the new pathways
             let db_data = vm.all_databases[vm.config.database_id];
-            fetch(db_data.url+"?v="+Math.random())
+            fetch(db_data.url)
                 .then(function(res) {return res.json()})
                 .then(function(res) {
                     Object.preventExtensions(res); // Contents aren't reactive
