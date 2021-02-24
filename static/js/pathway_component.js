@@ -223,7 +223,7 @@ Vue.component( 'pathway-analysis', {
                 });
                 if (result.name === undefined) {
                     // Give names to unknown pathways that are just their IDs
-                    result.name = result.pathway;
+                    result.name = result.pathway || "unknown pathway";
                 }
             });
             Object.freeze(results);
