@@ -209,6 +209,7 @@ body {
 
 /* Top Pathways */
 
+/*
 .swap-list-move {
   transition: transform 0.3s;
 }
@@ -221,6 +222,7 @@ body {
 .swap-list-item-leave-active {
     position:absolute;
 }
+*/
 
 
 #spreadsheetTable.dataTable tr.selected td.select-checkbox::after, #spreadsheetTable.dataTable tr.selected th.select-checkbox::after {
