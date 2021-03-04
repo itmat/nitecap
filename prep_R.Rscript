@@ -1,0 +1,3 @@
+install.packages("remotes", repos = "http://cran.us.r-project.org");
+install.packages(c("readr", "stringr"), repos = "http://cran.us.r-project.org");
+remotes::install_github("https://github.com/gangwug/MetaCycle");

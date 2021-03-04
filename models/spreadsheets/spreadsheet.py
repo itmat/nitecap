@@ -283,8 +283,6 @@ class Spreadsheet(db.Model):
             sorter = lambda col_label: self.label_to_daytime(col_label[1])
         else:
             sorter = lambda col_label: self.label_to_daytime(col_label[1], False)
-        print("filtered_columns:", filtered_columns)
-        print([self.label_to_daytime(col[1]) for col in filtered_columns])
         ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
 
@@ -454,27 +452,25 @@ class Spreadsheet(db.Model):
 
     @timeit
     def get_jtk(self):
-        if "jtk_p" not in self.df.columns or "jtk_q" not in self.df.columns:
+        meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
+        if any(c for c in meta2d_cols if c not in self.df.columns):
             if self.get_raw_data().shape[1] > MAX_JTK_COLUMNS:
                 # Can't compute JTK when there are too many columns
                 # it takes too long and will fail
-                self.df['jtk_p'] = float("NaN")
-                self.df['jtk_q'] = float("NaN")
+                self.df[meta2d_cols] = float("NaN")
             else:
                 # Call out to an R script to run JTK
                 # write results to disk to pass the data to JTK
                 run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
                 jtk_source_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../JTK_CYCLEv3.1.R"))
                 data_file_path = f"/tmp/{uuid.uuid4()}"
-                self.get_raw_data().to_csv(data_file_path, sep="\t", index=False)
+                df = self.get_raw_data()
+                df.to_csv(data_file_path, sep="\t")
                 results_file_path = f"{data_file_path}.jtk_results"
 
-                # TODO: what value should we give here?
-                # probably doesn't matter if we aren't reporting JTK phase
-                hours_between_timepoints = 1
                 num_reps = ','.join(str(x) for x in self.num_replicates)
 
-                res = subprocess.run(f"Rscript {run_jtk_file} {jtk_source_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days} {hours_between_timepoints}",
+                res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days}",
                                         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 if res.returncode != 0:
@@ -483,6 +479,10 @@ class Spreadsheet(db.Model):
                 results = pd.read_csv(results_file_path, sep='\t')
                 self.df["jtk_p"] = results.JTK_P
                 self.df["jtk_q"] = results.JTK_Q
+                self.df["ars_p"] = results.ARS_P
+                self.df["ars_q"] = results.ARS_Q
+                self.df["ls_p"] = results.LS_P
+                self.df["ls_q"] = results.LS_Q
 
                 self.update_dataframe()
 
@@ -496,10 +496,9 @@ class Spreadsheet(db.Model):
 
         For example if the spreadsheet days/timepoints changed '''
 
-        if "jtk_p" in self.df.columns:
-            self.df.drop(columns="jtk_p", inplace=True)
-        if "jtk_q" in self.df.columns:
-            self.df.drop(columns="jtk_q", inplace=True)
+        drop_columns = ["jtk_p", "jtk_q", "ars_p", "ars_q", "ls_p", "ls_q"]
+        drop_columns = [c for c in drop_columns if c in self.df.columns]
+        self.df.drop(columns = drop_columns, inplace=True)
         self.update_dataframe()
 
     @staticmethod
@@ -688,15 +687,11 @@ class Spreadsheet(db.Model):
             self.df["nitecap_q"] = q
 
             # Recompute BH q-values, too
-            jtk_q = numpy.empty(self.df["jtk_p"].shape)
-            jtk_q[~filtered_out] = nitecap.util.BH_FDR(self.df["jtk_p"][~filtered_out])
-            jtk_q[filtered_out] = float("NaN")
-            self.df["jtk_q"] = jtk_q
-
-            anova_q = numpy.empty(self.df["anova_p"].shape)
-            anova_q[~filtered_out] = nitecap.util.BH_FDR(self.df["anova_p"][~filtered_out])
-            anova_q[filtered_out] = float("NaN")
-            self.df["anova_q"] = anova_q
+            for col in ['jtk', 'ars', 'ls', 'anova', 'cosinor']:
+                qs = numpy.empty(self.df[f"{col}_p"].shape)
+                qs[~filtered_out] = nitecap.util.BH_FDR(ps[~filtered_out])
+                qs[filtered_out] = flat("NaN")
+                self.df[f"{col}_q"] = qs
 
         self.update_dataframe()
 

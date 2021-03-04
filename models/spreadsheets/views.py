@@ -378,9 +378,13 @@ def get_spreadsheets(user=None):
                      spreadsheet_id=spreadsheet.id,
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
-                     column_headers=spreadsheet.get_data_columns(),
                      jtk_ps=None,
                      jtk_qs=None,
+                     ars_ps=None,
+                     ars_qs=None,
+                     ls_ps=None,
+                     ls_qs=None,
+                     column_headers=spreadsheet.get_data_columns(),
                      cosinor_ps=df.cosinor_p,
                      cosinor_qs=df.cosinor_q,
                      cosinor_x0s=df.cosinor_x0,
@@ -476,8 +480,19 @@ def get_jtk(user=None):
     # Now just extract the right columns
     jtk_ps = [df["jtk_p"] for df in dfs]
     jtk_qs = [df["jtk_q"] for df in dfs]
+    ars_ps = [df["ars_p"] for df in dfs]
+    ars_qs = [df["ars_q"] for df in dfs]
+    ls_ps = [df["ls_p"] for df in dfs]
+    ls_qs = [df["ls_q"] for df in dfs]
 
-    return dumps({"jtk_ps": jtk_ps, "jtk_qs": jtk_qs})
+    return dumps({
+        "jtk_ps": jtk_ps,
+        "jtk_qs": jtk_qs,
+        "ars_ps": ars_ps,
+        "ars_qs": ars_qs,
+        "ls_ps": ls_ps,
+        "ls_qs": ls_qs,
+    })
 
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])

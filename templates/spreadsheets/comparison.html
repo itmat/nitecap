@@ -103,6 +103,10 @@
             success: function(response) {
                 let jtk_ps = response['jtk_ps'];
                 let jtk_qs = response['jtk_qs'];
+                let ars_ps = response['ars_ps'];
+                let ars_qs = response['ars_qs'];
+                let ls_ps = response['ls_ps'];
+                let ls_qs = response['ls_qs'];
 
                 spreadsheets.forEach(function(spreadsheet, i) {
                     // For Vue performance see VUE PERF NOTE
@@ -110,6 +114,14 @@
                     Object.preventExtensions(jtk_qs[i]);
                     spreadsheet.jtk_ps = jtk_ps[i];
                     spreadsheet.jtk_qs = jtk_qs[i];
+                    Object.preventExtensions(ars_ps[i]);
+                    Object.preventExtensions(ars_qs[i]);
+                    spreadsheet.ars_ps = ars_ps[i];
+                    spreadsheet.ars_qs = ars_qs[i];
+                    Object.preventExtensions(ls_ps[i]);
+                    Object.preventExtensions(ls_qs[i]);
+                    spreadsheet.ls_ps = ls_ps[i];
+                    spreadsheet.ls_qs = ls_qs[i];
                 });
             },
             error: function(error) {
@@ -570,6 +582,18 @@
          value: {p: "jtk_ps",
                  q: "jtk_qs"},
          description: "JTK_cycle significance of rhythmicity for primary dataset.",
+        per_spreadsheet: true,
+        num_spreadsheets:'any'},
+        {name: "ARS",
+         value: {p: "ars_ps",
+                 q: "ars_qs"},
+         description: "ARSER significance of rhythmicity for primary dataset. Computed by meta2d.",
+        per_spreadsheet: true,
+        num_spreadsheets:'any'},
+        {name: "LS",
+         value: {p: "ls_ps",
+                 q: "ls_qs"},
+         description: "Lomb-Scargle significance of rhythmicity for primary dataset. Computed by meta2d.",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
         {name: "ANOVA",
