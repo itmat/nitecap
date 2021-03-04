@@ -462,7 +462,6 @@ class Spreadsheet(db.Model):
                 # Call out to an R script to run JTK
                 # write results to disk to pass the data to JTK
                 run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
-                jtk_source_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../JTK_CYCLEv3.1.R"))
                 data_file_path = f"/tmp/{uuid.uuid4()}"
                 df = self.get_raw_data()
                 df.to_csv(data_file_path, sep="\t")
