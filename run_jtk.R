@@ -1,35 +1,45 @@
 #!/usr/bin/env Rscript
 # This script meant to be used only by nitecap
 
-library("readr")
+library(MetaCycle);
+library("readr");
 library("stringr")
 
 args <- commandArgs(trailingOnly = TRUE)
-jtk_source_path <- args[1]
-input_file <- args[2]
-output_file <- args[3]
-timepoints_per_cycle <- strtoi(args[4])
-num_replicates <- as.integer(unlist(str_split(args[5], ",")))
-num_cycles <- strtoi(args[6])
-hours_between_timepoints <- strtoi(args[7])
+input_file <- args[1]
+output_file <- args[2]
+timepoints_per_cycle <- strtoi(args[3])
+num_replicates <- as.integer(unlist(str_split(args[4], ",")))
+num_cycles <- strtoi(args[5])
 
-num_timepoints  = timepoints_per_cycle * num_cycles
+timepoints <-Reduce(c, sapply(1:length(num_replicates), function(i) {rep(i,num_replicates[i])}))
 
-source(jtk_source_path)
+res <- meta2d(
+    infile=input_file,
+    outdir = output_file,
+    timepoints = timepoints,
+    filestyle = 'txt',
+    minper = timepoints_per_cycle,
+    maxper = timepoints_per_cycle,
+    cycMethod = c("ARS", "JTK", "LS"),
+    combinePvalue = "bonferroni",
+    ARSdefaultPer = timepoints_per_cycle,
+    outputFile = FALSE,
+)
+ARS <- res$ARS
+JTK <- res$JTK
+LS <- res$LS
 
-datatable = read_tsv(input_file, col_names = TRUE)
+pvals <- list(
+    ARS_P = ARS$pvalue,
+    ARS_Q = ARS$fdr_BH,
+    JTK_P = JTK$ADJ.P,
+    JTK_Q = JTK$BH.Q,
+    LS_P = LS$p,
+    LS_Q = LS$BH.Q
+);
+L <- max(unlist(lapply(pvals, length)));
+fill_null <- function(col) { if (is.null(col)) { rep(NA, L) } else {col}};
+pvals <- as.data.frame(lapply(pvals, fill_null));
 
-jtkdist(num_timepoints, num_replicates)
-periods <- c(timepoints_per_cycle) # only check for the base period (i.e. 24 hours)
-jtk.init(periods, hours_between_timepoints)
-
-res <- apply(datatable,1,function(z) {
-  jtkx(z)
-  c(JTK.ADJP,JTK.PERIOD,JTK.LAG,JTK.AMP)
-})
-res <- as.data.frame(t(res))
-bhq <- p.adjust(unlist(res[,1]),"BH")
-res <- cbind(bhq,res)
-colnames(res) <- c("JTK_Q","JTK_P","PERIOD","LAG","AMPLITUDE")
-
-write_tsv(res, path=output_file)
+write_tsv(pvals, path=output_file)

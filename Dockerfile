@@ -24,10 +24,12 @@ RUN apt-get update \
 
 WORKDIR /var/www/flask_apps/nitecap
 
-RUN Rscript -e 'install.packages(c("readr", "stringr"), repos="http://cran.r-project.org")'
+# Install the R packages we use
+ADD prep_R.Rscript .
+RUN Rscript prep_R.Rscript
 
+# Install the python packages we use
 ADD requirements.txt .
-
 RUN pip install -r requirements.txt
 
 COPY . .
