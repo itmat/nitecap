@@ -216,23 +216,6 @@
             </a>
         </p>
     </div>
-    <div class="row">
-        <span class="form-group col-lg-5">
-            Number of selected rows:
-            <input type="number" v-model.number="num_below"></input>
-        </span>
-        <span class="form-group col-lg-5">
-            Cutoff:
-            <input v-model.lazy.number="cutoff"></input>
-        </span>
-    </div>
-
-
-    <div class="row">
-        <div class="col">
-            <div id="coarse_slider" class="coarse-slider"></div>
-        </div>
-    </div>
 
     <div class="row">
         <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
@@ -444,6 +427,26 @@
         </div>
 
     </div>
+
+    <div class="row">
+        <div class="col">
+            <div id="coarse_slider" class="coarse-slider"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <span class="form-group col-lg-5">
+            Number of selected rows:
+            <input type="number" v-model.number="num_below"></input>
+        </span>
+        <span class="form-group col-lg-5">
+            Cutoff:
+            <input v-model.lazy.number="cutoff"></input>
+        </span>
+    </div>
+
+
+
 
     <div class="card">
 
