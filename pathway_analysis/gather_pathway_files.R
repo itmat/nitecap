@@ -22,7 +22,7 @@ go_parents <- read.table(paste(work.dir, "pathway_analysis/processed_obo.txt", s
 # Generate from running process_obo_file.py
 go_definitions <- read.table(paste(work.dir, "pathway_analysis/go_definitions.txt", sep=''), sep="\t", header=TRUE, quote="");
 
-human_pathways <- getBM(attributes=c("ensembl_gene_id", "go_id"), mart=useDataset("hsapiens_gene_ensembl", ensembl_mart);
+human_pathways <- getBM(attributes=c("ensembl_gene_id", "go_id"), mart=useDataset("hsapiens_gene_ensembl", ensembl_mart));
 
 # Gather the GO terms from ENSEMBL
 for (species in species.list) {
