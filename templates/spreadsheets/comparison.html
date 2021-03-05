@@ -445,19 +445,28 @@
 
     </div>
 
-    <div class="row">
-        <div id="FiltersCard" class="col-auto" v-on:keyup.enter="applyFilters">
-            <div class="card">
-                <div class="card-header">
-                    Filters
-                    <a id="filtersHelp" class="text-primary help-pointer ml-3"
-                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                       title="Filter Help"
-                       data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
-                        <i class="fas fa-info-circle"></i>
-                    </a>
-                </div>
-                <div class="card-body">
+    <div class="card">
+
+        <div class="card-header">
+            <ul class="nav nav-tabs" id="toolTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link activate" id="filters-tab" data-toggle="tab" href="#filters" aria-controls="home" aria-selected="True">Filters</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="pathways-tab" data-toggle="tab" href="#pathways" aria-controls="pathways" aria-selected="false">Pathways</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="heatmap-tab" data-toggle="tab" href="#heatmap" aria-controls="heatmap" aria-selected="false">Heatmap</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="PCA-tab" data-toggle="tab" href="#PCA" aria-controls="PCA" aria-selected="false">PCA</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="tab-content card-body" id="toolTabContent">
+            <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
+                <div class="col-auto">
                     <div id="filter_list">
                         <div v-for="(filter, index) in filters" class="row"
                             :key="filter.id">
@@ -492,43 +501,51 @@
                             </div>
                         </div>
                     </div>
+                    <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
+                    <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
+                        v-on:click="addFilter">
+                        <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
+                    </button>
                     <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
                         v-on:click="resetFilters">
                         <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
                     </button>
-                    <button id="add_filter_button" class="btn btn-default" style="float: right" aria-label="Add filter"
-                        v-on:click="addFilter">
-                        <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                    </button>
-                    <div>
-                        <button id="applyFilters" type="button" class="btn btn-primary mb-4" v-on:click="applyFilters">Apply filters</button>
-                        <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>
-                    </div>
+                    <a id="filtersHelp" class="text-primary help-pointer ml-3"
+                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                       title="Filter Help"
+                       data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
+                        <i class="fas fa-info-circle"></i>
+                    </a>
+                    <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
                 </div>
             </div>
+
+            <div class="tab-pane fade" id="pathways" role="tabpanel" aria-labelledby="pathways-tab">
+                <pathway-analysis
+                    v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
+                    v-bind:background="background_ids"
+                    >
+                </pathway-analysis>
+            </div>
+            <div class="tab-pane fade" id="heatmap" role="tabpanel" aria-labelledby="heatmap-tab">
+                <heatmap-plot
+                    v-bind:spreadsheets="spreadsheets"
+                    v-bind:num_days="num_days"
+                    v-bind:selected_rows="selected_rows"
+                    v-bind:timepoint_labels="timepoint_labels"
+                    v-bind:day_and_time_labels="day_and_time_labels"
+                    v-bind:labels="labels">
+                </heatmap-plot>
+            </div>
+            <div class="tab-pane fade" id="PCA" role="tabpanel" aria-labelledby="PCA-tab">
+                <pca-plot
+                    v-bind:spreadsheets="spreadsheets"
+                    v-bind:timepoint_labels="timepoint_labels">
+                </PCA-plot>
+            </div>
         </div>
-
-        <pathway-analysis
-            v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
-            v-bind:background="background_ids"
-            >
-        </pathway-analysis>
-
     </div>
 
-    <heatmap-plot
-        v-bind:spreadsheets="spreadsheets"
-        v-bind:num_days="num_days"
-        v-bind:selected_rows="selected_rows"
-        v-bind:timepoint_labels="timepoint_labels"
-        v-bind:day_and_time_labels="day_and_time_labels"
-        v-bind:labels="labels">
-    </heatmap-plot>
-
-    <pca-plot
-        v-bind:spreadsheets="spreadsheets"
-        v-bind:timepoint_labels="timepoint_labels">
-    </PCA-plot>
 
     <!-- MODALS -->
     <div id="share_popup" class="modal" tabindex="-1" role="dialog">

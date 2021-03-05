@@ -257,36 +257,33 @@ Vue.component('pca-plot', {
         },
     },
 
-    template: '\
-        <div class="col card">\
-            <div class="card-body">\
-                <button id="run_pca" class="btn btn-primary"\
-                    v-bind:disabled="running"\
-                    v-on:click="runPCA">\
-                    {{running ? "Processing..." : "Run PCA"}}\
-                    <span v-if="running" class=\'spinner-border spinner-border-sm text-light mr-2\' role=\'status\' aria-hidden=\'true\'>\
-                    </span>\
-                </button>\
-                <span class="alert alert-error" v-if="alert !== \'\'">{{alert}}</span>\
-\
-                <div id="pca_plot"></div>\
-\
-                <span id="pca_controls" class="col" v-if="rendered">\
-                    <span>log(x+1) Transform</span>\
-                    <label class="switch">\
-                        <input id="pca_logtransform" name="pca_logtransform" type="checkbox" v-model="config.logtransform"/>\
-                        <span class="slider"></span>\
-                    </label>\
-\
-                    <span for="pca_zscore">Z-Score Normalization</span>\
-                    <label class="switch">\
-                        <input id="pca_zscore" name="pca_zscore" type="checkbox" v-model="config.zscore">\
-                        <span class="slider"></span>\
-                    </label>\
-\
-                    <button id="download_pca" class="btn btn-primary" v-on:click="downloadPCA">Download PCA</button>\
-                </span>\
-            </div>\
-        </div>\
-    ',
+    template: `
+        <div>
+            <button id="run_pca" class="btn btn-primary"
+                v-bind:disabled="running"
+                v-on:click="runPCA">
+                {{running ? "Processing..." : "Run PCA"}}
+                <span v-if="running" class=\'spinner-border spinner-border-sm text-light mr-2\' role=\'status\' aria-hidden=\'true\'>
+                </span>
+            </button>
+            <span class="alert alert-error" v-if="alert !== \'\'">{{alert}}</span>
+
+            <div id="pca_plot"></div>
+
+            <span id="pca_controls" class="col" v-if="rendered">
+                <span>log(x+1) Transform</span>
+                <label class="switch">
+                    <input id="pca_logtransform" name="pca_logtransform" type="checkbox" v-model="config.logtransform"/>
+                    <span class="slider"></span>
+                </label>
+
+                <span for="pca_zscore">Z-Score Normalization</span>
+                <label class="switch">
+                    <input id="pca_zscore" name="pca_zscore" type="checkbox" v-model="config.zscore">
+                    <span class="slider"></span>
+                </label>
+
+                <button id="download_pca" class="btn btn-primary" v-on:click="downloadPCA">Download PCA</button>
+            </span>
+        </div>`,
 });

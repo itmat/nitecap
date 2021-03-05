@@ -209,7 +209,6 @@ Vue.component( 'pathway-analysis', {
         let vm = this;
         vm.worker = new Worker('/static/js/pathway_worker.js');
         vm.worker.onmessage = function(message) {
-            console.log("Received message: ", message.data);
             vm.last_run_state = vm.running_state;
 
             let results = message.data.results;
@@ -289,18 +288,8 @@ Vue.component( 'pathway-analysis', {
         },
     },
 
-    template: `<div class="card">
-        <div class="card-header">
-            Pathway Analysis
-            <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-3"
-               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-               title="Pathway Analysis Help"
-               data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background.">
-                <i class="fas fa-info-circle"></i>
-            </a>
-        </div>
-
-        <div class="card-body">
+    template: `
+        <div>
             <div class="form-check form-inline">
                 <label class="form-check-label" for="database_id_selector">Pathway Database</label>
                 <select name="database_id_selector" id="database_id_selector" v-model="config.database_id">
@@ -318,8 +307,12 @@ Vue.component( 'pathway-analysis', {
                 </button>
                 <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
                 <label class="form-check-label" for="run_continuously">Update continuously</label>
-
-
+                <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-3"
+                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                   title="Pathway Analysis Help"
+                   data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background. If updating continuously, any change to the selected gene set will automatically recompute pathways.">
+                    <i class="fas fa-info-circle"></i>
+                </a>
             </div>
 
             <div>
@@ -346,6 +339,5 @@ Vue.component( 'pathway-analysis', {
                        />
                 <button v-on:click="download_pathway_results" type="button" class="btn btn-secondary btn-sm ml-5" >Download Results</button>
             </div>
-        </div>
-    </div>`,
+        </div>`,
 });
