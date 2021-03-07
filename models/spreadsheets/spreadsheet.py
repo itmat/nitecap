@@ -793,7 +793,7 @@ class Spreadsheet(db.Model):
                     combined_index = df.index
                     continue
 
-                combined_index = combined_index.intersection(index)
+                combined_index = combined_index.intersection(df.index)
 
             # Select only the parts of the data in common to all
             dfs = [df.loc[combined_index] for df in dfs]
