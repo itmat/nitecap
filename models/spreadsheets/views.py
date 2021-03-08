@@ -471,6 +471,8 @@ def get_jtk(user=None):
 
         spreadsheets.append(spreadsheet)
 
+    print(f"Getting JTK for {spreadsheet_ids}")
+
     # Running it once will calculate JTK if necessary
     [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
 

@@ -111,7 +111,7 @@
                 spreadsheets.forEach(function(spreadsheet, i) {
                     // In case spreadsheets are reordered since the start of the request, we need to
                     // look up where the spreadsheet was in the request
-                    let spreadsheet_id = spreadsheet.id;
+                    let spreadsheet_id = spreadsheet.spreadsheet_id;
                     let original_spreadsheet_idx = original_spreadsheet_ids.indexOf(spreadsheet_id);
                     // For Vue performance see VUE PERF NOTE
                     Object.preventExtensions(jtk_ps[original_spreadsheet_idx]);
