@@ -155,7 +155,7 @@ Vue.component('pca-plot', {
 
             $.ajax({
                 url: "/spreadsheets/run_pca",
-                data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids,
+                data: JSON.stringify({'spreadsheet_ids': app.config.original_spreadsheet_ids,
                                       'selected_genes': selected_genes,
                                       'take_logtransform': vm.config.logtransform,
                                       'take_zscore': vm.config.zscore}),
@@ -167,7 +167,7 @@ Vue.component('pca-plot', {
                     explained_variance = response['explained_variance'];
 
                     let traces = vm.spreadsheets.map( function (spreadsheet, idx) {
-                        let spreadsheet_idx = original_spreadsheet_ids.indexOf(spreadsheet.spreadsheet_id);
+                        let spreadsheet_idx = app.config.original_spreadsheet_ids.indexOf(spreadsheet.spreadsheet_id);
                         return {
                             x: pca_coords[spreadsheet_idx][0],
                             y: pca_coords[spreadsheet_idx][1],

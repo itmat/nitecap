@@ -13,11 +13,11 @@
         nitecap_error = $("#error-modal");
         nitecap_error_message = $("#error-modal-message")
 
-        original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
+        app.config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
         $.ajax({
             url: "/spreadsheets/get_spreadsheets",
-            data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids}),
+            data: JSON.stringify({'spreadsheet_ids': app.config.original_spreadsheet_ids}),
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -36,6 +36,8 @@
     });
 
     function onSpreadsheetLoad(spreadsheets) {
+        let vm = app;
+
         // FOR VUE
         spreadsheets.forEach(function(spreadsheet) {
             spreadsheet.upside_ps = null;
@@ -55,18 +57,18 @@
             });
         });
 
-        app.spreadsheets = spreadsheets;
-        app.labels = spreadsheets[0].labels;
-        app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
-        app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
+        vm.spreadsheets = spreadsheets;
+        vm.labels = spreadsheets[0].labels;
+        vm.timepoints_per_day = vm.spreadsheets[0].timepoints_per_day;
+        vm.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
 
         // Update stats_table with the Additional Stat Columns of the spreadsheets
-        app.spreadsheets.forEach(function(spreadsheet) {
+        vm.spreadsheets.forEach(function(spreadsheet) {
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
-                app.stats[key] = value;
-                app.stats_table[key] = {
+                vm.stats[key] = value;
+                vm.stats_table[key] = {
                     name: key,
                     value: key,
                     description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
@@ -85,18 +87,18 @@
                 max: maximum,
                 range: "min",
                 slide: function (event, ui) {
-                    app.config.selected_row = ui.value;
+                    vm.config.selected_row = ui.value;
                 }
             });
         }
 
-        makeCoarseSlider($('#coarse_slider'), 0, app.labels.length - 1);
+        makeCoarseSlider($('#coarse_slider'), 0, vm.labels.length - 1);
 
 
         // Load the JTK values for each spreadsheet
         $.ajax({
             url: "/spreadsheets/jtk",
-            data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
+            data: JSON.stringify({'spreadsheet_ids': vm.config.original_spreadsheet_ids}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -112,7 +114,7 @@
                     // In case spreadsheets are reordered since the start of the request, we need to
                     // look up where the spreadsheet was in the request
                     let spreadsheet_id = spreadsheet.spreadsheet_id;
-                    let original_spreadsheet_idx = original_spreadsheet_ids.indexOf(spreadsheet_id);
+                    let original_spreadsheet_idx = vm.config.original_spreadsheet_ids.indexOf(spreadsheet_id);
                     // For Vue performance see VUE PERF NOTE
                     Object.preventExtensions(jtk_ps[original_spreadsheet_idx]);
                     Object.preventExtensions(jtk_qs[original_spreadsheet_idx]);
@@ -141,7 +143,7 @@
         if (spreadsheets.length > 1) {
             $.ajax({
                 url: "/spreadsheets/get_upside",
-                data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids}),
+                data: JSON.stringify({'spreadsheet_ids': vm.config.original_spreadsheet_ids}),
                 dataType: 'text json',
                 contentType: 'application/json',
                 type: 'POST',
@@ -158,7 +160,7 @@
                     spreadsheets.forEach(function(spreadsheet, idx){
                         // Incase spreadsheets have been reordered since start of request, we look up where they should be
                         let spreadsheet_id = spreadsheet.spreadsheet_id;
-                        let spreadsheet_original_idx = original_spreadsheet_ids.indexOf(spreadsheet_id);
+                        let spreadsheet_original_idx = vm.config.original_spreadsheet_ids.indexOf(spreadsheet_id);
                         Object.preventExtensions(upside_ps[spreadsheet_original_idx]); // See VUE PERF NOTE
                         Object.preventExtensions(upside_qs[spreadsheet_original_idx]); // these aren't covered by above since are one level deeper
                         spreadsheet.upside_ps = upside_ps[spreadsheet_original_idx];
@@ -260,7 +262,7 @@
                                   v-cloak>
                     </row-selector>
                     <div class="form-check">
-                        <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="hide_filtered_rows">
+                        <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="config.hide_filtered_rows">
                         <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>
                     </div>
                 </div>
@@ -479,7 +481,7 @@
             <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
                 <div class="col-auto">
                     <div id="filter_list">
-                        <div v-for="(filter, index) in filters" class="row"
+                        <div v-for="(filter, index) in editing_filters" class="row"
                             :key="filter.id">
                             <div class='col form-inline filter_item'>
                                 <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
@@ -506,7 +508,7 @@
                                 </input>
 
                                 <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
-                                        v-on:click="filters = filters.filter(function(x,j) {return j !== index;})">
+                                        v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
                                     <span class="far fa-minus-square"> </span>
                                 </button>
                             </div>
@@ -730,13 +732,14 @@
     let app = new Vue({
         el: "#vue-app",
         data: {
-            filters: [],
-            last_used_filters: [],
-            hide_filtered_rows: false,
+            editing_filters: [],
             spreadsheets: [],
             config: {
+                original_spreadsheet_ids: [],
                 selected_row: 0,
                 sort_by: {stat_id: 'nitecap', spreadsheet_num: 0},
+                filters: [],
+                hide_filtered_rows: false,
             },
 
             search_value: '',
@@ -772,24 +775,24 @@
 
         methods: {
             resetFilters: function(){
-                this.filters = this.last_used_filters.slice();
+                this.editing_filters = this.config.filters.slice();
             },
 
             addFilter: function(){
                 let new_id = 0; // Make filter keys
-                if (this.filters.length > 0){
-                    new_id  = Math.max.apply(null, this.filters.map( function(filter) {
+                if (this.editing_filters.length > 0){
+                    new_id  = Math.max.apply(null, this.editing_filters.map( function(filter) {
                         return filter.id;
                     }))  + 1;
                 }
-                this.filters.push( {variable: 'max_value', lower_bound:'', upper_bound:'', id: new_id} );
+                this.editing_filters.push( {variable: 'max_value', lower_bound:'', upper_bound:'', id: new_id} );
             },
 
             applyFilters: function() {
                 // Copy the filters that we last ran
-                // last_used_filters are the ones we actually filter on
+                // config.filters are the ones we actually filter on
                 // needs to be deep copy so we json-ify it and back
-                this.last_used_filters = JSON.parse(JSON.stringify(this.filters));
+                this.config.filters = JSON.parse(JSON.stringify(this.editing_filters));
             },
 
             redrawPlot: function() {
@@ -1247,7 +1250,7 @@
                 let sort_order =  this.labels.map( function(x,i) {return i;} );
                 sort_order = sort_order.sort(this.sort_function.func);
 
-                if (this.hide_filtered_rows) {
+                if (this.config.hide_filtered_rows) {
                     // Move filtered items from the sort_order to the back of the list  to hide them
                     let head = sort_order.filter( function(x) {return !vm.filtered[x];});
                     let tail = sort_order.filter( function(x) {return vm.filtered[x];});
@@ -1281,7 +1284,7 @@
                 let filtered_out = this.labels.map( function (x) {return false;} );
 
                 // Apply all filters
-                this.last_used_filters.forEach(function(filter) {
+                this.config.filters.forEach(function(filter) {
                     let filter_value = filter.variable;
 
                     let lower_bound = parseFloat(filter.lower_bound);
@@ -1354,7 +1357,8 @@
 
                 // Make a filter for each stat
                 let stat_filters = [];
-                vm.useable_stats.forEach( function (stat) {
+                for (key in vm.useable_stats) {
+                    let stat = vm.useable_stats[key];
                     if (stat.per_spreadsheet) {
                         let just_one = vm.spreadsheets.length === 1;
                         vm.spreadsheets.forEach( function(spreadsheet, idx) {
@@ -1409,7 +1413,7 @@
                         }
                     }
 
-                });
+                }
 
                 // Return all filters, including the 'base' ones and the ones derived from our statistics
                 return filter_data_list_base.concat(stat_filters);
