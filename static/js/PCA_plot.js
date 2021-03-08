@@ -129,18 +129,10 @@ Vue.component('pca-plot', {
             let vm = this;
 
             // We only run PCA on unfiltered genes below the selected row
-            let selected_genes = app.sort_order.filter( function(row,rank) {
-                if (rank > app.selected_row) {
-                    return false;
-                }
-                if (app.filtered[row]) {
-                    return false;
-                }
-                return true;
-            });
+            let selected_genes = app.selected_rows;
 
             if (selected_genes.length <  3) {
-                vm.alert = "Too few rows selected, need at least 3 for PCA.";
+                vm.alert = "Too few rows selected, need at least 3 (preferably more) for PCA.";
                 return;
             } else {
                 vm.alert = '';
@@ -163,7 +155,7 @@ Vue.component('pca-plot', {
 
             $.ajax({
                 url: "/spreadsheets/run_pca",
-                data: JSON.stringify({'spreadsheet_ids': app.spreadsheet_ids,
+                data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids,
                                       'selected_genes': selected_genes,
                                       'take_logtransform': vm.config.logtransform,
                                       'take_zscore': vm.config.zscore}),
@@ -175,12 +167,13 @@ Vue.component('pca-plot', {
                     explained_variance = response['explained_variance'];
 
                     let traces = vm.spreadsheets.map( function (spreadsheet, idx) {
+                        let spreadsheet_idx = original_spreadsheet_ids.indexOf(spreadsheet.spreadsheet_id);
                         return {
-                            x: pca_coords[idx][0],
-                            y: pca_coords[idx][1],
+                            x: pca_coords[spreadsheet_idx][0],
+                            y: pca_coords[spreadsheet_idx][1],
                             mode: 'markers',
                             name: spreadsheet.descriptive_name,
-                            text: pt_labels[idx],
+                            text: pt_labels[spreadsheet_idx],
                             marker: {
                                 size: 25,
                                 opacity: 1,
