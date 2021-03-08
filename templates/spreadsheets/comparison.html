@@ -60,18 +60,18 @@
         app.timepoints_per_day = app.spreadsheets[0].timepoints_per_day;
         app.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
 
-        // Update stats_list with the Additional Stat Columns of the spreadsheets
+        // Update stats_table with the Additional Stat Columns of the spreadsheets
         app.spreadsheets.forEach(function(spreadsheet) {
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
                 app.stats[key] = value;
-                app.stats_list.push({
+                app.stats_table[key] = {
                     name: key,
                     value: key,
                     description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
                     per_spreadsheet: false,
-                });
+                };
             });
         });
 
@@ -85,7 +85,7 @@
                 max: maximum,
                 range: "min",
                 slide: function (event, ui) {
-                    app.selected_row = ui.value;
+                    app.config.selected_row = ui.value;
                 }
             });
         }
@@ -253,7 +253,7 @@
                                   v-bind:filtered="filtered"
                                   v-bind:num-rows="21"
                                   v-bind:q-values="label_qs"
-                                  v-bind:selected-row="selected_row"
+                                  v-bind:selected-row="config.selected_row"
                                   v-bind:labels="labels"
                                   v-bind:label-max-length="35"
                                   v-bind:select-row="selectRow"
@@ -331,7 +331,7 @@
                             </tr>
                         </thead>
                         <tbody v-if="spreadsheets !== null" class="stats-box">
-                            <template v-for="stat in useable_stats">
+                            <template v-for="(stat, stat_id) in useable_stats">
                                 <tr>
                                     <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
                                         {{stat.name}}
@@ -347,7 +347,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value] != null"
-                                                    v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value][row_index])">
                                                     {{util.formatNum(spreadsheet[stat.value][row_index], 4)}}
@@ -360,7 +360,7 @@
                                         <template v-else>
                                             <td v-if="stats[stat.value] != null"
                                                 v-bind:title="String(stats[stat.value][row_index])"
-                                                v-on:click="sort_by = {stat:stat}"
+                                                v-on:click="config.sort_by = {stat_id:stat_id}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 {{util.formatNum(stats[stat.value][row_index], 4)}}
@@ -375,7 +375,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value.p] != null"
-                                                    v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value.p][row_index])">
                                                     p: {{util.formatNum(spreadsheet[stat.value.p][row_index], 4)}}
@@ -388,7 +388,7 @@
                                         <template v-else>
                                             <td v-if="stats[stat.value.p] != null"
                                                 v-bind:title="String(stats[stat.value.p][row_index])"
-                                                v-on:click="sort_by = {stat:stat}"
+                                                v-on:click="config.sort_by = {stat_id:stat_id}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 p: {{util.formatNum(stats[stat.value.p][row_index], 4)}}
@@ -404,7 +404,7 @@
                                     <template v-if="stat.per_spreadsheet">
                                         <template v-for="(spreadsheet, i) in spreadsheets">
                                             <td v-if="spreadsheet[stat.value.q] != null"
-                                                v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
+                                                v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                 v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:title="String(spreadsheet[stat.value.q][row_index])">
                                                 q: {{util.formatNum(spreadsheet[stat.value.q][row_index], 4)}}
@@ -417,7 +417,7 @@
                                     <template v-else>
                                         <td v-if="stats[stat.value.q] != null"
                                             v-bind:title="String(stats[stat.value.q][row_index])"
-                                            v-on:click="sort_by = {stat:stat}"
+                                            v-on:click="config.sort_by = {stat_id:stat_id}"
                                             v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                             v-bind:colspan="spreadsheets.length">
                                             q: {{util.formatNum(stats[stat.value.q][row_index], 4)}}
@@ -597,8 +597,8 @@
         formatNum: formatNum
     };
 
-    let stats_list = [
-        {name: "Nitecap",
+    let stats_table = {
+        nitecap: {name: "Nitecap",
          value: {p: "ps",
                  q: "qs"},
           description: "Nitecap significance of rhythmicity for primary dataset.",
@@ -606,78 +606,78 @@
          num_spreadsheets:'any',
          sort_value:'tds',
          secondary_sort_value:'qs'},
-        {name: "JTK",
+        jtk: {name: "JTK",
          value: {p: "jtk_ps",
                  q: "jtk_qs"},
          description: "JTK_cycle significance of rhythmicity for primary dataset.",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
-        {name: "ARS",
+        ars: {name: "ARS",
          value: {p: "ars_ps",
                  q: "ars_qs"},
          description: "ARSER significance of rhythmicity for primary dataset. Computed by meta2d.",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
-        {name: "LS",
+        ls: {name: "LS",
          value: {p: "ls_ps",
                  q: "ls_qs"},
          description: "Lomb-Scargle significance of rhythmicity for primary dataset. Computed by meta2d.",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
-        {name: "ANOVA",
+        anova: {name: "ANOVA",
          value: {p: "anova_ps",
                  q: "anova_qs"},
          description: "1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.",
          per_spreadsheet: true,
          num_spreadsheets: 'any'},
-        {name: "Damping",
+        damping: {name: "Damping",
          value: {p: "upside_ps",
                  q: "upside_qs"},
          description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
          per_spreadsheet: true,
          num_spreadsheets: 'multi'},
-        {name: "Two-way ANOVA",
+        two_way_anova: {name: "Two-way ANOVA",
          value: {p: "two_way_anova_ps",
                  q: "two_way_anova_qs"},
          description: "Two-way ANOVA test for difference in timepoint-effects across datasets",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
-        {name: "Main Effect Diff",
+        main_effect_diff: {name: "Main Effect Diff",
          value: {p: "main_effect_ps",
                  q: "main_effect_qs"},
          description: "Main effect test of difference between the two datasets in the two-way ANOVA",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
-        {name: "Phase Difference",
+        phase_difference: {name: "Phase Difference",
          value: {p: "phase_ps",
                  q: "phase_qs"},
          description: "Test for equality of phase between datasets through cosinor analysis (least squares fit)",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
-        {name: "Amplitude Difference",
+        amplitude_difference: {name: "Amplitude Difference",
          value: {p: "amplitude_ps",
                  q: "amplitude_qs"},
          description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit)",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
-        {name: "Amplitude",
+        amplitude: {name: "Amplitude",
          value: "amplitudes",
          description: "Amplitude of the variation.",
          per_spreadsheet: true,
          num_spreadsheets: 'any',
          sort_direction: -1},
-        {name: "Peak-time",
+        peak_time: {name: "Peak-time",
          value: "peak_times",
          description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
          per_spreadsheet: true,
          num_spreadsheets: 'any'},
-        {name: "Cosinor",
+        cosinor: {name: "Cosinor",
          value: {p: "cosinor_ps",
                  q: "cosinor_qs"},
          description: "Cosinor significance of rhythmicity for primary dataset.",
          per_spreadsheet: true,
          num_spreadsheets:'any'},
-    ];
+    };
 
     let filter_data_list_base = [
         {values: function () {
@@ -734,12 +734,14 @@
             last_used_filters: [],
             hide_filtered_rows: false,
             spreadsheets: [],
-            selected_row: 0,
-            sort_by: {stat: stats_list[0], spreadsheet_num: 0},
+            config: {
+                selected_row: 0,
+                sort_by: {stat_id: 'nitecap', spreadsheet_num: 0},
+            },
 
             search_value: '',
 
-            stats_list: stats_list,
+            stats_table: stats_table,
 
             stats: {
                 amplitude_ps: null,
@@ -796,7 +798,7 @@
                 let traces = [];
                 let colors = Plotly.d3.scale.category10();
                 vm.spreadsheets.forEach(function (spreadsheet, idx) {
-                    let row_index = vm.sort_order[vm.selected_row];
+                    let row_index = vm.sort_order[vm.config.selected_row];
                     raw_y_values = spreadsheet.data[row_index];
                     if (raw_y_values === undefined) {
                         console.log("Could not find the y-values for row " + row_index);
@@ -1026,7 +1028,7 @@
 
                 let layout = {
                     hovermode: 'closest',
-                    title: app.labels[app.sort_order[app.selected_row]],
+                    title: app.labels[app.sort_order[app.config.selected_row]],
                     legend: { orientation: 'h', y: -0.2 },
                     xaxis: {
                         ticktext: plot_x_labels,
@@ -1048,18 +1050,18 @@
 
             downloadPlot: function() {
                 let gd = document.getElementById('scatter_plot');
-                Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.selected_row+1)});
+                Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.config.selected_row+1)});
             },
 
 
             selectRow: function(row) {
-                this.selected_row = row;
+                this.config.selected_row = row;
             },
 
             onRowChange: function () {
                 this.redrawPlot();
 
-                $('#coarse_slider').slider('value', this.selected_row);
+                $('#coarse_slider').slider('value', this.config.selected_row);
             },
 
             searchRows: function() {
@@ -1082,7 +1084,7 @@
 
                 // Find matches in rows past the current selection
                 let matches_after = matching_rows.filter( function (i) {
-                    return i > app.selected_row;
+                    return i > app.config.selected_row;
                 } );
 
                 let row = null;
@@ -1095,7 +1097,7 @@
                     row = matching_rows[0];
                 }
 
-                app.selected_row = row;
+                app.config.selected_row = row;
             },
 
             onShare: function() {
@@ -1103,7 +1105,7 @@
                 let vm = this;
                 $.ajax({
                     url: "{{url_for('spreadsheets.share')}}",
-                    data: JSON.stringify({'spreadsheet_ids': vm.spreadsheet_ids, 'row_index': vm.selected_row}),
+                    data: JSON.stringify({'spreadsheet_ids': vm.spreadsheet_ids, 'row_index': vm.config.selected_row}),
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',
@@ -1133,34 +1135,42 @@
         computed: {
             row_index: function() {
                 if (this.sort_order !== null) {
-                    return this.sort_order[this.selected_row];
+                    return this.sort_order[this.config.selected_row];
                 } else {
-                    return this.selected_row;
+                    return this.config.selected_row;
                 }
 
             },
 
             num_below: {
                 get: function () {
-                    return this.num_significant_below[this.selected_row];
+                    return this.num_significant_below[this.config.selected_row];
                 },
                 set: function (val) {
                     val = parseInt(val);
                     if (val === null || this.num_significant_below === null) {
-                        this.selected_row = 0;
+                        this.config.selected_row = 0;
                     }
 
                     let idx = this.num_significant_below.indexOf(val);
                     if (idx !== -1) {
-                        this.selected_row = idx;
+                        this.config.selected_row = idx;
                     } else {
                         if (idx > Math.max(null, this.num_significant_below)) {
-                            this.selected_row = this.num_siginificant_below.length;
+                            this.config.selected_row = this.num_siginificant_below.length;
                         } else {
-                            this.selected_row = 0;
+                            this.config.selected_row = 0;
                         }
                     }
                 }
+            },
+
+            sort_by: function() {
+                return {
+                    stat: this.stats_table[this.config.sort_by.stat_id],
+                    stat_id: this.config.sort_by.stat_id,
+                    spreadsheet_num: this.config.sort_by.spreadsheet_num,
+                };
             },
 
             sort_function: function () {
@@ -1311,7 +1321,7 @@
                 let vm = this;
 
                 return vm.sort_order.filter( function(row_num,rank) {
-                    return (rank <= vm.selected_row) & (!vm.filtered[row_num]);
+                    return (rank <= vm.config.selected_row) & (!vm.filtered[row_num]);
                 } );
             },
 
@@ -1322,21 +1332,24 @@
             },
 
             useable_stats: function () {
-                // Only the stats from stats_list that apply to this context
+                // Only the stats from stats_table that apply to this context
                 // i.e. the ones we have enough spreadsheets for
                 let vm = this;
-                return this.stats_list.filter( function(stat) {
-                    if (stat.num_spreadsheets == 'multi') {
-                        return vm.spreadsheets.length > 1;
-                    } else {
-                        return true;
+                let stats = {};
+                for (key in this.stats_table) {
+                    let stat = this.stats_table[key]
+                    if ((stat.num_spreadsheets == 'multi')
+                            && (vm.spreadsheets.length < 2)) {
+                        continue; // Need 2 or more spreadsheets
                     }
-                });
+                    stats[key] = stat;
+                }
+                return stats;
             },
 
             filter_data_list: function () {
                 // List of filters including the 'special' ones declared in filters_data_list_base
-                // and also those derived from the statistics in stats_list
+                // and also those derived from the statistics in stats_table
                 let vm = this;
 
                 // Make a filter for each stat
@@ -1523,7 +1536,7 @@
 
             cutoff: {
                 get: function() {
-                    return this.sort_function.display_value[this.sort_order[this.selected_row]];
+                    return this.sort_function.display_value[this.sort_order[this.config.selected_row]];
                 },
                 set: function(value) {
                     let app = this;
@@ -1535,7 +1548,7 @@
                             break;
                         }
                     }
-                    app.selected_row = Math.max(i-1, 0);
+                    app.config.selected_row = Math.max(i-1, 0);
                 },
             },
 
