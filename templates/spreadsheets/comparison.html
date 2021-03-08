@@ -13,11 +13,11 @@
         nitecap_error = $("#error-modal");
         nitecap_error_message = $("#error-modal-message")
 
-        spreadsheet_ids = {{ spreadsheet_ids | safe }};
+        original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
         $.ajax({
             url: "/spreadsheets/get_spreadsheets",
-            data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+            data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids}),
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -96,7 +96,7 @@
         // Load the JTK values for each spreadsheet
         $.ajax({
             url: "/spreadsheets/jtk",
-            data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+            data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -109,19 +109,23 @@
                 let ls_qs = response['ls_qs'];
 
                 spreadsheets.forEach(function(spreadsheet, i) {
+                    // In case spreadsheets are reordered since the start of the request, we need to
+                    // look up where the spreadsheet was in the request
+                    let spreadsheet_id = spreadsheet.id;
+                    let original_spreadsheet_idx = original_spreadsheet_ids.indexOf(spreadsheet_id);
                     // For Vue performance see VUE PERF NOTE
-                    Object.preventExtensions(jtk_ps[i]);
-                    Object.preventExtensions(jtk_qs[i]);
-                    spreadsheet.jtk_ps = jtk_ps[i];
-                    spreadsheet.jtk_qs = jtk_qs[i];
-                    Object.preventExtensions(ars_ps[i]);
-                    Object.preventExtensions(ars_qs[i]);
-                    spreadsheet.ars_ps = ars_ps[i];
-                    spreadsheet.ars_qs = ars_qs[i];
-                    Object.preventExtensions(ls_ps[i]);
-                    Object.preventExtensions(ls_qs[i]);
-                    spreadsheet.ls_ps = ls_ps[i];
-                    spreadsheet.ls_qs = ls_qs[i];
+                    Object.preventExtensions(jtk_ps[original_spreadsheet_idx]);
+                    Object.preventExtensions(jtk_qs[original_spreadsheet_idx]);
+                    spreadsheet.jtk_ps = jtk_ps[original_spreadsheet_idx];
+                    spreadsheet.jtk_qs = jtk_qs[original_spreadsheet_idx];
+                    Object.preventExtensions(ars_ps[original_spreadsheet_idx]);
+                    Object.preventExtensions(ars_qs[original_spreadsheet_idx]);
+                    spreadsheet.ars_ps = ars_ps[original_spreadsheet_idx];
+                    spreadsheet.ars_qs = ars_qs[original_spreadsheet_idx];
+                    Object.preventExtensions(ls_ps[original_spreadsheet_idx]);
+                    Object.preventExtensions(ls_qs[original_spreadsheet_idx]);
+                    spreadsheet.ls_ps = ls_ps[original_spreadsheet_idx];
+                    spreadsheet.ls_qs = ls_qs[original_spreadsheet_idx];
                 });
             },
             error: function(error) {
@@ -137,7 +141,7 @@
         if (spreadsheets.length > 1) {
             $.ajax({
                 url: "/spreadsheets/get_upside",
-                data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+                data: JSON.stringify({'spreadsheet_ids': original_spreadsheet_ids}),
                 dataType: 'text json',
                 contentType: 'application/json',
                 type: 'POST',
@@ -152,12 +156,16 @@
                     upside_qs = response['upside_qs'];
 
                     spreadsheets.forEach(function(spreadsheet, idx){
-                        Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
-                        Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
-                        spreadsheet.upside_ps = upside_ps[idx];
-                        spreadsheet.upside_qs = upside_qs[idx];
+                        // Incase spreadsheets have been reordered since start of request, we look up where they should be
+                        let spreadsheet_id = spreadsheet.id;
+                        let spreadsheet_original_idx = original_spreadsheet_ids.indexOf(spreadsheet_id);
+                        Object.preventExtensions(upside_ps[spreadsheet_original_idx]); // See VUE PERF NOTE
+                        Object.preventExtensions(upside_qs[spreadsheet_original_idx]); // these aren't covered by above since are one level deeper
+                        spreadsheet.upside_ps = upside_ps[spreadsheet_original_idx];
+                        spreadsheet.upside_qs = upside_qs[spreadsheet_original_idx];
                     });
 
+                    // Load stats that are per-comparison not per-spreadsheet
                     app.stats.two_way_anova_ps = response['two_way_anova_ps'];
                     app.stats.two_way_anova_qs = response['two_way_anova_qs'];
                     app.stats.main_effect_ps = response['main_effect_ps'];
@@ -166,8 +174,8 @@
                     app.stats.phase_qs = response['phase_qs'];
                     app.stats.amplitude_ps = response['amplitude_ps'];
                     app.stats.amplitude_qs = response['amplitude_qs'];
-
                 },
+
                 error: function(error) {
                     console.log("Error loading upside values");
                     console.log(error);
