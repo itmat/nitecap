@@ -157,7 +157,7 @@
 
                     spreadsheets.forEach(function(spreadsheet, idx){
                         // Incase spreadsheets have been reordered since start of request, we look up where they should be
-                        let spreadsheet_id = spreadsheet.id;
+                        let spreadsheet_id = spreadsheet.spreadsheet_id;
                         let spreadsheet_original_idx = original_spreadsheet_ids.indexOf(spreadsheet_id);
                         Object.preventExtensions(upside_ps[spreadsheet_original_idx]); // See VUE PERF NOTE
                         Object.preventExtensions(upside_qs[spreadsheet_original_idx]); // these aren't covered by above since are one level deeper
