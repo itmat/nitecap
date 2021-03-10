@@ -24,6 +24,7 @@ from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
     ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
 from models.users.user import User
+from models.shares import Share
 from timer_decorator import timeit
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
@@ -340,7 +341,6 @@ def get_spreadsheets(user=None):
 
     data = json.loads(request.data)
     spreadsheet_ids = data['spreadsheet_ids']
-    share_token = data.get("share_token", '')
 
     if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
@@ -712,7 +712,9 @@ def share(user=None):
             return jsonify({"errors": SPREADSHEET_NOT_FOUND_MESSAGE}, 404)
 
     current_app.logger.info(f"Sharing spreadsheet {spreadsheet_ids} and config {config}")
-    return jsonify({'share': user.get_share_token(spreadsheet_ids, config)})
+    share = Share(spreadsheet_ids, user.id, config)
+    share.save_to_db()
+    return jsonify({'share': share.id})
 
 
 @spreadsheet_blueprint.route('/share/<string:token>', methods=['GET'])
@@ -727,21 +729,25 @@ def consume_share(token):
     :param token: the share token given to the receiving user
     """
     errors = []
-    result = User.verify_share_token(token)
-    if result is None:
-        current_app.logger.error(f"No valid user present in shared token")
-        errors.append("The token you received does not work.  It may have been mangled in transit.  Please request "
+    try:
+        share = Share.find_by_id(token)
+    except Exception as e:
+        current_app.logger.error(f"Invalid share URL identified with token {token}");
+        current_app.logger.error(e)
+        errors.append("The URL you received does not work.  It may have been mangled in transit.  Please request "
                       "another share")
-        return render_template('spreadsheets/upload_file.html', errors=errors)
-    sharing_user, spreadsheet_ids, config = result
+        return render_template('spreadsheets/upload_file.html', error=errors)
+    sharing_user = User.find_by_id(share.user_id)
+    spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
+    config = json.loads(share.config_json)
 
-    current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_ids} with config {config}")
     spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
 
         if not spreadsheet or not sharing_user:
-            errors.append("The token you received does not work.  It may have been mangled in transit.  Please request "
+            current_app.logger.error(f"Invalid share URL with token {token}. Spreadsheets do not belong to given user.")
+            errors.append("The URL you received does not work.  It may have been mangled in transit.  Please request "
                           "another share")
             return render_template('spreadsheets/upload_file.html', errors=errors)
         spreadsheets.append(spreadsheet)
@@ -782,17 +788,20 @@ def consume_share(token):
         flash("Spreadsheets must all be categorical or all time-series.")
         return redict(url_for('.display_spreadsheets'))
 
+    # Updates the last-access time
+    share.save_to_db()
+
     if all(is_categorical):
         return render_template('spreadsheets/show_mpv_spreadsheet.html',
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
-                           share_token=token,
+                           share_token=share.id,
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
         return render_template('spreadsheets/comparison.html',
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
-                           share_token=token,
+                           share_token=share.id,
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 

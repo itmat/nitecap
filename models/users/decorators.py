@@ -5,6 +5,7 @@ from flask import session, request, url_for, flash, current_app, jsonify
 from werkzeug.utils import redirect
 
 from models.users.user import User
+from models.shares import Share
 
 MUST_BE_LOGGED_IN_MESSAGE = "You must be logged in to perform this activity."
 MUST_HAVE_ACCOUNT_MESSAGE = "You must be logged in or working on a spreadsheet to perform this activity."
@@ -111,14 +112,17 @@ def ajax_requires_account_or_share(func):
         share_token = data.get("share_token", '')
         if share_token != '':
             # Check sharing token matches the target spreadsheets and has a user
-            result = User.verify_share_token(share_token) #TODO: this will have to look up tokens in DB at some point
-            if result is None:
-                current_app.logger.error(f"No valid user present in shared token")
-                return jsonify({"error": "The token you received does not work.  It may have been mangled in transit.  Please request "
+            try:
+                share = Share.find_by_id(share_token)
+            except Exception as e:
+                current_app.logger.error(f"Invalid share URL identified with token {share_token}");
+                current_app.logger.error(e)
+                return jsonify({"error": "The URL you received does not work.  It may have been mangled in transit.  Please request "
                               "another share"}), 401
-            sharing_user, shared_spreadsheet_ids, _ = result
+            sharing_user = User.find_by_id(share.user_id)
+            shared_spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
             if set(spreadsheet_ids).issubset(shared_spreadsheet_ids):
-                # IDs match, grant the access under the sharing user's account
+                # Spreadsheets match, grant the access under the sharing user's account
                 kwargs['user'] = sharing_user
         else:
             # No share, verify actual user
