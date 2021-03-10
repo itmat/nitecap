@@ -22,7 +22,7 @@ import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
-    ajax_requires_account, ajax_requires_admin
+    ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
 from models.users.user import User
 from timer_decorator import timeit
 
@@ -282,13 +282,16 @@ def access_not_permitted(endpoint, user, spreadsheet_id):
 @spreadsheet_blueprint.route('/show_spreadsheet/<spreadsheet_id>', methods=['GET'])
 @requires_account
 @timeit
-def show_spreadsheet(spreadsheet_id, user=None):
+def show_spreadsheet(spreadsheet_id, user=None, config=None):
     """
     Standard endpoint - retrieves the spreadsheet id from the url and pulls up the associated display (graphics and tables).  This
     method is available to any user with an account (standard user or visitor).
     :param spreadsheet_id: the id of the spreadsheet whose results are to be displayed.
     :param user:  Returned by the decorator.  Account bearing user is required.
     """
+
+    if config is None:
+        config = dict()
 
     errors = []
 
@@ -322,18 +325,22 @@ def show_spreadsheet(spreadsheet_id, user=None):
     if all(is_categorical):
         return render_template('spreadsheets/show_mpv_spreadsheet.html',
                            spreadsheet_ids=spreadsheet_ids,
+                           config=config,
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
         return render_template('spreadsheets/comparison.html',
                            spreadsheet_ids=spreadsheet_ids,
+                           config=config,
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 @spreadsheet_blueprint.route('/get_spreadsheets', methods=['POST'])
 @timeit
-@ajax_requires_account
+@ajax_requires_account_or_share
 def get_spreadsheets(user=None):
 
-    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
+    data = json.loads(request.data)
+    spreadsheet_ids = data['spreadsheet_ids']
+    share_token = data.get("share_token", '')
 
     if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
@@ -398,7 +405,7 @@ def get_spreadsheets(user=None):
 
 @spreadsheet_blueprint.route('/get_mpv_spreadsheets', methods=['POST'])
 @timeit
-@ajax_requires_account
+@ajax_requires_account_or_share
 def get_mpv_spreadsheets(user=None):
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
     assert len(spreadsheet_ids) == 1
@@ -452,7 +459,7 @@ def get_mpv_spreadsheets(user=None):
 
 @spreadsheet_blueprint.route('/jtk', methods=['POST'])
 @timeit
-@ajax_requires_account
+@ajax_requires_account_or_share
 def get_jtk(user=None):
 
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
@@ -470,8 +477,6 @@ def get_jtk(user=None):
         spreadsheet.init_on_load()
 
         spreadsheets.append(spreadsheet)
-
-    print(f"Getting JTK for {spreadsheet_ids}")
 
     # Running it once will calculate JTK if necessary
     [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
@@ -684,7 +689,7 @@ def save_filters(user=None):
 @ajax_requires_login
 def share(user=None):
     """
-    AJAX endpoint - shares one of the user's spreadsheets.  Incoming json specifies the spreadsheet id and the cutoff
+    AJAX endpoint - shares one of the user's spreadsheets.  Incoming json specifies the spreadsheet id and the config
     to share.  Confirms that spreadsheet indeed belongs to the user and if so, returns a token which encrypts the
     spreadsheet id and cutoff.
     :param user:  Returned by the decorator.  Logged in user is required.
@@ -694,7 +699,7 @@ def share(user=None):
     # Collect json data
     json_data = request.get_json()
     spreadsheet_ids = json_data.get('spreadsheet_ids', None)
-    row_index = json_data.get('row_index', 0)
+    config = json_data.get('config', dict())
 
     # Bad data
     if not spreadsheet_ids:
@@ -706,8 +711,8 @@ def share(user=None):
             current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user.id, request.path, spreadsheet_ids))
             return jsonify({"errors": SPREADSHEET_NOT_FOUND_MESSAGE}, 404)
 
-    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_ids} and row index {row_index}")
-    return jsonify({'share': user.get_share_token(spreadsheet_ids, row_index)})
+    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_ids} and config {config}")
+    return jsonify({'share': user.get_share_token(spreadsheet_ids, config)})
 
 
 @spreadsheet_blueprint.route('/share/<string:token>', methods=['GET'])
@@ -728,9 +733,9 @@ def consume_share(token):
         errors.append("The token you received does not work.  It may have been mangled in transit.  Please request "
                       "another share")
         return render_template('spreadsheets/upload_file.html', errors=errors)
-    sharing_user, spreadsheet_ids, row_index  = result
+    sharing_user, spreadsheet_ids, config = result
 
-    current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_ids}")
+    current_app.logger.info(f"Consuming shared spreadsheet {spreadsheet_ids} with config {config}")
     spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
@@ -741,45 +746,67 @@ def consume_share(token):
             return render_template('spreadsheets/upload_file.html', errors=errors)
         spreadsheets.append(spreadsheet)
 
-    # Identify the account of the current user.  If no account exists, create a visitor account.
-    user = None
-    if 'email' in session:
-        user = User.find_by_email(session['email'])
+    ## Identify the account of the current user.  If no account exists, create a visitor account.
+    #user = None
+    #if 'email' in session:
+    #    user = User.find_by_email(session['email'])
+    #else:
+    #    user = User.create_visitor()
+    #    if user:
+    #        # Visitor's session has a fixed expiry date.
+    #        # session.permanent = True
+    #        session['email'] = user.email
+    #        session['visitor'] = user.is_visitor()
+
+    ## This should not happen ever - indicates a software bug
+    #if not user:
+    #    errors.append("We are unable to create your share at the present time.  Please try again later")
+    #    current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
+    #    return render_template('spreadsheets/upload_file.html', errors=errors)
+
+    ## Create a copy of the sharing user's spreadsheet for the current user.nitecap
+    #shared_spreadsheet_ids = []
+    #for spreadsheet in spreadsheets:
+    #    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user)
+    #    if shared_spreadsheet:
+    #        shared_spreadsheet_ids.append(shared_spreadsheet.id)
+    #    else:
+    #        errors.append("The spreadsheet could not be shared.")
+    #        return render_template('spreadsheets/upload_file.html', errors=errors)
+
+    #spreadsheet_ids_str = ','.join(str(id) for id in shared_spreadsheet_ids)
+    #return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet_ids_str), config=config))
+
+    is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
+    if any(is_categorical) and not all(is_categorical):
+        flash("Spreadsheets must all be categorical or all time-series.")
+        return redict(url_for('.display_spreadsheets'))
+
+    if all(is_categorical):
+        return render_template('spreadsheets/show_mpv_spreadsheet.html',
+                           spreadsheet_ids=spreadsheet_ids,
+                           config=config,
+                           share_token=token,
+                           descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
-        user = User.create_visitor()
-        if user:
-            # Visitor's session has a fixed expiry date.
-            # session.permanent = True
-            session['email'] = user.email
-            session['visitor'] = user.is_visitor()
-
-    # This should not happen ever - indicates a software bug
-    if not user:
-        errors.append("We are unable to create your share at the present time.  Please try again later")
-        current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
-        return render_template('spreadsheets/upload_file.html', errors=errors)
-
-    # Create a copy of the sharing user's spreadsheet for the current user.nitecap
-    shared_spreadsheet_ids = []
-    for spreadsheet in spreadsheets:
-        shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user)
-        if shared_spreadsheet:
-            shared_spreadsheet_ids.append(shared_spreadsheet.id)
-        else:
-            errors.append("The spreadsheet could not be shared.")
-            return render_template('spreadsheets/upload_file.html', errors=errors)
-
-    spreadsheet_ids_str = ','.join(str(id) for id in shared_spreadsheet_ids)
-    return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet_ids_str))
+        return render_template('spreadsheets/comparison.html',
+                           spreadsheet_ids=spreadsheet_ids,
+                           config=config,
+                           share_token=token,
+                           descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 
 @spreadsheet_blueprint.route('/compare', methods=['GET'])
 @requires_login
-def compare(user=None):
+def compare(user=None, config=None):
     """
     Standard endpoint - compares two spreadsheets based upon the column ids they have in common.
     :param user: Returned by the decorator.  Logged in user is required.
+    :param config: dict of configuration values (default: {})
     """
+
+    if config is None:
+        config = dict()
 
     errors = []
 
@@ -802,12 +829,13 @@ def compare(user=None):
 
     return render_template('spreadsheets/comparison.html',
                            spreadsheet_ids=[int(ID) for ID in spreadsheet_ids],
+                           config=config,
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 
 @spreadsheet_blueprint.route('/get_upside', methods=['POST'])
 @timeit
-@ajax_requires_account
+@ajax_requires_account_or_share
 def get_upside(user=None):
     comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
     if not os.path.exists(comparisons_directory):
@@ -920,7 +948,7 @@ def get_upside(user=None):
 
 
 @spreadsheet_blueprint.route('/run_pca', methods=['POST'])
-@ajax_requires_account
+@ajax_requires_account_or_share
 def run_pca(user=None):
     args = json.loads(request.data)
     spreadsheet_ids = args['spreadsheet_ids']

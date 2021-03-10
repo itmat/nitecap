@@ -1,3 +1,4 @@
+import json
 from functools import wraps
 
 from flask import session, request, url_for, flash, current_app, jsonify
@@ -91,6 +92,42 @@ def ajax_requires_account(func):
         if not user:
             return jsonify({"error": MUST_HAVE_ACCOUNT_MESSAGE}), 401
         kwargs['user'] = user
+        return func(*args, **kwargs)
+    return decorated_function
+
+def ajax_requires_account_or_share(func):
+    """
+    Insures that the given wrapped function is accessible only to users with accounts (either visitor's who have
+    a spreadsheet or a logged in user.  Applies to ajax calls.
+    If a share_token is in the request, then the token is checked whether it matches the requested spreadsheet_ids .
+    Request is expected to have 'spreadsheet_ids' member or else this check is unnecessary
+    :param func: the wrapped function
+    :return: decorated_function with 'user' : user in the function's kwargs or an 401 response.
+    """
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        data = json.loads(request.data)
+        spreadsheet_ids = data['spreadsheet_ids']
+        share_token = data.get("share_token", '')
+        if share_token != '':
+            # Check sharing token matches the target spreadsheets and has a user
+            result = User.verify_share_token(share_token) #TODO: this will have to look up tokens in DB at some point
+            if result is None:
+                current_app.logger.error(f"No valid user present in shared token")
+                return jsonify({"error": "The token you received does not work.  It may have been mangled in transit.  Please request "
+                              "another share"}), 401
+            sharing_user, shared_spreadsheet_ids, _ = result
+            if set(spreadsheet_ids).issubset(shared_spreadsheet_ids):
+                # IDs match, grant the access under the sharing user's account
+                kwargs['user'] = sharing_user
+        else:
+            # No share, verify actual user
+            if 'email' not in session.keys() or session['email'] is None:
+                return jsonify({"error": MUST_HAVE_ACCOUNT_MESSAGE}), 401
+            user = User.find_by_email(session['email'])
+            if not user:
+                return jsonify({"error": MUST_HAVE_ACCOUNT_MESSAGE}), 401
+            kwargs['user'] = user
         return func(*args, **kwargs)
     return decorated_function
 
