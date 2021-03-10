@@ -15,8 +15,14 @@
 
         share_token = "{{ share_token }}";
         initial_config = {{ config | tojson }};
+
+        // Load config values
         mergeDeep(app.config, initial_config);
-        app.editing_filters = app.config.filters;
+        app.config.filters.forEach(function(filter) {
+            // editing_filters needs a copy of the actually-used filters
+            app.editing_filters.push(Object.assign({},filter));
+        });
+
 
         // TODO: share needs to pass the spreadsheet ids in the order they are being used
         app.config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
@@ -331,7 +337,7 @@
                             <i class="fas fa-info-circle"></i>
                         </a>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" id="statistics-list">
                         <table class="table table-sm">
                             <thead>
                                 <tr v-if="spreadsheets.length > 1">
@@ -786,7 +792,11 @@
 
         methods: {
             resetFilters: function(){
-                this.editing_filters = this.config.filters.slice();
+                this.editing_filters = [];
+                this.config.filters.forEach(function(filter){
+                    // make editing_filters a copy of the last-used filters
+                    app.editing_filters.push(Object.assign({},filter));
+                });
             },
 
             addFilter: function(){
