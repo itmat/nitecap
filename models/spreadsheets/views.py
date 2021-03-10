@@ -859,7 +859,6 @@ def get_upside(user=None):
     spreadsheets = []
 
     # Check user ownership over these spreadsheets
-    user = User.find_by_email(session['email'])
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:

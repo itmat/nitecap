@@ -16,20 +16,17 @@
         share_token = "{{ share_token }}";
         initial_config = {{ config | tojson }};
 
-        // Load config values
-        mergeDeep(app.config, initial_config);
-        app.config.filters.forEach(function(filter) {
-            // editing_filters needs a copy of the actually-used filters
-            app.editing_filters.push(Object.assign({},filter));
-        });
+        initial_config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
+        // If not supplied in config (eg: no config at all), order by the given spreadsheet_ids
+        if (initial_config.spreadsheet_ids.length === 0) {
+            initial_config.spreadsheet_ids = {{ spreadsheet_ids | safe }};
+        }
 
-        // TODO: share needs to pass the spreadsheet ids in the order they are being used
-        app.config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
         $.ajax({
             url: "/spreadsheets/get_spreadsheets",
-            data: JSON.stringify({'spreadsheet_ids': app.config.original_spreadsheet_ids, 'share_token': share_token}),
+            data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token': share_token}),
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -69,13 +66,19 @@
             });
         });
 
-        vm.spreadsheets = spreadsheets;
+        // Gather spreadsheets by id
+        vm.spreadsheets_by_id = {};
+        spreadsheets.forEach(function(spreadsheet) {
+            vm.spreadsheets_by_id[spreadsheet.spreadsheet_id] = spreadsheet;
+        });
+
+
         vm.labels = spreadsheets[0].labels;
-        vm.timepoints_per_day = vm.spreadsheets[0].timepoints_per_day;
+        vm.timepoints_per_day = spreadsheets[0].timepoints_per_day;
         vm.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
 
         // Update stats_table with the Additional Stat Columns of the spreadsheets
-        vm.spreadsheets.forEach(function(spreadsheet) {
+        spreadsheets.forEach(function(spreadsheet) {
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
@@ -106,11 +109,17 @@
 
         makeCoarseSlider($('#coarse_slider'), 0, vm.labels.length - 1);
 
+        // Load config values
+        mergeDeep(vm.config, initial_config);
+        vm.config.filters.forEach(function(filter) {
+            // editing_filters needs a copy of the actually-used filters
+            vm.editing_filters.push(Object.assign({},filter));
+        });
 
         // Load the JTK values for each spreadsheet
         $.ajax({
             url: "/spreadsheets/jtk",
-            data: JSON.stringify({'spreadsheet_ids': vm.config.original_spreadsheet_ids, 'share_token':share_token}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
+            data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -122,24 +131,21 @@
                 let ls_ps = response['ls_ps'];
                 let ls_qs = response['ls_qs'];
 
-                spreadsheets.forEach(function(spreadsheet, i) {
-                    // In case spreadsheets are reordered since the start of the request, we need to
-                    // look up where the spreadsheet was in the request
-                    let spreadsheet_id = spreadsheet.spreadsheet_id;
-                    let original_spreadsheet_idx = vm.config.original_spreadsheet_ids.indexOf(spreadsheet_id);
+                initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
+                    let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
                     // For Vue performance see VUE PERF NOTE
-                    Object.preventExtensions(jtk_ps[original_spreadsheet_idx]);
-                    Object.preventExtensions(jtk_qs[original_spreadsheet_idx]);
-                    spreadsheet.jtk_ps = jtk_ps[original_spreadsheet_idx];
-                    spreadsheet.jtk_qs = jtk_qs[original_spreadsheet_idx];
-                    Object.preventExtensions(ars_ps[original_spreadsheet_idx]);
-                    Object.preventExtensions(ars_qs[original_spreadsheet_idx]);
-                    spreadsheet.ars_ps = ars_ps[original_spreadsheet_idx];
-                    spreadsheet.ars_qs = ars_qs[original_spreadsheet_idx];
-                    Object.preventExtensions(ls_ps[original_spreadsheet_idx]);
-                    Object.preventExtensions(ls_qs[original_spreadsheet_idx]);
-                    spreadsheet.ls_ps = ls_ps[original_spreadsheet_idx];
-                    spreadsheet.ls_qs = ls_qs[original_spreadsheet_idx];
+                    Object.preventExtensions(jtk_ps[idx]);
+                    Object.preventExtensions(jtk_qs[idx]);
+                    spreadsheet.jtk_ps = jtk_ps[idx];
+                    spreadsheet.jtk_qs = jtk_qs[idx];
+                    Object.preventExtensions(ars_ps[idx]);
+                    Object.preventExtensions(ars_qs[idx]);
+                    spreadsheet.ars_ps = ars_ps[idx];
+                    spreadsheet.ars_qs = ars_qs[idx];
+                    Object.preventExtensions(ls_ps[idx]);
+                    Object.preventExtensions(ls_qs[idx]);
+                    spreadsheet.ls_ps = ls_ps[idx];
+                    spreadsheet.ls_qs = ls_qs[idx];
                 });
             },
             error: function(error) {
@@ -155,7 +161,7 @@
         if (spreadsheets.length > 1) {
             $.ajax({
                 url: "/spreadsheets/get_upside",
-                data: JSON.stringify({'spreadsheet_ids': vm.config.original_spreadsheet_ids, 'share_token':share_token}),
+                data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}),
                 dataType: 'text json',
                 contentType: 'application/json',
                 type: 'POST',
@@ -169,14 +175,12 @@
                     upside_ps = response['upside_ps'];
                     upside_qs = response['upside_qs'];
 
-                    spreadsheets.forEach(function(spreadsheet, idx){
-                        // Incase spreadsheets have been reordered since start of request, we look up where they should be
-                        let spreadsheet_id = spreadsheet.spreadsheet_id;
-                        let spreadsheet_original_idx = vm.config.original_spreadsheet_ids.indexOf(spreadsheet_id);
-                        Object.preventExtensions(upside_ps[spreadsheet_original_idx]); // See VUE PERF NOTE
-                        Object.preventExtensions(upside_qs[spreadsheet_original_idx]); // these aren't covered by above since are one level deeper
-                        spreadsheet.upside_ps = upside_ps[spreadsheet_original_idx];
-                        spreadsheet.upside_qs = upside_qs[spreadsheet_original_idx];
+                    initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
+                        let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
+                        Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
+                        Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
+                        spreadsheet.upside_ps = upside_ps[idx];
+                        spreadsheet.upside_qs = upside_qs[idx];
                     });
 
                     // Load stats that are per-comparison not per-spreadsheet
@@ -701,6 +705,7 @@
     let filter_data_list_base = [
         {values: function () {
                          // Grand maximum across both datasets within each row
+                         if (app.spreadsheets.length === 0) { return []; }
                          let maxes = app.spreadsheets.map(function (spreadsheet) {
                                 return maximums(spreadsheet.data);
                          });
@@ -714,6 +719,7 @@
         {values: function () {
                     // Grand means across both datasets within each row
                     // skipping over NaN/null values
+                     if (app.spreadsheets.length === 0) { return []; }
                     let sums_ = app.spreadsheets.map(function(spreadsheet) {
                         let summed_rows = sums(spreadsheet.data);
                         return summed_rows;
@@ -736,6 +742,7 @@
                 independent: true,
                 key: "mean_value"},
         {values: function () {
+                 if (app.spreadsheets.length === 0) { return []; }
                 let missing = app.spreadsheets.map( function(spreadsheet) {
                      return numNaNTimepoints(spreadsheet.data, spreadsheet.x_values);
                 });
@@ -750,8 +757,9 @@
         el: "#vue-app",
         data: {
             editing_filters: [],
-            spreadsheets: [],
+            spreadsheets_by_id: {}, // spreadsheets by ID
             config: {
+                spreadsheet_ids: [],
                 original_spreadsheet_ids: [],
                 selected_row: 0,
                 sort_by: {stat_id: 'nitecap', spreadsheet_num: 0},
@@ -1129,7 +1137,7 @@
                 let vm = this;
                 $.ajax({
                     url: "{{url_for('spreadsheets.share')}}",
-                    data: JSON.stringify({'spreadsheet_ids': vm.spreadsheet_ids, 'config': vm.config}),
+                    data: JSON.stringify({'spreadsheet_ids': vm.config.original_spreadsheet_ids, 'config': vm.config}),
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',
@@ -1148,15 +1156,21 @@
 
             shiftSpreadsheets: function () {
                 // Shifts through the spreadsheets in order
-                let spreadsheets = this.spreadsheets;
+                let spreadsheets = this.config.spreadsheet_ids;
                 let first = spreadsheets[0];
                 let tail = spreadsheets.slice(1);
-                this.spreadsheets = tail.concat(first);
+                spreadsheets = tail.concat(first);
+                this.config.spreadsheet_ids = spreadsheets;
             },
 
         },
 
         computed: {
+            spreadsheets: function() {
+                // Spreadsheets in the order they are displayed
+                let vm = this;
+                return vm.config.spreadsheet_ids.map(function(id) { return vm.spreadsheets_by_id[id]; } )
+            },
             row_index: function() {
                 if (this.sort_order !== null) {
                     return this.sort_order[this.config.selected_row];
@@ -1332,7 +1346,7 @@
 
                     let idx = vm.filter_data_list.map(function(filter) {return filter.key;} ).indexOf(filter_value);
                     let values = vm.filter_data_list[idx].values();
-                    if (values === null) { return; } // Haven't loaded values yet, can't filter by them
+                    if (values === null || values === undefined) { return; } // Haven't loaded values yet, can't filter by them
 
                     filtered_out = filtered_out.map( function (x,i) {
                         return x || (values[i] < lower_bound) || (values[i] > upper_bound);
@@ -1456,10 +1470,6 @@
 
                 // Return all filters, including the 'base' ones and the ones derived from our statistics
                 return filter_data_list_base.concat(stat_filters);
-            },
-
-            spreadsheet_ids: function() {
-                return this.spreadsheets.map( function(spreadsheet) {return spreadsheet.spreadsheet_id;});
             },
 
             timepoint_labels: function() {
