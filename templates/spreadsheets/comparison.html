@@ -15,7 +15,7 @@
 
         share_token = "{{ share_token }}";
         initial_config = {{ config | tojson }};
-        Object.assign(app.config, initial_config);
+        mergeDeep(app.config, initial_config);
         app.editing_filters = app.config.filters;
 
         // TODO: share needs to pass the spreadsheet ids in the order they are being used

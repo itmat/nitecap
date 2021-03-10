@@ -570,3 +570,28 @@ if (!Object.entries) {
     return resArray;
   };
 }
+
+function isObject(item) {
+  return (item && typeof item === 'object' && !Array.isArray(item));
+}
+
+function mergeDeep(target, ...sources) {
+  // Deep merge two objects
+  // Derived from https://stackoverflow.com/a/34749873/1489239
+  // license: https://creativecommons.org/licenses/by-sa/3.0/
+  if (!sources.length) return target;
+  const source = sources.shift();
+
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!isObject(target[key])) Object.assign(target, { [key]: {} });
+        mergeDeep(target[key], source[key]);
+      } else {
+        Object.assign(target, { [key]: source[key] });
+      }
+    }
+  }
+
+  return mergeDeep(target, ...sources);
+}
