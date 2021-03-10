@@ -23,6 +23,11 @@
     opacity: 1;
 }
 
+#statistics-list {
+    overflow: auto;
+    max-height: 600px;
+}
+
 #heatmap_block {
     text-align: center;
     width: 1000px;
