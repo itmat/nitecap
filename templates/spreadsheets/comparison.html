@@ -69,7 +69,7 @@
         // Gather spreadsheets by id
         vm.spreadsheets_by_id = {};
         spreadsheets.forEach(function(spreadsheet) {
-            vm.spreadsheets_by_id[spreadsheet.spreadsheet_id] = spreadsheet;
+            Vue.set(vm.spreadsheets_by_id, spreadsheet.spreadsheet_id, spreadsheet);
         });
 
 
