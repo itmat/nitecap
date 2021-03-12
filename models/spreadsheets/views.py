@@ -369,13 +369,13 @@ def get_spreadsheets(user=None):
                      x_values=spreadsheet.x_values,
                      x_labels=spreadsheet.x_labels,
                      x_label_values=spreadsheet.x_label_values,
-                     qs=df.nitecap_q,
-                     ps=df.nitecap_p,
-                     tds=df.total_delta,
+                     nitecap_q=df.nitecap_q,
+                     nitecap_p=df.nitecap_p,
+                     total_delta=df.total_delta,
                      amplitudes=df.amplitude,
                      peak_times=df.peak_time,
-                     anova_ps=df.anova_p,
-                     anova_qs=df.anova_q,
+                     anova_p=df.anova_p,
+                     anova_q=df.anova_q,
                      filtered=df.filtered_out,
                      filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
@@ -385,18 +385,18 @@ def get_spreadsheets(user=None):
                      spreadsheet_id=spreadsheet.id,
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
-                     jtk_ps=None,
-                     jtk_qs=None,
-                     ars_ps=None,
-                     ars_qs=None,
-                     ls_ps=None,
-                     ls_qs=None,
+                     jtk_p=None,
+                     jtk_q=None,
+                     ars_p=None,
+                     ars_q=None,
+                     ls_p=None,
+                     ls_q=None,
                      column_headers=spreadsheet.get_data_columns(),
-                     cosinor_ps=df.cosinor_p,
-                     cosinor_qs=df.cosinor_q,
-                     cosinor_x0s=df.cosinor_x0,
-                     cosinor_x1s=df.cosinor_x1,
-                     cosinor_x2s=df.cosinor_x2,
+                     cosinor_p=df.cosinor_p,
+                     cosinor_q=df.cosinor_q,
+                     cosinor_x0=df.cosinor_x0,
+                     cosinor_x1=df.cosinor_x1,
+                     cosinor_x2=df.cosinor_x2,
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                     )
         spreadsheet_values.append(values)
@@ -485,20 +485,20 @@ def get_jtk(user=None):
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
     # Now just extract the right columns
-    jtk_ps = [df["jtk_p"] for df in dfs]
-    jtk_qs = [df["jtk_q"] for df in dfs]
-    ars_ps = [df["ars_p"] for df in dfs]
-    ars_qs = [df["ars_q"] for df in dfs]
-    ls_ps = [df["ls_p"] for df in dfs]
-    ls_qs = [df["ls_q"] for df in dfs]
+    jtk_p = [df["jtk_p"] for df in dfs]
+    jtk_q = [df["jtk_q"] for df in dfs]
+    ars_p = [df["ars_p"] for df in dfs]
+    ars_q = [df["ars_q"] for df in dfs]
+    ls_p = [df["ls_p"] for df in dfs]
+    ls_q = [df["ls_q"] for df in dfs]
 
     return dumps({
-        "jtk_ps": jtk_ps,
-        "jtk_qs": jtk_qs,
-        "ars_ps": ars_ps,
-        "ars_qs": ars_qs,
-        "ls_ps": ls_ps,
-        "ls_qs": ls_qs,
+        "jtk_p": jtk_p,
+        "jtk_q": jtk_q,
+        "ars_p": ars_p,
+        "ars_q": ars_q,
+        "ls_p": ls_p,
+        "ls_q": ls_q,
     })
 
 
@@ -870,8 +870,8 @@ def get_upside(user=None):
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
-    upside_ps = []
-    upside_qs = []
+    upside_p = []
+    upside_q = []
     datasets = []
     spreadsheets = []
 
@@ -880,7 +880,7 @@ def get_upside(user=None):
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
             current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
-            return jsonify({'upside_ps': None})
+            return jsonify({'upside_p': None})
 
         spreadsheets.append(spreadsheet)
 
@@ -893,16 +893,16 @@ def get_upside(user=None):
         file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
             comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
-            upside_ps.append(comp_data["upside_ps"].values.tolist())
-            upside_qs.append(comp_data["upside_qs"].values.tolist())
-            anova_p = comp_data["two_way_anova_ps"]
-            anova_q = comp_data["two_way_anova_qs"]
-            phase_p = comp_data["phase_ps"]
-            main_effect_p = comp_data["main_effect_ps"]
-            main_effect_q = comp_data["main_effect_qs"]
-            phase_q = comp_data["phase_qs"]
-            amplitude_p = comp_data["amplitude_ps"]
-            amplitude_q = comp_data["amplitude_qs"]
+            upside_p.append(comp_data["upside_p"].values.tolist())
+            upside_q.append(comp_data["upside_q"].values.tolist())
+            anova_p = comp_data["two_way_anova_p"]
+            anova_q = comp_data["two_way_anova_q"]
+            phase_p = comp_data["phase_p"]
+            main_effect_p = comp_data["main_effect_p"]
+            main_effect_q = comp_data["main_effect_q"]
+            phase_q = comp_data["phase_q"]
+            amplitude_p = comp_data["amplitude_p"]
+            amplitude_q = comp_data["amplitude_q"]
             current_app.logger.info(f"Loaded upside values from file {file_path}")
         except (OSError, KeyError) as e: # Parquet file could not be read (hasn't been written yet)
             if not datasets:
@@ -940,35 +940,35 @@ def get_upside(user=None):
                 amplitude_q = nitecap.util.BH_FDR(amplitude_p)
 
             comp_data = pd.DataFrame(index=combined_index)
-            comp_data["upside_ps"] = upside_p
-            comp_data["upside_qs"] = upside_q
-            comp_data["two_way_anova_ps"] = anova_p
-            comp_data["two_way_anova_qs"] = anova_q
-            comp_data["main_effect_ps"] = main_effect_p
-            comp_data["main_effect_qs"] = main_effect_q
-            comp_data["phase_ps"] = phase_p
-            comp_data["phase_qs"] = phase_q
-            comp_data["amplitude_ps"] = amplitude_p
-            comp_data["amplitude_qs"] = amplitude_q
+            comp_data["upside_p"] = upside_p
+            comp_data["upside_q"] = upside_q
+            comp_data["two_way_anova_p"] = anova_p
+            comp_data["two_way_anova_q"] = anova_q
+            comp_data["main_effect_p"] = main_effect_p
+            comp_data["main_effect_q"] = main_effect_q
+            comp_data["phase_p"] = phase_p
+            comp_data["phase_q"] = phase_q
+            comp_data["amplitude_p"] = amplitude_p
+            comp_data["amplitude_q"] = amplitude_q
 
             # Save to disk
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
 
-            upside_ps.append(upside_p.tolist())
-            upside_qs.append(upside_q.tolist())
+            upside_p.append(upside_p.tolist())
+            upside_q.append(upside_q.tolist())
             current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
 
     return dumps({
-                'upside_ps': upside_ps,
-                'upside_qs': upside_qs,
-                'two_way_anova_ps': anova_p.tolist(),
-                'two_way_anova_qs': anova_q.tolist(),
-                'main_effect_ps': main_effect_p.tolist(),
-                'main_effect_qs': main_effect_q.tolist(),
-                'phase_ps': phase_p.tolist(),
-                'phase_qs': phase_q.tolist(),
-                'amplitude_ps': amplitude_p.tolist(),
-                'amplitude_qs': amplitude_q.tolist()
+                'upside_p': upside_p,
+                'upside_q': upside_q,
+                'two_way_anova_p': anova_p.tolist(),
+                'two_way_anova_q': anova_q.tolist(),
+                'main_effect_p': main_effect_p.tolist(),
+                'main_effect_q': main_effect_q.tolist(),
+                'phase_p': phase_p.tolist(),
+                'phase_q': phase_q.tolist(),
+                'amplitude_p': amplitude_p.tolist(),
+                'amplitude_q': amplitude_q.tolist()
             })
 
 

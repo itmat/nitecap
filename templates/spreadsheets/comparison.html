@@ -49,8 +49,8 @@
 
         // FOR VUE
         spreadsheets.forEach(function(spreadsheet) {
-            spreadsheet.upside_ps = null;
-            spreadsheet.upside_qs = null;
+            spreadsheet.upside_p = null;
+            spreadsheet.upside_q = null;
 
             // VUE PERF NOTE
             // Vue "observes" all attributes of observed objects
@@ -124,28 +124,28 @@
             contentType: "application/json",
             type: 'POST',
             success: function(response) {
-                let jtk_ps = response['jtk_ps'];
-                let jtk_qs = response['jtk_qs'];
-                let ars_ps = response['ars_ps'];
-                let ars_qs = response['ars_qs'];
-                let ls_ps = response['ls_ps'];
-                let ls_qs = response['ls_qs'];
+                let jtk_p = response['jtk_p'];
+                let jtk_q = response['jtk_q'];
+                let ars_p = response['ars_p'];
+                let ars_q = response['ars_q'];
+                let ls_p = response['ls_p'];
+                let ls_q = response['ls_q'];
 
                 initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
                     let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
                     // For Vue performance see VUE PERF NOTE
-                    Object.preventExtensions(jtk_ps[idx]);
-                    Object.preventExtensions(jtk_qs[idx]);
-                    spreadsheet.jtk_ps = jtk_ps[idx];
-                    spreadsheet.jtk_qs = jtk_qs[idx];
-                    Object.preventExtensions(ars_ps[idx]);
-                    Object.preventExtensions(ars_qs[idx]);
-                    spreadsheet.ars_ps = ars_ps[idx];
-                    spreadsheet.ars_qs = ars_qs[idx];
-                    Object.preventExtensions(ls_ps[idx]);
-                    Object.preventExtensions(ls_qs[idx]);
-                    spreadsheet.ls_ps = ls_ps[idx];
-                    spreadsheet.ls_qs = ls_qs[idx];
+                    Object.preventExtensions(jtk_p[idx]);
+                    Object.preventExtensions(jtk_q[idx]);
+                    spreadsheet.jtk_p = jtk_p[idx];
+                    spreadsheet.jtk_q = jtk_q[idx];
+                    Object.preventExtensions(ars_p[idx]);
+                    Object.preventExtensions(ars_q[idx]);
+                    spreadsheet.ars_p = ars_p[idx];
+                    spreadsheet.ars_q = ars_q[idx];
+                    Object.preventExtensions(ls_p[idx]);
+                    Object.preventExtensions(ls_q[idx]);
+                    spreadsheet.ls_p = ls_p[idx];
+                    spreadsheet.ls_q = ls_q[idx];
                 });
             },
             error: function(error) {
@@ -172,26 +172,26 @@
                         Object.preventExtensions(response[key]);
                     });
 
-                    upside_ps = response['upside_ps'];
-                    upside_qs = response['upside_qs'];
+                    upside_p = response['upside_p'];
+                    upside_q = response['upside_q'];
 
                     initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
                         let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
-                        Object.preventExtensions(upside_ps[idx]); // See VUE PERF NOTE
-                        Object.preventExtensions(upside_qs[idx]); // these aren't covered by above since are one level deeper
-                        spreadsheet.upside_ps = upside_ps[idx];
-                        spreadsheet.upside_qs = upside_qs[idx];
+                        Object.preventExtensions(upside_p[idx]); // See VUE PERF NOTE
+                        Object.preventExtensions(upside_q[idx]); // these aren't covered by above since are one level deeper
+                        spreadsheet.upside_p = upside_p[idx];
+                        spreadsheet.upside_q = upside_q[idx];
                     });
 
                     // Load stats that are per-comparison not per-spreadsheet
-                    app.stats.two_way_anova_ps = response['two_way_anova_ps'];
-                    app.stats.two_way_anova_qs = response['two_way_anova_qs'];
-                    app.stats.main_effect_ps = response['main_effect_ps'];
-                    app.stats.main_effect_qs = response['main_effect_qs'];
-                    app.stats.phase_ps = response['phase_ps'];
-                    app.stats.phase_qs = response['phase_qs'];
-                    app.stats.amplitude_ps = response['amplitude_ps'];
-                    app.stats.amplitude_qs = response['amplitude_qs'];
+                    app.stats.two_way_anova_p = response['two_way_anova_p'];
+                    app.stats.two_way_anova_q = response['two_way_anova_q'];
+                    app.stats.main_effect_p = response['main_effect_p'];
+                    app.stats.main_effect_q = response['main_effect_q'];
+                    app.stats.phase_p = response['phase_p'];
+                    app.stats.phase_q = response['phase_q'];
+                    app.stats.amplitude_p = response['amplitude_p'];
+                    app.stats.amplitude_q = response['amplitude_q'];
                 },
 
                 error: function(error) {
@@ -271,7 +271,7 @@
                         <row-selector v-bind:sort-order="sort_order"
                                       v-bind:filtered="filtered"
                                       v-bind:num-rows="21"
-                                      v-bind:q-values="label_qs"
+                                      v-bind:q-values="label_q"
                                       v-bind:selected-row="config.selected_row"
                                       v-bind:labels="labels"
                                       v-bind:label-max-length="35"
@@ -625,7 +625,7 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="download-just-selected-rows" v-model:value="download.just_selected_rows"></input>
                         <label class="form-check-label" for="download-just-selected-rows">
-                            Inlucde only top {{row_index}} rows
+                            Inlucde only top {{config.selected_row}} rows
                         </label>
                     </div>
                     <div class="form-check">
@@ -667,70 +667,70 @@
 
     let stats_table = {
         nitecap: {name: "Nitecap",
-         value: {p: "ps",
-                 q: "qs"},
+         value: {p: "nitecap_p",
+                 q: "nitecap_q"},
           description: "Nitecap significance of rhythmicity for primary dataset.",
          per_spreadsheet: true,
          num_spreadsheets:'any',
-         sort_value:'tds',
-         secondary_sort_value:'qs'},
+         sort_value:'total_delta',
+         secondary_sort_value:'nitecap_q'},
         jtk: {name: "JTK",
-         value: {p: "jtk_ps",
-                 q: "jtk_qs"},
+         value: {p: "jtk_p",
+                 q: "jtk_q"},
          description: "JTK_cycle significance of rhythmicity for primary dataset.",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
         ars: {name: "ARS",
-         value: {p: "ars_ps",
-                 q: "ars_qs"},
+         value: {p: "ars_p",
+                 q: "ars_q"},
          description: "ARSER significance of rhythmicity for primary dataset. Computed by meta2d.",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
         ls: {name: "LS",
-         value: {p: "ls_ps",
-                 q: "ls_qs"},
+         value: {p: "ls_p",
+                 q: "ls_q"},
          description: "Lomb-Scargle significance of rhythmicity for primary dataset. Computed by meta2d.",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
         cosinor: {name: "Cosinor",
-         value: {p: "cosinor_ps",
-                 q: "cosinor_qs"},
+         value: {p: "cosinor_p",
+                 q: "cosinor_q"},
          description: "Cosinor significance of rhythmicity for primary dataset.",
          per_spreadsheet: true,
          num_spreadsheets:'any'},
         anova: {name: "ANOVA",
-         value: {p: "anova_ps",
-                 q: "anova_qs"},
+         value: {p: "anova_p",
+                 q: "anova_q"},
          description: "1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.",
          per_spreadsheet: true,
          num_spreadsheets: 'any'},
         damping: {name: "Damping",
-         value: {p: "upside_ps",
-                 q: "upside_qs"},
+         value: {p: "upside_p",
+                 q: "upside_q"},
          description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
          per_spreadsheet: true,
          num_spreadsheets: 'multi'},
         two_way_anova: {name: "Two-way ANOVA",
-         value: {p: "two_way_anova_ps",
-                 q: "two_way_anova_qs"},
+         value: {p: "two_way_anova_p",
+                 q: "two_way_anova_q"},
          description: "Two-way ANOVA test for difference in timepoint-effects across datasets",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
         main_effect_diff: {name: "Main Effect Diff",
-         value: {p: "main_effect_ps",
-                 q: "main_effect_qs"},
+         value: {p: "main_effect_p",
+                 q: "main_effect_q"},
          description: "Main effect test of difference between the two datasets in the two-way ANOVA",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
         phase_difference: {name: "Phase Difference",
-         value: {p: "phase_ps",
-                 q: "phase_qs"},
+         value: {p: "phase_p",
+                 q: "phase_q"},
          description: "Test for equality of phase between datasets through cosinor analysis (least squares fit)",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
         amplitude_difference: {name: "Amplitude Difference",
-         value: {p: "amplitude_ps",
-                 q: "amplitude_qs"},
+         value: {p: "amplitude_p",
+                 q: "amplitude_q"},
          description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit)",
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
@@ -823,14 +823,14 @@
             stats_table: stats_table,
 
             stats: {
-                amplitude_ps: null,
-                amplitude_qs: null,
-                phase_ps: null,
-                phase_qs: null,
-                two_way_anova_ps: null,
-                two_way_anova_qs: null,
-                main_effect_ps: null,
-                main_effect_qs: null,
+                amplitude_p: null,
+                amplitude_q: null,
+                phase_p: null,
+                phase_q: null,
+                two_way_anova_p: null,
+                two_way_anova_q: null,
+                main_effect_p: null,
+                main_effect_q: null,
             },
 
             download: {
@@ -1215,7 +1215,7 @@
 
                 let download_rows = null;
                 if (vm.download.just_selected_rows) {
-                    download_rows = vm.sort_order.slice(0,vm.row_index);
+                    download_rows = vm.sort_order.slice(0,vm.config.selected_row);
                 } else {
                     // All rows 0,1,2,...
                     download_rows = app.labels.map(function(x,i) { return i;} );
@@ -1227,7 +1227,29 @@
                     });
                 }
 
-                let download_columns = ['anova_p'];
+                let download_columns = [];
+                // Gather which statistic columns have been selected
+                for (let stat_name in vm.stats_table) {
+                    if (vm.download.stats[stat_name] === true) {
+                        let stat = vm.stats_table[stat_name];
+                        if (typeof stat.value === 'string') {
+                            // Name of stat
+                            download_columns.push(stat.value)
+                        } else {
+                            // Object containing p,q
+                            download_columns.push(stat.value.p, stat.value.q);
+                        }
+
+                        if (stat.sort_value !== undefined) {
+                            download_columns.push(stat.sort_value)
+                        }
+                        if (stat.secondary_sort_value !== undefined) {
+                            download_columns.push(stat.secondary_sort_value)
+                        }
+                    }
+                }
+                // Remove any duplicates (like sort_value == value)
+                download_columns = Array.from(new Set(download_columns));
 
                 $.ajax({
                     url: "/spreadsheets/download",
@@ -1245,7 +1267,6 @@
                     type: "POST",
                     success: function (response) {
                         // Create a URL for it
-                        console.log("Success", response);
                         let blob = new Blob([response]);
                         let url = URL.createObjectURL(blob);
 
@@ -1421,7 +1442,7 @@
                 return sort_order;
             },
 
-            label_qs: function () {
+            label_q: function () {
                 let value = this.sort_by.stat.value;
 
                 if (typeof value === 'string') {
