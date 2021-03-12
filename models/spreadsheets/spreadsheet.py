@@ -300,10 +300,11 @@ class Spreadsheet(db.Model):
         return [column for column, label in ordered_columns]
 
     @timeit
-    def get_ids(self, *args):
+    def get_ids(self, as_df=False, *args):
         """
         Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
         of those columns into a numpy series
+        :param as_df: if True, return DF with each ID in a column, rather than concatenating them
         :return: a numpy series containing the complete id for each data row.
         """
         if not args:
@@ -312,6 +313,9 @@ class Spreadsheet(db.Model):
                           if column_label == Spreadsheet.ID_COLUMN]
         else:
             id_indices = args[0]
+
+        if as_df:
+            return self.df.iloc[:, id_indices]
 
         if len(id_indices) == 1:
             return self.df.iloc[:,id_indices[0]].astype(str).tolist()

@@ -629,14 +629,14 @@ def download(user=None):
     spreadsheet = spreadsheets[0]
     spreadsheet.init_on_load()
 
-    df = spreadsheet.df[[]] # Just the index
+    df = spreadsheet.get_ids(as_df=True)
     if config['include_data']:
         df = pd.concat([df, spreadsheet.get_raw_data()], axis=1)
     df = pd.concat([df, spreadsheet.df[config['columns']]], axis=1)
     df = df.iloc[config['rows']]
 
     txt_data = io.StringIO()
-    df.to_csv(txt_data, sep='\t')
+    df.to_csv(txt_data, sep='\t', index=False)
     txt = txt_data.getvalue()
     byte_data = io.BytesIO(str.encode(txt))
 
