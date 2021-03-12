@@ -633,6 +633,12 @@
                             Drop filtered-out rows
                         </label>
                     </div>
+                    <div v-if="spreadsheets.length > 1">
+                        <div v-for="(spreadsheet, i) in spreadsheets" class="form-group">
+                            <label v-bind:for="'suffix'+i">Suffix {{i+1}}</label>
+                            <input type="text" class="form-control" v-bind:id="'suffix'+i" v-model="download.suffixes[i]"> </input>
+                        </div>
+                    </div>
                     Statistics
                     <div class="form-check" v-for="(stat, stat_name) in useable_stats">
                         <input class="form-check-input" type="checkbox" v-bind:id="'download-'+stat_name" v-model:value="download.stats[stat_name]"></input>
@@ -836,6 +842,7 @@
                 include_data: true,
                 just_selected_rows: false,
                 drop_filtered_rows: false,
+                suffixes: [],
                 stats: {},
             },
 
@@ -1206,6 +1213,10 @@
             },
 
             triggerDownloadPopup: function() {
+                // Fill in default suffix values if they don't yet have any
+                if (this.download.suffixes.length === 0) {
+                    this.download.suffixes = this.descriptive_names;
+                }
                 $("#download_popup").modal();
             },
 
@@ -1227,28 +1238,36 @@
                 }
 
                 let download_columns = [];
+                let download_compare_columns = [];
                 // Gather which statistic columns have been selected
                 for (let stat_name in vm.stats_table) {
                     if (vm.download.stats[stat_name] === true) {
                         let stat = vm.stats_table[stat_name];
+                        let column_list = download_columns;
+                        if ((stat.num_spreadsheets === "multi") &&
+                            (vm.spreadsheets.length > 1)) {
+                            column_list = download_compare_columns;
+                        }
+
                         if (typeof stat.value === 'string') {
                             // Name of stat
-                            download_columns.push(stat.value)
+                            column_list.push(stat.value)
                         } else {
                             // Object containing p,q
-                            download_columns.push(stat.value.p, stat.value.q);
+                            column_list.push(stat.value.p, stat.value.q);
                         }
 
                         if (stat.sort_value !== undefined) {
-                            download_columns.push(stat.sort_value)
+                            column_list.push(stat.sort_value)
                         }
                         if (stat.secondary_sort_value !== undefined) {
-                            download_columns.push(stat.secondary_sort_value)
+                            column_list.push(stat.secondary_sort_value)
                         }
                     }
                 }
                 // Remove any duplicates (like sort_value == value)
                 download_columns = Array.from(new Set(download_columns));
+                download_compare_columns = Array.from(new Set(download_compare_columns));
 
                 $.ajax({
                     url: "/spreadsheets/download",
@@ -1258,6 +1277,8 @@
                         'config': {
                             rows: download_rows,
                             columns: download_columns,
+                            compare_columns: download_compare_columns,
+                            suffixes: vm.download.suffixes,
                             include_data: vm.download.include_data,
                         },
                     }),

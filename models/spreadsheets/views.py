@@ -268,7 +268,7 @@ def access_not_permitted(endpoint, user, spreadsheet_id):
     bookmark).
     :param user: object of user attempting the access
     :param visitor: whether or not the user is a visitor (the page a visitor is dropped into is different from
-    that of a logged in user
+    that of a logged in user)
     :param spreadsheet_id: the id of the spreadsheet the user is attempting to access.
     :return: an appropriate page to which to return the user.
     """
@@ -613,27 +613,62 @@ def download(user=None):
     data = json.loads(request.data)
     spreadsheet_ids = data['spreadsheet_ids']
     config = data['config']
-    spreadsheets = []
 
+    # Load the spreadsheets and dataframes
+    spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         spreadsheet.init_on_load()
         spreadsheets.append(spreadsheet)
         if not spreadsheet:
-            return jsonify({error: "No such spreadsheet"}), 404
+            return jsonify({"error": "No such spreadsheet"}), 404
+    joined_dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-    if len(spreadsheet_ids) > 1:
-        #TODO: handle the multi-spreadsheet download option
-        return jsonify({error: "Currently not supported"}), 403
+    # Get the ids, as separate columns
+    id_columns = spreadsheets[0].get_id_columns()
+    ids = joined_dfs[0].iloc[config['rows'],id_columns]
 
-    spreadsheet = spreadsheets[0]
-    spreadsheet.init_on_load()
 
-    df = spreadsheet.get_ids(as_df=True)
-    if config['include_data']:
-        df = pd.concat([df, spreadsheet.get_raw_data()], axis=1)
-    df = pd.concat([df, spreadsheet.df[config['columns']]], axis=1)
-    df = df.iloc[config['rows']]
+    # Process the dataframes
+    dfs = []
+    for joined_df, spreadsheet in zip(joined_dfs, spreadsheets):
+        df = joined_df[[]] # just the index
+        if config['include_data']:
+            df = pd.concat([df, joined_df[spreadsheet.get_data_columns()]], axis=1)
+        df = pd.concat([df, joined_df[config['columns']]], axis=1)
+        df = df.iloc[config['rows']]
+        dfs.append(df)
+
+    if len(spreadsheets) > 1:
+        # Load the comparison data
+        comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
+        def add_suffix(x,i):
+            suffix = config['suffixes'][i]
+            return f"{x}_{suffix}"
+        comparison_data = []
+        for primary, secondary in [(0, 1), (1, 0)]:
+            primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
+            file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
+            try:
+                comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
+                current_app.logger.info(f"Loaded upside values from file {file_path}")
+            except OSError: # Parquet file could not be read (hasn't been written yet)
+                current_app.logger.info(f"Failed to download comparison spreadsheet since we can't load the file {primary_id}v{secondary_id}.comparison.parquet")
+                return jsonify({"error": "Computations not finished yet"}), 500
+
+            comp_data = comp_data[config['compare_columns']]
+            comp_data = comp_data.iloc[config['rows']]
+            comp_data = comp_data.rename(columns=lambda x: add_suffix(x,primary))
+            comparison_data.append(comp_data)
+
+        # Add suffixes to original spreadsheet dfs
+        dfs = [df.rename(columns=lambda x: add_suffix(x,i)) for i, df in enumerate(dfs)]
+
+        # Join together
+        df = pd.concat(dfs + comparison_data, axis=1)
+        df = pd.concat([ids, df], axis=1).reset_index(drop=True)
+    else:
+        df = pd.concat([ids, dfs[0]], axis=1)
 
     txt_data = io.StringIO()
     df.to_csv(txt_data, sep='\t', index=False)
@@ -646,7 +681,7 @@ def download(user=None):
         errors.append()
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
                                  f"downloaded.", e)
-        return jsonify({error:"The processed spreadsheet data could not be downloaded."}), 500
+        return jsonify({"error":"The processed spreadsheet data could not be downloaded."}), 500
 
 
 @spreadsheet_blueprint.route('/save_filters', methods=['POST'])

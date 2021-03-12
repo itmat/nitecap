@@ -299,23 +299,27 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
 
-    @timeit
-    def get_ids(self, as_df=False, *args):
+    def get_id_columns(self):
+        """
+        Return the columns corresponding to the selected IDs
+        :return: list of column indexes corresponding to the ID columns
+        """
+        id_indices = [index
+                      for index, column_label in enumerate(self.column_labels)
+                      if column_label == Spreadsheet.ID_COLUMN]
+        return id_indices
+
+    def get_ids(self, *args):
         """
         Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
         of those columns into a numpy series
-        :param as_df: if True, return DF with each ID in a column, rather than concatenating them
         :return: a numpy series containing the complete id for each data row.
         """
         if not args:
-            id_indices = [index
-                          for index, column_label in enumerate(self.column_labels)
-                          if column_label == Spreadsheet.ID_COLUMN]
+            id_indices = self.get_id_columns()
         else:
             id_indices = args[0]
 
-        if as_df:
-            return self.df.iloc[:, id_indices]
 
         if len(id_indices) == 1:
             return self.df.iloc[:,id_indices[0]].astype(str).tolist()
