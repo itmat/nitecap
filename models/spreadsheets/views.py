@@ -602,34 +602,51 @@ def download_comparison(id1, id2, user=None):
 
     return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
 
-@spreadsheet_blueprint.route('/download/<int:spreadsheet_id>', methods=['GET'])
-@requires_account
-def download(spreadsheet_id, user=None):
+@spreadsheet_blueprint.route('/download', methods=['GET', 'POST'])
+@ajax_requires_account_or_share
+def download(user=None):
     """
-    Response to a request from the graphs page to download the spreadsheet whose id is in the session.  In this case,
-    the user need not be logged in.  Nevertheless, the requested spreadsheet must be in the user's inventory.  In the
-    case of a visitor, the spreadsheet must not be in the inventory of any logged in user.  If the user is authorized
-    to download the spreadsheet and the file is available, the file representing the fully processed version of the
-    spreadsheet is delivered as an attachment.
+    AJAX request to download a spreadsheet with given configuration options of what to provide
     :param user:  Returned by the decorator.  Account bearing user is required.
     """
     errors = []
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+    data = json.loads(request.data)
+    spreadsheet_ids = data['spreadsheet_ids']
+    config = data['config']
+    spreadsheets = []
 
-    if not spreadsheet:
-            return access_not_permitted(request.path, user, spreadsheet_id)
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        spreadsheet.init_on_load()
+        spreadsheets.append(spreadsheet)
+        if not spreadsheet:
+            return jsonify({error: "No such spreadsheet"}), 404
+
+    if len(spreadsheet_ids) > 1:
+        #TODO: handle the multi-spreadsheet download option
+        return jsonify({error: "Currently not supported"}), 403
+
+    spreadsheet = spreadsheets[0]
     spreadsheet.init_on_load()
+
+    df = spreadsheet.df[[]] # Just the index
+    if config['include_data']:
+        df = pd.concat([df, spreadsheet.get_raw_data()], axis=1)
+    df = pd.concat([df, spreadsheet.df[config['columns']]], axis=1)
+    df = df.iloc[config['rows']]
+
     txt_data = io.StringIO()
-    spreadsheet.df.to_csv(txt_data, sep='\t')
+    df.to_csv(txt_data, sep='\t')
     txt = txt_data.getvalue()
     byte_data = io.BytesIO(str.encode(txt))
+
     try:
         return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
     except Exception as e:
-        errors.append("The processed spreadsheet data could not be downloaded.")
+        errors.append()
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
                                  f"downloaded.", e)
-        return render_template('spreadsheets/upload_file.html', errors=errors)
+        return jsonify({error:"The processed spreadsheet data could not be downloaded."}), 500
 
 
 @spreadsheet_blueprint.route('/save_filters', methods=['POST'])
