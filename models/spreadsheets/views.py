@@ -870,8 +870,8 @@ def get_upside(user=None):
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
     # Run Upside dampening analysis, if it hasn't already been stored to disk
-    upside_p = []
-    upside_q = []
+    upside_p_list = []
+    upside_q_list = []
     datasets = []
     spreadsheets = []
 
@@ -880,7 +880,7 @@ def get_upside(user=None):
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
             current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
-            return jsonify({'upside_p': None})
+            return jsonify({'error': "No such spreadsheet"})
 
         spreadsheets.append(spreadsheet)
 
@@ -893,8 +893,8 @@ def get_upside(user=None):
         file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
             comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
-            upside_p.append(comp_data["upside_p"].values.tolist())
-            upside_q.append(comp_data["upside_q"].values.tolist())
+            upside_p_list.append(comp_data["upside_p"].values.tolist())
+            upside_q_list.append(comp_data["upside_q"].values.tolist())
             anova_p = comp_data["two_way_anova_p"]
             anova_q = comp_data["two_way_anova_q"]
             phase_p = comp_data["phase_p"]
@@ -954,13 +954,13 @@ def get_upside(user=None):
             # Save to disk
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
 
-            upside_p.append(upside_p.tolist())
-            upside_q.append(upside_q.tolist())
+            upside_p_list.append(upside_p.tolist())
+            upside_q_list.append(upside_q.tolist())
             current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
 
     return dumps({
-                'upside_p': upside_p,
-                'upside_q': upside_q,
+                'upside_p': upside_p_list,
+                'upside_q': upside_q_list,
                 'two_way_anova_p': anova_p.tolist(),
                 'two_way_anova_q': anova_q.tolist(),
                 'main_effect_p': main_effect_p.tolist(),
