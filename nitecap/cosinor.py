@@ -24,14 +24,46 @@ def fit(data, N_DAYS, T=24):    # T is period (in hours)
                    np.cos(ω*t),
                    np.sin(ω*t) ]).T
 
-    X, *_ = np.linalg.lstsq(A, Y)
+    # Check for nans
+    finite_mask = np.isfinite(Y)
+    contains_nans = not np.all(finite_mask)
 
-    Ŷ = X[0] + np.outer(X[1], np.cos(ω*t)).T + np.outer(X[2], np.sin(ω*t)).T
-    Ȳ = np.mean(Y, axis=0)
+    # Regress each row separately
+    # While slower than doing the vectorized approach with Numpy,
+    # this handles variable missing data between each row, which cannot
+    # easily be handled otherwise
+    cosinor_p = np.empty(N_GENES)
+    cosinor_X = np.empty((3, N_GENES))
+    for i in range(N_GENES):
+        row = Y[:,i]
+        row_A = A
+        row_t = t
 
-    MSS = np.linalg.norm(Ŷ-Ȳ, axis=0)**2
-    RSS = np.linalg.norm(Ŷ-Y, axis=0)**2
-    F = (MSS/2) / (RSS/(N-3))
-    p = 1.0 - f.cdf(F, 2, N-3)
+        if contains_nans:
+            # Remove non-nans
+            row = row[finite_mask[:,i]]
+            row_A = A[finite_mask[:,i]]
+            row_t = t[finite_mask[:,i]]
 
-    return X, p
+        if len(row) < 3:
+            # Too little data to be able to fit at all
+            p = float("NaN")
+            X = float("NaN")
+        else:
+
+            # Perform the regression on the row's data
+            X, *_ = np.linalg.lstsq(row_A, row)
+            Ŷ = (row_A @ X)
+            Ȳ = np.mean(row, axis=0)
+
+            # Compute p-value
+            N=len(row)
+            MSS = np.linalg.norm(Ŷ-Ȳ, axis=0)**2
+            RSS = np.linalg.norm(Ŷ-row, axis=0)**2
+            F = (MSS/2) / (RSS/(N-3))
+            p = 1.0 - f.cdf(F, 2, N-3)
+
+        cosinor_p[i] = p
+        cosinor_X[:,i] = X
+
+    return cosinor_X, cosinor_p
