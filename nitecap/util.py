@@ -222,7 +222,7 @@ def anova(data):
             p = float("NaN") # Every (or all but one) group is missing
         else:
             p = scipy.stats.f_oneway(*row)[1]
-            anova_p[i] = p
+        anova_p[i] = p
     return anova_p
 
 def anova_on_groups(data, group_assignments):
