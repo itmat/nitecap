@@ -467,11 +467,24 @@ class Spreadsheet(db.Model):
                 # it takes too long and will fail
                 self.df[meta2d_cols] = float("NaN")
             else:
+                # Process the data for JTK
+                df = self.get_raw_data()
+
+                # Check missing values - JTK will crash if there are too few timepoints
+                # so we will overwrite any such genes with all 0s, just to make it run
+                # We don't want to drop those timepoints entirely because we need something there
+                # to insert the results back into our spreadsheet
+                not_missing = ~df.isna()
+                timepoint_col_starts = numpy.concatenate(([0], numpy.cumsum(self.num_replicates)[:-1]))
+                timepoint_col_ends = numpy.cumsum(self.num_replicates)
+                timepoint_not_missing = numpy.array([not_missing.iloc[:,start:end].any(axis=1) for start,end in zip(timepoint_col_starts, timepoint_col_ends)])
+                num_not_missing_timepoints = timepoint_not_missing.sum(axis=0)
+                df[num_not_missing_timepoints < 2] = 0 # Zero out the things that are too missing
+
                 # Call out to an R script to run JTK
                 # write results to disk to pass the data to JTK
                 run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
                 data_file_path = f"/tmp/{uuid.uuid4()}"
-                df = self.get_raw_data()
                 df.to_csv(data_file_path, sep="\t")
                 results_file_path = f"{data_file_path}.jtk_results"
 
