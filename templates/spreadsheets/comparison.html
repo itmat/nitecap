@@ -205,6 +205,8 @@
         }
 
         $('[data-toggle="tooltip"]').tooltip();
+
+        app.share_token = share_token;
     }
 </script>
 
@@ -217,26 +219,27 @@
 
     <div v-show="spreadsheets.length > 0">
         <div class="row">
-            <p class="col-lg-12 h3" v-if="spreadsheets[1]" v-cloak>
-                {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
+            <p class="col-lg-12 h3">
+                <span v-if="spreadsheets.length === 1">
+                    {{spreadsheets[0].descriptive_name}}
+                </span>
+                <span v-if="spreadsheets.length >= 2">
+                    {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
+                </span>
 
                 <button class="btn btn-secondary btn-sm" id='share_spreadsheet' v-on:click="triggerDownloadPopup">
                     Download
                 </button>
-
-                <a id='share_spreadsheet' href="#" v-on:click="onShare">
-                    <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+                <a v-if="share_token.length > 0"
+                    class="btn btn-secondary btn-sm"
+                    v-bind:href="'/spreadsheets/copy_share/'+share_token">
+                        Copy to Account
                 </a>
-            </p>
-
-            <p class="col-lg-12 h3" v-if="spreadsheets.length === 1">
-                {{spreadsheets[0].descriptive_name}}
-                <button class="btn btn-secondary btn-sm" id='share_spreadsheet' v-on:click="triggerDownloadPopup">
-                    Download
-                </button>
-                <a v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
+                <a v-if="spreadsheets.length === 1"
+                    v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
                     <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
                 </a>
+
                 <a id='share_spreadsheet' href="#" v-on:click="onShare">
                     <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
                 </a>
@@ -853,6 +856,8 @@
             plot: {
                 first_render: false,
             },
+
+            share_token: '', // If from a share, the token used
 
         },
 

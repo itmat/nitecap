@@ -804,37 +804,6 @@ def consume_share(token):
             return render_template('spreadsheets/upload_file.html', errors=errors)
         spreadsheets.append(spreadsheet)
 
-    ## Identify the account of the current user.  If no account exists, create a visitor account.
-    #user = None
-    #if 'email' in session:
-    #    user = User.find_by_email(session['email'])
-    #else:
-    #    user = User.create_visitor()
-    #    if user:
-    #        # Visitor's session has a fixed expiry date.
-    #        # session.permanent = True
-    #        session['email'] = user.email
-    #        session['visitor'] = user.is_visitor()
-
-    ## This should not happen ever - indicates a software bug
-    #if not user:
-    #    errors.append("We are unable to create your share at the present time.  Please try again later")
-    #    current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
-    #    return render_template('spreadsheets/upload_file.html', errors=errors)
-
-    ## Create a copy of the sharing user's spreadsheet for the current user.nitecap
-    #shared_spreadsheet_ids = []
-    #for spreadsheet in spreadsheets:
-    #    shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user)
-    #    if shared_spreadsheet:
-    #        shared_spreadsheet_ids.append(shared_spreadsheet.id)
-    #    else:
-    #        errors.append("The spreadsheet could not be shared.")
-    #        return render_template('spreadsheets/upload_file.html', errors=errors)
-
-    #spreadsheet_ids_str = ','.join(str(id) for id in shared_spreadsheet_ids)
-    #return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet_ids_str), config=config))
-
     is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
     if any(is_categorical) and not all(is_categorical):
         flash("Spreadsheets must all be categorical or all time-series.")
@@ -855,6 +824,78 @@ def consume_share(token):
                            config=config,
                            share_token=share.id,
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
+
+@spreadsheet_blueprint.route('/copy_share/<string:token>', methods=['GET'])
+@requires_account
+def copy_share(token, user=None):
+    """ Make a copy of a shared file `token' to the users acocunt """
+    # Identify the account of the current user.  If no account exists, create a visitor account.
+    user = None
+    if 'email' in session:
+        user = User.find_by_email(session['email'])
+    else:
+        user = User.create_visitor()
+        if user:
+            # Visitor's session has a fixed expiry date.
+            # session.permanent = True
+            session['email'] = user.email
+            session['visitor'] = user.is_visitor()
+
+    # This should not happen ever - indicates a software bug
+    if not user:
+        errors.append("We are unable to create your share at the present time.  Please try again later")
+        current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
+        return render_template('spreadsheets/upload_file.html', errors=errors)
+
+    # Load the share token
+    errors = []
+    try:
+        share = Share.find_by_id(token)
+    except Exception as e:
+        current_app.logger.error(f"Invalid share URL identified with token {token}");
+        current_app.logger.error(e)
+        errors.append("The URL you received does not work.  It may have been mangled in transit.  Please request "
+                      "another share")
+        return render_template('spreadsheets/upload_file.html', error=errors)
+    sharing_user = User.find_by_id(share.user_id)
+    spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
+
+    # TODO: we don't use the config when copying
+    #config = json.loads(share.config_json)
+
+    # Load the shared spreadsheets
+    spreadsheets = []
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = sharing_user.find_user_spreadsheet_by_id(spreadsheet_id)
+
+        if not spreadsheet or not sharing_user:
+            current_app.logger.error(f"Invalid share URL with token {token}. Spreadsheets do not belong to given user.")
+            errors.append("The URL you received does not work.  It may have been mangled in transit.  Please request "
+                          "another share")
+            return render_template('spreadsheets/upload_file.html', errors=errors)
+        spreadsheets.append(spreadsheet)
+
+    is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
+    if any(is_categorical) and not all(is_categorical):
+        flash("Spreadsheets must all be categorical or all time-series.")
+        return redict(url_for('.display_spreadsheets'))
+
+    # Updates the last-access time of the share
+    share.save_to_db()
+
+    # Create a copy of the sharing user's spreadsheet for the current user.nitecap
+    shared_spreadsheet_ids = []
+    for spreadsheet in spreadsheets:
+        shared_spreadsheet = Spreadsheet.make_share_copy(spreadsheet, user)
+        if shared_spreadsheet:
+            shared_spreadsheet_ids.append(shared_spreadsheet.id)
+        else:
+            errors.append("The spreadsheet could not be copied to ues account.")
+            return render_template('spreadsheets/upload_file.html', errors=errors)
+
+    # Show the copied spreadsheets
+    spreadsheet_ids_str = ','.join(str(id) for id in shared_spreadsheet_ids)
+    return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet_ids_str))
 
 
 @spreadsheet_blueprint.route('/compare', methods=['GET'])
