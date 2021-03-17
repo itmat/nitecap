@@ -1275,6 +1275,12 @@
                 download_columns = Array.from(new Set(download_columns));
                 download_compare_columns = Array.from(new Set(download_compare_columns));
 
+                // Order the suffixes correctly (in case spreadsheets have been rearranged)
+                let suffixes = vm.config.original_spreadsheet_ids.map(function(id) {
+                    let new_index = vm.config.spreadsheet_ids.indexOf(id);
+                    return vm.download.suffixes[new_index];
+                });
+
                 $.ajax({
                     url: "/spreadsheets/download",
                     data: JSON.stringify({
@@ -1284,7 +1290,7 @@
                             rows: download_rows,
                             columns: download_columns,
                             compare_columns: download_compare_columns,
-                            suffixes: vm.download.suffixes,
+                            suffixes: suffixes,
                             include_data: vm.download.include_data,
                         },
                     }),
