@@ -546,62 +546,6 @@ def delete(user=None):
         return jsonify({"error": 'The spreadsheet data may not have been all successfully removed'}), 500
     return '', 204
 
-
-@spreadsheet_blueprint.route('/download_comparison/<int:id1>,<int:id2>', methods=['GET'])
-@requires_account
-def download_comparison(id1, id2, user=None):
-    """
-    Response to a request from the graphs page to download the spreadsheet whose id is in the session.  In this case,
-    the user need not be logged in.  Nevertheless, the requested spreadsheet must be in the user's inventory.  In the
-    case of a visitor, the spreadsheet must not be in the inventory of any logged in user.  If the user is authorized
-    to download the spreadsheet and the file is available, the file representing the fully processed version of the
-    spreadsheet is delivered as an attachment.
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    """
-
-    comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
-    spreadsheet_ids = [id1, id2]
-
-    if not spreadsheet_ids:
-        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
-
-    spreadsheets = []
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        if not spreadsheet:
-            return access_not_permitted(compare.__name__, user, spreadsheet_id)
-
-    #    Not currently being used.
-    #    # Populate
-    #    spreadsheet.init_on_load()
-
-        spreadsheets.append(spreadsheet)
-
-    #dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
-
-    comparison_data = []
-    for primary, secondary in [(0, 1), (1, 0)]:
-        primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-        file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
-        try:
-            comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
-            current_app.logger.info(f"Loaded upside values from file {file_path}")
-            comparison_data.append(comp_data)
-        except OSError: # Parquet file could not be read (hasn't been written yet)
-            current_app.logger.info(f"Failed to download comparison spreadsheet since we can't load the file {primary_id}v{secondary_id}.comparison.parquet")
-            return jsonify("Computations not finished yet"), 500
-
-    # TODO: what exactly should be in this dataset?
-    # Right now it's JUST the comparison data and not the base data from either spreadsheet
-    df = comparison_data[0].join(comparison_data[1], lsuffix="_AvB", rsuffix="_BvA")
-
-    txt_data = io.StringIO()
-    df.to_csv(txt_data, sep='\t')
-    txt = txt_data.getvalue()
-    byte_data = io.BytesIO(str.encode(txt))
-
-    return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
-
 @spreadsheet_blueprint.route('/download', methods=['GET', 'POST'])
 @ajax_requires_account_or_share
 def download(user=None):
