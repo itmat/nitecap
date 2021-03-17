@@ -865,7 +865,10 @@ def get_upside(user=None):
             current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
             return jsonify({'error': "No such spreadsheet"})
 
+        spreadsheet.init_on_load()
         spreadsheets.append(spreadsheet)
+
+    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
     anova_p = None
     anova_q = None
@@ -875,7 +878,11 @@ def get_upside(user=None):
         primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
         file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
         try:
+            # Load comparison results
             comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
+            #Align indexes with spreadsheets
+            comp_data = comp_data.loc[combined_index]
+            # Populate the values
             upside_p_list.append(comp_data["upside_p"].values.tolist())
             upside_q_list.append(comp_data["upside_q"].values.tolist())
             anova_p = comp_data["two_way_anova_p"]
@@ -888,13 +895,8 @@ def get_upside(user=None):
             amplitude_q = comp_data["amplitude_q"]
             current_app.logger.info(f"Loaded upside values from file {file_path}")
         except (OSError, KeyError) as e: # Parquet file could not be read (hasn't been written yet)
+            # Compute comparisons from scratch
             if not datasets:
-                # Populate all
-                for spreadsheet in spreadsheets:
-                    spreadsheet.init_on_load()
-
-                dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
-
                 datasets = [df[spreadsheet.get_data_columns(by_day=False)].values for df, spreadsheet in zip(dfs, spreadsheets)]
             repeated_measures = spreadsheets[0].repeated_measures
             for spreadsheet in spreadsheets:
