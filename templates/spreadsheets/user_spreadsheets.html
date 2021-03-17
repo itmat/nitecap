@@ -327,8 +327,8 @@
                     "</span>Processing...");
 
                 // Call the flask compare function and pass the spreadsheet ids as a query string.
-                let compare_url = "{{ url_for('spreadsheets.compare') }}";
-                window.location.href = compare_url + "?spreadsheet_ids=" + spreadsheet_ids;
+                let target_url = "{{ url_for('spreadsheets.show_spreadsheet',spreadsheet_id='999')}}";
+                window.location.href = target_url.replace('999', '' + spreadsheet_ids.join(','));
             }
         });
 
