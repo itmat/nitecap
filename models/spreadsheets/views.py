@@ -183,11 +183,22 @@ def collect_data(spreadsheet_id, user=None):
             return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet, errors=errors)
 
         spreadsheet.identify_columns(column_labels)
+
+        # Check for any comparisons already computed and delete those for recomputation
+        comparisons_directory = pathlib.Path(os.path.join(user.get_user_directory_path(), "comparisons"))
+        if comparisons_directory.exists():
+            for path in comparisons_directory.glob(f"*v{spreadsheet.id}.comparison.parquet"):
+                path.unlink()
+            for path in comparisons_directory.glob(f"{spreadsheet.id}v*.comparison.parquet"):
+                path.unlink()
+
+
+        # Trigger recomputations as necessary
         spreadsheet.set_ids_unique()
-        spreadsheet.save_to_db()
         spreadsheet.init_on_load()
         spreadsheet.clear_jtk()
         spreadsheet.compute_nitecap()
+        spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
 
     spreadsheet.init_on_load()
