@@ -506,7 +506,8 @@
                                 <div class='col form-inline filter_item'>
                                     <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
                                          v-bind:aria-label="'Lower bound for filter ' + index"
-                                         v-model="filter.lower_bound">
+                                         v-model="filter.lower_bound"
+                                         type="number" step="any">
                                     </input>
 
                                     &le;
@@ -524,7 +525,8 @@
 
                                     <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
                                          v-bind:aria-label="'Upper bound for filter ' + index"
-                                         v-model="filter.upper_bound">
+                                         v-model="filter.upper_bound"
+                                         type="number" step="any">
                                     </input>
 
                                     <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
