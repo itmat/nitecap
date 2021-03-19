@@ -49,8 +49,14 @@ logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 logger.addHandler(file_handler)
 
 # Email warning and errors only for production server
-if not app.debug:
-    app.logger.addHandler(mail_handler)
+#if not app.debug:
+#    app.logger.addHandler(mail_handler)
+
+# Catch exceptions and log them
+@app.errorhandler(Exception)
+def handle_exception(e):
+    app.logger.error("Exception received:")
+    app.logger.error(e)
 
 # Check python version and paths:
 logger.debug("Python version")
