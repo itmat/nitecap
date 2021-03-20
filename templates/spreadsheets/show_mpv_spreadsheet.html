@@ -1097,13 +1097,13 @@
                 // TODO: this needs to create a NEW fold-change for each comparison run
                 vm.$set(vm.stats, comparison_name + " AFC", log_afc);
 
-                vm.stats_table[comparison_name] = {
+                vm.$set(vm.stats_table, comparison_name + " AFC", {
                      name: comparison_name,
                      value: comparison_name + " AFC",
                      description: "Comparison of group '" + first_group.name + "' and '" + second_group.name + "'",
                      per_spreadsheet: false,
                      num_spreadsheets: 'any',
-                };
+                });
 
                 let comparison = {
                     name: comparison_name,
