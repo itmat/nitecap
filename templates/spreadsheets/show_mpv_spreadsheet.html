@@ -268,7 +268,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value] != null"
-                                                    v-on:click="config.sort_by = {stat:stat, spreadsheet_num: i}"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value][row_index])">
                                                     {{util.formatStatsEntry(spreadsheet[stat.value][row_index])}}
@@ -281,7 +281,7 @@
                                         <template v-else>
                                             <td v-if="stats[stat.value] != null"
                                                 v-bind:title="String(stats[stat.value][row_index])"
-                                                v-on:click="config.sort_by = {stat:stat}"
+                                                v-on:click="config.sort_by = {stat_id:stat_id}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 {{util.formatStatsEntry(stats[stat.value][row_index])}}
@@ -296,7 +296,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value.p] != null"
-                                                    v-on:click="config.sort_by = {stat:stat, spreadsheet_num: i}"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value.p][row_index])">
                                                     p: {{util.formatStatsEntry(spreadsheet[stat.value.p][row_index])}}
@@ -309,7 +309,7 @@
                                         <template v-else>
                                             <td v-if="stats[stat.value.p] != null"
                                                 v-bind:title="String(stats[stat.value.p][row_index])"
-                                                v-on:click="config.sort_by = {stat:stat}"
+                                                v-on:click="config.sort_by = {stat_id:stat_id}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
@@ -325,7 +325,7 @@
                                     <template v-if="stat.per_spreadsheet">
                                         <template v-for="(spreadsheet, i) in spreadsheets">
                                             <td v-if="spreadsheet[stat.value.q] != null"
-                                                v-on:click="config.sort_by = {stat:stat, spreadsheet_num: i}"
+                                                v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                 v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:title="String(spreadsheet[stat.value.q][row_index])">
                                                 q: {{util.formatStatsEntry(spreadsheet[stat.value.q][row_index])}}
@@ -338,7 +338,7 @@
                                     <template v-else>
                                         <td v-if="stats[stat.value.q] != null"
                                             v-bind:title="String(stats[stat.value.q][row_index])"
-                                            v-on:click="config.sort_by = {stat:stat}"
+                                            v-on:click="config.sort_by = {stat_id:stat_id}"
                                             v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                             v-bind:colspan="spreadsheets.length">
                                             q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
