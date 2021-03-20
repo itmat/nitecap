@@ -14,9 +14,19 @@
 
         spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
+        share_token = "{{ share_token }}";
+        initial_config = {{ config | tojson }};
+
+        initial_config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
+
+        // If not supplied in config (eg: no config at all), order by the given spreadsheet_ids
+        if ((initial_config.spreadsheet_ids || []).length === 0) {
+            initial_config.spreadsheet_ids = {{ spreadsheet_ids | safe }};
+        }
+
         $.ajax({
             url: "/spreadsheets/get_mpv_spreadsheets",
-            data: JSON.stringify({'spreadsheet_ids': spreadsheet_ids}),
+            data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token': share_token}),
             dataType: "json",
             contentType: "application/json",
             type: 'POST',
@@ -35,6 +45,8 @@
     });
 
     function onSpreadsheetLoad(spreadsheets) {
+        let vm = app;
+
         // FOR VUE
         spreadsheets.forEach(function(spreadsheet) {
             spreadsheet.upside_ps = null;
@@ -54,21 +66,27 @@
             });
         });
 
-        app.spreadsheets = spreadsheets;
+
+        // Gather spreadsheets by id
+        vm.spreadsheets_by_id = {};
+        spreadsheets.forEach(function(spreadsheet) {
+            Vue.set(vm.spreadsheets_by_id, spreadsheet.spreadsheet_id, spreadsheet);
+        });
+
         app.labels = spreadsheets[0].labels;
 
-        // Update stats_list with the Additional Stat Columns of the spreadsheets
+        // Update stats_table with the Additional Stat Columns of the spreadsheets
         app.spreadsheets.forEach(function(spreadsheet) {
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
                 app.stats[key] = value;
-                app.stats_list.push({
+                app.stats_table[key] = {
                     name: key,
                     value: key,
                     description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
                     per_spreadsheet: false,
-                });
+                };
             });
         });
 
@@ -81,12 +99,19 @@
                 max: maximum,
                 range: "min",
                 slide: function (event, ui) {
-                    app.selected_row = ui.value;
+                    app.config.selected_row = ui.value;
                 }
             });
         }
 
         makeCoarseSlider($('#coarse_slider'), 0, app.labels.length - 1);
+
+        // Load config values
+        mergeDeep(vm.config, initial_config);
+        vm.config.filters.forEach(function(filter) {
+            // editing_filters needs a copy of the actually-used filters
+            vm.editing_filters.push(Object.assign({},filter));
+        });
 
         $('[data-toggle="tooltip"]').tooltip();
     }
@@ -164,14 +189,14 @@
                                   v-bind:filtered="filtered"
                                   v-bind:num-rows="21"
                                   v-bind:q-values="label_qs"
-                                  v-bind:selected-row="selected_row"
+                                  v-bind:selected-row="config.selected_row"
                                   v-bind:labels="labels"
                                   v-bind:label-max-length="35"
                                   v-bind:select-row="selectRow"
                                   v-cloak>
                     </row-selector>
                     <div class="form-check">
-                        <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="hide_filtered_rows">
+                        <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="config.hide_filtered_rows">
                         <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>
                     </div>
                 </div>
@@ -188,7 +213,7 @@
             <form class="form-group">
                 <div class="form-inline">
                     <label for="plot_style_select">Plot style</label>
-                    <select id="plot_style_select" value="bars_points_std" class="form-control form-control-sm" v-model="plot.config.style">
+                    <select id="plot_style_select" value="bars_points_std" class="form-control form-control-sm" v-model="config.plot.style">
                         <option value="points">Points</option>
                         <option value="mean">Mean only</option>
                         <option value="mean_points">Points and Mean</option>
@@ -201,7 +226,7 @@
                     </select>
                 </div>
                 <div class="form-check">
-                    <input class="form-check-input" id="include_zero_checkbox" type="checkbox" v-model="plot.config.include_zero">
+                    <input class="form-check-input" id="include_zero_checkbox" type="checkbox" v-model="config.plot.include_zero">
                     <label class="form-check-label" for="include_zero_checkbox">Include zero</label>
                 </div>
             </form>
@@ -227,12 +252,12 @@
                             </tr>
                         </thead>
                         <tbody v-if="spreadsheets !== null" class="stats-box">
-                            <template v-for="stat in useable_stats">
+                            <template v-for="(stat, stat_id) in useable_stats">
                                 <tr>
                                     <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
                                         {{stat.name}}
                                         <a class="text-primary help-pointer float-right ml-1"
-                                            data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                                             v-bind:title="stat.name"
                                             v-bind:data-content="stat.description">
                                             <i class="fas fa-info-circle"></i>
@@ -243,7 +268,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value] != null"
-                                                    v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
+                                                    v-on:click="config.sort_by = {stat:stat, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value][row_index])">
                                                     {{util.formatStatsEntry(spreadsheet[stat.value][row_index])}}
@@ -256,7 +281,7 @@
                                         <template v-else>
                                             <td v-if="stats[stat.value] != null"
                                                 v-bind:title="String(stats[stat.value][row_index])"
-                                                v-on:click="sort_by = {stat:stat}"
+                                                v-on:click="config.sort_by = {stat:stat}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 {{util.formatStatsEntry(stats[stat.value][row_index])}}
@@ -271,7 +296,7 @@
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="(spreadsheet, i) in spreadsheets">
                                                 <td v-if="spreadsheet[stat.value.p] != null"
-                                                    v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
+                                                    v-on:click="config.sort_by = {stat:stat, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value.p][row_index])">
                                                     p: {{util.formatStatsEntry(spreadsheet[stat.value.p][row_index])}}
@@ -284,7 +309,7 @@
                                         <template v-else>
                                             <td v-if="stats[stat.value.p] != null"
                                                 v-bind:title="String(stats[stat.value.p][row_index])"
-                                                v-on:click="sort_by = {stat:stat}"
+                                                v-on:click="config.sort_by = {stat:stat}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
@@ -300,7 +325,7 @@
                                     <template v-if="stat.per_spreadsheet">
                                         <template v-for="(spreadsheet, i) in spreadsheets">
                                             <td v-if="spreadsheet[stat.value.q] != null"
-                                                v-on:click="sort_by = {stat:stat, spreadsheet_num: i}"
+                                                v-on:click="config.sort_by = {stat:stat, spreadsheet_num: i}"
                                                 v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:title="String(spreadsheet[stat.value.q][row_index])">
                                                 q: {{util.formatStatsEntry(spreadsheet[stat.value.q][row_index])}}
@@ -313,7 +338,7 @@
                                     <template v-else>
                                         <td v-if="stats[stat.value.q] != null"
                                             v-bind:title="String(stats[stat.value.q][row_index])"
-                                            v-on:click="sort_by = {stat:stat}"
+                                            v-on:click="config.sort_by = {stat:stat}"
                                             v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                             v-bind:colspan="spreadsheets.length">
                                             q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
@@ -333,64 +358,89 @@
     </div>
 
     <div class="row">
-        <div id="FiltersCard" class="col-auto" v-on:keyup.enter="applyFilters">
-            <div class="card">
-                <div class="card-header">
-                    Filters
-                    <a id="filtersHelp" class="text-primary help-pointer ml-3"
-                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                       title="Filter Help"
-                       data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
-                        <i class="fas fa-info-circle"></i>
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div id="filter_list">
-                        <div v-for="(filter, index) in filters" class="row"
-                            :key="filter.id">
-                            <div class='col form-inline filter_item'>
-                                <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
-                                     v-bind:aria-label="'Lower bound for filter ' + index"
-                                     v-model="filter.lower_bound">
-                                </input>
+        <div class="card">
 
-                                &le;
+            <div class="card-header">
+                <ul class="nav nav-tabs" id="toolTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link activate" id="filters-tab" data-toggle="tab" href="#filters" aria-controls="home" aria-selected="True">Filters</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="pathways-tab" data-toggle="tab" href="#pathways" aria-controls="pathways" aria-selected="false">Pathways</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="heatmap-tab" data-toggle="tab" href="#heatmap" aria-controls="heatmap" aria-selected="false">Heatmap</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="PCA-tab" data-toggle="tab" href="#PCA" aria-controls="PCA" aria-selected="false">PCA</a>
+                    </li>
+                </ul>
+            </div>
 
-                                <select class="form-control form-control-sm m-1 filter_value_selector"
-                                        v-bind:aria-label="'Filter selector for filter ' + index"
-                                        v-model="filter.variable">
-                                    <option v-for="filter_data in filter_data_list"
-                                            v-bind:value="filter_data.key">
-                                            {{filter_data.name}}
-                                    </option>
-                                </select>
+            <div class="tab-content card-body" id="toolTabContent">
+                <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
+                    <div class="col-auto">
+                        <div id="filter_list">
+                            <div v-for="(filter, index) in editing_filters" class="row"
+                                :key="filter.id">
+                                <div class='col form-inline filter_item'>
+                                    <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
+                                         v-bind:aria-label="'Lower bound for filter ' + index"
+                                         v-model="filter.lower_bound"
+                                         type="number" step="any">
+                                    </input>
 
-                                &le;
+                                    &le;
 
-                                <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
-                                     v-bind:aria-label="'Upper bound for filter ' + index"
-                                     v-model="filter.upper_bound">
-                                </input>
+                                    <select class="form-control form-control-sm m-1 filter_value_selector"
+                                            v-bind:aria-label="'Filter selector for filter ' + index"
+                                            v-model="filter.variable">
+                                        <option v-for="filter_data in filter_data_list"
+                                                v-bind:value="filter_data.key">
+                                                {{filter_data.name}}
+                                        </option>
+                                    </select>
 
-                                <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
-                                        v-on:click="filters = filters.filter(function(x,j) {return j !== index;})">
-                                    <span class="far fa-minus-square"> </span>
-                                </button>
+                                    &le;
+
+                                    <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
+                                         v-bind:aria-label="'Upper bound for filter ' + index"
+                                         v-model="filter.upper_bound"
+                                         type="number" step="any">
+                                    </input>
+
+                                    <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
+                                            v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
+                                        <span class="far fa-minus-square"> </span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                        <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
+                        <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
+                            v-on:click="addFilter">
+                            <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
+                        </button>
+                        <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
+                            v-on:click="resetFilters">
+                            <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                        </button>
+                        <a id="filtersHelp" class="text-primary help-pointer ml-3"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Filter Help"
+                           data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
+                            <i class="fas fa-info-circle"></i>
+                        </a>
+                        <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
                     </div>
-                    <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
-                        v-on:click="resetFilters">
-                        <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
-                    </button>
-                    <button id="add_filter_button" class="btn btn-default" style="float: right" aria-label="Add filter"
-                        v-on:click="addFilter">
-                        <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                    </button>
-                    <div>
-                        <button id="applyFilters" type="button" class="btn btn-primary mb-4" v-on:click="applyFilters">Apply filters</button>
-                        <button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>
-                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pathways" role="tabpanel" aria-labelledby="pathways-tab">
+                    <pathway-analysis
+                        v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
+                        v-bind:background="background_ids"
+                        >
+                    </pathway-analysis>
                 </div>
             </div>
         </div>
@@ -516,6 +566,7 @@
       </div>
     </div>
 
+
 </div>
 
 {% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
@@ -538,14 +589,14 @@
         },
     };
 
-    let stats_list = [
-        {name: "ANOVA",
-         value: {p: "anova_ps",
-                 q: "anova_qs"},
+    let stats_table = {
+        ANOVA: {name: "ANOVA",
+         value: {p: "anova_p",
+                 q: "anova_q"},
          description: "1-Way ANOVA on primary dataset. If there are no replicates on timepoints, ANOVA cannot be run.",
          per_spreadsheet: true,
          num_spreadsheets: 'any'},
-    ];
+    };
 
     let filter_data_list_base = [
         {values: function () {
@@ -598,18 +649,11 @@
     let app = new Vue({
         el: "#vue-app",
         data: {
-            filters: [],
-            last_used_filters: [],
-            hide_filtered_rows: false,
-            spreadsheets: [],
-            selected_row: 0,
-            sort_by: {stat: stats_list[0], spreadsheet_num: 0},
+            editing_filters: [],
 
             search_value: '',
 
-            MAX_PATHWAY_NAME_LENGTH: 45,
-
-            stats_list: stats_list,
+            stats_table: stats_table,
             stats_vars_order: ['p', 'q', 'AFC'], // Order in which to display stats sub-variables
 
             stats: {
@@ -620,12 +664,23 @@
             comparisons: [],
 
             plot: {
-                config: {
+                first_render: true,
+            },
+
+            config: {
+                plot: {
                     style: "bars_points_std",
                     include_zero: false,
                 },
-                first_render: true,
+                spreadsheet_ids: [],
+                original_spreadsheet_ids: [],
+                selected_row: 0,
+                sort_by: {stat_id: 'ANOVA', spreadsheet_num: 0},
+                filters: [],
+                hide_filtered_rows: false,
             },
+
+            share_token: '', // If from a share, the token used
 
             fc_plot: {
                 config: {
@@ -644,24 +699,28 @@
 
         methods: {
             resetFilters: function(){
-                this.filters = this.last_used_filters.slice();
+                this.editing_filters = [];
+                this.config.filters.forEach(function(filter){
+                    // make editing_filters a copy of the last-used filters
+                    app.editing_filters.push(Object.assign({},filter));
+                });
             },
 
             addFilter: function(){
                 let new_id = 0; // Make filter keys
-                if (this.filters.length > 0){
-                    new_id  = Math.max.apply(null, this.filters.map( function(filter) {
+                if (this.editing_filters.length > 0){
+                    new_id  = Math.max.apply(null, this.editing_filters.map( function(filter) {
                         return filter.id;
                     }))  + 1;
                 }
-                this.filters.push( {variable: 'max_value', lower_bound:'', upper_bound:'', id: new_id} );
+                this.editing_filters.push( {variable: 'max_value', lower_bound:'', upper_bound:'', id: new_id} );
             },
 
             applyFilters: function() {
                 // Copy the filters that we last ran
-                // last_used_filters are the ones we actually filter on
+                // config.filters are the ones we actually filter on
                 // needs to be deep copy so we json-ify it and back
-                this.last_used_filters = JSON.parse(JSON.stringify(this.filters));
+                this.config.filters = JSON.parse(JSON.stringify(this.editing_filters));
             },
 
             redrawPlot: function() {
@@ -670,7 +729,7 @@
                 let traces = [];
                 let colors = Plotly.d3.scale.category10();
                 vm.spreadsheets.forEach(function (spreadsheet, idx) {
-                    let row_index = vm.sort_order[vm.selected_row];
+                    let row_index = vm.sort_order[vm.config.selected_row];
                     raw_y_values = spreadsheet.data[row_index];
                     if (raw_y_values === undefined) {
                         console.log("Could not find the y-values for row " + row_index);
@@ -700,7 +759,7 @@
                     };
 
                     // Pick data and styling based off the plot_style_select value
-                    let plot_style = vm.plot.config.style;
+                    let plot_style = vm.config.plot.style;
                     if (plot_style === "basketweave") {
                         // Make pairs of points that are adjacent in time to each other, for each dataset
                         column_pairs = [];
@@ -811,7 +870,7 @@
 
                 let layout = {
                     hovermode: 'closest',
-                    title: app.labels[app.sort_order[app.selected_row]],
+                    title: app.labels[app.sort_order[app.config.selected_row]],
                     legend: { orientation: 'h', y: -0.2 },
                     xaxis: {
                         ticktext: plot_x_labels,
@@ -819,7 +878,7 @@
                         automargin: true,
                     },
                     yaxis: {
-                        rangemode: vm.plot.config.include_zero ? 'tozero' : '',
+                        rangemode: vm.config.plot.include_zero ? 'tozero' : '',
                     }
                 };
 
@@ -833,18 +892,18 @@
 
             downloadPlot: function() {
                 let gd = document.getElementById('scatter_plot');
-                Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.selected_row+1)});
+                Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.config.selected_row+1)});
             },
 
 
             selectRow: function(row) {
-                this.selected_row = row;
+                this.config.selected_row = row;
             },
 
             onRowChange: function () {
                 this.redrawPlot();
 
-                $('#coarse_slider').slider('value', this.selected_row);
+                $('#coarse_slider').slider('value', this.config.selected_row);
             },
 
             searchRows: function() {
@@ -867,12 +926,12 @@
 
                 // Find matches in rows past the current selection
                 let matches_after = matching_rows.filter( function (i) {
-                    return i > app.selected_row;
+                    return i > app.config.selected_row;
                 } );
 
                 let row = null;
                 if (matches_after.length > 0) {
-                    // First look for matches that are *after* our selected_row
+                    // First look for matches that are *after* our config.selected_row
                     // so that multiple button presses will cycle the selection through all matches
                     row = matches_after[0];
                 } else {
@@ -880,7 +939,7 @@
                     row = matching_rows[0];
                 }
 
-                app.selected_row = row;
+                app.config.selected_row = row;
             },
 
             onShare: function() {
@@ -889,7 +948,7 @@
                 let vm = this;
                 $.ajax({
                     url: "{{url_for('spreadsheets.share')}}",
-                    data: JSON.stringify({'spreadsheet_ids': [spreadsheet_id], 'row_index': vm.selected_row}),
+                    data: JSON.stringify({'spreadsheet_ids': [spreadsheet_id], 'row_index': vm.config.selected_row}),
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',
@@ -917,8 +976,8 @@
             redrawFCPlot: function() {
                 let vm = this;
                 let spreadsheet = vm.spreadsheets[0];
-                let pseudo_count = vm.fc_plot.config.pseudo_count;
-                let plot_style = vm.fc_plot.config.style;
+                let pseudo_count = vm.fc_config.plot.pseudo_count;
+                let plot_style = vm.fc_config.plot.style;
 
                 // For now, we just compare the groups 0 and 1 whatever they are
                 let compute_mean = function(group) {
@@ -1053,13 +1112,13 @@
                 // TODO: this needs to create a NEW fold-change for each comparison run
                 vm.$set(vm.stats, comparison_name + " AFC", log_afc);
 
-                vm.stats_list.push({
+                vm.stats_table[comparison_name] = {
                      name: comparison_name,
                      value: comparison_name + " AFC",
                      description: "Comparison of group '" + first_group.name + "' and '" + second_group.name + "'",
                      per_spreadsheet: false,
                      num_spreadsheets: 'any',
-                });
+                };
 
                 let comparison = {
                     name: comparison_name,
@@ -1082,40 +1141,55 @@
         },
 
         computed: {
+            spreadsheets: function() {
+                // Spreadsheets in the order they are displayed
+                let vm = this;
+                return vm.config.spreadsheet_ids.map(function(id) { return vm.spreadsheets_by_id[id]; } )
+            },
+
             row_index: function() {
                 if (this.sort_order !== null) {
-                    return this.sort_order[this.selected_row];
+                    return this.sort_order[this.config.selected_row];
                 } else {
-                    return this.selected_row;
+                    return this.config.selected_row;
                 }
 
             },
 
             num_below: {
                 get: function () {
-                    return this.num_significant_below[this.selected_row];
+                    return this.num_significant_below[this.config.selected_row];
                 },
                 set: function (val) {
                     val = parseInt(val);
                     if (val === null || this.num_significant_below === null) {
-                        this.selected_row = 0;
+                        this.config.selected_row = 0;
                     }
 
                     let idx = this.num_significant_below.indexOf(val);
                     if (idx !== -1) {
-                        this.selected_row = idx;
+                        this.config.selected_row = idx;
                     } else {
                         if (idx > Math.max(null, this.num_significant_below)) {
-                            this.selected_row = this.num_siginificant_below.length;
+                            this.config.selected_row = this.num_siginificant_below.length;
                         } else {
-                            this.selected_row = 0;
+                            this.config.selected_row = 0;
                         }
                     }
                 }
             },
 
+            sort_by: function() {
+                return {
+                    stat: this.stats_table[this.config.sort_by.stat_id],
+                    stat_id: this.config.sort_by.stat_id,
+                    spreadsheet_num: this.config.sort_by.spreadsheet_num,
+                };
+            },
+
+
             sort_function: function () {
-                // We sort by the value specified in sort_by
+                // We sort by the value specified in config.sort_by
                 // We also have a 'secondary sort value' which is used purely as a null/not-null check
                 // So if secondary sort value is null then we will sort the value to the end as if the main value were null
                 // This solves the problem where q-values are null and being sorted to the front of the list particulary
@@ -1144,10 +1218,10 @@
                     sort_direction = this.sort_by.stat.sort_direction;
                 }
 
-                if (vm.sort_by.spreadsheet_num !== undefined) {
+                if (vm.config.sort_by.spreadsheet_num !== undefined) {
                     if (vm.spreadsheets.length > 0) {
-                        value = vm.spreadsheets[vm.sort_by.spreadsheet_num][value];
-                        secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_value];
+                        value = vm.spreadsheets[vm.config.sort_by.spreadsheet_num][value];
+                        secondary_value = vm.spreadsheets[vm.config.sort_by.spreadsheet_num][secondary_value];
                     }
                 } else {
                     value = vm.stats[value];
@@ -1171,7 +1245,7 @@
                 let sort_order =  this.labels.map( function(x,i) {return i;} );
                 sort_order = sort_order.sort(this.sort_function);
 
-                if (this.hide_filtered_rows) {
+                if (this.config.hide_filtered_rows) {
                     // Move filtered items from the sort_order to the back of the list  to hide them
                     let head = sort_order.filter( function(x) {return !vm.filtered[x];});
                     let tail = sort_order.filter( function(x) {return vm.filtered[x];});
@@ -1188,12 +1262,12 @@
                     return null;
                 }
 
-                if (this.sort_by.spreadsheet_num !== undefined) {
-                    let sp = this.spreadsheets[this.sort_by.spreadsheet_num];
+                if (this.config.sort_by.spreadsheet_num !== undefined) {
+                    let sp = this.spreadsheets[this.config.sort_by.spreadsheet_num];
                     let vq = value.q;
                     let vals = sp ? sp[vq]: [];
                     return vals;
-                    return this.spreadsheets[this.sort_by.spreadsheet_num][value.q];
+                    return this.spreadsheets[this.config.sort_by.spreadsheet_num][value.q];
                 } else {
                     return this.stats[value.q];
                 }
@@ -1204,7 +1278,7 @@
                 let filtered_out = this.labels.map( function (x) {return false;} );
 
                 // Apply all filters
-                this.last_used_filters.forEach(function(filter) {
+                this.config.filters.forEach(function(filter) {
                     let filter_value = filter.variable;
 
                     let lower_bound = parseFloat(filter.lower_bound);
@@ -1244,27 +1318,29 @@
                 let vm = this;
 
                 return vm.sort_order.filter( function(row_num,rank) {
-                    return (rank <= vm.selected_row) & (!vm.filtered[row_num]);
+                    return (rank <= vm.config.selected_row) & (!vm.filtered[row_num]);
                 } );
             },
 
             useable_stats: function () {
-                // Only the stats from stats_list that apply to this context
+                // Only the stats from stats_table that apply to this context
                 // i.e. the ones we have enough spreadsheets for
                 let vm = this;
-                let filtered_stats_list = this.stats_list.filter( function(stat) {
-                    if (stat.num_spreadsheets == 'multi') {
-                        return vm.spreadsheets.length > 1;
-                    } else {
-                        return true;
+                let stats = {};
+                for (key in this.stats_table) {
+                    let stat = this.stats_table[key]
+                    if ((stat.num_spreadsheets == 'multi')
+                            && (vm.spreadsheets.length < 2)) {
+                        continue; // Need 2 or more spreadsheets
                     }
-                });
-                return filtered_stats_list;
+                    stats[key] = stat;
+                }
+                return stats;
             },
 
             filter_data_list: function () {
                 // List of filters including the 'special' ones declared in filters_data_list_base
-                // and also those derived from the statistics in stats_list
+                // and also those derived from the statistics in stats_table
                 let vm = this;
 
                 // Make a filter for each stat
@@ -1435,7 +1511,8 @@
 
         watch: {
             row_index: "onRowChange",
-            "plot.config": {
+
+            "config.plot": {
                 handler: "redrawPlot",
                 deep: true
             },
