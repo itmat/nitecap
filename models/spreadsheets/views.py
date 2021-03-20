@@ -350,6 +350,7 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
 @ajax_requires_account_or_share
 def get_spreadsheets(user=None):
 
+
     data = json.loads(request.data)
     spreadsheet_ids = data['spreadsheet_ids']
 
@@ -482,7 +483,8 @@ def get_jtk(user=None):
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            return access_not_permitted(get_jtk.__name__, user, spreadsheet_id)
+            current_app.logger.warn(f"Attempted acess of JTK for invalid spreadsheets {spreadsheet_id} by user {user}")
+            return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 403
 
         # Populate
         spreadsheet.init_on_load()

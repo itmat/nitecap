@@ -395,7 +395,7 @@ class Spreadsheet(db.Model):
         self.df["cosinor_x0"] = cosinor_X[0,:]
         self.df["cosinor_x1"] = cosinor_X[1,:]
         self.df["cosinor_x2"] = cosinor_X[2,:]
-        
+
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
