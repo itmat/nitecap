@@ -82,8 +82,8 @@
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
-                vm.stats[key] = value;
-                vm.stats_table[key] = {
+                vm.$set(app.stats, key, value);
+                vm.$set(app.stats_table, key, {
                     name: key,
                     value: key,
                     description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
