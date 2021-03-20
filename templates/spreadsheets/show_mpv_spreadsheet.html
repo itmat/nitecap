@@ -114,6 +114,8 @@
         });
 
         $('[data-toggle="tooltip"]').tooltip();
+
+        app.share_token = share_token;
     }
 </script>
 
@@ -144,6 +146,11 @@
             </a>
             <a id='share_spreadsheet' href="#" v-on:click="onShare">
                 <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+            </a>
+            <a v-if="share_token.length > 0"
+                class="btn btn-secondary btn-sm"
+                v-bind:href="'/spreadsheets/copy_share/'+share_token">
+                    Copy to Account
             </a>
         </p>
     </div>
