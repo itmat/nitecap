@@ -357,7 +357,7 @@
 
     </div>
 
-    <div class="row">
+    <div class="col-12">
         <div class="card">
 
             <div class="card-header">
@@ -369,10 +369,7 @@
                         <a class="nav-link" id="pathways-tab" data-toggle="tab" href="#pathways" aria-controls="pathways" aria-selected="false">Pathways</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="heatmap-tab" data-toggle="tab" href="#heatmap" aria-controls="heatmap" aria-selected="false">Heatmap</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="PCA-tab" data-toggle="tab" href="#PCA" aria-controls="PCA" aria-selected="false">PCA</a>
+                        <a class="nav-link" id="comparisons-tab" data-toggle="tab" href="#comparisons" aria-controls="comparisons" aria-selected="false">Comparisons</a>
                     </li>
                 </ul>
             </div>
@@ -442,14 +439,56 @@
                         >
                     </pathway-analysis>
                 </div>
+
+
+                <div class="tab-pane fade" id="comparisons" role="tabpanel" aria-labelledby="comparison-tab">
+                        <div class="form-group">
+                            <div>
+                                <label for="first_compare_selector">
+                                First group for comparison:
+                                </label>
+                                <select id="first_compare_selector" v-model="comparison_box.first_group">
+                                    <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                        {{ group.name }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="second_compare_selector">
+                                Second group for comparison:
+                                </label>
+                                <select id="second_compare_selector" v-model="comparison_box.second_group">
+                                    <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                        {{ group.name }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <button type="button" class="btn btn-primary" v-on:click="createComparison">
+                                Create Comparison
+                            </button>
+                            <a id="comapreHelp" class="text-primary help-pointer ml-3"
+                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                               title="Compare Help"
+                               data-content="Create comparisons of specific conditions. Adds a log Fold Change statistic to statistic panel sorting by fold change between the two selected conditions. A psuedo-count is added to both values to prevent division by zero and to give more accurate estimates of effect sizes.">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
+
+                            <template v-for="(comparison, i) in comparisons">
+                                <h6>{{comparison.name}}</h6>
+                                    <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
+                                    <input v-bind:id="'comparison_pseudo_count_input'+i"
+                                           type="number"
+                                            v-model.lazy.number="comparison.pseudo_count">
+                                    </input>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
-
-        <pathway-analysis
-            v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
-            v-bind:background="background_ids"
-            >
-        </pathway-analysis>
 
         <!--
         <div class='col-auto'>
@@ -489,58 +528,6 @@
         -->
 
 
-        <div id="ComparisonCard" class="col-auto">
-            <div class="card">
-                <div class="card-header">
-                    Create Comparison
-                    <a id="comapreHelp" class="text-primary help-pointer ml-3"
-                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                       title="Compare Help"
-                       data-content="Create comparisons of specific conditions. Adds a log Fold Change statistic to statistic panel sorting by fold change between the two selected conditions. A psuedo-count is added to both values to prevent division by zero and to give more accurate estimates of effect sizes.">
-                        <i class="fas fa-info-circle"></i>
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div class="form-group">
-                        <div>
-                            <label for="first_compare_selector">
-                            First group for comparison:
-                            </label>
-                            <select id="first_compare_selector" v-model="comparison_box.first_group">
-                                <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                    {{ group.name }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="second_compare_selector">
-                            Second group for comparison:
-                            </label>
-                            <select id="second_compare_selector" v-model="comparison_box.second_group">
-                                <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                    {{ group.name }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <button type="button" class="btn btn-primary" v-on:click="createComparison">
-                            Create Comparison
-                        </button>
-
-                        <template v-for="(comparison, i) in comparisons">
-                            <h6>{{comparison.name}}</h6>
-                                <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
-                                <input v-bind:id="'comparison_pseudo_count_input'+i"
-                                       type="number"
-                                        v-model.lazy.number="comparison.pseudo_count">
-                                </input>
-                        </template>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- MODALS -->
     <div id="share_popup" class="modal" tabindex="-1" role="dialog">
@@ -572,8 +559,6 @@
 {% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
 
 <script src="{{url_for('static', filename='js/row_selector.js')}}"></script>
-<script src="{{url_for('static', filename='js/PCA_plot.js')}}"></script>
-<script src="{{url_for('static', filename='js/heatmap_plot.js')}}"></script>
 <script src="{{url_for('static', filename='js/pathway.js')}}"></script>
 <script src="{{url_for('static', filename='js/pathway_component.js')}}"></script>
 
