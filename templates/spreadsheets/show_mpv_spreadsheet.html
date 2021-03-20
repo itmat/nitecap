@@ -76,17 +76,17 @@
         app.labels = spreadsheets[0].labels;
 
         // Update stats_table with the Additional Stat Columns of the spreadsheets
-        app.spreadsheets.forEach(function(spreadsheet) {
+        spreadsheets.forEach(function(spreadsheet) {
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
-                app.stats[key] = value;
-                app.stats_table[key] = {
+                vm.$set(app.stats, key, value);
+                vm.$set(app.stats_table, key, {
                     name: key,
                     value: key,
                     description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
                     per_spreadsheet: false,
-                };
+                });
             });
         });
 
