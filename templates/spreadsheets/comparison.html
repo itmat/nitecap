@@ -1100,9 +1100,9 @@
                         for (let i = 0; i <= sampling_density; i++)
                             t.push(24*vm.num_days*i/sampling_density);
 
-                        let x0 = spreadsheet.cosinor_x0[row_index];
-                        let x1 = spreadsheet.cosinor_x1[row_index];
-                        let x2 = spreadsheet.cosinor_x2[row_index];
+                        let x0 = spreadsheet.cosinor_x0s[row_index];
+                        let x1 = spreadsheet.cosinor_x1s[row_index];
+                        let x2 = spreadsheet.cosinor_x2s[row_index];
 
                         let y = t.map(t => x0 + x1*Math.cos(2*Math.PI*t/24) + x2*Math.sin(2*Math.PI*t/24));
 
