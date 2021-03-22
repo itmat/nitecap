@@ -193,6 +193,7 @@
                 <div class='p-3 float-right'>
                     <button class="btn btn-primary" v-on:click="downloadPlot">Download Plot</button>
                 </div>
+
                 <div class='p-3 float-right'>
                     <button class="btn btn-primary btn-sm" v-on:click="shiftSpreadsheets" v-if="spreadsheets.length > 1">Reorder Spreadsheets</button>
                 </div>
@@ -364,142 +365,140 @@
             </span>
         </div>
 
-        <div class="col-12">
-            <div class="card">
 
-                <div class="card-header">
-                    <ul class="nav nav-tabs" id="toolTabs" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link activate" id="filters-tab" data-toggle="tab" href="#filters" aria-controls="home" aria-selected="True">Filters</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="pathways-tab" data-toggle="tab" href="#pathways" aria-controls="pathways" aria-selected="false">Pathways</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="comparisons-tab" data-toggle="tab" href="#comparisons" aria-controls="comparisons" aria-selected="false">Comparisons</a>
-                        </li>
-                    </ul>
+
+
+        <div class="card">
+
+            <div class="card-header">
+                <ul class="nav nav-tabs" id="toolTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link activate" id="filters-tab" data-toggle="tab" href="#filters" aria-controls="home" aria-selected="True">Filters</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="pathways-tab" data-toggle="tab" href="#pathways" aria-controls="pathways" aria-selected="false">Pathways</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="comparisons-tab" data-toggle="tab" href="#comparisons" aria-controls="comparisons" aria-selected="false">Comparisons</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="tab-content card-body" id="toolTabContent">
+                <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
+                    <div class="col-auto">
+                        <div id="filter_list">
+                            <div v-for="(filter, index) in editing_filters" class="row"
+                                :key="filter.id">
+                                <div class='col form-inline filter_item'>
+                                    <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
+                                         v-bind:aria-label="'Lower bound for filter ' + index"
+                                         v-model="filter.lower_bound"
+                                         type="number" step="any">
+                                    </input>
+
+                                    &le;
+
+                                    <select class="form-control form-control-sm m-1 filter_value_selector"
+                                            v-bind:aria-label="'Filter selector for filter ' + index"
+                                            v-model="filter.variable">
+                                        <option v-for="filter_data in filter_data_list"
+                                                v-bind:value="filter_data.key">
+                                                {{filter_data.name}}
+                                        </option>
+                                    </select>
+
+                                    &le;
+
+                                    <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
+                                         v-bind:aria-label="'Upper bound for filter ' + index"
+                                         v-model="filter.upper_bound"
+                                         type="number" step="any">
+                                    </input>
+
+                                    <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
+                                            v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
+                                        <span class="far fa-minus-square"> </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
+                        <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
+                            v-on:click="addFilter">
+                            <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
+                        </button>
+                        <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
+                            v-on:click="resetFilters">
+                            <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                        </button>
+                        <a id="filtersHelp" class="text-primary help-pointer ml-3"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Filter Help"
+                           data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
+                            <i class="fas fa-info-circle"></i>
+                        </a>
+                        <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
+                    </div>
                 </div>
 
-                <div class="tab-content card-body" id="toolTabContent">
-                    <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
-                        <div class="col-auto">
-                            <div id="filter_list">
-                                <div v-for="(filter, index) in editing_filters" class="row"
-                                    :key="filter.id">
-                                    <div class='col form-inline filter_item'>
-                                        <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
-                                             v-bind:aria-label="'Lower bound for filter ' + index"
-                                             v-model="filter.lower_bound"
-                                             type="number" step="any">
-                                        </input>
+                <div class="tab-pane fade" id="pathways" role="tabpanel" aria-labelledby="pathways-tab">
+                    <pathway-analysis
+                        v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
+                        v-bind:background="background_ids"
+                        >
+                    </pathway-analysis>
+                </div>
+                <div class="tab-pane fade" id="comparisons" role="tabpanel" aria-labelledby="comparison-tab">
+                    <div class="form-group">
+                        <label for="first_compare_selector">
+                        First group for comparison:
+                        </label>
+                        <select id="first_compare_selector" v-model="comparison_box.first_group">
+                            <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                {{ group.name }}
+                            </option>
+                        </select>
 
-                                        &le;
-
-                                        <select class="form-control form-control-sm m-1 filter_value_selector"
-                                                v-bind:aria-label="'Filter selector for filter ' + index"
-                                                v-model="filter.variable">
-                                            <option v-for="filter_data in filter_data_list"
-                                                    v-bind:value="filter_data.key">
-                                                    {{filter_data.name}}
-                                            </option>
-                                        </select>
-
-                                        &le;
-
-                                        <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
-                                             v-bind:aria-label="'Upper bound for filter ' + index"
-                                             v-model="filter.upper_bound"
-                                             type="number" step="any">
-                                        </input>
-
-                                        <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
-                                                v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
-                                            <span class="far fa-minus-square"> </span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
-                            <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
-                                v-on:click="addFilter">
-                                <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                            </button>
-                            <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
-                                v-on:click="resetFilters">
-                                <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
-                            </button>
-                            <a id="filtersHelp" class="text-primary help-pointer ml-3"
-                               data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                               title="Filter Help"
-                               data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
-                                <i class="fas fa-info-circle"></i>
-                            </a>
-                            <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
+                        <div>
+                            <label for="second_compare_selector">
+                            Second group for comparison:
+                            </label>
+                            <select id="second_compare_selector" v-model="comparison_box.second_group">
+                                <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                    {{ group.name }}
+                                </option>
+                            </select>
                         </div>
+
+                        <button type="button" class="btn btn-primary" v-on:click="createComparison">
+                            Create Comparison
+                        </button>
+                        <a id="comapreHelp" class="text-primary help-pointer ml-3"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Compare Help"
+                           data-content="Create comparisons of specific conditions. Adds a log Fold Change statistic to statistic panel sorting by fold change between the two selected conditions. A psuedo-count is added to both values to prevent division by zero and to give more accurate estimates of effect sizes.">
+                            <i class="fas fa-info-circle"></i>
+                        </a>
+
+                        <template v-for="(comparison, i) in comparisons">
+                            <h6>{{comparison.name}}</h6>
+                                <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
+                                <input v-bind:id="'comparison_pseudo_count_input'+i"
+                                       type="number"
+                                        v-model.lazy.number="comparison.pseudo_count">
+                                </input>
+                        </template>
                     </div>
-
-                    <div class="tab-pane fade" id="pathways" role="tabpanel" aria-labelledby="pathways-tab">
-                        <pathway-analysis
-                            v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
-                            v-bind:background="background_ids"
-                            >
-                        </pathway-analysis>
-                    </div>
-
-
-                    <div class="tab-pane fade" id="comparisons" role="tabpanel" aria-labelledby="comparison-tab">
-                            <div class="form-group">
-                                <div>
-                                    <label for="first_compare_selector">
-                                    First group for comparison:
-                                    </label>
-                                    <select id="first_compare_selector" v-model="comparison_box.first_group">
-                                        <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                            {{ group.name }}
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label for="second_compare_selector">
-                                    Second group for comparison:
-                                    </label>
-                                    <select id="second_compare_selector" v-model="comparison_box.second_group">
-                                        <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                            {{ group.name }}
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <button type="button" class="btn btn-primary" v-on:click="createComparison">
-                                    Create Comparison
-                                </button>
-                                <a id="comapreHelp" class="text-primary help-pointer ml-3"
-                                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                   title="Compare Help"
-                                   data-content="Create comparisons of specific conditions. Adds a log Fold Change statistic to statistic panel sorting by fold change between the two selected conditions. A psuedo-count is added to both values to prevent division by zero and to give more accurate estimates of effect sizes.">
-                                    <i class="fas fa-info-circle"></i>
-                                </a>
-
-                                <template v-for="(comparison, i) in comparisons">
-                                    <h6>{{comparison.name}}</h6>
-                                        <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
-                                        <input v-bind:id="'comparison_pseudo_count_input'+i"
-                                               type="number"
-                                                v-model.lazy.number="comparison.pseudo_count">
-                                        </input>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
+                </div>
 
                 </div>
             </div>
         </div>
-        <div v-show="spreadsheets.length == 0">
-            <p> Loading... </p>
-        </div>
+    </div>
+    <div v-show="spreadsheets.length == 0">
+        <p> Loading... </p>
+    </div>
 
         <!--
         <div class='col-auto'>
