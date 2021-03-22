@@ -82,13 +82,13 @@
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
-                vm.$set(app.stats, key, value);
-                vm.$set(app.stats_table, key, {
+                vm.$set(vm.stats, key, value);
+                vm.$set(vm.stats_table, key, {
                     name: key,
                     value: key,
                     description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
                     per_spreadsheet: false,
-                };
+                });
             });
         });
 
@@ -206,7 +206,7 @@
 
         $('[data-toggle="tooltip"]').tooltip();
 
-        app.share_token = share_token;
+        vm.share_token = share_token;
     }
 </script>
 
@@ -367,7 +367,7 @@
                                                         v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                         v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                         v-bind:title="String(spreadsheet[stat.value][row_index])">
-                                                        {{util.formatNum(spreadsheet[stat.value][row_index], 4)}}
+                                                        {{util.formatStatsEntry(spreadsheet[stat.value][row_index])}}
                                                     </td>
                                                     <td v-else>
                                                         loading
@@ -380,7 +380,7 @@
                                                     v-on:click="config.sort_by = {stat_id:stat_id}"
                                                     v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:colspan="spreadsheets.length">
-                                                    {{util.formatNum(stats[stat.value][row_index], 4)}}
+                                                    {{util.formatStatsEntry(stats[stat.value][row_index])}}
                                                 </td>
                                                 <td v-else>
                                                     loading
@@ -395,7 +395,7 @@
                                                         v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                         v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                         v-bind:title="String(spreadsheet[stat.value.p][row_index])">
-                                                        p: {{util.formatNum(spreadsheet[stat.value.p][row_index], 4)}}
+                                                        p: {{util.formatStatsEntry(spreadsheet[stat.value.p][row_index])}}
                                                     </td>
                                                     <td v-else>
                                                         loading
@@ -408,7 +408,7 @@
                                                     v-on:click="config.sort_by = {stat_id:stat_id}"
                                                     v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:colspan="spreadsheets.length">
-                                                    p: {{util.formatNum(stats[stat.value.p][row_index], 4)}}
+                                                    p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
                                                 </td>
                                                 <td v-else v-bind:colspan="spreadsheets.length">
                                                     loading
@@ -424,7 +424,7 @@
                                                     v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:title="String(spreadsheet[stat.value.q][row_index])">
-                                                    q: {{util.formatNum(spreadsheet[stat.value.q][row_index], 4)}}
+                                                    q: {{util.formatStatsEntry(spreadsheet[stat.value.q][row_index])}}
                                                 </td>
                                                 <td v-else>
                                                     loading
@@ -437,7 +437,7 @@
                                                 v-on:click="config.sort_by = {stat_id:stat_id}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
-                                                q: {{util.formatNum(stats[stat.value.q][row_index], 4)}}
+                                                q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
                                             </td>
                                             <td v-else v-bind:colspan="spreadsheets.length">
                                                 loading
@@ -452,7 +452,6 @@
             </div>
 
         </div>
-
 
         <div class="row">
             <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
@@ -673,7 +672,14 @@
 
 <script>
     Vue.prototype.util = {
-        formatNum: formatNum
+        formatNum: formatNum,
+        formatStatsEntry: function(entry){
+            if(typeof entry === 'string') {
+                return entry;
+            } else {
+                return  formatNum(entry, 4);
+            }
+        },
     };
 
     let stats_table = {
@@ -857,7 +863,7 @@
             num_days: 0,
 
             plot: {
-                first_render: false,
+                first_render: true,
             },
 
             share_token: '', // If from a share, the token used
@@ -968,7 +974,7 @@
                         name: vm.descriptive_names[idx],
                         type: 'scatter',
                         'marker': {color: spreadsheet_color},
-                        'line': {color: spreadsheet_color}
+                        'line': {color: spreadsheet_color},
                     };
 
                     // Pick data and styling based off the plot_style_select value
@@ -1138,9 +1144,9 @@
                     }
                 };
 
-                if (vm.first_render) {
+                if (vm.plot.first_render) {
                     Plotly.newPlot('scatter_plot', traces, layout);
-                    vm.first_render = false;
+                    vm.plot.first_render = false;
                 } else {
                     Plotly.react('scatter_plot', traces, layout);
                 }
@@ -1187,7 +1193,7 @@
 
                 let row = null;
                 if (matches_after.length > 0) {
-                    // First look for matches that are *after* our selected_row
+                    // First look for matches that are *after* our config.selected_row
                     // so that multiple button presses will cycle the selection through all matches
                     row = matches_after[0];
                 } else {
@@ -1382,7 +1388,7 @@
             },
 
             sort_function: function () {
-                // We sort by the value specified in sort_by
+                // We sort by the value specified in config.sort_by
                 // We also have a 'secondary sort value' which is used purely as a null/not-null check
                 // So if secondary sort value is null then we will sort the value to the end as if the main value were null
                 // This solves the problem where q-values are null and being sorted to the front of the list particulary
@@ -1451,13 +1457,13 @@
                 };
 
                 if ((value === null) || (secondary_value === null)) {
-                     // Don't sort, the values we are sorting by haven't loaded yet
-                     // display_value will just be the index
+                    // Don't sort, the values we are sorting by haven't loaded yet
+                    // display_value will just be the index
                     sorter = function(i,j) { return i - j; };
                     display_value = app.labels.map(function(x,i) {return i+1;});
                 }
 
-                return {"func": sorter, "value": value,  "display_value":display_value, "sort_direction": sort_direction};
+                return {"func": sorter, "value": value, "display_value":display_value, "sort_direction": sort_direction};
             },
 
             sort_order: function () {
@@ -1540,7 +1546,7 @@
 
             selected_rows: function() {
                 // List of indices of the rows that are selected
-                // (I.e. unfiltered, and below the significance cutoff
+                // I.e. unfiltered, and below the significance cutoff
                 let vm = this;
 
                 return vm.sort_order.filter( function(row_num,rank) {

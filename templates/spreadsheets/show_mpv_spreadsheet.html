@@ -12,8 +12,6 @@
         nitecap_error = $("#error-modal");
         nitecap_error_message = $("#error-modal-message")
 
-        spreadsheet_ids = {{ spreadsheet_ids | safe }};
-
         share_token = "{{ share_token }}";
         initial_config = {{ config | tojson }};
 
@@ -49,9 +47,6 @@
 
         // FOR VUE
         spreadsheets.forEach(function(spreadsheet) {
-            spreadsheet.upside_ps = null;
-            spreadsheet.upside_qs = null;
-
             // VUE PERF NOTE
             // Vue "observes" all attributes of observed objects
             // so it will try to observe everything in the large data arrays
@@ -66,22 +61,22 @@
             });
         });
 
-
         // Gather spreadsheets by id
         vm.spreadsheets_by_id = {};
         spreadsheets.forEach(function(spreadsheet) {
             Vue.set(vm.spreadsheets_by_id, spreadsheet.spreadsheet_id, spreadsheet);
         });
 
-        app.labels = spreadsheets[0].labels;
+
+        vm.labels = spreadsheets[0].labels;
 
         // Update stats_table with the Additional Stat Columns of the spreadsheets
         spreadsheets.forEach(function(spreadsheet) {
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
-                vm.$set(app.stats, key, value);
-                vm.$set(app.stats_table, key, {
+                vm.$set(vm.stats, key, value);
+                vm.$set(vm.stats_table, key, {
                     name: key,
                     value: key,
                     description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
@@ -89,6 +84,7 @@
                 });
             });
         });
+
 
         function makeCoarseSlider(element, start_value, maximum) {
             element.slider({
@@ -99,12 +95,12 @@
                 max: maximum,
                 range: "min",
                 slide: function (event, ui) {
-                    app.config.selected_row = ui.value;
+                    vm.config.selected_row = ui.value;
                 }
             });
         }
 
-        makeCoarseSlider($('#coarse_slider'), 0, app.labels.length - 1);
+        makeCoarseSlider($('#coarse_slider'), 0, vm.labels.length - 1);
 
         // Load config values
         mergeDeep(vm.config, initial_config);
@@ -115,7 +111,7 @@
 
         $('[data-toggle="tooltip"]').tooltip();
 
-        app.share_token = share_token;
+        vm.share_token = share_token;
     }
 </script>
 
@@ -126,142 +122,199 @@
         <h1>Spreadsheet Viewer</h1>
     </div>
 
-    <div class="row">
-        <p class="col-lg-12 h3" v-if="spreadsheets[1]" v-cloak>
-            {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
+    <div v-show="spreadsheets.length > 0">
+        <div class="row">
+            <p class="col-lg-12 h3">
+                <span v-if="spreadsheets.length === 1">
+                    {{spreadsheets[0].descriptive_name}}
+                </span>
+                <span v-if="spreadsheets.length >= 2">
+                    {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
+                </span>
 
-            <a v-bind:href="'/spreadsheets/download_comparison/'+spreadsheets[0].spreadsheet_id+','+spreadsheets[1].spreadsheet_id"
-                    class="mx-3" download="processed_file.txt">
-                <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
-            </a>
-        </p>
+                <button class="btn btn-secondary btn-sm" id='share_spreadsheet' v-on:click="triggerDownloadPopup">
+                    Download
+                </button>
+                <a v-if="share_token.length > 0"
+                    class="btn btn-secondary btn-sm"
+                    v-bind:href="'/spreadsheets/copy_share/'+share_token">
+                        Copy to Account
+                </a>
+                <a v-if="spreadsheets.length === 1"
+                    v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
+                    <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+                </a>
 
-        <p class="col-lg-12 h3" v-if="spreadsheets.length === 1">
-            {{spreadsheets[0].descriptive_name}}
-            <a v-bind:href="'/spreadsheets/download/'+spreadsheets[0].spreadsheet_id" class="mx-3" download="processed_file.txt">
-                <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
-            </a>
-            <a v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
-                <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
-            </a>
-            <a id='share_spreadsheet' href="#" v-on:click="onShare">
-                <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
-            </a>
-            <a v-if="share_token.length > 0"
-                class="btn btn-secondary btn-sm"
-                v-bind:href="'/spreadsheets/copy_share/'+share_token">
-                    Copy to Account
-            </a>
-        </p>
-    </div>
+                <a id='share_spreadsheet' href="#" v-on:click="onShare">
+                    <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+                </a>
+            </p>
+        </div>
 
-    <div class='row justify-content-center'>
-        <span class='col-auto'>
-            <div class='row'>
-                <div class="col">
-                    <div class="input-group mb-2">
-                        <input class="form-control form-control-sm" type="text" name="row_search"
-                               placeholder="Search for row by label" v-model="search_value"
-                               v-on:keyup.enter="searchRows"/>
-                        <div class="input-group-append">
-                            <button type="button" class="btn btn-secondary btn-sm"
-                                    v-on:click="searchRows">
-                                Search
-                            </button>
+        <div class='row justify-content-center'>
+            <span class='col-auto'>
+                <div class='row'>
+                    <div class="col">
+                        <div class="input-group mb-2">
+                            <input class="form-control form-control-sm" type="text" name="row_search"
+                                   placeholder="Search for row by label" v-model="search_value"
+                                   v-on:keyup.enter="searchRows"/>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-secondary btn-sm"
+                                        v-on:click="searchRows">
+                                    Search
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class='row'>
-                <div class='col-auto'>
-                    <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
-                    <row-selector v-bind:sort-order="sort_order"
-                                  v-bind:filtered="filtered"
-                                  v-bind:num-rows="21"
-                                  v-bind:q-values="label_qs"
-                                  v-bind:selected-row="config.selected_row"
-                                  v-bind:labels="labels"
-                                  v-bind:label-max-length="35"
-                                  v-bind:select-row="selectRow"
-                                  v-cloak>
-                    </row-selector>
-                    <div class="form-check">
-                        <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="config.hide_filtered_rows">
-                        <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>
+                <div class='row'>
+                    <div class='col-auto'>
+                        <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
+                        <row-selector v-bind:sort-order="sort_order"
+                                      v-bind:filtered="filtered"
+                                      v-bind:num-rows="21"
+                                      v-bind:q-values="label_q"
+                                      v-bind:selected-row="config.selected_row"
+                                      v-bind:labels="labels"
+                                      v-bind:label-max-length="35"
+                                      v-bind:select-row="selectRow"
+                                      v-cloak>
+                        </row-selector>
+                        <div class="form-check">
+                            <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="config.hide_filtered_rows">
+                            <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </span>
-        <div class='col-auto'>
-            <span id="scatter_plot" style="width:625px;height:525px;vertical-align: top"></span>
-            <div class='p-3 float-right'>
-                <button class="btn btn-primary" v-on:click="downloadPlot">Download Plot</button>
-            </div>
-            <div class='p-3 float-right'>
-                <button class="btn btn-primary btn-sm" v-on:click="shiftSpreadsheets" v-if="spreadsheets.length > 1">Reorder Spreadsheets</button>
-            </div>
-            <form class="form-group">
-                <div class="form-inline">
-                    <label for="plot_style_select">Plot style</label>
-                    <select id="plot_style_select" value="bars_points_std" class="form-control form-control-sm" v-model="config.plot.style">
-                        <option value="points">Points</option>
-                        <option value="mean">Mean only</option>
-                        <option value="mean_points">Points and Mean</option>
-                        <option value="bars_std">Bars and Standard Deviations</option>
-                        <option value="bars_points_std">Bars, Points, and Standard Deviations</option>
-                        <option value="std">Standard Deviations</option>
-                        <option value="std_points">Standard Deviations and Points</option>
-                        <option value="SEM">SEM</option>
-                        <option value="SEM_points">SEM and Points</option>
-                    </select>
+            </span>
+            <div class='col-auto'>
+                <span id="scatter_plot" style="width:625px;height:525px;vertical-align: top"></span>
+                <div class='p-3 float-right'>
+                    <button class="btn btn-primary" v-on:click="downloadPlot">Download Plot</button>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" id="include_zero_checkbox" type="checkbox" v-model="config.plot.include_zero">
-                    <label class="form-check-label" for="include_zero_checkbox">Include zero</label>
+                <div class='p-3 float-right'>
+                    <button class="btn btn-primary btn-sm" v-on:click="shiftSpreadsheets" v-if="spreadsheets.length > 1">Reorder Spreadsheets</button>
                 </div>
-            </form>
-        </div>
+                <form class="form-group">
+                    <div class="form-inline">
+                        <label for="plot_style_select">Plot style</label>
+                        <select id="plot_style_select" value="bars_points_std" class="form-control form-control-sm" v-model="config.plot.style">
+                            <option value="points">Points</option>
+                            <option value="mean">Mean only</option>
+                            <option value="mean_points">Points and Mean</option>
+                            <option value="bars_std">Bars and Standard Deviations</option>
+                            <option value="bars_points_std">Bars, Points, and Standard Deviations</option>
+                            <option value="std">Standard Deviations</option>
+                            <option value="std_points">Standard Deviations and Points</option>
+                            <option value="SEM">SEM</option>
+                            <option value="SEM_points">SEM and Points</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" id="include_zero_checkbox" type="checkbox" v-model="config.plot.include_zero">
+                        <label class="form-check-label" for="include_zero_checkbox">Include zero</label>
+                    </div>
+                </form>
+            </div>
 
-        <div class="col-auto">
-            <div class="card">
-                <div class="card-header">
-                    Statistics
-                    <a id="statsHelp" class="text-primary help-pointer ml-3"
-                       data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                       title="Statistics Help"
-                       data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
-                        <i class="fas fa-info-circle"></i>
-                    </a>
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr v-if="spreadsheets.length > 1">
-                                <th scope="col"></th>
-                                <th scope="col" v-for="name in descriptive_names">{{name}}</th>
-                            </tr>
-                        </thead>
-                        <tbody v-if="spreadsheets !== null" class="stats-box">
-                            <template v-for="(stat, stat_id) in useable_stats">
-                                <tr>
-                                    <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
-                                        {{stat.name}}
-                                        <a class="text-primary help-pointer float-right ml-1"
-                                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                            v-bind:title="stat.name"
-                                            v-bind:data-content="stat.description">
-                                            <i class="fas fa-info-circle"></i>
-                                        </a>
-                                    </td>
+            <div class="col-auto">
+                <div class="card">
+                    <div class="card-header">
+                        Statistics
+                        <a id="statsHelp" class="text-primary help-pointer ml-3"
+                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                           title="Statistics Help"
+                           data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
+                            <i class="fas fa-info-circle"></i>
+                        </a>
+                    </div>
+                    <div class="card-body" id="statistics-list">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr v-if="spreadsheets.length > 1">
+                                    <th scope="col"></th>
+                                    <th scope="col" v-for="name in descriptive_names">{{name}}</th>
+                                </tr>
+                            </thead>
+                            <tbody v-if="spreadsheets !== null" class="stats-box">
+                                <template v-for="(stat, stat_id) in useable_stats">
+                                    <tr>
+                                        <td v-bind:rowspan="typeof stat.value === 'string' ? 1 : 2">
+                                            {{stat.name}}
+                                            <a class="text-primary help-pointer float-right ml-1"
+                                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                                v-bind:title="stat.name"
+                                                v-bind:data-content="stat.description">
+                                                <i class="fas fa-info-circle"></i>
+                                            </a>
+                                        </td>
 
-                                    <template v-if="typeof stat.value === 'string'">
+                                        <template v-if="typeof stat.value === 'string'">
+                                            <template v-if="stat.per_spreadsheet">
+                                                <template v-for="(spreadsheet, i) in spreadsheets">
+                                                    <td v-if="spreadsheet[stat.value] != null"
+                                                        v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
+                                                        v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
+                                                        v-bind:title="String(spreadsheet[stat.value][row_index])">
+                                                        {{util.formatStatsEntry(spreadsheet[stat.value][row_index])}}
+                                                    </td>
+                                                    <td v-else>
+                                                        loading
+                                                    </td>
+                                                </template>
+                                            </template>
+                                            <template v-else>
+                                                <td v-if="stats[stat.value] != null"
+                                                    v-bind:title="String(stats[stat.value][row_index])"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id}"
+                                                    v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
+                                                    v-bind:colspan="spreadsheets.length">
+                                                    {{util.formatStatsEntry(stats[stat.value][row_index])}}
+                                                </td>
+                                                <td v-else>
+                                                    loading
+                                                </td>
+                                            </template>
+                                        </template>
+
+                                        <template v-else>
+                                            <template v-if="stat.per_spreadsheet">
+                                                <template v-for="(spreadsheet, i) in spreadsheets">
+                                                    <td v-if="spreadsheet[stat.value.p] != null"
+                                                        v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
+                                                        v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
+                                                        v-bind:title="String(spreadsheet[stat.value.p][row_index])">
+                                                        p: {{util.formatStatsEntry(spreadsheet[stat.value.p][row_index])}}
+                                                    </td>
+                                                    <td v-else>
+                                                        loading
+                                                    </td>
+                                                </template>
+                                            </template>
+                                            <template v-else>
+                                                <td v-if="stats[stat.value.p] != null"
+                                                    v-bind:title="String(stats[stat.value.p][row_index])"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id}"
+                                                    v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
+                                                    v-bind:colspan="spreadsheets.length">
+                                                    p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
+                                                </td>
+                                                <td v-else v-bind:colspan="spreadsheets.length">
+                                                    loading
+                                                </td>
+                                            </template>
+                                        </template>
+                                    </tr>
+
+                                    <tr v-if="typeof stat.value !== 'string'">
                                         <template v-if="stat.per_spreadsheet">
                                             <template v-for="(spreadsheet, i) in spreadsheets">
-                                                <td v-if="spreadsheet[stat.value] != null"
+                                                <td v-if="spreadsheet[stat.value.q] != null"
                                                     v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
                                                     v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
-                                                    v-bind:title="String(spreadsheet[stat.value][row_index])">
-                                                    {{util.formatStatsEntry(spreadsheet[stat.value][row_index])}}
+                                                    v-bind:title="String(spreadsheet[stat.value.q][row_index])">
+                                                    q: {{util.formatStatsEntry(spreadsheet[stat.value.q][row_index])}}
                                                 </td>
                                                 <td v-else>
                                                     loading
@@ -269,233 +322,183 @@
                                             </template>
                                         </template>
                                         <template v-else>
-                                            <td v-if="stats[stat.value] != null"
-                                                v-bind:title="String(stats[stat.value][row_index])"
+                                            <td v-if="stats[stat.value.q] != null"
+                                                v-bind:title="String(stats[stat.value.q][row_index])"
                                                 v-on:click="config.sort_by = {stat_id:stat_id}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
-                                                {{util.formatStatsEntry(stats[stat.value][row_index])}}
-                                            </td>
-                                            <td v-else>
-                                                loading
-                                            </td>
-                                        </template>
-                                    </template>
-
-                                    <template v-else>
-                                        <template v-if="stat.per_spreadsheet">
-                                            <template v-for="(spreadsheet, i) in spreadsheets">
-                                                <td v-if="spreadsheet[stat.value.p] != null"
-                                                    v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
-                                                    v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
-                                                    v-bind:title="String(spreadsheet[stat.value.p][row_index])">
-                                                    p: {{util.formatStatsEntry(spreadsheet[stat.value.p][row_index])}}
-                                                </td>
-                                                <td v-else>
-                                                    loading
-                                                </td>
-                                            </template>
-                                        </template>
-                                        <template v-else>
-                                            <td v-if="stats[stat.value.p] != null"
-                                                v-bind:title="String(stats[stat.value.p][row_index])"
-                                                v-on:click="config.sort_by = {stat_id:stat_id}"
-                                                v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
-                                                v-bind:colspan="spreadsheets.length">
-                                                p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
+                                                q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
                                             </td>
                                             <td v-else v-bind:colspan="spreadsheets.length">
                                                 loading
                                             </td>
                                         </template>
-                                    </template>
-                                </tr>
-
-                                <tr v-if="typeof stat.value !== 'string'">
-                                    <template v-if="stat.per_spreadsheet">
-                                        <template v-for="(spreadsheet, i) in spreadsheets">
-                                            <td v-if="spreadsheet[stat.value.q] != null"
-                                                v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num: i}"
-                                                v-bind:class="stat === sort_by.stat && i == sort_by.spreadsheet_num ? 'selected-stat-cell' : 'stat-cell'"
-                                                v-bind:title="String(spreadsheet[stat.value.q][row_index])">
-                                                q: {{util.formatStatsEntry(spreadsheet[stat.value.q][row_index])}}
-                                            </td>
-                                            <td v-else>
-                                                loading
-                                            </td>
-                                        </template>
-                                    </template>
-                                    <template v-else>
-                                        <td v-if="stats[stat.value.q] != null"
-                                            v-bind:title="String(stats[stat.value.q][row_index])"
-                                            v-on:click="config.sort_by = {stat_id:stat_id}"
-                                            v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
-                                            v-bind:colspan="spreadsheets.length">
-                                            q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
-                                        </td>
-                                        <td v-else v-bind:colspan="spreadsheets.length">
-                                            loading
-                                        </td>
-                                    </template>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
         </div>
 
-    </div>
-
-    <div class="row">
-        <span class="form-group col-lg-9">
-            Number of selected rows:
-            <input type="number" v-model="num_below"></input>
-        </span>
-    </div>
-
-
-    <div class="row">
-        <div class="col">
-            <div id="coarse_slider" class="coarse-slider"></div>
+        <div class="row">
+            <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
         </div>
-    </div>
 
-    <div class="row">
-        <p style="margin:auto">Less Significant <i class="fas fa-arrow-right"></i></p>
-    </div>
-
-    <div class="col-12">
-        <div class="card">
-
-            <div class="card-header">
-                <ul class="nav nav-tabs" id="toolTabs" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link activate" id="filters-tab" data-toggle="tab" href="#filters" aria-controls="home" aria-selected="True">Filters</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="pathways-tab" data-toggle="tab" href="#pathways" aria-controls="pathways" aria-selected="false">Pathways</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="comparisons-tab" data-toggle="tab" href="#comparisons" aria-controls="comparisons" aria-selected="false">Comparisons</a>
-                    </li>
-                </ul>
+        <div class="row">
+            <div class="col">
+                <div id="coarse_slider" class="coarse-slider"></div>
             </div>
+        </div>
 
-            <div class="tab-content card-body" id="toolTabContent">
-                <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
-                    <div class="col-auto">
-                        <div id="filter_list">
-                            <div v-for="(filter, index) in editing_filters" class="row"
-                                :key="filter.id">
-                                <div class='col form-inline filter_item'>
-                                    <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
-                                         v-bind:aria-label="'Lower bound for filter ' + index"
-                                         v-model="filter.lower_bound"
-                                         type="number" step="any">
-                                    </input>
+        <div class="row">
+            <span class="form-group col-lg-5">
+                Number of selected rows:
+                <input type="number" v-model.number="num_below"></input>
+            </span>
+            <span class="form-group col-lg-5">
+                Cutoff:
+                <input v-model.lazy.number="cutoff"></input>
+            </span>
+        </div>
 
-                                    &le;
+        <div class="col-12">
+            <div class="card">
 
-                                    <select class="form-control form-control-sm m-1 filter_value_selector"
-                                            v-bind:aria-label="'Filter selector for filter ' + index"
-                                            v-model="filter.variable">
-                                        <option v-for="filter_data in filter_data_list"
-                                                v-bind:value="filter_data.key">
-                                                {{filter_data.name}}
-                                        </option>
-                                    </select>
+                <div class="card-header">
+                    <ul class="nav nav-tabs" id="toolTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link activate" id="filters-tab" data-toggle="tab" href="#filters" aria-controls="home" aria-selected="True">Filters</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pathways-tab" data-toggle="tab" href="#pathways" aria-controls="pathways" aria-selected="false">Pathways</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="comparisons-tab" data-toggle="tab" href="#comparisons" aria-controls="comparisons" aria-selected="false">Comparisons</a>
+                        </li>
+                    </ul>
+                </div>
 
-                                    &le;
+                <div class="tab-content card-body" id="toolTabContent">
+                    <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
+                        <div class="col-auto">
+                            <div id="filter_list">
+                                <div v-for="(filter, index) in editing_filters" class="row"
+                                    :key="filter.id">
+                                    <div class='col form-inline filter_item'>
+                                        <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
+                                             v-bind:aria-label="'Lower bound for filter ' + index"
+                                             v-model="filter.lower_bound"
+                                             type="number" step="any">
+                                        </input>
 
-                                    <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
-                                         v-bind:aria-label="'Upper bound for filter ' + index"
-                                         v-model="filter.upper_bound"
-                                         type="number" step="any">
-                                    </input>
+                                        &le;
 
-                                    <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
-                                            v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
-                                        <span class="far fa-minus-square"> </span>
-                                    </button>
+                                        <select class="form-control form-control-sm m-1 filter_value_selector"
+                                                v-bind:aria-label="'Filter selector for filter ' + index"
+                                                v-model="filter.variable">
+                                            <option v-for="filter_data in filter_data_list"
+                                                    v-bind:value="filter_data.key">
+                                                    {{filter_data.name}}
+                                            </option>
+                                        </select>
+
+                                        &le;
+
+                                        <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
+                                             v-bind:aria-label="'Upper bound for filter ' + index"
+                                             v-model="filter.upper_bound"
+                                             type="number" step="any">
+                                        </input>
+
+                                        <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
+                                                v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
+                                            <span class="far fa-minus-square"> </span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
-                        <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
-                            v-on:click="addFilter">
-                            <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                        </button>
-                        <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
-                            v-on:click="resetFilters">
-                            <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
-                        </button>
-                        <a id="filtersHelp" class="text-primary help-pointer ml-3"
-                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                           title="Filter Help"
-                           data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
-                            <i class="fas fa-info-circle"></i>
-                        </a>
-                        <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
-                    </div>
-                </div>
-
-                <div class="tab-pane fade" id="pathways" role="tabpanel" aria-labelledby="pathways-tab">
-                    <pathway-analysis
-                        v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
-                        v-bind:background="background_ids"
-                        >
-                    </pathway-analysis>
-                </div>
-
-
-                <div class="tab-pane fade" id="comparisons" role="tabpanel" aria-labelledby="comparison-tab">
-                        <div class="form-group">
-                            <div>
-                                <label for="first_compare_selector">
-                                First group for comparison:
-                                </label>
-                                <select id="first_compare_selector" v-model="comparison_box.first_group">
-                                    <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                        {{ group.name }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="second_compare_selector">
-                                Second group for comparison:
-                                </label>
-                                <select id="second_compare_selector" v-model="comparison_box.second_group">
-                                    <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
-                                        {{ group.name }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <button type="button" class="btn btn-primary" v-on:click="createComparison">
-                                Create Comparison
+                            <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
+                            <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
+                                v-on:click="addFilter">
+                                <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
                             </button>
-                            <a id="comapreHelp" class="text-primary help-pointer ml-3"
+                            <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
+                                v-on:click="resetFilters">
+                                <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                            </button>
+                            <a id="filtersHelp" class="text-primary help-pointer ml-3"
                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                               title="Compare Help"
-                               data-content="Create comparisons of specific conditions. Adds a log Fold Change statistic to statistic panel sorting by fold change between the two selected conditions. A psuedo-count is added to both values to prevent division by zero and to give more accurate estimates of effect sizes.">
+                               title="Filter Help"
+                               data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
                                 <i class="fas fa-info-circle"></i>
                             </a>
-
-                            <template v-for="(comparison, i) in comparisons">
-                                <h6>{{comparison.name}}</h6>
-                                    <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
-                                    <input v-bind:id="'comparison_pseudo_count_input'+i"
-                                           type="number"
-                                            v-model.lazy.number="comparison.pseudo_count">
-                                    </input>
-                            </template>
+                            <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
                         </div>
                     </div>
-                </div>
 
+                    <div class="tab-pane fade" id="pathways" role="tabpanel" aria-labelledby="pathways-tab">
+                        <pathway-analysis
+                            v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
+                            v-bind:background="background_ids"
+                            >
+                        </pathway-analysis>
+                    </div>
+
+
+                    <div class="tab-pane fade" id="comparisons" role="tabpanel" aria-labelledby="comparison-tab">
+                            <div class="form-group">
+                                <div>
+                                    <label for="first_compare_selector">
+                                    First group for comparison:
+                                    </label>
+                                    <select id="first_compare_selector" v-model="comparison_box.first_group">
+                                        <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                            {{ group.name }}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="second_compare_selector">
+                                    Second group for comparison:
+                                    </label>
+                                    <select id="second_compare_selector" v-model="comparison_box.second_group">
+                                        <option v-for="(group, i) in groups" v-bind:value="i" v-bind:key="group.name">
+                                            {{ group.name }}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <button type="button" class="btn btn-primary" v-on:click="createComparison">
+                                    Create Comparison
+                                </button>
+                                <a id="comapreHelp" class="text-primary help-pointer ml-3"
+                                   data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                   title="Compare Help"
+                                   data-content="Create comparisons of specific conditions. Adds a log Fold Change statistic to statistic panel sorting by fold change between the two selected conditions. A psuedo-count is added to both values to prevent division by zero and to give more accurate estimates of effect sizes.">
+                                    <i class="fas fa-info-circle"></i>
+                                </a>
+
+                                <template v-for="(comparison, i) in comparisons">
+                                    <h6>{{comparison.name}}</h6>
+                                        <label v-bind:for="'comparison_pseudo_count_input'+i">Pseudo Count:</label>
+                                        <input v-bind:id="'comparison_pseudo_count_input'+i"
+                                               type="number"
+                                                v-model.lazy.number="comparison.pseudo_count">
+                                        </input>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
+        </div>
+        <div v-show="spreadsheets.length == 0">
+            <p> Loading... </p>
         </div>
 
         <!--
@@ -594,6 +597,7 @@
     let filter_data_list_base = [
         {values: function () {
                          // Grand maximum across both datasets within each row
+                         if (app.spreadsheets.length === 0) { return []; }
                          let maxes = app.spreadsheets.map(function (spreadsheet) {
                                 return maximums(spreadsheet.data);
                          });
@@ -607,6 +611,7 @@
         {values: function () {
                     // Grand means across both datasets within each row
                     // skipping over NaN/null values
+                     if (app.spreadsheets.length === 0) { return []; }
                     let sums_ = app.spreadsheets.map(function(spreadsheet) {
                         let summed_rows = sums(spreadsheet.data);
                         return summed_rows;
@@ -629,6 +634,7 @@
                 independent: true,
                 key: "mean_value"},
         {values: function () {
+                 if (app.spreadsheets.length === 0) { return []; }
                 let missing = app.spreadsheets.map( function(spreadsheet) {
                      return numNaNTimepoints(spreadsheet.data, spreadsheet.x_values);
                 });
@@ -643,13 +649,36 @@
         el: "#vue-app",
         data: {
             editing_filters: [],
+            spreadsheets_by_id: {}, // spreadsheets by ID
+            config: {
+                spreadsheet_ids: [],
+                original_spreadsheet_ids: [],
+                selected_row: 0,
+                sort_by: {stat_id: 'ANOVA', spreadsheet_num: 0},
+                filters: [],
+                hide_filtered_rows: false,
+                plot: {
+                    style: "bars_points_std",
+                    include_zero: false,
+                },
+            },
+
 
             search_value: '',
 
             stats_table: stats_table,
+
             stats_vars_order: ['p', 'q', 'AFC'], // Order in which to display stats sub-variables
 
             stats: {
+            },
+
+            download: {
+                include_data: true,
+                just_selected_rows: false,
+                drop_filtered_rows: false,
+                suffixes: [],
+                stats: {},
             },
 
             labels: [],
@@ -658,19 +687,6 @@
 
             plot: {
                 first_render: true,
-            },
-
-            config: {
-                plot: {
-                    style: "bars_points_std",
-                    include_zero: false,
-                },
-                spreadsheet_ids: [],
-                original_spreadsheet_ids: [],
-                selected_row: 0,
-                sort_by: {stat_id: 'ANOVA', spreadsheet_num: 0},
-                filters: [],
-                hide_filtered_rows: false,
             },
 
             share_token: '', // If from a share, the token used
@@ -744,9 +760,10 @@
                         x: plot_x_values, y: raw_y_values,
                         mode: 'markers',
                         marker: marker_settings,
+                        name: vm.descriptive_names[idx],
                         type: 'scatter',
-                        marker: {color: spreadsheet_color},
-                        line: {color: spreadsheet_color},
+                        'marker': {color: spreadsheet_color},
+                        'line': {color: spreadsheet_color},
                         showlegend: false,
                         name: ' ',
                     };
@@ -811,10 +828,10 @@
                             x: plot_x_values,
                             y: raw_y_values,
                             showlegend: false,
+                            text: spreadsheet.column_headers,
                             type: 'scatter',
                             mode: 'markers',
                             marker: {color: spreadsheet_color},
-                            text: spreadsheet.column_headers,
                         });
                     } else if (plot_style === "SEM") {
                         trace.mode = "lines";
@@ -829,11 +846,11 @@
                         traces.push({
                             x: plot_x_values,
                             y: raw_y_values,
+                            text: spreadsheet.column_headers,
                             type: 'scatter',
                             showlegend: false,
                             mode: 'markers',
                             marker: {color: spreadsheet_color},
-                            text: spreadsheet.column_headers,
                         });
                     } else if (plot_style === "bars_points_std") {
                         trace.text = spreadsheet.column_headers;
@@ -900,7 +917,7 @@
             },
 
             searchRows: function() {
-                let search_value = this.search_value.toLowerCase();
+                let search_value = this.search_value.toLowerCase().trim();
 
                 // Pull out row indexes matching our search_value
                 let matching_rows = app.labels.map( function(unused, index) {
@@ -937,11 +954,10 @@
 
             onShare: function() {
                 // Open Modal to share the spreadsheet
-                let spreadsheet_id = this.spreadsheets[0].spreadsheet_id;
                 let vm = this;
                 $.ajax({
                     url: "{{url_for('spreadsheets.share')}}",
-                    data: JSON.stringify({'spreadsheet_ids': [spreadsheet_id], 'row_index': vm.config.selected_row}),
+                    data: JSON.stringify({'spreadsheet_ids': vm.config.original_spreadsheet_ids, 'config': vm.config}),
                     dataType: "json",
                     contentType: "application/json",
                     type: 'POST',
@@ -958,12 +974,116 @@
                 });
             },
 
+            triggerDownloadPopup: function() {
+                // Fill in default suffix values if they don't yet have any
+                if (this.download.suffixes.length === 0) {
+                    this.download.suffixes = this.descriptive_names;
+                }
+                $("#download_popup").modal();
+            },
+
+            downloadSpreadsheet: function() {
+                let vm = this;
+
+                let download_rows = null;
+                if (vm.download.just_selected_rows) {
+                    download_rows = vm.sort_order.slice(0,vm.config.selected_row+1);
+                } else {
+                    // All rows 0,1,2,...
+                    download_rows = app.labels.map(function(x,i) { return i;} );
+                }
+
+                if (vm.download.drop_filtered_rows) {
+                    download_rows = download_rows.filter(function(x) {
+                        return !vm.filtered[x];
+                    });
+                }
+
+                let download_columns = [];
+                let download_compare_columns = [];
+                // Gather which statistic columns have been selected
+                for (let stat_name in vm.stats_table) {
+                    if (vm.download.stats[stat_name] === true) {
+                        let stat = vm.stats_table[stat_name];
+                        let column_list = download_columns;
+                        if ((stat.num_spreadsheets === "multi") &&
+                            (vm.spreadsheets.length > 1)) {
+                            column_list = download_compare_columns;
+                        }
+
+                        if (typeof stat.value === 'string') {
+                            // Name of stat
+                            column_list.push(stat.value)
+                        } else {
+                            // Object containing p,q
+                            column_list.push(stat.value.p, stat.value.q);
+                        }
+
+                        if (stat.sort_value !== undefined) {
+                            column_list.push(stat.sort_value)
+                        }
+                        if (stat.secondary_sort_value !== undefined) {
+                            column_list.push(stat.secondary_sort_value)
+                        }
+                    }
+                }
+                // Remove any duplicates (like sort_value == value)
+                download_columns = Array.from(new Set(download_columns));
+                download_compare_columns = Array.from(new Set(download_compare_columns));
+
+                // Order the suffixes correctly (in case spreadsheets have been rearranged)
+                let suffixes = vm.config.original_spreadsheet_ids.map(function(id) {
+                    let new_index = vm.config.spreadsheet_ids.indexOf(id);
+                    return vm.download.suffixes[new_index];
+                });
+
+                $.ajax({
+                    url: "/spreadsheets/download",
+                    data: JSON.stringify({
+                        'spreadsheet_ids': vm.config.original_spreadsheet_ids,
+                        'share_token': share_token,
+                        'config': {
+                            rows: download_rows,
+                            columns: download_columns,
+                            compare_columns: download_compare_columns,
+                            suffixes: suffixes,
+                            include_data: vm.download.include_data,
+                        },
+                    }),
+                    dataType:"text",
+                    contentType: "application/json",
+                    type: "POST",
+                    success: function (response) {
+                        // Create a URL for it
+                        let blob = new Blob([response]);
+                        let url = URL.createObjectURL(blob);
+
+                        // Trigger downloading of the URL by making an <a href ...> to it and clicking it
+                        let anchor = document.createElement("a");
+                        anchor.href = url;
+                        anchor.download = "spreadsheet.txt";
+                        document.body.appendChild(anchor);
+                        anchor.click();
+                        document.body.removeChild(anchor);
+
+                        // Cleanup after 5mins
+                        setTimeout(function () { URL.revokeObjectURL(url) }, 5*60*1000);
+                    },
+                    error: function(request) {
+                        error_message = $.parseJSON(request.responseText).err;
+                        nitecap_error_message.text(error_message);
+                        nitecap_error.modal();
+                    },
+                });
+            },
+
             shiftSpreadsheets: function () {
                 // Shifts through the spreadsheets in order
-                let spreadsheets = this.spreadsheets;
+                let spreadsheets = this.config.spreadsheet_ids;
                 let first = spreadsheets[0];
                 let tail = spreadsheets.slice(1);
-                this.spreadsheets = tail.concat(first);
+                spreadsheets = tail.concat(first);
+                this.config.spreadsheet_ids = spreadsheets;
             },
 
             redrawFCPlot: function() {
@@ -1187,23 +1307,32 @@
                 // So if secondary sort value is null then we will sort the value to the end as if the main value were null
                 // This solves the problem where q-values are null and being sorted to the front of the list particulary
                 // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
+
+                // display_value is the value array that should be monotonic in the sort order
+                // which are convenient for the user to look at.
+                // In particular, Nitecap sorts by the nitecap statistic but users want to see the q-value
+                // and other methods sort by p-value but users want q-value
                 let vm = this;
-                let value = null;
-                let secondary_value = null;
+                let variable = null;
+                let secondary_variable = null;
+                let display_variable = null;
 
                 if (this.sort_by.stat.sort_value !== undefined) {
-                    value = this.sort_by.stat.sort_value;
+                    variable = this.sort_by.stat.sort_value;
                     if (this.sort_by.stat.secondary_sort_value !== undefined) {
-                        secondary_value = this.sort_by.stat.secondary_sort_value;
+                        secondary_variable = this.sort_by.stat.secondary_sort_value;
                     } else {
-                        secondary_value = value;
+                        secondary_variable = variable;
                     }
+                    display_variable = secondary_variable;
                 } else if (typeof this.sort_by.stat.value === 'string') {
-                    value = this.sort_by.stat.value;
-                    secondary_value = value;
+                    variable = this.sort_by.stat.value;
+                    secondary_variable = variable;
+                    display_variable = variable;
                 } else {
-                    value = this.sort_by.stat.value.p;
-                    secondary_value = this.sort_by.stat.value.q;
+                    variable = this.sort_by.stat.value.p;
+                    secondary_variable = this.sort_by.stat.value.q;
+                    display_variable = secondary_variable;
                 }
 
                 let sort_direction = 1;
@@ -1211,15 +1340,27 @@
                     sort_direction = this.sort_by.stat.sort_direction;
                 }
 
-                if (vm.config.sort_by.spreadsheet_num !== undefined) {
+                let value = null;
+                let secondary_value = null;
+                let display_value = null;
+                if (vm.sort_by.spreadsheet_num !== undefined) {
                     if (vm.spreadsheets.length > 0) {
-                        value = vm.spreadsheets[vm.config.sort_by.spreadsheet_num][value];
-                        secondary_value = vm.spreadsheets[vm.config.sort_by.spreadsheet_num][secondary_value];
+                        value = vm.spreadsheets[vm.sort_by.spreadsheet_num][variable];
+                        secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_variable];
+                        display_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][display_variable];
                     }
                 } else {
-                    value = vm.stats[value];
-                    secondary_value = vm.stats[secondary_value];
+                    value = vm.stats[variable];
+                    secondary_value = vm.stats[secondary_variable];
+                    display_value = vm.stats[display_variable];
                 }
+
+                if (display_value !== null && vm.spreadsheets.length > 0) {
+                    display_value = display_value.map( function(x,i) {
+                        return secondary_value[i] && display_value[i];
+                    });
+                }
+
 
                 let sorter = function (i,j) {
                     let a = secondary_value[i] && value[i];
@@ -1229,14 +1370,22 @@
                                    i, j);
                 };
 
-                return sorter;
+                if ((value === null) || (secondary_value === null)) {
+                    // Don't sort, the values we are sorting by haven't loaded yet
+                    // display_value will just be the index
+                    sorter = function(i,j) { return i - j; };
+                    display_value = app.labels.map(function(x,i) {return i+1;});
+                }
+
+                return {"func": sorter, "value": value, "display_value":display_value, "sort_direction": sort_direction};
             },
 
             sort_order: function () {
                 let vm = this;
+                if (this.labels.length == 0) { return []; } // No spreadsheets yet
 
                 let sort_order =  this.labels.map( function(x,i) {return i;} );
-                sort_order = sort_order.sort(this.sort_function);
+                sort_order = sort_order.sort(this.sort_function.func);
 
                 if (this.config.hide_filtered_rows) {
                     // Move filtered items from the sort_order to the back of the list  to hide them
@@ -1248,19 +1397,20 @@
                 return sort_order;
             },
 
-            label_qs: function () {
+            label_q: function () {
                 let value = this.sort_by.stat.value;
 
                 if (typeof value === 'string') {
+                    // No inherent q-value for this sort value
+                    // drop the "Q:" label
                     return null;
                 }
 
-                if (this.config.sort_by.spreadsheet_num !== undefined) {
-                    let sp = this.spreadsheets[this.config.sort_by.spreadsheet_num];
+                if (this.sort_by.spreadsheet_num !== undefined) {
+                    let sp = this.spreadsheets[this.sort_by.spreadsheet_num];
                     let vq = value.q;
                     let vals = sp ? sp[vq]: [];
                     return vals;
-                    return this.spreadsheets[this.config.sort_by.spreadsheet_num][value.q];
                 } else {
                     return this.stats[value.q];
                 }
@@ -1269,6 +1419,7 @@
             filtered: function () {
                 let vm = this;
                 let filtered_out = this.labels.map( function (x) {return false;} );
+                if (filtered_out.length == 0){  return filtered_out; }
 
                 // Apply all filters
                 this.config.filters.forEach(function(filter) {
@@ -1282,6 +1433,8 @@
 
                     let idx = vm.filter_data_list.map(function(filter) {return filter.key;} ).indexOf(filter_value);
                     let values = vm.filter_data_list[idx].values();
+                    if (values === null || values === undefined) { return; } // Haven't loaded values yet, can't filter by them
+
                     filtered_out = filtered_out.map( function (x,i) {
                         return x || (values[i] < lower_bound) || (values[i] > upper_bound);
                     });
@@ -1315,6 +1468,12 @@
                 } );
             },
 
+            background_ids: function() {
+                let vm = this;
+                if (vm.spreadsheets.length == 0) { return []; }
+                return vm.spreadsheets[0].labels.filter( function(label, i) {return !vm.spreadsheets[0].filtered[i];});
+            },
+
             useable_stats: function () {
                 // Only the stats from stats_table that apply to this context
                 // i.e. the ones we have enough spreadsheets for
@@ -1338,7 +1497,8 @@
 
                 // Make a filter for each stat
                 let stat_filters = [];
-                vm.useable_stats.forEach( function (stat) {
+                for (key in vm.useable_stats) {
+                    let stat = vm.useable_stats[key];
                     if (stat.per_spreadsheet) {
                         let just_one = vm.spreadsheets.length === 1;
                         vm.spreadsheets.forEach( function(spreadsheet, idx) {
@@ -1393,21 +1553,12 @@
                         }
                     }
 
-                });
+                }
 
                 // Return all filters, including the 'base' ones and the ones derived from our statistics
                 return filter_data_list_base.concat(stat_filters);
             },
 
-            spreadsheet_ids: function() {
-                return this.spreadsheets.map( function(spreadsheet) {return spreadsheet.spreadsheet_id;});
-            },
-
-            background_ids: function() {
-                let vm = this;
-                if (vm.spreadsheets.length == 0) { return []; }
-                return vm.spreadsheets[0].labels.filter( function(label, i) {return !vm.spreadsheets[0].filtered[i];});
-            },
 
             descriptive_names: function() {
                 // Descriptive names for spreadsheets
@@ -1455,6 +1606,24 @@
                 });
                 return names;
             },
+
+            cutoff: {
+                get: function() {
+                    if (this.spreadsheets.length == 0) { return 0; }
+                    return this.sort_function.display_value[this.sort_order[this.config.selected_row]];
+                },
+                set: function(value) {
+                    let app = this;
+                    let sort_values = app.sort_function.display_value;
+                    let i = 0;
+                    for(; i < sort_values.length; i++) {
+                        let v = sort_values[app.sort_order[i]];
+                        if ((app.sort_function.sort_direction * v) > (app.sort_function.sort_direction * value)) {
+                            break;
+                        }
+                    }
+                    app.config.selected_row = Math.max(i-1, 0);
+                },
 
             possible_assignments: function() {
                 // All possible group combinations from the categories
