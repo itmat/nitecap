@@ -17,10 +17,9 @@ PASSWORD_RESET_TOKEN_EXPIRED = "Your reset request is either invalid or expired.
 ALREADY_LOGGED_IN_MESSAGE = "You are already logged in.  Log out first to resent password."
 ALREADY_ACTIVATED_MESSAGE = "You are already activated.  If you are still unable to log in, please communicate with us."
 CONFIRMATION_SENT_MESSAGE = "Your confirmation email has been sent.  Click on the link it contains to activate your" \
-                            " account."
+                            " account. NOTE: please check your spam box, as our emails often end up there."
 CONFIRMATION_TOKEN_EXPIRED = "Your confirmation request is either invalid or expired.  Please reconfirm by attempting" \
                              "to log in.  You will be re-directed to the resend confirmation page."
-
 
 @user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
@@ -37,10 +36,19 @@ def register_user():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
+        test_question = request.form['test_question']
         if not email:
             errors.append("Email is required.")
         if not password:
             errors.append("Password is required.")
+        if test_question.strip() != "24":
+            errors.append("Incorrect answer to the test question. Please retry. (Hint: it's 24.)")
+
+        if errors:
+            # Display errors, can't find username
+            return render_template('users/registration_form.html',
+                                   username=username, email=email,
+                                   errors=errors)
 
         user, errors, status = User.register_user(username, email, password)
 
@@ -55,7 +63,8 @@ def register_user():
         # Invited user to check email or resend the confirmation email.
         if status == 'unconfirmed':
             flash("You are already registered but have not activated.  Activate "
-                  "your account by clicking on the email confirmation link sent to you.")
+                  "your account by clicking on the email confirmation link sent to you."
+                  "Note: Please check your spam box if you cannot find the confirmation link.")
             return redirect(url_for('.resend_confirmation'))
 
         # User already registered and activated.  Send user to login page.
