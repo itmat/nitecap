@@ -125,8 +125,11 @@ def send_feedback():
 @app.errorhandler(413)
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
 def file_too_large(e):
-    errors = ["The file you are attempting to upload is too large for the site to accommodate."]
-    return render_template('spreadsheets/upload_file.html',errors=errors), 413
+    app.logger.warning("Too large a file was attempted to be uploaded")
+    app.logger.warning(e)
+    max_size = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
+    errors = ["Uploaded file was too large. Maximum size is {max_size} MB"]
+    return render_template('spreadsheets/upload_file.html', errors=errors), 413
 
 
 from models.users.views import user_blueprint
