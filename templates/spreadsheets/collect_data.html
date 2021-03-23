@@ -20,9 +20,12 @@
         let nitecap_error = $("#error-modal");
         let nitecap_error_message = $("#error-modal-message");
 
-        // Set up scrollbars for top and bottom
-        $('.topScroll > div').width(nitecap_table.width());
-        $('.bottomScroll > div').width(nitecap_table.width());
+
+        function setScrollbars() {
+            // Set up scrollbars for top and bottom
+            $('.topScroll > div').width(nitecap_table.width());
+            $('.bottomScroll > div').width(nitecap_table.width());
+        }
 
         $(".topScroll").scroll( function() {
             $(".bottomScroll").scrollLeft($(".topScroll").scrollLeft());
@@ -45,6 +48,7 @@
             let guessed_labels = guessColumnLabels(columns, days.val(), timepoints.val(), defaults);
             let options = getLabelOptions(days.val(), timepoints.val());
 
+            setScrollbars();
             populate_selects(options, guessed_labels);
         }
 
@@ -135,6 +139,8 @@
                 });
             }
         });
+
+        setScrollbars();
     });
 </script>
 
