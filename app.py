@@ -58,6 +58,7 @@ logger.addHandler(file_handler)
 def handle_exception(e):
     app.logger.error("Exception received:")
     app.logger.error(e)
+    raise e
 
 # Check python version and paths:
 logger.debug("Python version")

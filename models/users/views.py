@@ -21,7 +21,6 @@ CONFIRMATION_SENT_MESSAGE = "Your confirmation email has been sent.  Click on th
 CONFIRMATION_TOKEN_EXPIRED = "Your confirmation request is either invalid or expired.  Please reconfirm by attempting" \
                              "to log in.  You will be re-directed to the resend confirmation page."
 
-
 @user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
     """

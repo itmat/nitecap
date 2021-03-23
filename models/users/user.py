@@ -20,6 +20,11 @@ PASSWORD_RESET_EXPIRATION_DELTA = 30 * 60
 PASSWORD_CHAR_SET = string.ascii_letters + string.digits + string.punctuation
 PASSWORD_LENGTH = 12
 
+# Due to spammers entering stuff in our users we blacklist some contents in usernames
+BLACKLISTED_USERNAME_CONTENTS = ["https:", "$"]
+BLACKLISTED_EMAIL_CONTENTS = ["https:", "$"]
+
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -92,9 +97,16 @@ class User(db.Model):
                 errors.append(f"The username, {username}, you provided is already registered.")
                 user = None
 
+            # Check if the username or email contain any blacklisted sub-strings
+            # and reject if they do (a weak spam-protection)
+            username_bad = any([(marker in username) for marker in BLACKLISTED_USERNAME_CONTENTS ])
+            email_bad = any([(marker in email) for marker in BLACKLISTED_EMAIL_CONTENTS ])
+            if username_bad or email_bad:
+                errors.append(f"Invalid input.")
+
             # Otherwise encrpyt the password, instantiate the user and save the user to the database.  Then create
             # confirmation email and deliver it.
-            else:
+            if len(errors) == 0:
                 password = encrypt_password(password)
                 # Flag this user as NOT a visitor
                 user = User(username, email, password, False)
