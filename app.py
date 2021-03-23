@@ -6,6 +6,7 @@ from email.message import EmailMessage
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+import werkzeug
 # Uncomment to allow CORS
 #from flask_cors import CORS
 
@@ -122,9 +123,10 @@ def send_feedback():
 
 
 @app.errorhandler(413)
+@app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
 def file_too_large(e):
-    messages = ["The file you are attempting to upload is too large for the site to accommodate."]
-    return render_template('spreadsheets/upload_file.html', messages=messages), 413
+    errors = ["The file you are attempting to upload is too large for the site to accommodate."]
+    return render_template('spreadsheets/upload_file.html',errors=errors), 413
 
 
 from models.users.views import user_blueprint
