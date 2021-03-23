@@ -39,9 +39,10 @@
 
         let days = $("#days");
         let timepoints = $("#timepoints");
+        let defaults = columns.map( function (x) { return "Ignore"; } );
 
         function updateLabels() {
-            let guessed_labels = guessColumnLabels(columns, days.val(), timepoints.val());
+            let guessed_labels = guessColumnLabels(columns, days.val(), timepoints.val(), defaults);
             let options = getLabelOptions(days.val(), timepoints.val());
 
             populate_selects(options, guessed_labels);
@@ -174,13 +175,13 @@
                value="{{spreadsheet.descriptive_name or ''}}" style="width:40rem" maxlength="250" />
     </div>
     <div class="form-group required">
-        <label for="days">Enter Number of Days of Data:</label>
-        <input type="number" id="days" name="days" class="form-control" style="width:15rem"
+        <label for="days">Number of Days of Data:</label>
+        <input type="number" id="days" name="days" class="form-control" style="width:10rem"
                value="{{spreadsheet.days or ''}}" required />
     </div>
     <div class="form-group required">
-        <label for="timepoints">Enter the Number of Timepoints Per Day:</label>
-        <input type="number" id="timepoints" name="timepoints" class="form-control" style="width:15rem"
+        <label for="timepoints">Number of Timepoints Per Day:</label>
+        <input type="number" id="timepoints" name="timepoints" class="form-control" style="width:10rem"
                value="{{spreadsheet.timepoints or ''}}" required />
     </div>
     <div class="form-group">
