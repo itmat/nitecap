@@ -128,7 +128,7 @@ def file_too_large(e):
     app.logger.warning("Too large a file was attempted to be uploaded")
     app.logger.warning(e)
     max_size = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
-    errors = ["Uploaded file was too large. Maximum size is {max_size} MB"]
+    errors = [f"Uploaded file was too large. Maximum size is {max_size} MB"]
     return render_template('spreadsheets/upload_file.html', errors=errors), 413
 
 
