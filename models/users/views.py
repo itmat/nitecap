@@ -36,10 +36,19 @@ def register_user():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
+        test_question = request.form['test_question']
         if not email:
             errors.append("Email is required.")
         if not password:
             errors.append("Password is required.")
+        if test_question.strip() != "24":
+            errors.append("Incorrect answer to the test question. Please retry. (Hint: it's 24.)")
+
+        if errors:
+            # Display errors, can't find username
+            return render_template('users/registration_form.html',
+                                   username=username, email=email,
+                                   errors=errors)
 
         user, errors, status = User.register_user(username, email, password)
 
