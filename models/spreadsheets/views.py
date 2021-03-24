@@ -16,6 +16,7 @@ from flask import Blueprint, request, session, url_for, redirect, render_templat
 from flask import current_app
 import simplejson
 from sklearn.decomposition import PCA
+from itsdangerous import JSONWebSignatureSerializer as Serializer
 
 import constants
 import nitecap
@@ -738,14 +739,34 @@ def consume_share(token):
     :param token: the share token given to the receiving user
     """
     errors = []
-    try:
-        share = Share.find_by_id(token)
-    except Exception as e:
-        current_app.logger.error(f"Invalid share URL identified with token {token}");
-        current_app.logger.error(e)
-        errors.append("The URL you received does not work.  It may have been mangled in transit.  Please request "
-                      "another share")
-        return render_template('spreadsheets/upload_file.html', error=errors)
+    share = Share.find_by_id(token)
+
+    if share is None:
+        # Try the old share token
+        try:
+            s = Serializer(os.environ['OLD_SECRET_KEY'])
+            token_value = s.loads(token)
+            user_id = token_value['user_id']
+            spreadsheet_ids = token_value['spreadsheet_ids']
+            valid = True
+        except:
+            valid = False
+
+        if valid:
+            current_app.logger.error(f"User attempted to access an old share token for spreadsheets {spreadsheet_ids} and user_id {user_id}")
+            spreadsheet_ids_str = ','.join(spreadsheet_ids)
+            url = url_for(".show_spreadsheet", spreadsheet_id=spreadsheet_ids_str, _external=True)
+            errors.append("The URL you received no longer works as a share due to system upgrades. "
+                "A permanent share can be obtained from the original spreadsheet's uploader. "
+                "If you are the owner of these spreadsheets, you can generate a new share link at "
+                f'{url}')
+        else:
+            current_app.logger.error(f"Invalid share URL identified with token {token}");
+            errors.append("The URL you received does not work. It may have been mangled in transit. "
+                      "Please request another share")
+        current_app.logger.error(errors)
+        return render_template('spreadsheets/upload_file.html', errors=errors)
+
     sharing_user = User.find_by_id(share.user_id)
     spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
     config = json.loads(share.config_json)
