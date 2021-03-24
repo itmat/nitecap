@@ -405,43 +405,10 @@ class User(db.Model):
         """
         return self.visitor
 
-    def get_share_token(self, spreadsheet_ids, config):
-        """
-        Uses a serializer and the website secret key to encrypt the id of the spreadsheet to be shared and the id of
-        the users doing the sharing into a token.  The token has no expiration.  So the user with whom the token is
-        shared may use it repeatedly.
-        :param spreadsheet_ids: the ids of the spreadsheets to share
-        :param config: the spreadsheet config JSON to share
-        :return: token to pass along to the receiving user
-        """
-        s = Serializer(os.environ['SECRET_KEY'])
-        token = {'user_id': self.id, 'spreadsheet_ids': spreadsheet_ids, 'config': config}
-        return s.dumps(token).decode('utf-8')
-
-    @staticmethod
-    def verify_share_token(token):
-        """
-        Determines the validity of a share token.  The token is decrypted and the user id verified as a user having
-        a site login.  The sharing user object and the spreadsheet id are returned
-        :param token: The share token to be validated
-        :return: A tuple containing the sharing user object, the id of the spreadsheet to be shared and the row
-        index (defaults to 0).
-        """
-        s = Serializer(os.environ['SECRET_KEY'])
-        token_value = s.loads(token)
-        try:
-            user_id = token_value['user_id']
-            user = User.find_by_id(user_id)
-            if not user:
-                return None
-            return user, token_value['spreadsheet_ids'], token_value['config']
-        except:
-            return None
-
     def delete(self):
         """
         Removes this user from the database and discards the directory associated with this user, if one exists.  A
-        user may have an account but no directory, in the case where s/he has never uploaded any data or consumed a
+        user may have an account but no directory, in the case where s/he has never uploaded any data or copied a
         share.  We also remove the user directory before removing the user since sqlite3 auto-increments to obtain ids
         and could potentially re-use this one if it is the last id generated.
         """
