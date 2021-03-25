@@ -22,6 +22,7 @@ Vue.component("heatmap-plot", {
         labels: Array,
         timepoint_labels: Array,
         day_and_time_labels: Array,
+        sort_by_spreadsheet: Number,
     },
 
     methods: {
@@ -30,10 +31,11 @@ Vue.component("heatmap-plot", {
 
             vm.cutoff = vm.selected_rows.length;
 
-            let spreadsheet_to_sort_by = vm.config.sort_by.spreadsheet_num || 0;
-
             let phase_sorted_order = vm.selected_rows.sort( function (i,j) {
-                return compare(vm.spreadsheets[spreadsheet_to_sort_by].peak_times[i], vm.spreadsheets[0].peak_times[j], i,j);
+                return compare(
+                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_times[i],
+                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_times[j],
+                            i,j);
             } );
 
             let zScoreData = vm.spreadsheets.map(function(spreadsheet) {
