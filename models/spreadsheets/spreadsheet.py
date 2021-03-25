@@ -468,7 +468,7 @@ class Spreadsheet(db.Model):
                 self.df[meta2d_cols] = float("NaN")
             else:
                 # Process the data for JTK
-                df = self.get_raw_data()
+                df = self.get_raw_data().copy()
 
                 # Check missing values - JTK will crash if there are too few timepoints
                 # so we will overwrite any such genes with all 0s, just to make it run
