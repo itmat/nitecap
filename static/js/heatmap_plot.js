@@ -159,9 +159,9 @@ Vue.component("heatmap-plot", {
 
             let heatmap_layout = {
                 height: 700,
-                width: 300*vm.spreadsheets.length+600,
+                width: 300*vm.spreadsheets.length+200*vm.config.show_labels+500,
                 margin: {
-                    l: 200,
+                    l: 100+200*vm.config.show_labels,
                     r: 5,
                     b: 175,
                     t: 20
