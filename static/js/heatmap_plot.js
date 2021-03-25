@@ -164,7 +164,7 @@ Vue.component("heatmap-plot", {
                     l: 100+200*vm.config.show_labels,
                     r: 5,
                     b: 175,
-                    t: 20
+                    t: 50
                 },
                 pad: 4,
                 yaxis: {
@@ -181,6 +181,25 @@ Vue.component("heatmap-plot", {
             };
 
             Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
+
+            // Manually add in the titles to the subplots
+            // since Plotly.js does not support this
+            let d3_top = Plotly.d3.select("#heatmap");
+            vm.spreadsheets.forEach(function(spreadsheet, idx) {
+                let plot_idx = idx === 0 ? '' : idx + 1;
+                let subplot = d3_top.select(".x"+(plot_idx)+"y");
+                let subplot_rect = subplot.select("rect")[0][0];
+                let mid_point = subplot_rect.x.baseVal.value + subplot_rect.width.baseVal.value/2;
+                let top = subplot_rect.y.baseVal.value;
+
+                let t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', ''+mid_point);
+                t.setAttribute('y', '40');
+                t.setAttribute('fill', '#000');
+                t.setAttribute('text-anchor', 'middle');
+                t.textContent = spreadsheet.descriptive_name;
+                subplot[0][0].appendChild(t);
+            });
 
             vm.rendered = true;
         },
