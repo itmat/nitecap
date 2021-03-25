@@ -7,6 +7,49 @@
 
 <div id="faq_list" class="accordion">
 
+        <div class="card">
+            <div class="card-header" id="headingThree">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseThree"
+                             aria-expanded="true" aria-controls="collapseThree">
+                        What format should my spreadsheet be in?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseThree" class="collapse" aria-labelledby="headingThree" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap accepts most spreadsheets as is and supports Excel xls, xlsx spreadsheets (with your data in the first sheet in the file, if multiple sheets) as well as tab-separated and comma-separated files.
+                        The data should be formatted with one column per sample and one row per one feature (e.g. gene, protein or other value measured).
+                        Which column corresponds to which timepoint is set by the user after uploading the spreadsheet and no specific column headers are required.
+                        For convenience, if sample columns headers include ZT## or CT##  (e.g. CT0, CT4, CT8, CT12, ...) then the number values will be used to infer timepoints when possible and for labels of timepoints.
+                        Similarly, if the columns contains ##:## (e.g. 12:04) time values, then those will be used.
+                    </p>
+                    <p>
+                        Additional columns are no problem and can be used to label the values by selecting ID and multiple columns may be used as ID columns, or can be chosen as a 'stat' column which will be displayed next to the data in Nitecap (at the bottom of the Statistics table.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header" id="headingFour">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseFour"
+                             aria-expanded="true" aria-controls="collapseFour">
+                        What limits on file size are there?
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseFour" class="collapse" aria-labelledby="headingFour" data-parent="#faq_list">
+                <div class="card-body">
+                    <p>
+                        Nitecap can accept spreadsheets up to 40 megabytes.
+                    </p>
+                </div>
+            </div>
+        </div>
+
 
         <div class="card">
             <div class="card-header" id="headingOne">
@@ -41,58 +84,18 @@
                 <h5 class="mb-0">
                     <button class="btn btn-link" data-toggle="collapse" data-target="#collapseTwo"
                              aria-expanded="true" aria-controls="collapseTwo">
-                        Why are my ANOVA p-values N/A?
+                        Why are my p-values N/A?
                     </button>
                 </h5>
             </div>
             <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#faq_list">
                 <div class="card-body">
                     <p>
+                        A method may give N/As for p-values if it cannot be run on the given data.
                         ANOVA p-values are computed as a one-way ANOVA where the values are grouped by timepoint.
                         If your dataset does not contain any multiple replicates for any timepoint, or multiple cycles worth of data, then ANOVA has zero degrees of freedom and cannot be run.
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header" id="headingThree">
-                <h5 class="mb-0">
-                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseThree"
-                             aria-expanded="true" aria-controls="collapseThree">
-                        What format should my spreadsheet be in?
-                    </button>
-                </h5>
-            </div>
-            <div id="collapseThree" class="collapse" aria-labelledby="headingThree" data-parent="#faq_list">
-                <div class="card-body">
-                    <p>
-                        Nitecap accepts most spreadsheets as is and supports Excel xls, xlsx spreadsheets (with your data in the first sheet in the file, if multiple sheets) as well as tab-separated and comma-separated files.
-                        The data should be formatted with one column per sample and one row per one feature (e.g. gene, protein or other value measured).
-                        Which column corresponds to which timepoint is set by the user after uploading the spreadsheet and no specific column headers are required.
-                        For convenience, if sample columns headers include ZT## or CT##  (e.g. CT0, CT4, CT8, CT12, ...) then the number values will be used to infer timepoints when possible and for labels of timepoints.
-                        Similarly, if the columns contains ##:## (e.g. 12:04) time values, then those will be used.
-                    </p>
-                    <p>
-                        Additional columns are no problem and can be used to label the values by selecting ID and multiple columns may be used as ID columns.
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header" id="headingFour">
-                <h5 class="mb-0">
-                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseFour"
-                             aria-expanded="true" aria-controls="collapseFour">
-                        What limits on file size are there?
-                    </button>
-                </h5>
-            </div>
-            <div id="collapseFour" class="collapse" aria-labelledby="headingFour" data-parent="#faq_list">
-                <div class="card-body">
-                    <p>
-                        Nitecap can accept spreadsheets up to 40 megabytes.
+                        ARSER (ARS) requires multiple cycles of data in order to run.
+                        The meta2d methods (JTK/ARS/LS) all are not run if there are too many columns in your dataset, for resource limitations.
                     </p>
                 </div>
             </div>
@@ -189,14 +192,7 @@
                     <p>
                         If you have logged into your account, there is a share button on every dataset which gives a URL that can be given to your colleagues to access the dataset.
                         Note that anyone with the URL can access it, so consider who you share it with.
-                    </p>
-                    <p>
-                        When someone opens the link, they receive a copy of the dataset and none of the changes they make will be reflected in your copy.
-                        If you modify your dataset, then that modification will go to anyone who clicks the link after your modification, but not for anyone who clicked before.
-                    </p>
-                    <p>
-                        Unfortunately we do not yet support sharing comparisons between multiple spreadsheets.
-                        Instead, you should share all the individual spreadsheets and if your colleague opens each spreadsheet link, they can perform a comparison by visiting their <a href="/spreadsheets/display_spreadsheets">spreadsheet list</a> page.
+                        When someone opens the link, they will just be able to view the data and cannot make changes to it.
                     </p>
                 </div>
             </div>
