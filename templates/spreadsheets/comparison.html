@@ -1726,7 +1726,7 @@
                 }
 
                 // Split on whitespace or common filename delimiteres
-                let split_by = new RegExp('[\s,._]+');
+                let split_by = new RegExp('[\\s,._]+');
                 let split_names = names.map( function(x) { return x.split(split_by);});
 
                 // Find the common prefix for all the names

@@ -30,8 +30,10 @@ Vue.component("heatmap-plot", {
 
             vm.cutoff = vm.selected_rows.length;
 
+            let spreadsheet_to_sort_by = vm.config.sort_by.spreadsheet_num || 0;
+
             let phase_sorted_order = vm.selected_rows.sort( function (i,j) {
-                return compare(vm.spreadsheets[0].peak_times[i], vm.spreadsheets[0].peak_times[j], i,j);
+                return compare(vm.spreadsheets[spreadsheet_to_sort_by].peak_times[i], vm.spreadsheets[0].peak_times[j], i,j);
             } );
 
             let zScoreData = vm.spreadsheets.map(function(spreadsheet) {
@@ -149,7 +151,7 @@ Vue.component("heatmap-plot", {
                     yaxis: "y",
                     zmin: -1 * limit,
                     zmax: limit,
-                    colorbar: colorbar
+                    colorbar: colorbar,
                 };
             });
 
@@ -172,8 +174,8 @@ Vue.component("heatmap-plot", {
                 },
                 grid: {
                     rows: 1,
-                    columns: vm.spreadsheets.length
-                }
+                    columns: vm.spreadsheets.length,
+                },
             };
 
             Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
