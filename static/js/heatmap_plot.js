@@ -17,6 +17,7 @@ Vue.component("heatmap-plot", {
 
     props: {
         spreadsheets: Array,
+        descriptive_names: Array,
         num_days: Number,
         selected_rows: Array,
         labels: Array,
@@ -197,7 +198,7 @@ Vue.component("heatmap-plot", {
                 t.setAttribute('y', '40');
                 t.setAttribute('fill', '#000');
                 t.setAttribute('text-anchor', 'middle');
-                t.textContent = spreadsheet.descriptive_name;
+                t.textContent = vm.descriptive_names[idx];
                 subplot[0][0].appendChild(t);
             });
 
