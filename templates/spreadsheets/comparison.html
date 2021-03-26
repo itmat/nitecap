@@ -1775,8 +1775,10 @@
                 suffix = suffix.reverse();
 
                 // Re-build the names with the prefix and suffix removed
-                names = split_names.map( function(split_name) {
-                    return split_name.slice(prefix.length, split_name.length - suffix.length).join(" ");
+                names = split_names.map( function(split_name, idx) {
+                    let reduced_name = split_name.slice(prefix.length, split_name.length - suffix.length).join(" ");
+                    if (reduced_name === '') { return  names[idx]; }// Cut everything out, just use the original name
+                    return reduced_name;
                 });
                 return names;
             },
