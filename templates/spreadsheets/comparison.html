@@ -82,13 +82,30 @@
             Object.entries(spreadsheet.stat_values).forEach(function(entry) {
                 let key = entry[0];
                 let value = entry[1];
-                vm.$set(vm.stats, key, value);
-                vm.$set(vm.stats_table, key, {
-                    name: key,
-                    value: key,
-                    description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
-                    per_spreadsheet: false,
-                });
+                // set the stat to the spreadsheet so it is accessible as a normal stat
+                // note this will not be reactive, but it should also be static so no problem
+                let mangled_stat_name = '__stat__' + key
+                spreadsheet[mangled_stat_name] = spreadsheet.stat_values[key];
+                if (vm.stats[key] === undefined) {
+                    // Add stat just for this spreadsheet
+                    vm.$set(vm.stats, key, value);
+                    vm.$set(vm.stats_table, key, {
+                        name: key,
+                        value: key,
+                        description: "Additional stat column from spreadsheets with column name " + key +" (from spreadsheet " + spreadsheet.descriptive_name +").",
+                        per_spreadsheet: false,
+                    });
+                } else {
+                    // Expand existing stat to be multi-spreadsheet
+                    vm.$set(vm.stats, key, value);
+                    vm.$set(vm.stats_table, key, {
+                        name: key,
+                        value: mangled_stat_name,
+                        description: "Additional stat column from spreadsheets with column name " + key,
+                        per_spreadsheet: true,
+                        num_spreadsheets: 'any',
+                    });
+                }
             });
         });
 
