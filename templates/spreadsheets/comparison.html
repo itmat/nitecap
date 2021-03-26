@@ -244,9 +244,14 @@
                     {{spreadsheets[0].descriptive_name}} vs. {{spreadsheets[1].descriptive_name}}
                 </span>
 
-                <button class="btn btn-secondary btn-sm" id='share_spreadsheet' v-on:click="triggerDownloadPopup">
+                <button class="btn btn-secondary btn-sm" id='download_spreadsheet' v-on:click="triggerDownloadPopup">
                     Download
                 </button>
+
+                <button v-if="spreadsheets.length === 1" class="btn btn-secondary btn-sm" id='comparison_button' v-on:click="triggerComparisonPopup">
+                   Compare
+                </button>
+
                 <a v-if="share_token.length > 0"
                     class="btn btn-secondary btn-sm"
                     v-bind:href="'/spreadsheets/copy_share/'+share_token">
@@ -679,6 +684,32 @@
       </div>
     </div>
 
+    <div id="comparison_popup" class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-primary">
+            <h5 class="modal-title text-white">Compare this spreadsheet</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span class="text-white" aria-hidden="true">&times;</span>
+            </button>
+          </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <div class="form-check" v-for="comparison in valid_comparisons" v-bind:key="comparison.id">
+                        <a class="btn btn-secondary"
+                            v-bind:href="'/spreadsheets/show_spreadsheet/'+(config.spreadsheet_ids.concat([comparison.id]).join(','))">
+                            {{comparison.name}}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+      </div>
+    </div>
+
 </div>
 
 {% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
@@ -880,6 +911,8 @@
             labels: [],
             timepoints_per_day: 0,
             num_days: 0,
+
+            valid_comparisons: [],
 
             plot: {
                 first_render: true,
@@ -1252,6 +1285,28 @@
                 }
                 $("#download_popup").modal();
             },
+
+            triggerComparisonPopup: function() {
+                // Open Modal to compare the spreadsheet
+                let vm = this;
+                $.ajax({
+                    url: "{{url_for('spreadsheets.get_valid_comparisons')}}",
+                    data: JSON.stringify({'spreadsheet_ids': vm.config.original_spreadsheet_ids}),
+                    dataType: "json",
+                    contentType: "application/json",
+                    type: 'POST',
+                    success: function (response) {
+                        vm.valid_comparisons = response;
+                        $("#comparison_popup").modal();
+                    },
+                    error: function (request) {
+                        error_message = $.parseJSON(request.responseText).error;
+                        nitecap_error_message.text(error_message);
+                        nitecap_error.modal();
+                    }
+                });
+            },
+
 
             downloadSpreadsheet: function() {
                 let vm = this;

@@ -1091,6 +1091,45 @@ def check_id_uniqueness(user=None):
     current_app.logger.debug(f"Non-unique ids {non_unique_ids}")
     return jsonify({'non-unique_ids': non_unique_ids})
 
+@spreadsheet_blueprint.route('/get_valid_comparisons', methods=['POST'])
+@ajax_requires_account
+def get_valid_comparisons(user=None):
+    """
+    AJAX endpoint that gives a list of spreadsheets that can be compared to
+    among those that the user has
+    """
+
+    data = json.loads(request.data)
+    spreadsheet_ids = data['spreadsheet_ids']
+
+    if not spreadsheet_ids:
+        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
+
+    # We just look at the first spreadsheet
+    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_ids[0])
+    if not spreadsheet:
+        return access_not_permitted(get_valid_comparisons.__name__, user, spreadsheet_id)
+
+    # Check what other spreadsheets the user has
+    valid_comparisons = []
+    for other_spreadsheet in user.spreadsheets:
+        if other_spreadsheet.id == spreadsheet.id:
+            continue # Can't compare to oneself
+
+        # Only suggest spreadsheets with the same layout
+        # NOTE: doesn't check for compatibility of, say, ids
+        if (other_spreadsheet.timepoints == spreadsheet.timepoints and
+            other_spreadsheet.repeated_measures == spreadsheet.repeated_measures and
+            other_spreadsheet.days == spreadsheet.days):
+
+            valid_comparisons.append({
+                "id": other_spreadsheet.id,
+                "name": other_spreadsheet.descriptive_name,
+                "original_filename": other_spreadsheet.original_filename,
+            })
+    return jsonify(valid_comparisons)
+
+
 
 @spreadsheet_blueprint.route('/save_cutoff', methods=['POST'])
 @ajax_requires_account
