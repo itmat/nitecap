@@ -685,7 +685,7 @@
     </div>
 
     <div id="comparison_popup" class="modal" tabindex="-1" role="dialog">
-      <div class="modal-dialog" role="document">
+      <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
           <div class="modal-header bg-primary">
             <h5 class="modal-title text-white">Compare this spreadsheet</h5>
@@ -694,14 +694,26 @@
             </button>
           </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <div class="form-check" v-for="comparison in valid_comparisons" v-bind:key="comparison.id">
-                        <a class="btn btn-secondary"
-                            v-bind:href="'/spreadsheets/show_spreadsheet/'+(config.spreadsheet_ids.concat([comparison.id]).join(','))">
-                            {{comparison.name}}
-                        </a>
-                    </div>
-                </div>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th> Comparison Spreadsheet </th>
+                            <th> Original Filename </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="comparison in valid_comparisons" v-bind:key="comparison.id">
+                            <td>
+                                <a v-bind:href="'/spreadsheets/show_spreadsheet/'+(config.spreadsheet_ids.concat([comparison.id]).join(','))">
+                                    {{comparison.name}}
+                                </a>
+                            </td>
+                            <td>
+                            {{comparison.original_filename}}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
