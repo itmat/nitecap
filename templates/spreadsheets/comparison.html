@@ -234,7 +234,7 @@
         <h1>Spreadsheet Viewer</h1>
     </div>
 
-    <div v-show="spreadsheets.length > 0">
+    <div v-show="(spreadsheets.length > 0) && (labels.length > 0)">
         <div class="row">
             <p class="col-lg-12 h3">
                 <span v-if="spreadsheets.length === 1">
@@ -606,6 +606,11 @@
     </div>
     <div v-show="spreadsheets.length == 0">
         <p> Loading... </p>
+    </div>
+    <div v-show="(spreadsheets.length > 0) && (labels.length == 0)">
+        <p> No rows loaded. </p>
+        <p v-if="spreadsheets.length == 1"> Was your spreadsheet empty? </p>
+        <p v-else> Check that the ID columns of the selected spreadsheets are compatible in the two spreadsheets. There may be no overlap in the selected feature id values.</p>
     </div>
 
 
