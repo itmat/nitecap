@@ -271,21 +271,6 @@
         <div class='row justify-content-center'>
             <span class='col-auto'>
                 <div class='row'>
-                    <div class="col">
-                        <div class="input-group mb-2">
-                            <input class="form-control form-control-sm" type="text" name="row_search"
-                                   placeholder="Search for row by label" v-model="search_value"
-                                   v-on:keyup.enter="searchRows"/>
-                            <div class="input-group-append">
-                                <button type="button" class="btn btn-secondary btn-sm"
-                                        v-on:click="searchRows">
-                                    Search
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class='row'>
                     <div class='col-auto'>
                         <span class="selector-info align-middle"><i class="fas fa-arrow-left"></i> Less Significant</span>
                         <row-selector v-bind:sort-order="sort_order"
@@ -298,6 +283,21 @@
                                       v-bind:select-row="selectRow"
                                       v-cloak>
                         </row-selector>
+                    </div>
+                </div>
+                <div class='row'>
+                    <div class="col">
+                        <div class="input-group mb-2">
+                            <input class="form-control form-control-sm" type="text" name="row_search"
+                                   placeholder="Search for row by label" v-model="search_value"
+                                   v-on:keyup.enter="searchRows"/>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-secondary btn-sm"
+                                        v-on:click="searchRows">
+                                    Search
+                                </button>
+                            </div>
+                        </div>
                         <div class="form-check">
                             <input class="form-check-input" id="hide_filtered" type="checkbox" v-model="config.hide_filtered_rows">
                             <label class="form-check-label" for="hide_filtered">Hide filtered rows</label>

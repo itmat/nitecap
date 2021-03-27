@@ -135,15 +135,19 @@ Vue.component('row-selector', {
         }, {passive: false}); // indicate that we will prevent default, true may later become the default
     },
 
-    template: "<div class='list-group row-selector' tabindex='0'\
+    template: "\
+    <div> \
+        <h5>Spreadsheet Rows</h5> \
+        <div class='list-group row-selector' tabindex='0'\
                    v-on:keydown.down.prevent='goDown' v-on:keydown.up.prevent='goUp' \
                    v-on:keydown.page-up.prevent='pageUp' v-on:keydown.page-down.prevent='pageDown'> \
-       <div v-for='row in rows'\
-            v-bind:disabled='row.filtered' \
-            v-bind:class='row.class'\
-            v-on:click='selectRow(row.index)' \
-            v-bind:key='row.index'\
-            v-bind:title='row.rawLabel'\
-            >{{row.label}}</div> \
+           <div v-for='row in rows'\
+                v-bind:disabled='row.filtered' \
+                v-bind:class='row.class'\
+                v-on:click='selectRow(row.index)' \
+                v-bind:key='row.index'\
+                v-bind:title='row.rawLabel'\
+                >{{row.label}}</div> \
+        </div>\
     </div>",
 });
