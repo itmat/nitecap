@@ -123,3 +123,8 @@ for (i in seq_len(length(kegg.species.list))) {
         left_join(kegg_pathway_info);
     write_json(objectified, paste(work.dir, "/static/json/", species, ".ensembl_gene_id.KEGG.pathways.json", sep=''));
 }
+
+# Convert to alternative id_types:
+# uniprot_gn_id
+# entrezgene_id
+# external_gene_name
