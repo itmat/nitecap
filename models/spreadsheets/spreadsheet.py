@@ -462,7 +462,7 @@ class Spreadsheet(db.Model):
 
     def has_jtk(self):
         meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
-        if any(c for c in meta2d_cols if c not in self.df.columns):
+        if any((c not in self.df.columns) for c in meta2d_cols):
             if self.get_raw_data().shape[1] > MAX_JTK_COLUMNS:
                 # Can't compute JTK when there are too many columns
                 # it takes too long and will fail

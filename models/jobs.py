@@ -9,7 +9,7 @@ from models.users.user import User
 from flask import current_app
 
 # Number of processes allowed to do work at once
-NUM_WORKERS = 1
+NUM_WORKERS = 2
 
 class Job(db.Model):
     __tablename__ = 'jobs'
@@ -18,7 +18,6 @@ class Job(db.Model):
     params = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(20), nullable=False)
     start_time = db.Column(db.DateTime)
-    queue_time = db.Column(db.DateTime)
 
     def __init__(self, job_type, params, status="unknown"):
         """
@@ -50,6 +49,7 @@ class Job(db.Model):
             return self.status
 
         num_running = Job.query.filter_by(status="running").count()
+        print(f"Queried and found {num_running} jobs running")
         if num_running >= NUM_WORKERS:
             # Too many workers running, we can't do this task right now
             # have to try again later
@@ -58,27 +58,32 @@ class Job(db.Model):
 
         # Mark ourself as running
         self.status = "running"
+        self.start_time = datetime.datetime.utcnow()
         db.session.add(self)
         db.session.commit()
 
         # Start the process
         process = multiprocessing.Process(target = run_job, args=(self.type, self.params))
-        process.spawn()
+        process.start()
 
         return 'running'
 
     @classmethod
     def find_or_make(cls, job_type, params):
-        params = json.dumps(params)
-        job = cls.query.filter_by(type=job_type, params=params).first()
+        print(f"Looking for Job {job_type}: {params}")
+        params_json = json.dumps(params)
+        job = cls.query.filter_by(type=job_type, params=params_json).first()
         if not job:
+            print(f"Had to create Job {job_type}: {params}")
             job = Job(job_type, params)
         return job
 
 def run_job(job_type, params):
     function = job_functions[job_type]
+    print(f"Starting Job {job_type}: {params}")
+    params_value = json.loads(params)
     try:
-        function(params)
+        function(params_value)
     except Exception as e:
         # TODO Log this
         print(f"Exception occured in Job {job_type}: {params}")
@@ -87,11 +92,10 @@ def run_job(job_type, params):
     else:
         status = "completed"
 
+    print(f"Finished Job {job_type}: {params} with status {status}")
+
     # Update the status in our Job DB entry
-    job = Job.find_by_params(job_type, params)
-    if job is None:
-        # Our Job entry got lost, create a completed one
-        job = Job(job_type, params, status=status)
+    job = Job.find_or_make(job_type, params_value)
     job.status = status
 
     db.session.add(job)
@@ -102,7 +106,7 @@ def compute_jtk(params):
 
     params: list of user id, spreadsheet id, and spreadsheet edit version
     '''
-    user_id, spreadsheet_id, edit_version = json.loads(params)
+    user_id, spreadsheet_id, edit_version = params
 
     user = User.find_by_id(user_id)
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)

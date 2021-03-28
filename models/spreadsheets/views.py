@@ -500,16 +500,27 @@ def get_jtk(user=None):
             status = job.run()
             if status in ['failed']:
                 return jsonify({'status': status}), 500
+            if status == 'completed':
+                # Reload the spreadsheet since job is supposedly completed
+                spreadsheet.init_on_load()
+                if not spreadsheet.has_jtk():
+                    status = "failed" # Job says completed but no rows loaded
+                    current_app.logger.error(f"Error: could not load JTK even though job completed.")
             jtk_status.append(status)
         else:
-            jtk_status.append('completed')
+            jtk_status.append('has_jtk')
 
         spreadsheets.append(spreadsheet)
 
-    if any(status == 'failed' for status in jtk_status):
+    if any(status in ['failed', 'unknown'] for status in jtk_status):
         return jsonify({'status': 'failed'}), 500
     elif any(status == 'waiting' for status in jtk_status):
         return jsonify({'status': 'waiting'}), 200
+    elif any(status == 'running' for status in jtk_status):
+        return jsonify({'status': 'running'}), 200
+
+    current_app.logger.error(f"For spreadsheet have the JTKs: {[s.has_jtk() for s in spreadsheets]}")
+    current_app.logger.error(f"HAve the statuses: {jtk_status}")
 
     # Inner join of the spreadsheets so that they match indexes
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
