@@ -58,6 +58,8 @@ class Spreadsheet(db.Model):
     categorical_data = db.Column(db.String(5000))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
+    # Incremented whenever metadata editted and we need new computations run
+    edit_version = db.Column(db.Integer, default=0)
 
     ID_COLUMN = "ID"
     IGNORE_COLUMN = "Ignore"
@@ -459,67 +461,82 @@ class Spreadsheet(db.Model):
         return error, messages
 
     @timeit
-    def get_jtk(self):
+    def has_jtk(self):
         meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
         if any(c for c in meta2d_cols if c not in self.df.columns):
             if self.get_raw_data().shape[1] > MAX_JTK_COLUMNS:
                 # Can't compute JTK when there are too many columns
                 # it takes too long and will fail
                 self.df[meta2d_cols] = float("NaN")
+                return True
             else:
-                # Process the data for JTK
-                df = self.get_raw_data().copy()
+                return False
+        return True
 
-                # Check missing values - JTK will crash if there are too few timepoints
-                # so we will overwrite any such genes with all 0s, just to make it run
-                # We don't want to drop those timepoints entirely because we need something there
-                # to insert the results back into our spreadsheet
-                not_missing = ~df.isna()
-                timepoint_col_starts = numpy.concatenate(([0], numpy.cumsum(self.num_replicates)[:-1]))
-                timepoint_col_ends = numpy.cumsum(self.num_replicates)
-                timepoint_not_missing = numpy.array([not_missing.iloc[:,start:end].any(axis=1) for start,end in zip(timepoint_col_starts, timepoint_col_ends)])
-                num_not_missing_timepoints = timepoint_not_missing.sum(axis=0)
-                df[num_not_missing_timepoints < 2] = 0 # Zero out the things that are too missing
+    @ timeit
+    def compute_jtk(self):
+        # Process the data for JTK
+        df = self.get_raw_data().copy()
 
-                # Call out to an R script to run JTK
-                # write results to disk to pass the data to JTK
-                run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
-                data_file_path = f"/tmp/{uuid.uuid4()}"
-                df.to_csv(data_file_path, sep="\t")
-                results_file_path = f"{data_file_path}.jtk_results"
+        if df.shape[1] > MAX_JTK_COLUMNS:
+            # Can't compute JTK when there are too many columns
+            # it takes too long and will fail
+            self.df[meta2d_cols] = float("NaN")
 
-                num_reps = ','.join(str(x) for x in self.num_replicates)
+        # Check missing values - JTK will crash if there are too few timepoints
+        # so we will overwrite any such genes with all 0s, just to make it run
+        # We don't want to drop those timepoints entirely because we need something there
+        # to insert the results back into our spreadsheet
+        not_missing = ~df.isna()
+        timepoint_col_starts = numpy.concatenate(([0], numpy.cumsum(self.num_replicates)[:-1]))
+        timepoint_col_ends = numpy.cumsum(self.num_replicates)
+        timepoint_not_missing = numpy.array([not_missing.iloc[:,start:end].any(axis=1) for start,end in zip(timepoint_col_starts, timepoint_col_ends)])
+        num_not_missing_timepoints = timepoint_not_missing.sum(axis=0)
+        df[num_not_missing_timepoints < 2] = 0 # Zero out the things that are too missing
 
-                res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days}",
-                                        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Call out to an R script to run JTK
+        # write results to disk to pass the data to JTK
+        run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
+        data_file_path = f"/tmp/{self.id}_{uuid.uuid4()}.jtk_data"
+        df.to_csv(data_file_path, sep="\t")
+        results_file_path = f"{data_file_path}.jtk_results"
 
-                if res.returncode != 0:
-                    raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
+        num_reps = ','.join(str(x) for x in self.num_replicates)
 
-                results = pd.read_csv(results_file_path, sep='\t')
-                self.df["jtk_p"] = results.JTK_P
-                self.df["jtk_q"] = results.JTK_Q
-                self.df["ars_p"] = results.ARS_P
-                self.df["ars_q"] = results.ARS_Q
-                self.df["ls_p"] = results.LS_P
-                self.df["ls_q"] = results.LS_Q
+        res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days}",
+                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-                self.update_dataframe()
+        if res.returncode != 0:
+            raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
-                os.remove(data_file_path)
-                os.remove(results_file_path)
+        results = pd.read_csv(results_file_path, sep='\t')
+        self.df["jtk_p"] = results.JTK_P
+        self.df["jtk_q"] = results.JTK_Q
+        self.df["ars_p"] = results.ARS_P
+        self.df["ars_q"] = results.ARS_Q
+        self.df["ls_p"] = results.LS_P
+        self.df["ls_q"] = results.LS_Q
 
-        return self.df.jtk_p.tolist(), self.df.jtk_q.tolist()
+        self.update_dataframe()
 
-    def clear_jtk(self):
-        ''' Clear JTK computations so that it will be recomputed
+        os.remove(data_file_path)
+        os.remove(results_file_path)
 
-        For example if the spreadsheet days/timepoints changed '''
+    def increment_edit_version(self):
+        ''' Trigger re-computations of anything that needs to be re-computed
+        after a metadata change (eg: new column labels)
+
+        Clear JTK computations so that it will be recomputed
+        '''
+
+        self.edit_version += 1
+        self.save_to_db()
 
         drop_columns = ["jtk_p", "jtk_q", "ars_p", "ars_q", "ls_p", "ls_q"]
         drop_columns = [c for c in drop_columns if c in self.df.columns]
         self.df.drop(columns = drop_columns, inplace=True)
         self.update_dataframe()
+
 
     @staticmethod
     def normalize_data(raw_data):

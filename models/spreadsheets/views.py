@@ -26,6 +26,7 @@ from models.users.decorators import requires_login, requires_admin, requires_acc
     ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
 from models.users.user import User
 from models.shares import Share
+from models.jobs import Job
 from timer_decorator import timeit
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
@@ -197,7 +198,7 @@ def collect_data(spreadsheet_id, user=None):
         # Trigger recomputations as necessary
         spreadsheet.set_ids_unique()
         spreadsheet.init_on_load()
-        spreadsheet.clear_jtk()
+        spreadsheet.increment_edit_version()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
@@ -481,19 +482,34 @@ def get_jtk(user=None):
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
     spreadsheets = []
+    jtk_status = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            current_app.logger.warn(f"Attempted acess of JTK for invalid spreadsheets {spreadsheet_id} by user {user}")
+            current_app.logger.warn(f"Attempted access of JTK for invalid spreadsheets {spreadsheet_id} by user {user}")
             return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 403
 
         # Populate
         spreadsheet.init_on_load()
 
+        if not spreadsheet.has_jtk():
+            # Check queue for the JTK compute job
+            # if it's already running we don't need to start it
+            job_params = [user.id, spreadsheet.id, spreadsheet.edit_version]
+            job = Job.find_or_make_job("jtk", job_params)
+            status = job.run()
+            if status in ['failed']:
+                return {'status': status}
+            jtk_status.append(status)
+        else:
+            jtk_status.append('completed')
+
         spreadsheets.append(spreadsheet)
 
-    # Running it once will calculate JTK if necessary
-    [spreadsheet.get_jtk() for spreadsheet in spreadsheets]
+    if any(status == 'failed' for status in jtk_status):
+        return {'status': 'failed'}, 500
+    elif any(status == 'waiting' for status in jtk_status):
+        return {'status': 'waiting'}, 500
 
     # Inner join of the spreadsheets so that they match indexes
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
@@ -507,6 +523,7 @@ def get_jtk(user=None):
     ls_q = [df["ls_q"] for df in dfs]
 
     return dumps({
+        'status': "done",
         "jtk_p": jtk_p,
         "jtk_q": jtk_q,
         "ars_p": ars_p,
