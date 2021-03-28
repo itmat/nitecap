@@ -460,7 +460,6 @@ class Spreadsheet(db.Model):
             messages = f"The breakpoin must point to a row inside the spreadsheet."
         return error, messages
 
-    @timeit
     def has_jtk(self):
         meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
         if any(c for c in meta2d_cols if c not in self.df.columns):

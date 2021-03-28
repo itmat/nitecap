@@ -134,45 +134,54 @@
         });
 
         // Load the JTK values for each spreadsheet
-        $.ajax({
-            url: "/spreadsheets/jtk",
-            data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
-            dataType: "json",
-            contentType: "application/json",
-            type: 'POST',
-            success: function(response) {
-                let jtk_p = response['jtk_p'];
-                let jtk_q = response['jtk_q'];
-                let ars_p = response['ars_p'];
-                let ars_q = response['ars_q'];
-                let ls_p = response['ls_p'];
-                let ls_q = response['ls_q'];
+        function jtk(){
+            $.ajax({
+                url: "/spreadsheets/jtk",
+                data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
+                dataType: "json",
+                contentType: "application/json",
+                type: 'POST',
+                success: function(response) {
 
-                initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
-                    let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
-                    // For Vue performance see VUE PERF NOTE
-                    Object.preventExtensions(jtk_p[idx]);
-                    Object.preventExtensions(jtk_q[idx]);
-                    spreadsheet.jtk_p = jtk_p[idx];
-                    spreadsheet.jtk_q = jtk_q[idx];
-                    Object.preventExtensions(ars_p[idx]);
-                    Object.preventExtensions(ars_q[idx]);
-                    spreadsheet.ars_p = ars_p[idx];
-                    spreadsheet.ars_q = ars_q[idx];
-                    Object.preventExtensions(ls_p[idx]);
-                    Object.preventExtensions(ls_q[idx]);
-                    spreadsheet.ls_p = ls_p[idx];
-                    spreadsheet.ls_q = ls_q[idx];
-                });
-            },
-            error: function(error) {
-                console.log("Error loading JTK values");
-                console.log(error);
+                    if (response.status == 'waiting') {
+                        // Must requery the status after a bit
+                        setTimeout(jtk, 5*1000);
+                        return;
+                    }
+                    let jtk_p = response['jtk_p'];
+                    let jtk_q = response['jtk_q'];
+                    let ars_p = response['ars_p'];
+                    let ars_q = response['ars_q'];
+                    let ls_p = response['ls_p'];
+                    let ls_q = response['ls_q'];
 
-                nitecap_error_message.text("Error loading JTK values");
-                nitecap_error.modal();
-            }
-        });
+                    initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
+                        let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
+                        // For Vue performance see VUE PERF NOTE
+                        Object.preventExtensions(jtk_p[idx]);
+                        Object.preventExtensions(jtk_q[idx]);
+                        spreadsheet.jtk_p = jtk_p[idx];
+                        spreadsheet.jtk_q = jtk_q[idx];
+                        Object.preventExtensions(ars_p[idx]);
+                        Object.preventExtensions(ars_q[idx]);
+                        spreadsheet.ars_p = ars_p[idx];
+                        spreadsheet.ars_q = ars_q[idx];
+                        Object.preventExtensions(ls_p[idx]);
+                        Object.preventExtensions(ls_q[idx]);
+                        spreadsheet.ls_p = ls_p[idx];
+                        spreadsheet.ls_q = ls_q[idx];
+                    });
+                },
+                error: function(error) {
+                    console.log("Error loading JTK values");
+                    console.log(error);
+
+                    nitecap_error_message.text("Error loading JTK values");
+                    nitecap_error.modal();
+                }
+            });
+        }
+        jtk();
 
         // Load the Upside values
         if (spreadsheets.length > 1) {

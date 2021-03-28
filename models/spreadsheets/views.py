@@ -496,10 +496,10 @@ def get_jtk(user=None):
             # Check queue for the JTK compute job
             # if it's already running we don't need to start it
             job_params = [user.id, spreadsheet.id, spreadsheet.edit_version]
-            job = Job.find_or_make_job("jtk", job_params)
+            job = Job.find_or_make("jtk", job_params)
             status = job.run()
             if status in ['failed']:
-                return {'status': status}
+                return jsonify({'status': status}), 500
             jtk_status.append(status)
         else:
             jtk_status.append('completed')
@@ -507,9 +507,9 @@ def get_jtk(user=None):
         spreadsheets.append(spreadsheet)
 
     if any(status == 'failed' for status in jtk_status):
-        return {'status': 'failed'}, 500
+        return jsonify({'status': 'failed'}), 500
     elif any(status == 'waiting' for status in jtk_status):
-        return {'status': 'waiting'}, 500
+        return jsonify({'status': 'waiting'}), 200
 
     # Inner join of the spreadsheets so that they match indexes
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)

@@ -49,7 +49,7 @@ class Job(db.Model):
             # Task has already been executed
             return self.status
 
-        num_running = len(cls.query.filter_by(status="running"))
+        num_running = Job.query.filter_by(status="running").count()
         if num_running >= NUM_WORKERS:
             # Too many workers running, we can't do this task right now
             # have to try again later
@@ -62,14 +62,15 @@ class Job(db.Model):
         db.session.commit()
 
         # Start the process
-        process = multiprocessing.Process(target = run_job, args=(self.job_type, self.params))
+        process = multiprocessing.Process(target = run_job, args=(self.type, self.params))
         process.spawn()
 
         return 'running'
 
-    @staticmethod
-    def find_or_make(job_type, params):
-        job = cls.query.filterby(type=job_type, params=params).first()
+    @classmethod
+    def find_or_make(cls, job_type, params):
+        params = json.dumps(params)
+        job = cls.query.filter_by(type=job_type, params=params).first()
         if not job:
             job = Job(job_type, params)
         return job
