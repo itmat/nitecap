@@ -8,9 +8,6 @@ from db import db
 from models.users.user import User
 from flask import current_app
 
-# Number of processes allowed to do work at once
-NUM_WORKERS = 2
-
 class Job(db.Model):
     __tablename__ = 'jobs'
     id = db.Column(db.Integer, primary_key=True)
@@ -48,9 +45,8 @@ class Job(db.Model):
             # Task has already been executed
             return self.status
 
-        num_running = Job.query.filter_by(status="running").count()
-        print(f"Queried and found {num_running} jobs running")
-        if num_running >= NUM_WORKERS:
+        num_running = Job.get_number_running_jobs()
+        if num_running >= current_app.config['NUM_JOB_WORKERS']:
             # Too many workers running, we can't do this task right now
             # have to try again later
             #TODO: timeout old jobs?
@@ -69,30 +65,49 @@ class Job(db.Model):
         return 'running'
 
     @classmethod
+    def get_number_running_jobs(cls):
+        # First we cleanup the old jobs
+        # deleting ones that are super old
+        drop_threshold = datetime.datetime.utcnow() - current_app.config['JOB_DROP_TIME']*datetime.timedelta(seconds=1)
+
+        num_dead = Job.query.filter(Job.start_time < drop_threshold).delete(synchronize_session='fetch')
+        if num_dead > 0:
+            current_app.logger.info(f"Removing {num_dead} old jobs")
+
+        # and timeout those that are running too long
+        timeout_threshold = datetime.datetime.utcnow() - current_app.config['JOB_TIMEOUT']*datetime.timedelta(seconds=1)
+        jobs_timedout = Job.query.filter_by(status="running").filter(Job.start_time <  timeout_threshold).update({Job.status:  "timed_out"}, synchronize_session='fetch')
+        if jobs_timedout > 0:
+            current_app.logger.warning(f"TIMEOUT for {jobs_timedout} jobs")
+
+        num_running = Job.query.filter_by(status="running").count()
+        db.session.commit()
+
+        return num_running
+
+
+    @classmethod
     def find_or_make(cls, job_type, params):
-        print(f"Looking for Job {job_type}: {params}")
         params_json = json.dumps(params)
         job = cls.query.filter_by(type=job_type, params=params_json).first()
         if not job:
-            print(f"Had to create Job {job_type}: {params}")
             job = Job(job_type, params)
         return job
 
 def run_job(job_type, params):
     function = job_functions[job_type]
-    print(f"Starting Job {job_type}: {params}")
+    current_app.logger.info(f"Starting Job {job_type}: {params}")
     params_value = json.loads(params)
     try:
         function(params_value)
     except Exception as e:
-        # TODO Log this
-        print(f"Exception occured in Job {job_type}: {params}")
-        print(e)
+        current_app.logger.error(f"Exception occured in Job {job_type}: {params}")
+        current_app.logger.error(e)
         status = "failed"
     else:
         status = "completed"
 
-    print(f"Finished Job {job_type}: {params} with status {status}")
+    current_app.logger.info(f"Finished Job {job_type}: {params} with status {status}")
 
     # Update the status in our Job DB entry
     job = Job.find_or_make(job_type, params_value)
