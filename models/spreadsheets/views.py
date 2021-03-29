@@ -954,55 +954,19 @@ def get_upside(user=None):
             amplitude_q = comp_data["amplitude_q"]
             current_app.logger.info(f"Loaded upside values from file {file_path}")
         except (OSError, KeyError) as e: # Parquet file could not be read (hasn't been written yet)
-            # Compute comparisons from scratch
-            if not datasets:
-                datasets = [df[spreadsheet.get_data_columns(by_day=False)].values for df, spreadsheet in zip(dfs, spreadsheets)]
-            repeated_measures = spreadsheets[0].repeated_measures
-            for spreadsheet in spreadsheets:
-                if spreadsheet.repeated_measures != repeated_measures:
-                    error = f"Attempted comparison of Spreadsheets {primary_id} and {secondary_id} that do not match in whether they are repeated measures."
-                    current_app.logger.warn(error)
-                    return jsonify({"error": error}), 500
+            # Trigger the job to compute these
+            job_params = [user.id, spreadsheet_ids, [spreadsheet.edit_version for spreadsheet in spreadsheets]]
+            job = Job.find_or_make("comparison", job_params)
+            status = job.run()
+            if status in ['failed', 'timed_out']:
+                return jsonify({'status': status}), 500
+            if status == 'completed':
+                # If it says completed, we actually return 'running' since we couldn't
+                # load the data off the disk so just need to try again
+                status = 'running'
+            return jsonify({'status': status}), 200
 
-            # Run the actual upside calculation
-            upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates_by_time, datasets[primary],
-                                           spreadsheets[secondary].num_replicates_by_time, datasets[secondary],
-                                            repeated_measures=repeated_measures)
-            upside_q = nitecap.util.BH_FDR(upside_p)
-
-            if anova_p is None or main_effect_p is None:
-                # Run two-way anova
-                anova_p, main_effect_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates_by_time, datasets[primary],
-                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
-                anova_q = nitecap.util.BH_FDR(anova_p)
-                main_effect_q = nitecap.util.BH_FDR(main_effect_p)
-
-                # Run Cosinor analysis
-                amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].num_replicates_by_time, datasets[primary],
-                                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
-                phase_q = nitecap.util.BH_FDR(phase_p)
-                amplitude_q = nitecap.util.BH_FDR(amplitude_p)
-
-            comp_data = pd.DataFrame(index=combined_index)
-            comp_data["upside_p"] = upside_p
-            comp_data["upside_q"] = upside_q
-            comp_data["two_way_anova_p"] = anova_p
-            comp_data["two_way_anova_q"] = anova_q
-            comp_data["main_effect_p"] = main_effect_p
-            comp_data["main_effect_q"] = main_effect_q
-            comp_data["phase_p"] = phase_p
-            comp_data["phase_q"] = phase_q
-            comp_data["amplitude_p"] = amplitude_p
-            comp_data["amplitude_q"] = amplitude_q
-
-            # Save to disk
-            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
-
-            upside_p_list.append(upside_p.tolist())
-            upside_q_list.append(upside_q.tolist())
-            current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
-
-    return dumps({
+    return dumps({'status': 'completed',
                 'upside_p': upside_p_list,
                 'upside_q': upside_q_list,
                 'two_way_anova_p': anova_p.tolist(),
@@ -1535,10 +1499,3 @@ def collect_and_validate_categorical_data(form_data):
                 errors.append(f"Categorical variable {var_name} must have at least 2 possible values.")
             categorical_data.append({"variable": var_name, "values": values})
     return categorical_data, errors
-
-
-
-
-
-
-

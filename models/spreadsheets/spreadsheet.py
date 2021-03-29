@@ -915,6 +915,63 @@ class Spreadsheet(db.Model):
         labels.extend(label_data)
         return labels
 
+    @staticmethod
+    def compute_comparison(user, spreadsheets):
+        for spreadsheet in spreadsheets:
+            spreadsheet.init_on_load()
+        dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+
+        anova_p = None
+        main_effect_p = None
+        datasets = []
+        comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
+        for primary, secondary in [(0,1), (1,0)]:
+            primary_id, secondary_id = spreadsheets[primary].id, spreadsheets[secondary].id
+            file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
+            # Compute comparisons from scratch
+            if not datasets:
+                datasets = [df[spreadsheet.get_data_columns(by_day=False)].values for df, spreadsheet in zip(dfs, spreadsheets)]
+            repeated_measures = spreadsheets[0].repeated_measures
+            for spreadsheet in spreadsheets:
+                if spreadsheet.repeated_measures != repeated_measures:
+                    error = f"Attempted comparison of Spreadsheets {primary_id} and {secondary_id} that do not match in whether they are repeated measures."
+                    current_app.logger.warn(error)
+                    return jsonify({"error": error}), 500
+
+            # Run the actual upside calculation
+            upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates_by_time, datasets[primary],
+                                           spreadsheets[secondary].num_replicates_by_time, datasets[secondary],
+                                            repeated_measures=repeated_measures)
+            upside_q = nitecap.util.BH_FDR(upside_p)
+
+            if anova_p is None or main_effect_p is None:
+                # Run two-way anova
+                anova_p, main_effect_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates_by_time, datasets[primary],
+                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
+                anova_q = nitecap.util.BH_FDR(anova_p)
+                main_effect_q = nitecap.util.BH_FDR(main_effect_p)
+
+                # Run Cosinor analysis
+                amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].num_replicates_by_time, datasets[primary],
+                                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
+                phase_q = nitecap.util.BH_FDR(phase_p)
+                amplitude_q = nitecap.util.BH_FDR(amplitude_p)
+
+            # Save to disk
+            comp_data = pd.DataFrame(index=combined_index)
+            comp_data["upside_p"] = upside_p
+            comp_data["upside_q"] = upside_q
+            comp_data["two_way_anova_p"] = anova_p
+            comp_data["two_way_anova_q"] = anova_q
+            comp_data["main_effect_p"] = main_effect_p
+            comp_data["main_effect_q"] = main_effect_q
+            comp_data["phase_p"] = phase_p
+            comp_data["phase_q"] = phase_q
+            comp_data["amplitude_p"] = amplitude_p
+            comp_data["amplitude_q"] = amplitude_q
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
+
+            current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),

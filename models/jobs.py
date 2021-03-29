@@ -6,6 +6,7 @@ from sqlalchemy import orm
 
 from db import db
 from models.users.user import User
+from models.spreadsheets.spreadsheet import Spreadsheet
 from flask import current_app
 
 class Job(db.Model):
@@ -126,7 +127,27 @@ def compute_jtk(params):
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
     spreadsheet.compute_jtk()
 
+def compute_comparison(params):
+    ''' job to trigger the computation of comparison
+
+    params: list of user id, spreadsheet ids, and spreadsheet edit versions
+    '''
+    user_id, spreadsheet_ids, edit_versions = params
+
+    user = User.find_by_id(user_id)
+
+    # Check user ownership over these spreadsheets
+    spreadsheets = []
+    for spreadsheet_id in spreadsheet_ids:
+        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
+        if not spreadsheet:
+            current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
+        spreadsheets.append(spreadsheet)
+
+    Spreadsheet.compute_comparison(user, spreadsheets)
+
 job_functions = {
     "jtk": compute_jtk,
+    "comparison": compute_comparison,
 }
 

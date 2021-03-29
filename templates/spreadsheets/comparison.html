@@ -185,49 +185,58 @@
 
         // Load the Upside values
         if (spreadsheets.length > 1) {
-            $.ajax({
-                url: "/spreadsheets/get_upside",
-                data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}),
-                dataType: 'text json',
-                contentType: 'application/json',
-                type: 'POST',
-                success: function(response) {
-                    // See VUE PERF NOTE
-                    // Make all arrays non-traversed by Vue for performance
-                    Object.keys(response).forEach(function(key) {
-                        Object.preventExtensions(response[key]);
-                    });
+            function upside() {
+                $.ajax({
+                    url: "/spreadsheets/get_upside",
+                    data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}),
+                    dataType: 'text json',
+                    contentType: 'application/json',
+                    type: 'POST',
+                    success: function(response) {
+                        if ((response.status == 'waiting') || (response.status == 'running')) {
+                            // Must requery the status after a bit
+                            setTimeout(upside, 5*1000);
+                            return;
+                        }
 
-                    upside_p = response['upside_p'];
-                    upside_q = response['upside_q'];
+                        // See VUE PERF NOTE
+                        // Make all arrays non-traversed by Vue for performance
+                        Object.keys(response).forEach(function(key) {
+                            Object.preventExtensions(response[key]);
+                        });
 
-                    initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
-                        let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
-                        Object.preventExtensions(upside_p[idx]); // See VUE PERF NOTE
-                        Object.preventExtensions(upside_q[idx]); // these aren't covered by above since are one level deeper
-                        spreadsheet.upside_p = upside_p[idx];
-                        spreadsheet.upside_q = upside_q[idx];
-                    });
+                        upside_p = response['upside_p'];
+                        upside_q = response['upside_q'];
 
-                    // Load stats that are per-comparison not per-spreadsheet
-                    app.stats.two_way_anova_p = response['two_way_anova_p'];
-                    app.stats.two_way_anova_q = response['two_way_anova_q'];
-                    app.stats.main_effect_p = response['main_effect_p'];
-                    app.stats.main_effect_q = response['main_effect_q'];
-                    app.stats.phase_p = response['phase_p'];
-                    app.stats.phase_q = response['phase_q'];
-                    app.stats.amplitude_p = response['amplitude_p'];
-                    app.stats.amplitude_q = response['amplitude_q'];
-                },
+                        initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
+                            let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
+                            Object.preventExtensions(upside_p[idx]); // See VUE PERF NOTE
+                            Object.preventExtensions(upside_q[idx]); // these aren't covered by above since are one level deeper
+                            spreadsheet.upside_p = upside_p[idx];
+                            spreadsheet.upside_q = upside_q[idx];
+                        });
 
-                error: function(error) {
-                    console.log("Error loading upside values");
-                    console.log(error);
+                        // Load stats that are per-comparison not per-spreadsheet
+                        app.stats.two_way_anova_p = response['two_way_anova_p'];
+                        app.stats.two_way_anova_q = response['two_way_anova_q'];
+                        app.stats.main_effect_p = response['main_effect_p'];
+                        app.stats.main_effect_q = response['main_effect_q'];
+                        app.stats.phase_p = response['phase_p'];
+                        app.stats.phase_q = response['phase_q'];
+                        app.stats.amplitude_p = response['amplitude_p'];
+                        app.stats.amplitude_q = response['amplitude_q'];
+                    },
 
-                    nitecap_error_message.text("Error loading comparison statistics");
-                    nitecap_error.modal();
-                }
-            });
+                    error: function(error) {
+                        console.log("Error loading upside values");
+                        console.log(error);
+
+                        nitecap_error_message.text("Error loading comparison statistics");
+                        nitecap_error.modal();
+                    }
+                });
+            }
+            upside();
         }
 
         $('[data-toggle="tooltip"]').tooltip();
