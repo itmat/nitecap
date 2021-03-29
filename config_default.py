@@ -23,5 +23,5 @@ SESSION_COOKIE_SAMESITE='Lax'
 
 # For job system
 NUM_JOB_WORKERS = 2
-JOB_TIMEOUT = 10 * 60 # Seconds
+JOB_TIMEOUT = 30 * 60 # Seconds
 JOB_DROP_TIME = 24 * 60 * 60 # Seconds
