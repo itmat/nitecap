@@ -39,6 +39,7 @@ class Spreadsheet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descriptive_name = db.Column(db.String(250), nullable=False)
     days = db.Column(db.Integer)
+    num_timepoints = db.Column(db.Integer)
     timepoints = db.Column(db.Integer)
     repeated_measures = db.Column(db.Boolean, nullable=False, default=False)
     header_row = db.Column(db.Integer, nullable=False, default=1)
@@ -72,7 +73,7 @@ class Spreadsheet(db.Model):
     SPREADSHEET_DIRECTORY_NAME_TEMPLATE = Template('spreadsheet_$spreadsheet_id')
 
     @timeit
-    def __init__(self, descriptive_name, days, timepoints, repeated_measures, header_row, original_filename,
+    def __init__(self, descriptive_name, days, num_timepoints, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
                  breakpoint=None, num_replicates_str=None, last_access=None, user_id=None,
                  date_uploaded=None, ids_unique=False, filters='', spreadsheet_data_path='', categorical_data=''):
@@ -84,6 +85,7 @@ class Spreadsheet(db.Model):
         :param descriptive_name: A name of 250 characters or less describing the spreadsheet content so that the user
         may easily recognize it or search for it in his/her spreadsheet list.
         :param days: The number of days over which the data is collected.
+        :param num_timepoints: The number of timepoints in the spreadsheet (across all the cycles)
         :param timepoints: The number of timepoints per day over whcih the data is collected.
         :param repeated_measures:
         :param header_row: The how (indexed from 1) where the header info is found (should be a single row)
@@ -107,6 +109,7 @@ class Spreadsheet(db.Model):
         current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
         self.days = days
+        self.num_timepoints = num_timepoints
         self.timepoints = timepoints
         self.repeated_measures = repeated_measures
         self.header_row = int(header_row)
@@ -243,21 +246,22 @@ class Spreadsheet(db.Model):
         self.column_labels_str = ",".join(column_labels)
         self.column_labels = column_labels
 
-        x_values = [self.label_to_timepoint(label) for label in self.column_labels]
-        self.x_values = [value for value in x_values if value is not None]
+        self.timepoint_assignments = {col: self.label_to_timepoint(label) for col, label in zip(self.df.columns, self.column_labels)}
+        x_values = [value for value in self.timepoint_assignments.values() if value is not None]
+
+        # TODO: replace these eventually when phasing out 'days'
 
         # Count the number of replicates at each timepoint
-        self.num_replicates = [len([1 for x in self.x_values if x == i])
+        self.num_replicates = [len([1 for x in x_values if x == i])
                                     for i in range(self.timepoints * self.days)]
         self.num_replicates_str = ",".join([str(num_replicate) for num_replicate in self.num_replicates])
         # Num replicates separated out by times not counting which day it comes from
-        self.num_replicates_by_time = [len([1 for x in self.x_values if x % self.timepoints == i])
+        self.num_replicates_by_time = [len([1 for x in x_values if x % self.timepoints == i])
                                                 for i in range(self.timepoints)]
 
+        # This is 'x_values' ordered in the same manner as you get from get_data_columns()/get_raw_data()
         self.x_values = [i for i,num_reps in enumerate(self.num_replicates)
                             for j in range(num_reps)]
-        self.x_labels = [f"Day{i+1} Timepoint{j+1}" for i in range(self.days) for j in range(self.timepoints)]
-        self.x_label_values = [i*self.timepoints + j for i in range(self.days) for j in range(self.timepoints)]
 
     def get_raw_data(self):
         data_columns = self.get_data_columns()
@@ -543,14 +547,6 @@ class Spreadsheet(db.Model):
         means = raw_data.mean(axis=1)
         stds = raw_data.std(axis=1)
         return raw_data.sub(means, axis=0).div(stds, axis=0)
-
-    def average_replicates(self, data):
-        avg = numpy.empty((data.shape[0], self.days*self.timepoints))
-        x_values = numpy.array(self.x_values)
-        for i in range(self.days*self.timepoints):
-            avg[:,i] = numpy.sum(data.values[:, x_values == i], axis=1)
-            avg[:,i] /= numpy.sum(x_values == i)
-        return pd.DataFrame(avg)
 
     def validate(self, column_labels):
         """ Check spreadhseet for consistency.
