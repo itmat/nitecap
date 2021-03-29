@@ -49,7 +49,6 @@ class Job(db.Model):
         if num_running >= current_app.config['NUM_JOB_WORKERS']:
             # Too many workers running, we can't do this task right now
             # have to try again later
-            #TODO: timeout old jobs?
             return 'waiting'
 
         # Mark ourself as running
