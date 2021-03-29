@@ -503,7 +503,8 @@ class Spreadsheet(db.Model):
         num_reps = ','.join(str(x) for x in self.num_replicates)
 
         res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days}",
-                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                timeout = current_app.config['JOB_TIMEOUT'])
 
         if res.returncode != 0:
             raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
