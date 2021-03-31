@@ -395,7 +395,7 @@ class Spreadsheet(db.Model):
             anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
             anova_q = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
 
-        cosinor_X, cosinor_p = nitecap.cosinor.fit(data, timepoints, self.timepoints)
+        cosinor_X, cosinor_p = nitecap.cosinor.fit(data, timepoints, self.timepoints, T=self.timepoints)
 
         self.df["cosinor_p"] = cosinor_p
         self.df["cosinor_q"] = nitecap.util.BH_FDR(cosinor_p)
