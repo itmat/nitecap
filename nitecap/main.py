@@ -14,7 +14,7 @@ try:
         # C implementation always handles NaNs correctly by zeroing them out
         # So we discard the contains_nans param
         data = data.astype('double')
-        timepoints = timepoints.astype('int32')
+        timepoints = timepoints.astype('int32') % timepoints_per_cycle
         _sum_abs_differences(data, timepoints, timepoints_per_cycle, out)
 except ImportError as e:
     print("Encountered error while attempting to import cython module.")
@@ -266,6 +266,7 @@ def nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS
     assert len(timepoints) == data.shape[1]
 
     N_FEATURES, N_SAMPLES = data.shape
+    N_TIMEPOINTS = timepoints.max()+1
 
     contains_nans = numpy.isnan(data).any()
 
@@ -275,12 +276,12 @@ def nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS
     # then we just run all possible distinct permutations, for a deterministic p-value
     # Distinct perms: since our statistic is independent of cyclic permutations and mirroring
     # we can count distinct perms by fixing the first timepoint and dividing by two
-    num_perms_distinct = int(math.factorial(timepoints_per_cycle-1)/2)
+    num_perms_distinct = int(math.factorial(N_TIMEPOINTS-1)/2)
     if N_PERMS >= num_perms_distinct:
         # Enumerate all permutations out at once, as indexes
         # Since statistic is independent of cyclic permutations, we can fix the first
         # timepoint. Since independent of mirroring, only need "ascending" permutations
-        permutations = [[0] + list(p) for p in itertools.permutations(range(1,timepoints_per_cycle))
+        permutations = [[0] + list(p) for p in itertools.permutations(range(1,N_TIMEPOINTS))
                             if p[0] < p[-1]]
         permutations = numpy.array(permutations)
         assert num_perms_distinct == len(permutations)
@@ -303,7 +304,7 @@ def nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS
         else:
             # Pick random permutations
             these_permutations = numpy.array(
-                [numpy.random.choice(timepoints_per_cycle, size=timepoints_per_cycle, replace=False)
+                [numpy.random.choice(N_TIMEPOINTS, size=N_TIMEPOINTS, replace=False)
                         for i in range(num_perms)])
 
         # Prepare the permuted data
