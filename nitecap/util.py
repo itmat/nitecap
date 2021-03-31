@@ -190,38 +190,41 @@ def moving_regression(xs, ys, frac, degree=2, period=None, regression_x_values =
         regression_values[i] = regression_value.flatten()
     return regression_values
 
-def anova(data):
+def anova(data, timepoints, timepoints_per_cycle):
     '''
     Preform one-way ANOVA on the given data
 
-    data is assumed to be an array of shape (N_TIMEPOINTS, N_REPS, N_GENES), see nitecap.reformat_data.
-    Return value is of shape (N_GENES), with the p-value of each gene (or feature) in the array.
+    data is assumed to be an array of shape (N_FEATURES, N_SAMPLES)
+    timepoints is of shape (N_SAMPLES)
+    Return value is of shape (N_FEATURES), with the p-value of each feature in the array.
     '''
-    (N_TIMEPOINTS, N_REPS, N_GENES) = data.shape
+    (N_FEATURES, N_SAMPLES) = data.shape
 
-    if N_REPS == 1:
+    if len(data) <= timepoints_per_cycle:
         raise ValueError("Cannot perform ANOVA on datasets without any replicates")
 
-    anova_p = numpy.empty(N_GENES)
+    anova_p = numpy.empty(N_FEATURES)
 
     # Check for nans
     finite_mask = numpy.isfinite(data)
     contains_nans = not numpy.all(finite_mask)
 
+    indexes_for_timepoints = [[i for i,t in enumerate(timepoints) if (t % timepoints_per_cycle) == j]
+                                for j in range(timepoints_per_cycle)]
+
     # Unfortunately, no built-in better way to do ANOVA on repeated experiments in Scipy
-    for i in range(N_GENES):
-        row = data[:,:,i]
+    for i in range(N_FEATURES):
+        row = data[i]
+        row_finite_mask = finite_mask[i]
 
-        if contains_nans:
-            # Remove non-nans
-            row = [row[j,:][finite_mask[j,:,i]]
-                    for j in range(N_TIMEPOINTS)]
-            row = [group for group in row if len(group) > 0]
+        groups = [[row[i] for i in indexes if row_finite_mask[i]]
+                        for indexes in indexes_for_timepoints]
+        groups = [group for group in groups if len(group) > 0]
 
-        if len(row) < 2:
+        if len(groups) < 2:
             p = float("NaN") # Every (or all but one) group is missing
         else:
-            p = scipy.stats.f_oneway(*row)[1]
+            p = scipy.stats.f_oneway(*groups)[1]
         anova_p[i] = p
     return anova_p
 
@@ -234,6 +237,9 @@ def anova_on_groups(data, group_assignments):
 
     returns: array of shape N of p-values for test of equality of the categorical values
     '''
+
+    #TODO: this and the abova anova function are likely now redundant
+    # not sure this one is correct, probably should use the one above
 
     N_FEATURES = data.shape[0]
     N_MEASURES = data.shape[1]
