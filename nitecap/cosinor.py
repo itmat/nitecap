@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import f
 
-def fit(data, N_DAYS, T=24):    # T is period (in hours)
+def fit(data, timepoints, timepoints_per_cycle, T=24):
     '''
     Fit data to cosinor model with parameters x₀, x₁, x₂:
 
@@ -11,12 +11,12 @@ def fit(data, N_DAYS, T=24):    # T is period (in hours)
     Theoretical Biology and Medical Modelling 11:16 (2014)
     '''
 
-    N_TIMEPOINTS, N_REPS, N_GENES = data.shape
+    N_FEATURES, N_SAMPLES = data.shape
 
-    Δt = 24*N_DAYS/N_TIMEPOINTS     # duration between timepoints (in hours)
-    t = np.repeat([k*Δt for k in range(N_TIMEPOINTS)], N_REPS)
+    Δt = T/timepoints_per_cycle     # duration between timepoints (in hours)
+    t = timepoints
 
-    Y = data.reshape((N_TIMEPOINTS * N_REPS, N_GENES))
+    Y = data.T
 
     N = t.size
     ω = 2*np.pi/T
@@ -32,9 +32,9 @@ def fit(data, N_DAYS, T=24):    # T is period (in hours)
     # While slower than doing the vectorized approach with Numpy,
     # this handles variable missing data between each row, which cannot
     # easily be handled otherwise
-    cosinor_p = np.empty(N_GENES)
-    cosinor_X = np.empty((3, N_GENES))
-    for i in range(N_GENES):
+    cosinor_p = np.empty(N_FEATURES)
+    cosinor_X = np.empty((3, N_FEATURES))
+    for i in range(N_FEATURES):
         row = Y[:,i]
         row_A = A
         row_t = t
@@ -52,7 +52,7 @@ def fit(data, N_DAYS, T=24):    # T is period (in hours)
         else:
 
             # Perform the regression on the row's data
-            X, *_ = np.linalg.lstsq(row_A, row)
+            X, *_ = np.linalg.lstsq(row_A, row, rcond=None)
             Ŷ = (row_A @ X)
             Ȳ = np.mean(row, axis=0)
 
