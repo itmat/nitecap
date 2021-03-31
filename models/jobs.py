@@ -101,8 +101,7 @@ def run_job(job_type, params):
     try:
         function(params_value)
     except Exception as e:
-        current_app.logger.error(f"Exception occured in Job {job_type}: {params}")
-        current_app.logger.error(e)
+        current_app.logger.exception(f"Exception occured in Job {job_type}: {params}")
         status = "failed"
     else:
         status = "completed"
