@@ -13,6 +13,8 @@ try:
     def sum_abs_differences(data, timepoints, timepoints_per_cycle, out, contains_nans=True):
         # C implementation always handles NaNs correctly by zeroing them out
         # So we discard the contains_nans param
+        data = data.astype('double')
+        timepoints = timepoints.astype('int32')
         _sum_abs_differences(data, timepoints, timepoints_per_cycle, out)
 except ImportError as e:
     print("Encountered error while attempting to import cython module.")
@@ -71,7 +73,9 @@ def main(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS, output="mini
     replicates or are all biological replicates
     '''
 
-    data = numpy.array(data)
+    data = numpy.array(data).astype(float)
+
+    timepoints = numpy.array(timepoints).astype('int32')
 
     td, perm_td = nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS, repeated_measures=repeated_measures)
     q, p = FDR(td, perm_td)
@@ -153,6 +157,7 @@ def total_delta(data, timepoints, timepoints_per_cycle, contains_nans = "check",
         contains_nans = numpy.isnan(data).any()
 
     data = data.astype("double")
+    timepoints = timepoints.astype('int32')
 
     N_FEATURES, N_SAMPLES = data.shape
     N_PERMS, N_SAMPLES = timepoints.shape

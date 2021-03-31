@@ -357,14 +357,17 @@ class Spreadsheet(db.Model):
 
         data = self.get_raw_data().values
         filtered_out = self.df.filtered_out.values.astype("bool") # Ensure bool and not 0,1, should be unnecessary
-        data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
 
         # Seed the computation so that results are reproducible
         numpy.random.seed(1)
 
+        timepoints = numpy.array(self.x_values)
+
         # Main nitecap computation
-        td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days,
-                                                 repeated_measures=self.repeated_measures)
+        # TODO: number of permutations to use?
+        td, perm_td = nitecap.nitecap_statistics(data, timepoints, self.timepoints,
+                                                 repeated_measures=self.repeated_measures,
+                                                 N_PERMS=1000)
 
         # Apply q-value computation but just for the features surviving filtering
         good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
@@ -382,18 +385,17 @@ class Spreadsheet(db.Model):
 
         # Other statistics
         # TODO: should users be able to choose their cycle length?
-        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data_formatted, num_cycles = self.days, cycle_length=self.timepoints)
+        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data, timepoints, self.timepoints, cycle_length=self.timepoints)
 
-        data_folded = nitecap.fold_days(data_formatted, self.days)
         try:
-            anova_p = nitecap.util.anova(data_folded)
+            anova_p = nitecap.util.anova(data, timepoints, self.timepoints)
             anova_q = nitecap.util.BH_FDR(anova_p)
         except ValueError:
             # Can't run anova (eg: no replicates)
             anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
             anova_q = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
 
-        cosinor_X, cosinor_p = nitecap.cosinor.fit(data_formatted, self.days)
+        cosinor_X, cosinor_p = nitecap.cosinor.fit(data, timepoints, self.timepoints)
 
         self.df["cosinor_p"] = cosinor_p
         self.df["cosinor_q"] = nitecap.util.BH_FDR(cosinor_p)

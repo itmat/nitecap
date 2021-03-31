@@ -15,9 +15,9 @@ def sum_abs_differences(data_in, timepoints, int timepoints_per_cycle, data_out)
     assert data_in.shape[0] == data_out.shape[1], "data_in and data_out need to match size"
     assert data_in.shape[1] == timepoints.shape[1], "data_in and timepoints need to match in size"
     assert timepoints.shape[0] == data_out.shape[0], "data_out and timepoints need to match in size"
-    assert data_in.dtype == float, "data_in must by float type"
-    assert data_out.dtype == float, "data_out must be float type"
-    assert timepoints.dtype == int, "timepoints must be integer type"
+    #assert data_in.dtype == float, "data_in must by float type"
+    #assert data_out.dtype == float, "data_out must be float type"
+    #assert timepoints.dtype == int, "timepoints must be integer type"
     assert timepoints.min() >= 0, "timepoints cannot have values less than 0"
     assert timepoints.max() < timepoints_per_cycle, "timepoints cannot have values larger than timepoints_per_cycle-1"
 
@@ -42,8 +42,8 @@ def sum_abs_differences(data_in, timepoints, int timepoints_per_cycle, data_out)
     # These hold the info about which indexes correspond to a timepoint
     # i.e. `timepoints` arg maps index->timepoint but
     # these indexes_for_timepoint maps timepoint->index
-    cdef int[:,:] indexes_for_timepoint = numpy.empty((timepoints_per_cycle, num_samples), dtype=int)
-    cdef int[:] num_reps_for_timepoint = numpy.zeros((timepoints_per_cycle), dtype=int)
+    cdef int[:,:] indexes_for_timepoint = numpy.empty((timepoints_per_cycle, num_samples), dtype=numpy.int32)
+    cdef int[:] num_reps_for_timepoint = numpy.zeros((timepoints_per_cycle), dtype=numpy.int32)
 
     for permutation in range(num_permutations):
         permuted_timepoints = timepoints_view[permutation]
