@@ -20,16 +20,17 @@ N_PERMS = 2_000
 # Number of permutations to compute at one go, reduce this number to reduce memory useage
 N_PERMS_PER_RUN = 20
 
-def main(num_replicates_A, data_A, num_replicates_B, data_B, repeated_measures=False):
+def main(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_cycle, repeated_measures=False):
     """
     Compute the dampening p-values comparing A to B
 
-    `num_replicates_A` is a list of integers indicating how many replicates there are from each timepoint in dataset A
-    `data_A` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_A)
+    `timepoints_A` is a list of integers indicating timepoint of each column of data_A
+    `data_A` is a numpy array of shape (num_features, num_samples)
             containing the values of the condition A
-    `num_replicates_B` is a list of integers indicating how many replicates there are from each timepoint in dataset B
-    `data_B` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_B)
+    `timepoints_B` is a list of integers indicating timepoint of each column of data_B
+    `data_B` is a numpy array of shape (num_features, num_samples)
             containing the values of the condition B
+    `timepoints_per_cycle` is the number of timepoints per complete cycle
     `repeated_measures` is whether the data was taken from individuals repeatedly. Leave as False if
             each datapoint is independent. If True, must position the individuals consistently,
             e.g. first individual always is first in each timepoint in its dataset
@@ -38,12 +39,12 @@ def main(num_replicates_A, data_A, num_replicates_B, data_B, repeated_measures=F
     """
 
     assert data_A.shape[0] == data_B.shape[0]
-    assert data_A.shape[1] == sum(num_replicates_A)
-    assert data_B.shape[1] == sum(num_replicates_B)
+    assert data_A.shape[1] == len(timepoints_A)
+    assert data_B.shape[1] == len(timepoints_B)
 
     N_FEATURES = data_A.shape[0]
 
-    stat = upside_statistic(num_replicates_A, data_A, repeated_measures=repeated_measures)
+    stat = upside_statistic(data_A, timepoints_A, timepoints_per_cycle, repeated_measures=repeated_measures)
     
     num_perms_done = 0
     perm_stat = numpy.empty((N_PERMS, N_FEATURES))
@@ -52,9 +53,9 @@ def main(num_replicates_A, data_A, num_replicates_B, data_B, repeated_measures=F
             break
 
         num_perms = min(N_PERMS - num_perms_done, N_PERMS_PER_RUN)
-        perm_data = permute(num_replicates_A, data_A, num_replicates_B, data_B, N = num_perms, repeated_measures=repeated_measures)
+        perm_data = permute(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_cycle, N = num_perms, repeated_measures=repeated_measures)
 
-        perm_stat[num_perms_done:num_perms_done+num_perms] = upside_statistic(num_replicates_A, perm_data, repeated_measures=repeated_measures)
+        perm_stat[num_perms_done:num_perms_done+num_perms] = upside_statistic(perm_data, timepoints_A, timepoints_per_cycle, repeated_measures=repeated_measures)
 
         num_perms_done += num_perms
 
@@ -63,7 +64,7 @@ def main(num_replicates_A, data_A, num_replicates_B, data_B, repeated_measures=F
 
     return ps
 
-def permute(num_reps_A, data_A, num_reps_B, data_B, N = 1, repeated_measures=False):
+def permute(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_cycle, N = 1, repeated_measures=False):
     """
     Given data of conditions A and B, return permutations scrambling data of A and B together
     If `repeated_measures` then keep corresponding datapoints together as if from same sample.
@@ -74,39 +75,39 @@ def permute(num_reps_A, data_A, num_reps_B, data_B, N = 1, repeated_measures=Fal
     Return value is of shape (N, shape of data_A)
     """
 
-    num_reps_A = numpy.array(num_reps_A)
-    num_reps_B = numpy.array(num_reps_B)
-
-    if repeated_measures:
-        # In repeated measures, we need the same number of reps at each time
-        assert numpy.max(num_reps_A) == numpy.min(num_reps_A)
-        assert numpy.max(num_reps_B) == numpy.min(num_reps_B)
+    N_SAMPLES_A = data_A.shape[1]
+    N_SAMPLES_b = data_B.shape[1]
 
     # Make slices indicating the replicates that occur at each possible time
-    time_starts_A = numpy.cumsum(num_reps_A) - num_reps_A[0]
-    times_A = [slice(time_start, time_start + reps) for time_start, reps in zip(time_starts_A, num_reps_A)]
-    time_starts_B = numpy.cumsum(num_reps_B) - num_reps_B[0]
-    times_B = [slice(time_start, time_start + reps) for time_start, reps in zip(time_starts_B, num_reps_B)]
+    indexes_for_timepoint_A = [[i for i,t in enumerate(timepoints_A) if (t % timepoints_per_cycle) == j]
+                                for j in range(timepoints_per_cycle)]
+    # for B, we offset so that there's space for A's samples too
+    indexes_for_timepoint_B = [[i+N_SAMPLES_A for i,t in enumerate(timepoints_B) if (t % timepoints_per_cycle) == j]
+                                for j in range(timepoints_per_cycle)]
+    # Indexes by timepoints for joined datasets of both A and B
+    joined_indexes = [indexes_A + indexes_B for indexes_A, indexes_B in zip(indexes_for_timepoint_A, indexes_for_timepoint_B)]
 
-    # First, join the two datasets so that their timepoints are adjacent
-    # i.e the collumns will now go T1A T1B T2A T2B T3A T3B...
-    data_pieces =  [numpy.concatenate([data_A[:,time_A], data_B[:,time_B]], axis=1)
-                                            for (time_A, time_B) in zip(times_A, times_B)]
-    data_combined = numpy.concatenate(data_pieces, axis=1).T
+    num_reps_A = [len(indexes) for indexes in indexes_for_timepoint_A]
 
-    time_starts_combined = numpy.cumsum(num_reps_A + num_reps_B) - (num_reps_A[0] + num_reps_B[0])
-    times_combined = [slice(time_start, time_start + reps) for time_start, reps in zip(time_starts_combined, num_reps_A + num_reps_B)]
+    #time_starts_A = numpy.cumsum(num_reps_A) - num_reps_A[0]
+    #times_A = [slice(time_start, time_start + reps) for time_start, reps in zip(time_starts_A, num_reps_A)]
+    #time_starts_B = numpy.cumsum(num_reps_B) - num_reps_B[0]
+    #times_B = [slice(time_start, time_start + reps) for time_start, reps in zip(time_starts_B, num_reps_B)]
+
+    # First, join the two datasets so we can index both
+    data_joined = numpy.concatenate((data_A, data_B), axis=1)
 
     # Expand data_combined out to the right number of permutations
-    perm_data_combined = numpy.broadcast_to(data_combined, (N,*data_combined.shape)).copy()
+    #perm_data_combined = numpy.broadcast_to(data_combined, (N,*data_combined.shape)).copy()
 
-    # now shuffle all N copies, shuffling within each timepoint
-    # (note numpy.random.shuffle acts in-place so we ignore the generated array)
     if not repeated_measures:
-        [numpy.random.shuffle(perm_data_combined[i,time_slice])
-                for time_slice in times_combined
-                for i in range(N)]
+        permuted_data = [numpy.concatenate([data_joined[:, numpy.random.choice(indexes, reps, replace=False)]
+                                            for indexes, reps in zip(joined_indexes, num_reps_A)], axis=1)
+                                for i in range(N)]
+        permuted_data = numpy.array(permuted_data)
     else:
+        raise NotImplementedError
+        # We haven't reworked this and don't really support repeated measures anyway
         num_A_replicates = times_A[0].stop - times_A[0].start
         num_B_replicates = times_B[0].stop - times_B[0].start
         for i in range(N):
@@ -114,37 +115,33 @@ def permute(num_reps_A, data_A, num_reps_B, data_B, N = 1, repeated_measures=Fal
             for time_slice in times_combined:
                 perm_data_combined[i,time_slice] = perm_data_combined[i,time_slice][shuffled_replicates]
 
-    # now pull out just the first parts so that we have the un-combined data
-    perm_data = numpy.concatenate([perm_data_combined[:, time_start:time_start+A_reps]
-                                        for (time_start, A_reps) in zip(time_starts_combined, num_reps_A)],
-                                   axis=1)
+    return permuted_data
 
-    return perm_data.swapaxes(1,2)
-
-def upside_statistic(num_reps, data, repeated_measures=False):
+def upside_statistic(data, timepoints, timepoints_per_cycle, repeated_measures=False):
     """
     Average within timepoints and then compute the sum of absolute differences between adjacent timepoints
 
-    Data is either 2dim of shape (num_features, num_samples) or
-    data is 3 dim of shape (num_perms, num_features, num_samples)
+    Data is 2dim of shape (num_features, num_samples) or 3d of shape (num_perms, num_features, num_samples)
+    timepoints is of shape (num_samples)
+    timepoints_per_cycle is the number of timepoints in a complete cycle
     repeated_measures is whether the data was taken from the same subjects repeatedly, or False if all independent
     Returned array is either of shape (num_features) or (num_perms, num_features)
     """
 
     converted_to_3dim = False
     if data.ndim == 2:
-        # Convert to 3-dim if necessary, by making it a single 'permutation'
+        # Convert to 2-dim if necessary, by making it a single 'permutation'
         converted_to_3dim = True
-        data = data.reshape(1,*data.shape)
+        data = data.reshape((1,*data.shape))
 
-    # Compute the slices where the times occur
-    time_starts = numpy.cumsum(num_reps)  - num_reps[0]
-    times = [ slice(0,time_starts[0])] + [slice(time_starts[i], time_starts[i+1])
-                                                for i in range(len(time_starts)-1)]
-    
+    N_PERMS, N_FEATURES, N_SAMPLES = data.shape
+
+    indexes_for_timepoint = [[i for i,t in enumerate(timepoints) if (t % timepoints_per_cycle) == j]
+                                for j in range(timepoints_per_cycle)]
+
     # Average all replicates within each time
-    averages = numpy.array([numpy.nanmean(data[:,:,time_slice],axis=2)
-                                    for (time_slice, num_rep) in zip(times, num_reps)])
+    averages = numpy.array([numpy.nanmean(data[:,:,timepoint_slice],axis=2)
+                                    for timepoint_slice in indexes_for_timepoint])
 
     # Sum of absolute differences of adjacent timepoints
     abs_diffs = numpy.abs(averages[1:] - averages[:-1])

@@ -274,15 +274,15 @@ def anova_on_groups(data, group_assignments):
 
     return ps
 
-def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
+def two_way_anova(groups_A, data_A, groups_B, data_B):
     '''
     Perform two-way ANOVA between two conditions, A and B
 
-    `num_replicates_A` is a list of integers indicating how many replicates there are from each timepoint in dataset A
-    `data_A` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_A)
+    `groups_A` is a list of integers indicating group membership of each column of data_A
+    `data_A` is a numpy array of shape (num_features, num_samples)
             containing the values of the condition A
-    `num_replicates_B` is a list of integers indicating how many replicates there are from each timepoint in dataset B
-    `data_B` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_B)
+    `groups_B` is a list of integers indicating group membership of each column of data_B
+    `data_B` is a numpy array of shape (num_features, num_samples)
             containing the values of the condition B
 
     Returns:
@@ -290,27 +290,24 @@ def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
     `main_effect_p_value` - array length num_features containing p-values for the difference between datasets
     '''
 
-    assert len(num_reps_A) == len(num_reps_B)
+    assert len(groups_A) == data_A.shape[1]
+    assert len(groups_B) == data_B.shape[1]
     assert data_A.shape[0] == data_B.shape[0]
 
-    # Factor variables for the two replicates
-    timepoints_A = [i for i, num_reps in enumerate(num_reps_A) for j in range(num_reps)]
-    timepoints_B = [i for i, num_reps in enumerate(num_reps_B) for j in range(num_reps)]
-
     # Condition variables for the concatenated datasets
-    timepoints = sm.tools.categorical(numpy.array(timepoints_A + timepoints_B), drop=True).T
-    dataset = [0 for _ in timepoints_A] + [1 for _ in timepoints_B]
+    groups = sm.tools.categorical(numpy.concatenate((groups_A, groups_B)), drop=True).T
+    dataset = [0 for _ in groups_A] + [1 for _ in groups_B]
     intercept = [1 for _ in dataset]
-    interaction = numpy.array(dataset)*timepoints
+    interaction = numpy.array(dataset)*groups
 
     # Run three models, one is the full interaction time-and-dataset model
     # the restricted model has no interaction between time and dataset
     # and the base model is just time
     # comparing full to restricted gives the interaction p-value
     # comparing restricted to base gives the main-effect p-value between the two datasets
-    full_model = numpy.vstack( (timepoints, dataset, interaction, intercept) )
-    restricted_model = numpy.vstack( (timepoints, dataset, intercept) )
-    base_model = numpy.vstack( (timepoints, intercept) )
+    full_model = numpy.vstack( (groups, dataset, interaction, intercept) )
+    restricted_model = numpy.vstack( (groups, dataset, intercept) )
+    base_model = numpy.vstack( (groups, intercept) )
 
     combined_datasets = numpy.concatenate((data_A, data_B), axis=1)
 
@@ -330,15 +327,15 @@ def two_way_anova(num_reps_A, data_A, num_reps_B, data_B):
 
     return interaction_p_values, main_effect_p_values
 
-def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
+def cosinor_analysis(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_cycle):
     '''
     Perform tests using a Cosinor (sinusoidal least-squares fit) method.
 
-    `num_replicates_A` is a list of integers indicating how many replicates there are from each timepoint in dataset A
-    `data_A` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_A)
+    `timepoints_A` is a list of integers indicating timepoint of each column of data_A
+    `data_A` is a numpy array of shape (num_features, num_samples)
             containing the values of the condition A
-    `num_replicates_B` is a list of integers indicating how many replicates there are from each timepoint in dataset B
-    `data_B` is a numpy array of shape (num_features, num_samples) where num_samples = sum(num_replicates_B)
+    `timepoints_B` is a list of integers indicating timepoint of each column of data_B
+    `data_B` is a numpy array of shape (num_features, num_samples)
             containing the values of the condition B
 
     returns:
@@ -354,18 +351,18 @@ def cosinor_analysis(num_reps_A, data_A, num_reps_B, data_B):
     variances is somewhat less important.
     '''
 
+    assert len(timepoints_A) == data_A.shape[1]
+    assert len(timepoints_B) == data_B.shape[1]
     assert data_A.shape[0] == data_B.shape[0]
     num_features = data_A.shape[0]
-
-    # Factor variables for the two replicates
-    timepoints_A = numpy.array([i for i, num_reps in enumerate(num_reps_A) for j in range(num_reps)])
-    timepoints_B = numpy.array([i for i, num_reps in enumerate(num_reps_B) for j in range(num_reps)])
+    timepoints_A = numpy.array(timepoints_A)
+    timepoints_B = numpy.array(timepoints_B)
 
     # Predictors, cos/sin values
-    c_A = numpy.cos(timepoints_A*2*numpy.pi/len(num_reps_A))
-    c_B = numpy.cos(timepoints_B*2*numpy.pi/len(num_reps_B))
-    s_A = numpy.sin(timepoints_A*2*numpy.pi/len(num_reps_A))
-    s_B = numpy.sin(timepoints_B*2*numpy.pi/len(num_reps_B))
+    c_A = numpy.cos(timepoints_A*2*numpy.pi/timepoints_per_cycle)
+    c_B = numpy.cos(timepoints_B*2*numpy.pi/timepoints_per_cycle)
+    s_A = numpy.sin(timepoints_A*2*numpy.pi/timepoints_per_cycle)
+    s_B = numpy.sin(timepoints_B*2*numpy.pi/timepoints_per_cycle)
     const_A = numpy.ones(c_A.shape)
     const_B = numpy.ones(c_B.shape)
     predictor_A = numpy.vstack([c_A,s_A,const_A]).T

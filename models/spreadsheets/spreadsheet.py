@@ -921,6 +921,7 @@ class Spreadsheet(db.Model):
         anova_p = None
         main_effect_p = None
         datasets = []
+        timepoints_per_cycle = spreadsheets[0].timepoints
         comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
         for primary, secondary in [(0,1), (1,0)]:
             primary_id, secondary_id = spreadsheets[primary].id, spreadsheets[secondary].id
@@ -936,21 +937,25 @@ class Spreadsheet(db.Model):
                     return jsonify({"error": error}), 500
 
             # Run the actual upside calculation
-            upside_p = nitecap.upside.main(spreadsheets[primary].num_replicates_by_time, datasets[primary],
-                                           spreadsheets[secondary].num_replicates_by_time, datasets[secondary],
+            upside_p = nitecap.upside.main(spreadsheets[primary].x_values, datasets[primary],
+                                           spreadsheets[secondary].x_values, datasets[secondary],
+                                           timepoints_per_cycle,
                                             repeated_measures=repeated_measures)
             upside_q = nitecap.util.BH_FDR(upside_p)
 
             if anova_p is None or main_effect_p is None:
                 # Run two-way anova
-                anova_p, main_effect_p = nitecap.util.two_way_anova(spreadsheets[primary].num_replicates_by_time, datasets[primary],
-                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
+                groups_A = numpy.array(spreadsheets[primary].x_values) % timepoints_per_cycle
+                groups_B = numpy.array(spreadsheets[secondary].x_values) % timepoints_per_cycle
+                anova_p, main_effect_p = nitecap.util.two_way_anova( groups_A, datasets[primary],
+                                                                     groups_B, datasets[secondary])
                 anova_q = nitecap.util.BH_FDR(anova_p)
                 main_effect_q = nitecap.util.BH_FDR(main_effect_p)
 
                 # Run Cosinor analysis
-                amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].num_replicates_by_time, datasets[primary],
-                                                                     spreadsheets[secondary].num_replicates_by_time, datasets[secondary])
+                amplitude_p, phase_p = nitecap.util.cosinor_analysis(spreadsheets[primary].x_values, datasets[primary],
+                                                                     spreadsheets[secondary].x_values, datasets[secondary],
+                                                                     timepoints_per_cycle)
                 phase_q = nitecap.util.BH_FDR(phase_p)
                 amplitude_q = nitecap.util.BH_FDR(amplitude_p)
 
