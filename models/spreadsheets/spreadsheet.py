@@ -260,8 +260,7 @@ class Spreadsheet(db.Model):
                                                 for i in range(self.timepoints)]
 
         # This is 'x_values' ordered in the same manner as you get from get_data_columns()/get_raw_data()
-        self.x_values = [i for i,num_reps in enumerate(self.num_replicates)
-                            for j in range(num_reps)]
+        self.x_values = [self.timepoint_assignments[col] for col in self.get_data_columns()]
 
     def get_raw_data(self):
         data_columns = self.get_data_columns()
