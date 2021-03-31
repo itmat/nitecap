@@ -2,6 +2,7 @@ APScheduler==3.5.3
 certifi==2018.11.29
 chardet==3.0.4
 Click==7.0
+cython==0.29.21
 dash==0.35.2
 dash-core-components==0.42.1
 dash-html-components==0.13.5
