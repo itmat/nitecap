@@ -74,8 +74,8 @@
 
 
         vm.labels = spreadsheets[0].labels;
-        vm.timepoints_per_day = spreadsheets[0].timepoints_per_day;
-        vm.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_day;
+        vm.timepoints_per_cycle = spreadsheets[0].timepoints_per_cycle;
+        vm.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_cycle;
 
         // Update stats_table with the Additional Stat Columns of the spreadsheets
         spreadsheets.forEach(function(spreadsheet) {
@@ -944,7 +944,7 @@
             },
 
             labels: [],
-            timepoints_per_day: 0,
+            timepoints_per_cycle: 0,
             num_days: 0,
 
             valid_comparisons: [],
@@ -997,7 +997,7 @@
                     }
 
                     if (vm.config.plot.fold_days) {
-                        plot_x_values = spreadsheet.x_values.map(function (x) {return x % spreadsheet.timepoints_per_day;});
+                        plot_x_values = spreadsheet.x_values.map(function (x) {return x % spreadsheet.timepoints_per_cycle;});
                         // Generic Timepoint1, ... TimepointK labels (no "Day")
                         plot_x_labels = app.timepoint_labels[idx];
                         plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
@@ -1013,10 +1013,10 @@
                         plot_x_labels = plot_x_labels.map( function (x) {return '';} );
                     } else if (x_label_style === 'time') {
                         plot_x_labels = plot_x_labels.map( function(x,i) {
-                            return "Timepoint " + (i % spreadsheet.timepoints_per_day + 1);
+                            return "Timepoint " + (i % spreadsheet.timepoints_per_cycle + 1);
                         });
                     } else if (x_label_style === 'infer') {
-                        let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
+                        let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_cycle);
                         if (inferred !== null) {
                             let headings = inferred.times.map(function(t) {
                                 return inferred.format.make_label(t);
@@ -1031,7 +1031,7 @@
                             });
                         }
                     } else if (x_label_style === 'infer_wrapped') {
-                        let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
+                        let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_cycle);
                         if (inferred !== null) {
                             let headings = inferred.times.map(function(t) {
                                 return inferred.format.make_label(t, true);
@@ -1192,8 +1192,13 @@
                         const sampling_density = 120;
 
                         let t = [];
-                        for (let i = 0; i <= sampling_density; i++)
-                            t.push(24*vm.num_days*i/sampling_density);
+                        let period = 24*spreadsheet.num_timepoints/spreadsheet.timepoints_per_cycle;
+                        if (vm.config.plot.fold_days) {
+                            period = 24;
+                        }
+                        for (let i = 0; i <= sampling_density; i++) {
+                            t.push(period*i/sampling_density);
+                        }
 
                         let x0 = spreadsheet.cosinor_x0[row_index];
                         let x1 = spreadsheet.cosinor_x1[row_index];
@@ -1202,8 +1207,9 @@
                         let y = t.map(t => x0 + x1*Math.cos(2*Math.PI*t/24) + x2*Math.sin(2*Math.PI*t/24));
 
                         // rescale to match the other plots
-                        for (let i = 0; i < t.length; i++)
-                            t[i] *= spreadsheet.timepoints_per_day/24;
+                        for (let i = 0; i < t.length; i++) {
+                            t[i] *= spreadsheet.timepoints_per_cycle/24;
+                        }
 
                         traces.push({
                             x: t, y,
@@ -1757,13 +1763,13 @@
             },
 
             timepoint_labels: function() {
-                // Labels to use for timepoints 0,1,2,...,timepoints_per_day-1
+                // Labels to use for timepoints 0,1,2,...,timepoints_per_cycle-1
                 // ignoring the cycle/day number
                 let vm = this;
 
                 return vm.spreadsheets.map( function(spreadsheet) {
                     // Try to infer if possible from column headers
-                    let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
+                    let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_cycle);
                     if (inferred !== null) {
                         let headings = inferred.times.map(function(t) {
                             return inferred.format.make_label(t, true);
@@ -1793,7 +1799,7 @@
                     let times = spreadsheet.x_values;
 
                     // Try to infer if possible from column headers
-                    let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_day);
+                    let inferred = inferColumnTimes(spreadsheet.column_headers, vm.num_days, spreadsheet.timepoints_per_cycle);
                     let headings = null;
                     if (inferred !== null) {
                         headings = inferred.times.map(function(t) {
@@ -1801,7 +1807,7 @@
                         });
                     } else {
                         headings = times.map( function(time) {
-                            return "Day " + (Math.floor(time / spreadsheet.timepoints_per_day) + 1) + " Timepoint " + (time % spreadsheet.timepoints_per_day + 1);
+                            return "Day " + (Math.floor(time / spreadsheet.timepoints_per_cycle) + 1) + " Timepoint " + (time % spreadsheet.timepoints_per_cycle + 1);
                         });
                     }
 
