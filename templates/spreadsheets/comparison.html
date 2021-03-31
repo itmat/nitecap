@@ -999,14 +999,12 @@
                     if (vm.config.plot.fold_days) {
                         plot_x_values = spreadsheet.x_values.map(function (x) {return x % spreadsheet.timepoints_per_day;});
                         // Generic Timepoint1, ... TimepointK labels (no "Day")
-                        plot_x_labels = plot_x_values.map(function(x) {return "Timepoint " + (x+1);});
+                        plot_x_labels = app.timepoint_labels[idx];
                         plot_x_label_values = plot_x_labels.map(function(x,i) {return i;});
                     } else {
                         plot_x_values = spreadsheet.x_values;
                         // Generic Day1 Timepoint1, ... DayN TimepointK labels
-                        plot_x_labels = plot_x_values.map(function(x) {
-                            return "Day" + Math.floor(x / spreadsheet.timepoints_per_day + 1) + " Timepoint " + (x % spreadsheet.timepoints_per_day + 1);
-                        });
+                        plot_x_labels = app.day_and_time_labels[idx];
                         plot_x_label_values = [...Array(spreadsheet.num_timepoints).keys()]; // 0,1,2...,num_timepoints-1
                     }
 
