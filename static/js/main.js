@@ -437,7 +437,7 @@ var column_label_formats = [
 ];
 var clock_time_regexp = new RegExp("(\\d+):(\\d\\d)");
 
-function inferColumnTimes(columns, days, timepoints) {
+function inferColumnTimes(columns) {
     let best_num_matches = 0;
     let best_matches = [];
     let best_format = null;
@@ -478,8 +478,8 @@ function inferColumnTimes(columns, days, timepoints) {
             num_matches: best_num_matches};
 }
 
-function guessColumnLabels(columns, days, timepoints, defaults) {
-    let inferred = inferColumnTimes(columns, days, timepoints);
+function guessColumnLabels(columns, num_timepoints, timepoints_per_cycle, defaults) {
+    let inferred = inferColumnTimes(columns);
 
     if (inferred  === null) {
         // Nothing matches any known header format
@@ -492,7 +492,7 @@ function guessColumnLabels(columns, days, timepoints, defaults) {
     let min_time = Math.min.apply(null, times.filter(function(t) {return t !== null;}));
     let max_time = Math.max.apply(null, times.filter(function(t) {return t !== null;}));
     let total_time_delta = max_time - min_time;
-    let time_per_timepoint = total_time_delta / (timepoints * days - 1);
+    let time_per_timepoint = total_time_delta / (num_timepoints - 1);
 
     let time_point_counts = times.map(function(time,i) {
         if (time !== null) {
@@ -511,7 +511,7 @@ function guessColumnLabels(columns, days, timepoints, defaults) {
                     return "Ignore";
                 }
             }
-            return "Day" + (Math.floor(time_point_count / timepoints) + 1) + " Timepoint" + (time_point_count % timepoints + 1);
+            return "Day" + (Math.floor(time_point_count / timepoints_per_cycle) + 1) + " Timepoint" + (time_point_count % timepoints_per_cycle + 1);
         });
 
         return selections;
@@ -521,15 +521,15 @@ function guessColumnLabels(columns, days, timepoints, defaults) {
     // But let's check there might be the right number of them
     // assuming that there are constant number of reps per day
     // and that they are in the right order
-    if (num_matches % (timepoints*days) === 0) {
-        let num_reps = Math.floor(num_matches / timepoints*days);
+    if (num_matches % (num_timepoints) === 0) {
+        let num_reps = Math.floor(num_matches / num_timepoints);
 
         let selections = [];
         let selected_below = 0;
         columns.map( function(column, i) {
             if (times[i] !== null) {
-                day = Math.floor(selected_below / timepoints);
-                time = selected_below % timepoints;
+                day = Math.floor(selected_below / timepoints_per_cycle);
+                time = selected_below % timepoints_per_cycle;
                 selections[i] = "Day" + (day+1) + " Timepoint" + (time+1);
                 selected_below += 1;
             } else {
@@ -547,12 +547,12 @@ function guessColumnLabels(columns, days, timepoints, defaults) {
     return defaults;
 }
 
-function getLabelOptions(days, timepoints) {
+function getLabelOptions(num_timepoints, timepoints_per_cycle) {
     let options = ["Ignore", "ID", "Stat"];
-    for(let i = 0; i < days; i++) {
-        for(let j = 0; j < timepoints; j++) {
-            options.push("Day" + (i+1) + " Timepoint" + (j+1));
-        }
+    for(let i = 0; i < num_timepoints; i++) {
+        let day = Math.floor(i / timepoints_per_cycle);
+        let timepoint = i % timepoints_per_cycle;
+        options.push("Day" + (day+1) + " Timepoint" + (timepoint+1));
     }
     return options;
 };

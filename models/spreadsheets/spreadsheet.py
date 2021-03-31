@@ -253,7 +253,7 @@ class Spreadsheet(db.Model):
 
         # Count the number of replicates at each timepoint
         self.num_replicates = [len([1 for x in x_values if x == i])
-                                    for i in range(self.timepoints * self.days)]
+                                    for i in range(self.num_timepoints)]
         self.num_replicates_str = ",".join([str(num_replicate) for num_replicate in self.num_replicates])
         # Num replicates separated out by times not counting which day it comes from
         self.num_replicates_by_time = [len([1 for x in x_values if x % self.timepoints == i])
@@ -552,8 +552,7 @@ class Spreadsheet(db.Model):
     def validate(self, column_labels):
         """ Check spreadhseet for consistency.
 
-        In particular, need the column identifies to match what NITECAP can support.
-        Every timepoint must have the same number of columns and every day must have all of its timepoints"""
+        Validates that we have data in each timepoint"""
 
         errors = []
 
@@ -567,19 +566,14 @@ class Spreadsheet(db.Model):
             if not Spreadsheet.ID_COLUMN and (not type_match or type_match.group(1) not in ['int', 'uint', 'float']):
                 errors.append(f"Column '{retained_column}' must contain only numerical data to be employed as a timepoint.")
 
-        daytimes = [self.label_to_daytime(column_daytime) for column_daytime in column_labels]
-        daytimes = [daytime for daytime in daytimes if daytime is not None]
-        days = [daytime[0] for daytime in daytimes if daytime is not None]
-        times_of_day = [daytime[1] for daytime in daytimes if daytime is not None]
+        times = [self.label_to_timepoint(column_daytime) for column_daytime in column_labels]
 
-        # Check that each day has all the timepoints
-        all_times = set(range(1, self.timepoints + 1))
-        for i in range(self.days):
-            times_in_day = set([time for day, time in daytimes if day == i + 1])
-            if times_in_day != all_times:
-                missing = all_times.difference(times_in_day)
-                errors.append(f"Day {i + 1} does not have data for all timepoints."
-                                f" Missing timepoint {', '.join(str(time) for time in missing)}")
+        # Check that each timepoint has some data
+        for i in range(self.num_timepoints):
+            if sum(time == i for time in times) == 0:
+                day = i // self.num_timepoints
+                time_of_day = i % self.timepoints
+                errors.append(f"Day {day+1} Timepoint {time_of_day+1} needs at least one column selected")
         return errors
 
     def validate_categorical(self, column_labels):

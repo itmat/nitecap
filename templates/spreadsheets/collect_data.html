@@ -7,7 +7,7 @@
         columns = {{ (spreadsheet.df.columns.tolist()) | safe }};
         default_selections_str = "{{ spreadsheet.column_labels_str | safe }}";
 
-        {% if not spreadsheet.days or not spreadsheet.timepoints %}
+        {% if not spreadsheet.num_timepoints or not spreadsheet.timepoints %}
             $("#selectors").css("visibility", "hidden");
         {%  else %}
             $("#selectors").css("visibility", "visible");
@@ -40,13 +40,13 @@
         nitecap_error_message.text("");
 
 
-        let days = $("#days");
+        let num_timepoints = $("#num_timepoints");
         let timepoints = $("#timepoints");
         let defaults = columns.map( function (x) { return "Ignore"; } );
 
         function updateLabels() {
-            let guessed_labels = guessColumnLabels(columns, days.val(), timepoints.val(), defaults);
-            let options = getLabelOptions(days.val(), timepoints.val());
+            let guessed_labels = guessColumnLabels(columns, num_timepoints.val(), timepoints.val(), defaults);
+            let options = getLabelOptions(num_timepoints.val(), timepoints.val());
 
             setScrollbars();
             populate_selects(options, guessed_labels);
@@ -68,12 +68,12 @@
             });
         }
 
-        days.on('change', updateLabels);
+        num_timepoints.on('change', updateLabels);
         timepoints.on('change', updateLabels);
 
         // Initialize selections
         if (default_selections_str) {
-            let options = getLabelOptions(days.val(), timepoints.val());
+            let options = getLabelOptions(num_timepoints.val(), timepoints.val());
             let default_selections = default_selections_str.split(",");
             populate_selects(options, default_selections);
         } else {
@@ -147,7 +147,7 @@
 <div class="page-header">
     <h1>
         Collect Data
-        <small>Indicate additional spreadsheet metadata including which days/timepoints to use</small>
+        <small>Indicate additional spreadsheet metadata including which timepoints to use</small>
     </h1>
 </div>
 
@@ -181,12 +181,12 @@
                value="{{spreadsheet.descriptive_name or ''}}" style="width:40rem" maxlength="250" />
     </div>
     <div class="form-group required">
-        <label for="days">Number of Days of Data:</label>
-        <input type="number" id="days" name="days" class="form-control" style="width:10rem"
-               value="{{spreadsheet.days or ''}}" required />
+        <label for="num_timepoints">Number of total timepoints (include all cycles, if more than one):</label>
+        <input type="number" id="num_timepoints" name="num_timepoints" class="form-control" style="width:10rem"
+               value="{{spreadsheet.num_timepoints or ''}}" required />
     </div>
     <div class="form-group required">
-        <label for="timepoints">Number of Timepoints Per Day:</label>
+        <label for="timepoints">Number of Timepoints Per Cycle:</label>
         <input type="number" id="timepoints" name="timepoints" class="form-control" style="width:10rem"
                value="{{spreadsheet.timepoints or ''}}" required />
     </div>
@@ -216,7 +216,7 @@
                     <th>{{ heading }}</th>
                     {% endfor %}
                 </tr>
-                <tr id="selectors" style="visibility: {{ 'visible' if days and timepoints else 'hidden' }}">
+                <tr id="selectors" style="visibility: {{ 'visible' if num_timepoints and timepoints else 'hidden' }}">
                     {% for heading in spreadsheet.df.columns %}
                     <th>
                         <select style="font-size: 10px" name="col{{ loop.index }}" id="col{{ loop.index }}">

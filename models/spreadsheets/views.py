@@ -120,6 +120,7 @@ def upload_file():
             spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
                                       days=None,
                                       timepoints=None,
+                                      num_timepoints=None,
                                       repeated_measures=False,
                                       header_row=header_row,
                                       original_filename=upload_file.filename,
@@ -169,13 +170,13 @@ def collect_data(spreadsheet_id, user=None):
 
     # Spreadsheet data form submitted.
     if request.method == 'POST':
-        descriptive_name, days, timepoints, repeated_measures, column_labels, errors = \
+        descriptive_name, num_timepoints, timepoints, repeated_measures, column_labels, errors = \
             validate_spreadsheet_data(request.form)
 
         if errors:
             return render_template('spreadsheets/collect_data.html', errors=errors, spreadsheet=spreadsheet)
         spreadsheet.descriptive_name = descriptive_name
-        spreadsheet.days = int(days)
+        spreadsheet.num_timepoints = int(num_timepoints)
         spreadsheet.timepoints = int(timepoints)
         spreadsheet.repeated_measures = repeated_measures
 
@@ -218,7 +219,7 @@ def validate_spreadsheet_data(form_data):
 
     # Gather data
     descriptive_name = form_data.get('descriptive_name', None)
-    days = form_data.get('days', None)
+    num_timepoints = form_data.get('num_timepoints', None)
     timepoints = form_data.get('timepoints', None)
     repeated_measures = form_data.get('repeated_measures', 'n')
     repeated_measures = True if repeated_measures == 'y' else False
@@ -228,11 +229,11 @@ def validate_spreadsheet_data(form_data):
     errors = []
     if not descriptive_name or len(descriptive_name) > 250:
         errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
-    if not days or not days.isdigit():
-        errors.append(f"The value for days is required and must be a positve integer.")
+    if not num_timepoints or not num_timepoints.isdigit():
+        errors.append(f"The value for num_timepoints is required and must be a positve integer.")
     if not timepoints or not timepoints.isdigit():
         errors.append(f"The value for timepoints is required and must be a positve integer.")
-    return descriptive_name, days, timepoints, repeated_measures, column_labels, errors
+    return descriptive_name, num_timepoints, timepoints, repeated_measures, column_labels, errors
 
 
 def allowed_file(filename):
