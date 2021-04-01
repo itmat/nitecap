@@ -1045,6 +1045,10 @@
                                     plot_x_label_values[time] = time;
                                 }
                             });
+                        } else {
+                            plot_x_labels = plot_x_label_values.map(function(x) {
+                                return app.timepoint_labels[0][x % spreadsheet.timepoints_per_cycle];
+                            });
                         }
                     }
 
