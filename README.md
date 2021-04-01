@@ -85,13 +85,14 @@ populated it. NOTE: try the below without 'sudo' in first command and ommiting t
 ```bash
 sudo python3.6 -m venv venv
 source venv/bin/activate
-chown -R ubuntu.ubuntu venv
+sudo chown -R ubuntu.ubuntu venv
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
 Similarly we need to load an R package:
 ```bash
-sudo Rscript -e 'install.packages(c("readr", "stringr"), repos="http://cran.r-project.org")' 
+sudo Rscript prep_R.Rscript
 ```
 
 Then while activated, I used by mod_wsgi command to grab the configuration data
