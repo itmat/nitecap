@@ -66,7 +66,7 @@ def main(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS, output="mini
     `td` is a numpy array with the total delta statistics of each feature.
         Lower total_delta indicates more circadian behavior
     If output == "full" then output (q,td, perm_td) where:
-    `perm_td` is a numpy array with total_delta statitics of features with permuted time points
+    `perm_td` is a numpy array with total_delta statistics of features with permuted time points
             useful for diagnostics of the nitecap method on ones data and plotting results
 
     Technical replicates may be used, so long as all replicates within a single timepoint are either all technical
@@ -256,7 +256,7 @@ def total_delta(data, timepoints, timepoints_per_cycle, contains_nans = "check",
 def nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS, repeated_measures=False):
     ''' Compute total_delta statistic and permutation versions of this statistic
 
-        `data` is data formatted as by reformat_data(data, timepoints_per_cycle, num_reps, num_cycles)
+        `data` is data formatted as (N_FEATURES, N_SAMPLES)
         `timepoints` is a list of timepoint values corresponding to each column of data
         `timepoints_per_cycle` is the number of timepoints per cycle
         `repeated_measures` is whether the data is from the same subjects repeatedly measured. Leave False
@@ -276,12 +276,12 @@ def nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS
     # then we just run all possible distinct permutations, for a deterministic p-value
     # Distinct perms: since our statistic is independent of cyclic permutations and mirroring
     # we can count distinct perms by fixing the first timepoint and dividing by two
-    num_perms_distinct = int(math.factorial(N_TIMEPOINTS-1)/2)
+    num_perms_distinct = math.factorial(N_TIMEPOINTS)//2
     if N_PERMS >= num_perms_distinct:
         # Enumerate all permutations out at once, as indexes
         # Since statistic is independent of cyclic permutations, we can fix the first
         # timepoint. Since independent of mirroring, only need "ascending" permutations
-        permutations = [[0] + list(p) for p in itertools.permutations(range(1,N_TIMEPOINTS))
+        permutations = [list(p) for p in itertools.permutations(range(N_TIMEPOINTS))
                             if p[0] < p[-1]]
         permutations = numpy.array(permutations)
         assert num_perms_distinct == len(permutations)
