@@ -168,18 +168,22 @@ NOTE: you must log out and log back in for this to take effect.
 Create the .env file in the nitecap directory, eg:
 
 ```
-APPLICATION_SETTINGS = "config_default.py"
-EMAIL_SENDER =  "admin@nitecap.org"
-UPLOAD_FOLDER = "/mnt/vol1/uploads"
-DB_BACKUP_FOLDER = '/mnt/vol1/dbs'
-DB_BACKUP_LIMIT = 7
-SECRET_KEY = "MY_SECRET_KEY"
-ANNONYMOUS_EMAIL = "anonymous@upenn.edu"
-ANNONYMOUS_PWD = "MY_ANONYMOUS_PASSWORD"
-SMTP_SERVER_HOST = '127.0.0.1'
-DATABASE_FILE = "nitecap.db"
-LOG_FILE = "/mnt/vol1/logs/nitecap.log"
-LOG_LEVEL = "INFO"
+APPLICATION_SETTINGS="config.py"
+EMAIL_SENDER="noreply@nitecap.org"
+UPLOAD_FOLDER="/mnt/vol1/uploads"
+DB_BACKUP_FOLDER="/mnt/vol1/dbs"
+DB_BACKUP_LIMIT=7
+SECRET_KEY="YOUR SECRET KEY HERE"
+OLD_SECRET_KEY="PUT PREVIOUS SECRET KEY HERE OR LEAVE EMPTY"
+ANONYMOUS_EMAIL="anonymous@upenn.edu"
+ANONYMOUS_PWD="A SECRET PASSWORD"
+SMTP_SERVER_HOST="127.0.0.1"
+DATABASE_FILE="nitecap.db"
+LOG_FILE="/mnt/vol1/logs/nitecap.log"
+LOG_LEVEL="INFO"
+ADMINS="YOUEMAIL@EXAMPLE.COM"
+BANNER_CONTENT="No banner message"
+BANNER_VISIBLE=""
 ```
 
 # Networking
