@@ -44,7 +44,7 @@ Vue.component('pca-plot', {
             // Rotate the colored wedge by the time (x-value)
             points.attr("transform", function(x,i,j) {
                 let spreadsheet = vm.spreadsheets[j];
-                let rotation = (spreadsheet.x_values[i] % spreadsheet.timepoints_per_day) / spreadsheet.timepoints_per_day * 360 - 45;
+                let rotation = (spreadsheet.x_values[i] % spreadsheet.timepoints_per_cycle) / spreadsheet.timepoints_per_cycle * 360 - 45;
 
                 let curr_transform = this.getAttribute("transform");
                 if (curr_transform.indexOf("rotate") < 0) {
@@ -68,7 +68,7 @@ Vue.component('pca-plot', {
             info_layer.selectAll('.pca_legend').remove();
             info_layer.selectAll('.pca_legend_bg').remove();
 
-            let times = [...Array(vm.spreadsheets[0].num_timepoints).keys()]; // 0,1,2...,num_timepoints-1
+            let times = [...Array(vm.spreadsheets[0].timepoints_per_cycle).keys()]; // 0,1,2...,timepoints_per_cycle-1
             let labels = vm.timepoint_labels[0];
 
             if (times.length > 6) {
@@ -113,7 +113,7 @@ Vue.component('pca-plot', {
             entries.append('path')
                     .attr('transform', function (x,i) {
                             return 'translate(' + radius + ',' + radius + ')'
-                                  +'rotate(' + ((times[i] % vm.spreadsheets[0].timepoints_per_day) / vm.spreadsheets[0].timepoints_per_day * 360 - 45) + ')';
+                                  +'rotate(' + ((times[i] % vm.spreadsheets[0].timepoints_per_cycle) / vm.spreadsheets[0].timepoints_per_cycle * 360 - 45) + ')';
                         })
                     .attr('d', this.PCA_SYMBOL)
                     .attr('fill', 'rgb(127,127,127)');
@@ -145,8 +145,8 @@ Vue.component('pca-plot', {
                         rep_counts[time] = 0;
                     }
                     rep_counts[time] += 1;
-                    let day = Math.floor(time / spreadsheet.timepoints_per_day) + 1;
-                    let time_of_day = time % spreadsheet.timepoints_per_day + 1;
+                    let day = Math.floor(time / spreadsheet.timepoints_per_cycle) + 1;
+                    let time_of_day = time % spreadsheet.timepoints_per_cycle + 1;
                     return "Day " + day + " Timepoint " + time_of_day + " Rep " + rep_counts[time];
                 });
             });

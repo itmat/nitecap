@@ -48,7 +48,7 @@ Vue.component("heatmap-plot", {
             if (vm.config.fold_days) {
                 times = vm.spreadsheets.map(function(spreadsheet) {
                     return spreadsheet.x_values.map(function(x) {
-                        return x % spreadsheet.timepoints_per_day;
+                        return x % spreadsheet.timepoints_per_cycle;
                     });
                 });
             }
@@ -118,8 +118,8 @@ Vue.component("heatmap-plot", {
                                 rep_counts[time] = 0;
                             }
                             rep_counts[time] += 1;
-                            let day = Math.floor(time / spreadsheet.timepoints_per_day) + 1;
-                            let time_of_day = time % spreadsheet.timepoints_per_day + 1;
+                            let day = Math.floor(time / spreadsheet.timepoints_per_cycle) + 1;
+                            let time_of_day = time % spreadsheet.timepoints_per_cycle + 1;
 
                             return vm.day_and_time_labels[idx][time] + " Rep " + rep_counts[time];
                         });

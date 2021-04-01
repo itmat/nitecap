@@ -1788,7 +1788,7 @@
                     }
 
                     // Otherwise we default to "Timepoint 1", etc.
-                    let times = [...Array(spreadsheet.num_timepoints).keys()]; // 0,1,2...,num_timepoints-1
+                    let times = [...Array(spreadsheet.timepoints_per_cycle).keys()]; // 0,1,2...,num_timepoints-1
                     return times.map( function(time) {
                         return "Timepoint " + (time + 1);
                     });
