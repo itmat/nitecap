@@ -64,6 +64,9 @@ class Job(db.Model):
 
         return 'running'
 
+    def save_to_db(self):
+        db.session.commit()
+
     @classmethod
     def get_number_running_jobs(cls):
         # First we cleanup the old jobs
@@ -85,7 +88,6 @@ class Job(db.Model):
 
         return num_running
 
-
     @classmethod
     def find_or_make(cls, job_type, params):
         params_json = json.dumps(params)
@@ -93,6 +95,7 @@ class Job(db.Model):
         if not job:
             job = Job(job_type, params)
         return job
+
 
 def run_job(job_type, params):
     function = job_functions[job_type]

@@ -515,14 +515,22 @@ class Spreadsheet(db.Model):
             raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
 
         results = pd.read_csv(results_file_path, sep='\t')
-        self.df["jtk_p"] = results.JTK_P
-        self.df["jtk_q"] = results.JTK_Q
-        self.df["ars_p"] = results.ARS_P
-        self.df["ars_q"] = results.ARS_Q
-        self.df["ls_p"] = results.LS_P
-        self.df["ls_q"] = results.LS_Q
 
-        self.update_dataframe()
+        # We load a new copy of this spreadsheet to ensure it hasn't changed since the start
+        # Technically there is a race condition possible here, though unlikely
+        spreadsheet = self.user.find_user_spreadsheet_by_id(self.id)
+        if spreadsheet.edit_version != self.edit_version:
+            raise RuntimeError(f"Spreadsheet {self.id} was edited before JTK could finish")
+
+        spreadsheet.init_on_load()
+        spreadsheet.df["jtk_p"] = results.JTK_P
+        spreadsheet.df["jtk_q"] = results.JTK_Q
+        spreadsheet.df["ars_p"] = results.ARS_P
+        spreadsheet.df["ars_q"] = results.ARS_Q
+        spreadsheet.df["ls_p"] = results.LS_P
+        spreadsheet.df["ls_q"] = results.LS_Q
+
+        spreadsheet.update_dataframe()
 
         os.remove(data_file_path)
         os.remove(results_file_path)

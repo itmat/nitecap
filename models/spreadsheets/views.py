@@ -505,6 +505,8 @@ def get_jtk(user=None):
                 spreadsheet.init_on_load()
                 if not spreadsheet.has_jtk():
                     status = "failed" # Job says completed but no rows loaded
+                    job.status = "failed"
+                    job.save_to_db()
                     current_app.logger.error(f"Error: could not load JTK even though job completed.")
             jtk_status.append(status)
         else:
