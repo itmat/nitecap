@@ -961,7 +961,6 @@ class Spreadsheet(db.Model):
                 phase_q = nitecap.util.BH_FDR(phase_p)
                 amplitude_q = nitecap.util.BH_FDR(amplitude_p)
 
-            # Save to disk
             comp_data = pd.DataFrame(index=combined_index)
             comp_data["upside_p"] = upside_p
             comp_data["upside_q"] = upside_q
@@ -973,6 +972,14 @@ class Spreadsheet(db.Model):
             comp_data["phase_q"] = phase_q
             comp_data["amplitude_p"] = amplitude_p
             comp_data["amplitude_q"] = amplitude_q
+
+
+            #  First reload the spreadsheets to make sure they haven't been edited
+            new_spreadsheets = [spreadsheet.user.find_user_spreadsheet_by_id(spreadsheet.id) for spreadsheet in spreadsheets]
+            if any(new.edit_version != old.edit_version for new, old in zip(new_spreadsheets, spreadsheets)):
+                raise RuntimeError(f"Comparison of spreadsheets {[s.id for s in spreadsheets]} was out-dated by the time it was computed")
+
+            # Save to disk
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
 
             current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
