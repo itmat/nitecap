@@ -745,7 +745,7 @@ def share(user=None):
     # Attempt to access spreadsheet not owned.
     for spreadsheet_id in spreadsheet_ids:
         if not user.find_user_spreadsheet_by_id(spreadsheet_id):
-            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user.id, request.path, spreadsheet_ids))
+            current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_ids))
             return jsonify({"errors": SPREADSHEET_NOT_FOUND_MESSAGE}, 404)
 
     current_app.logger.info(f"Sharing spreadsheet {spreadsheet_ids} and config {config}")
