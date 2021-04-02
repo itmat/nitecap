@@ -322,6 +322,36 @@ service sendmail restart
 ```
 The DNS record must be updated to use the new key. Log in at https://slmp-550-101.slc.westdc.net:2083/cpsess5500231750/frontend/paper_lantern/zone_editor/index.html?login=1&post_login=91595785784593#/manage?domain=nitecap.org and create/update a record with with the contents `/etc/opendkim/keys/nitecap/default.txt`.
 
+# SSL
+We use letsencrypt's certbot for SSL. Follow the guide [here](https://certbot.eff.org/lets-encrypt/ubuntufocal-apache). Note that you may need to run `sudo a2enmod ssl` to get `mod_ssl` running in Apache. The apache `/etc/apache2/sites-enabled/nitecap.config`, with SSL enabled, looks like:
+
+```
+<VirtualHost *:443>
+        ServerName nitecap.org
+
+        SSLEngine on
+        SSLCertificateFile /etc/letsencrypt/live/nitecap.org/fullchain.pem
+        SSLCertificateKeyFile /etc/letsencrypt/live/nitecap.org/privkey.pem
+        Include /etc/letsencrypt/options-ssl-apache.conf
+
+        ErrorLog /var/www/flask_apps/logs/error.log
+        CustomLog /var/www/flask_apps/logs/access.log combined
+        LogLevel info
+
+        WSGIDaemonProcess nitecap user=www-data group=www-data threads=5 home=/var/www/flask_apps/nitecap
+
+        WSGIProcessGroup nitecap
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIScriptReloading On
+        WSGIScriptAlias / /var/www/flask_apps/nitecap/wsgi.py
+</VirtualHost>
+
+<VirtualHost *:80>
+        ServerName nitecap.org
+        ServerAlias www.nitecap.org
+        Redirect "/" "https://nitecap.org?"
+</VirtualHost>
+```
 
 # Database Issues
 
