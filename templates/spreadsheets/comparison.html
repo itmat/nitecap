@@ -1902,6 +1902,19 @@
         watch: {
             row_index: "onRowChange",
 
+            "sort_order": function(new_sort_order, old_sort_order) {
+                // we want to preserve the row on change of sort_order
+                // i.e. changing sorting shouldn't preserve the *number* of rows
+                // selected but rather the gene selected. Users seem to consistently
+                // get confused by the alternative even though that was how I originally
+                // imagined it to be done.
+                let old_row = old_sort_order[this.config.selected_row];
+                if (old_row !== undefined) {
+                    let selected_row_in_new = new_sort_order.indexOf(old_row);
+                    this.config.selected_row = selected_row_in_new;
+                }
+            },
+
             "config.plot": {
                 handler: "redrawPlot",
                 deep: true
