@@ -18,6 +18,7 @@ Vue.component('pca-plot', {
     props: {
         spreadsheets: Array,
         timepoint_labels: Array,
+        share_token: String,
     },
 
     methods: {
@@ -158,7 +159,8 @@ Vue.component('pca-plot', {
                 data: JSON.stringify({'spreadsheet_ids': app.config.original_spreadsheet_ids,
                                       'selected_genes': selected_genes,
                                       'take_logtransform': vm.config.logtransform,
-                                      'take_zscore': vm.config.zscore}),
+                                      'take_zscore': vm.config.zscore,
+                                      'share_token': vm.share_token}),
                 dataType: 'json',
                 contentType: 'application/json',
                 type: 'POST',
