@@ -369,11 +369,28 @@
             <div class="col-auto">
                 <div class="card">
                     <div class="card-header">
-                        Statistics
+                        Stats: sort by
+                        <select class="form-select form-select-sm" aria-label="Sorting method"
+                            v-model="config.sort_by.stat_id">
+                            <option v-for="(stat, stat_id) in useable_stats"
+                                v-bind:value="stat_id"
+                                v-bind:key="stat_id">
+                                {{stat.name }} {{stat.stat_id}}
+                            </option>
+                        </select>
+                        <select class="form-select form-select-sm" aria-label="Sorting spreadsheet"
+                            v-model="config.sort_by.spreadsheet_num"
+                            v-bind:disabled="!sort_by.stat.per_spreadsheet"
+                            >
+                            <option v-for="number in [0,1]"
+                                v-bind:value="number">
+                                {{descriptive_names[number]}}
+                            </option>
+                        </select>
                         <a id="statsHelp" class="text-primary help-pointer ml-3"
                            data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                            title="Statistics Help"
-                           data-content="Displays statistics about the selected row. JTK values are calculated on first page load and may a take a minute.">
+                           data-content="Displays statistics about the selected row. Some values (like JTK/ARS/LS) are take time to be computed and may require a few minutes. Choose what statistics to sort by from the drop downs here or by clicking on a statistic below.">
                             <i class="fas fa-info-circle"></i>
                         </a>
                     </div>
@@ -415,7 +432,7 @@
                                             <template v-else>
                                                 <td v-if="stats[stat.value] != null"
                                                     v-bind:title="String(stats[stat.value][row_index])"
-                                                    v-on:click="config.sort_by = {stat_id:stat_id}"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num:0}"
                                                     v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:colspan="spreadsheets.length">
                                                     {{util.formatStatsEntry(stats[stat.value][row_index])}}
@@ -443,7 +460,7 @@
                                             <template v-else>
                                                 <td v-if="stats[stat.value.p] != null"
                                                     v-bind:title="String(stats[stat.value.p][row_index])"
-                                                    v-on:click="config.sort_by = {stat_id:stat_id}"
+                                                    v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num:0}"
                                                     v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                     v-bind:colspan="spreadsheets.length">
                                                     p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
@@ -472,7 +489,7 @@
                                         <template v-else>
                                             <td v-if="stats[stat.value.q] != null"
                                                 v-bind:title="String(stats[stat.value.q][row_index])"
-                                                v-on:click="config.sort_by = {stat_id:stat_id}"
+                                                v-on:click="config.sort_by = {stat_id:stat_id, spreadsheet_num:0}"
                                                 v-bind:class="stat === sort_by.stat ? 'selected-stat-cell' : 'stat-cell'"
                                                 v-bind:colspan="spreadsheets.length">
                                                 q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
@@ -1550,7 +1567,7 @@
                 let value = null;
                 let secondary_value = null;
                 let display_value = null;
-                if (vm.sort_by.spreadsheet_num !== undefined) {
+                if (vm.sort_by.stat.per_spreadsheet) {
                     if (vm.spreadsheets.length > 0) {
                         value = vm.spreadsheets[vm.sort_by.spreadsheet_num][variable];
                         secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_variable];
@@ -1613,7 +1630,7 @@
                     return null;
                 }
 
-                if (this.sort_by.spreadsheet_num !== undefined) {
+                if (this.sort_by.stat.per_spreadsheet) {
                     let sp = this.spreadsheets[this.sort_by.spreadsheet_num];
                     let vq = value.q;
                     let vals = sp ? sp[vq]: [];
