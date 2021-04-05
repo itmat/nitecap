@@ -60,6 +60,7 @@ Vue.component( 'pathway-analysis', {
                 MIN_PATHWAY_SIZE: 10,
                 search_pattern: '',
             },
+            loading_resources: false,
             worker: null,
             worker_busy: false,
             // next message to send the worker when not busy
@@ -255,14 +256,17 @@ Vue.component( 'pathway-analysis', {
 
             // Load the new pathways
             let db_data = vm.all_databases[vm.config.database_id];
+            vm.loading_resources = true;
             fetch(db_data.url)
                 .then(function(res) {return res.json()})
                 .then(function(res) {
                     Object.preventExtensions(res); // Contents aren't reactive
                     vm.full_pathways = res;
+                    vm.loading_resources = false;
                 })
                 .catch(function(err){
                     console.log("ERROR loading pathways ", err);
+                    vm.loading_resources = true;
                 });
         },
 
@@ -304,6 +308,7 @@ Vue.component( 'pathway-analysis', {
                     v-on:click="runPathwayAnalysis"
                     v-bind:disabled="full_pathways.length == 0">
                     Run Pathway Analysis
+                    <span v-if="loading_resources" class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>
                 </button>
                 <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
                 <label class="form-check-label" for="run_continuously">Update continuously</label>
