@@ -381,6 +381,7 @@
                         <select class="form-select form-select-sm" aria-label="Sorting spreadsheet"
                             v-model="config.sort_by.spreadsheet_num"
                             v-bind:disabled="!sort_by.stat.per_spreadsheet"
+                            v-show="spreadsheets.length > 1"
                             >
                             <option v-for="number in [0,1]"
                                 v-bind:value="number">
