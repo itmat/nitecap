@@ -229,10 +229,10 @@ def validate_spreadsheet_data(form_data):
     errors = []
     if not descriptive_name or len(descriptive_name) > 250:
         errors.append(f"A descriptive name is required and may be no longer than 250 characters.")
-    if not num_timepoints or not num_timepoints.isdigit():
-        errors.append(f"The value for num_timepoints is required and must be a positve integer.")
-    if not timepoints or not timepoints.isdigit():
-        errors.append(f"The value for timepoints is required and must be a positve integer.")
+    if not timepoints or not timepoints.isdigit() or not int(timepoints) > 0:
+        errors.append(f"The number of timepoints per cycle must be a positve integer.")
+    if not num_timepoints or not num_timepoints.isdigit() or not (int(num_timepoints) > int(num_timepoints)):
+        errors.append(f"The number of timepoints must be an integer larger than the timepoints per cycle.")
     return descriptive_name, num_timepoints, timepoints, repeated_measures, column_labels, errors
 
 
