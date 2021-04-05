@@ -59,6 +59,8 @@ Vue.component( 'pathway-analysis', {
                 MAX_PATHWAY_SIZE: 10000,
                 MIN_PATHWAY_SIZE: 10,
                 search_pattern: '',
+                num_pathways_shown: 10,
+                top_pathway_shown: 0,
             },
             loading_resources: false,
             worker: null,
@@ -108,10 +110,10 @@ Vue.component( 'pathway-analysis', {
             }
         },
 
-        download_top_pathway: function(i) {
+        download_shown_pathway: function(i) {
             // Prepare and download 1 pathway result
             let vm = this;
-            let pathway = this.top_pathways[i];
+            let pathway = this.shown_pathways[i];
             let results = [
                 ["pathway",  pathway.pathway],
                 ["pathway_name",  pathway.name],
@@ -166,7 +168,7 @@ Vue.component( 'pathway-analysis', {
     },
 
     computed: {
-        top_pathways: function() {
+        shown_pathways: function() {
             // Top results from pathway analysis
             let results = this.results;
             let pattern = this.config.search_pattern.toUpperCase();
@@ -175,7 +177,17 @@ Vue.component( 'pathway-analysis', {
                     return x.name.toUpperCase().includes(pattern);
                 })
             }
-            return results.slice(0,10);
+
+            // Gather the slice of the currently visible pathways
+            let [top, bottom] = this.shown_pathways_slice;
+            return results.slice(top, bottom);
+        },
+
+        shown_pathways_slice: function () {
+            let top = Math.max(0, Math.min( this.results.length - this.config.num_pathways_shown, this.config.top_pathway_shown));
+
+            let bottom = Math.min(this.results.length, top + this.config.num_pathways_shown);
+            return [top, bottom];
         },
 
         pathways: function() {
@@ -308,7 +320,7 @@ Vue.component( 'pathway-analysis', {
                     v-on:click="runPathwayAnalysis"
                     v-bind:disabled="full_pathways.length == 0">
                     Run Pathway Analysis
-                    <span v-if="loading_resources" class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>
+                    <span v-if="loading_resources" class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'> </span>
                 </button>
                 <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
                 <label class="form-check-label" for="run_continuously">Update continuously</label>
@@ -321,17 +333,17 @@ Vue.component( 'pathway-analysis', {
             </div>
 
             <div>
-                <table class="table table-sm" v-if="top_pathways.length > 0">
+                <table class="table table-sm" v-if="shown_pathways.length > 0">
                     <thead>
                     <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> <th>Download</th> </tr>
                     </thead>
                     <tbody is="transition-group" name="swap-list">
-                        <tr v-for="(pathway,i) in top_pathways" v-bind:key="pathway.pathway" class="swap-list-item">
+                        <tr v-for="(pathway,i) in shown_pathways" v-bind:key="i" class="swap-list-item">
                             <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,this.MAX_PATHWAY_NAME_LENGTH) }}</a></td>
                             <td>{{util.formatNum(pathway.p, 4)}} </td>
                             <td>{{pathway.overlap}} </td>
                             <td>{{pathway.pathway_size}} </td>
-                            <td> <button v-on:click="download_top_pathway(i)" type="button" class="btn btn-secondary btn-sm" >Download</button></td>
+                            <td> <button v-on:click="download_shown_pathway(i)" type="button" class="btn btn-secondary btn-sm" >Download</button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -343,6 +355,11 @@ Vue.component( 'pathway-analysis', {
                        placeholder="Search for pathways" v-model="config.search_pattern"
                        />
                 <button v-on:click="download_pathway_results" type="button" class="btn btn-secondary btn-sm ml-5" >Download Results</button>
+
+                <button v-on:click="config.top_pathway_shown = shown_pathways_slice[0] - config.num_pathways_shown" type="button" class="btn btn-secondary btn-sm ml-5" >&lt;</button>
+                {{shown_pathways_slice[0]+1}} - {{shown_pathways_slice[1]}}
+                <button v-on:click="config.top_pathway_shown = shown_pathways_slice[0] + config.num_pathways_shown" type="button" class="btn btn-secondary btn-sm" >&gt;</button>
             </div>
+
         </div>`,
 });
