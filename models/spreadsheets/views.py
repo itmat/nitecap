@@ -1354,6 +1354,7 @@ def upload_mpv_file():
             spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
                                       days=None,
                                       timepoints=None,
+                                      num_timepoints=None,
                                       repeated_measures=False,
                                       header_row=int(data_row)-1,
                                       original_filename=upload_file.filename,
