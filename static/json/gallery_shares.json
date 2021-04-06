@@ -2,7 +2,7 @@
     {
         "name": "Mouse Liver in Bmal1 KO and WT",
         "description": "RNA-Seq of mouse liver under dark-dark conditions in either a Bmal1 clock-knockout model (either post-natal or pre-natal) and wildtype. Post-natal knocks and pre-natal were performed.",
-        "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE70497",
+        "geo": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE70497",
         "cite": "https://pubmed.ncbi.nlm.nih.gov/26843191/",
         "entries": [
             {"name": "WT vs Post-natal KO",
@@ -10,7 +10,7 @@
              "description": "Wild-type and post-natal knockout mice"
              },
             {"name": "WT vs Pre-natal KO",
-             "share": "https://nitecap.org/spreadsheets/share/yeAJS-gTKrPt00o-6n4GTQ-EynbHyQ1xQl-Faij7j_keXQHUOqDxV69ZeWz_1YlyAIhjjrIrQDyRr4zWfm_v5ijS8I8giXIX-yUV",
+             "share": "https://nitecap.org/spreadsheets/share/iVLodE7wQ2Br8D2KGmAbdd4p7cqvCvVxoNltpI2lj92gHoHUulPHyJ6EKspxKKxHPfChRZ75bViVtdgeBNUXES_hbMxz_R7AsIrx",
              "description": "Wild-type and pre-natal knockout mice"
              }
         ]
@@ -18,12 +18,12 @@
     {
         "name": "Inverted Feeding Schedules in Mice - GSE150385 ",
         "description":"RNA-Seq of mouse (C57BL/6J) peripheral tissues under 12h light:12h dark conditions under either a daytime-restricted feeding (DRF) or a nighttime-restricted feeding (NRF) for 7 days.",
-        "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE150385",
+        "geo": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE150385",
         "cite": "https://doi.org/10.1016/j.isci.2021.102335",
         "entries": [
             {"name": "VAT",
             "share":"https://nitecap.org/spreadsheets/share/h2KMfj-5u4Vqm2KFVSgtUVwjhb_6mTq1FNRVj4ObhVZZp78x2JshWhY90A12d79hbwi4IpmxdrcjaN95XaDPDvEgroDMN3N8hQ32",
-            "description": "visceral adipose tissue"},
+            "description": "Visceral adipose tissue"},
             {"name": "Kidney",
             "share":"https://nitecap.org/spreadsheets/share/mKdVsL0yw7xX7jXrWKLsPfevHhDPy2zO7qFjzBzB9T4kIuZeyIZ-yO_Up2nooFXtxJj1Q3ka6QAxyKN9LKP89aldWHt0DGnuwTzP",
             "description": "Kidney"},
