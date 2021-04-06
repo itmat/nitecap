@@ -930,7 +930,7 @@ class Spreadsheet(db.Model):
             file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
             # Compute comparisons from scratch
             if not datasets:
-                datasets = [df[spreadsheet.get_data_columns(by_day=False)].values for df, spreadsheet in zip(dfs, spreadsheets)]
+                datasets = [df[spreadsheet.get_data_columns()].values for df, spreadsheet in zip(dfs, spreadsheets)]
             repeated_measures = spreadsheets[0].repeated_measures
             for spreadsheet in spreadsheets:
                 if spreadsheet.repeated_measures != repeated_measures:
