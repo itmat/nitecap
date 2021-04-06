@@ -17,6 +17,7 @@ Vue.component('pca-plot', {
 
     props: {
         spreadsheets: Array,
+        descriptive_names: Array,
         timepoint_labels: Array,
         share_token: String,
     },
@@ -174,7 +175,7 @@ Vue.component('pca-plot', {
                             x: pca_coords[spreadsheet_idx][0],
                             y: pca_coords[spreadsheet_idx][1],
                             mode: 'markers',
-                            name: spreadsheet.descriptive_name,
+                            name: vm.descriptive_names[spreadsheet_idx],
                             text: pt_labels[spreadsheet_idx],
                             marker: {
                                 size: 25,

@@ -1,7 +1,7 @@
 [
     {
         "name": "Mouse Liver in Bmal1 KO and WT",
-        "description": "RNA-Seq of mouse liver under dark-dark conditions in either a Bmal1 clock-knockout model (either post-natal or pre-natal) and wildtype. Post-natal knocks and pre-natal were performed.",
+        "description": "RNA-Seq of mouse (C57BL/6) liver under dark-dark conditions in either a Bmal1 clock-knockout model (either post-natal or pre-natal) and wildtype. Post-natal knocks and pre-natal were performed.",
         "geo": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE70497",
         "cite": "https://pubmed.ncbi.nlm.nih.gov/26843191/",
         "entries": [
@@ -33,6 +33,21 @@
             {"name": "Liver",
             "share":"https://nitecap.org/spreadsheets/share/QhVo_vwn6ePvj6L64vRDHouIrxdCii6DjvrykODNU3BSnIGr7RHH4-AkyO5gM8ld7flEcallw0l5cbma0PqSR0RD3WaXXWkwdvEI",
             "description":"Liver"}
+        ]
+    },
+    {
+        "name": "Mouse Pancreas under Chronic Phase Shift",
+        "description": "RNA-Seq of mouse (C57Bl/6J) pancreas under 12h:12h light/dark conditions (CircNorm) or with the light-dark cycle advanced 8 hours every 2-3 days for 4 weeks (CircDis), in male and female mice.",
+        "geo": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE165198",
+        "cite": "",
+        "entries": [
+            {"name": "Female CircDis vs CircNorm",
+             "share": "https://nitecap.org/spreadsheets/share/LxYRAEPuZPBM6V6O0wpW9sj95KW148jgbZ8Y1V41SFvr0_JQZXC093bwTR-XwCYMB7RaBH6XRmFxc_TKNMePUW3LUKq4ZP6qDs4O",
+             "description": "Disrupted and normal circadian conditions in female mice"},
+             {"name": "Male CircDis vs CircNorm",
+              "share":"https://nitecap.org/spreadsheets/share/8HXbD1ygb5GjJfjtpZfevtv78AR-8xOWdrEuX1fyBaOWEj4okCcCFTpoxGbHeRd-Hu7s-2W7NfrvYdJQ_x8uJ1RnsPstydxD8WGA",
+              "description": "Disrupted and normal circadian conditions in male mice"}
+
         ]
     }
 ]
