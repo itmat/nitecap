@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<div class="jumbotron mt-5">
+    <h2>Nitecap: easy-to-use circadian and rhythmic analyses</h2>
+    <p>
+        Run analyses of your time-series, high-throughput data to detect, quantify, and compare rhythms and circadian behavior.
+    </p>
+
+    <a href="https://nitecap.org/spreadsheets/share/yeAJS-gTKrPt00o-6n4GTQ-EynbHyQ1xQl-Faij7j_keXQHUOqDxV69ZeWz_1YlyAIhjjrIrQDyRr4zWfm_v5ijS8I8giXIX-yUV">
+        <buttson class='btn btn-secondary'>
+            Explore an example dataset
+        </button>
+    </a>
+
+     <a href="{{url_for('spreadsheets.upload_file')}}">
+        <button class="btn btn-primary">
+            Load new spreadsheet
+        </button>
+     </a>
+</div>
+
+<div class="row gallery">
+    <div class="col-12">
+        {% for dataset in gallery %}
+            <div class="card">
+                <div class="card-header">
+                    <h3><a href="{{dataset.url}}">{{ dataset.name }}</a></h3>
+                </div>
+                <div class="card-body">
+                    <p> {{dataset.description}} </p>
+                    <table class="table">
+                        {% for entry in dataset.entries %}
+                            <tr>
+                                <td>
+                                    <a href="{{entry.share}}"><h4>{{entry.name}}</h4></a>
+                                </td>
+                                <td><p>{{entry.description}}</p></td>
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

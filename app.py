@@ -7,6 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import werkzeug
+import json
 # Uncomment to allow CORS
 #from flask_cors import CORS
 
@@ -95,6 +96,14 @@ def people():
 @app.route('/about', methods=['GET'])
 def about():
     return render_template("about.html")
+
+@app.route('/gallery', methods=['GET'])
+def gallery():
+    # load the gallery shares
+    with open("static/json/gallery_shares.json") as gallery_json:
+        gallery = json.load(gallery_json)
+    return render_template("gallery.html",
+                gallery=gallery)
 
 
 @app.route('/dashboard', methods=['GET'])
