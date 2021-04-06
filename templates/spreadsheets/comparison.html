@@ -1688,10 +1688,13 @@
                 // List of indices of the rows that are selected
                 // I.e. unfiltered, and below the significance cutoff
                 let vm = this;
+                let filtered = vm.filtered;
+                let selected_row = vm.config.selected_row;
 
-                return vm.sort_order.filter( function(row_num,rank) {
-                    return (rank <= vm.config.selected_row) & (!vm.filtered[row_num]);
+                let selected = vm.sort_order.filter( function(row_num,rank) {
+                    return (rank <= selected_row) & (!filtered[row_num]);
                 } );
+                return selected;
             },
 
             background_ids: function() {
