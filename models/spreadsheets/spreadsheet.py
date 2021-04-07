@@ -767,6 +767,7 @@ class Spreadsheet(db.Model):
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
                                         days=spreadsheet.days,
                                         timepoints=spreadsheet.timepoints,
+                                        num_timepoints=spreadsheet.num_timepoints,
                                         repeated_measures=spreadsheet.repeated_measures,
                                         header_row=spreadsheet.header_row,
                                         original_filename=spreadsheet.original_filename,
