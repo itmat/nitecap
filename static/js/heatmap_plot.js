@@ -76,7 +76,9 @@ Vue.component("heatmap-plot", {
                 vm.data = meanZScores;
 
                 if (vm.config.fold_days) {
-                    vm.x_values = vm.timepoint_labels;
+                    vm.x_values = vm.timepoint_labels.map( function(array, idx) {
+                        return array.slice(0,vm.spreadsheets[idx].timepoints_per_cycle);
+                    });
                 } else {
                     vm.x_values = vm.day_and_time_labels;
                 }
