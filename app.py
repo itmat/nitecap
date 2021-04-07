@@ -61,6 +61,11 @@ def handle_exception(e):
     app.logger.error(e)
     raise e
 
+@app.errorhandler(404)
+def handle_404(e):
+    errors = ["URL not found"]
+    return render_template("home.html", errors=errors), 404
+
 # Check python version and paths:
 logger.debug("Python version")
 logger.debug(sys.version)

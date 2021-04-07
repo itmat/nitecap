@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if errors %}
+    <div class="badge badge-danger">Errors</div>
+    <div class="server-errors">
+        {% for error in errors %}
+            <div>{{error}}</div>
+        {% endfor %}
+    </div>
+{% endif %}
 
 <div class="jumbotron mt-5">
     <h2>Nitecap: easy-to-use circadian and rhythmic analyses</h2>
