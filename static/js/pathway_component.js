@@ -50,8 +50,6 @@ Vue.component( 'pathway-analysis', {
             },
             results: [],
             full_pathways: [],
-            used_background: [], // Background list used in latest analysis
-            used_foreground: [], // Foreground list used in latest analysis
             config: {
                 database_id: "none",
                 continuous: false,
@@ -61,6 +59,7 @@ Vue.component( 'pathway-analysis', {
                 search_pattern: '',
                 num_pathways_shown: 10,
                 top_pathway_shown: 0,
+                remove_unannotated: true, // Background to only include genes in at least one pathway
             },
             loading_resources: false,
             worker: null,
@@ -83,20 +82,28 @@ Vue.component( 'pathway-analysis', {
 
     methods:{
         "runPathwayAnalysis": function() {
+            // Nothing to run yet
+            if (this.full_pathways != [] && this.config.continuous) { return; }
+
             // Grab but don't use pathways
             // this forces them to be recomputed and set to worker
             let pathways = this.pathways; 
 
+            let background = this.background;
+            if (this.config.remove_unannotated) {
+                background = this.reduced_background;
+            }
+
             let message = {
                 type: "run_analysis",
                 foreground: this.foreground,
-                background: this.background,
+                background: background,
             };
             let state = {
                 message: message,
                 pathways: this.pathways,
                 foreground: this.foreground,
-                background: this.background,
+                background: background,
             };
             Object.freeze(state);// non-reactive
             Object.freeze(message);// non-reactive
@@ -193,7 +200,6 @@ Vue.component( 'pathway-analysis', {
         pathways: function() {
             let vm = this;
             // Pathways that have been restricted to our background set
-            console.log("Re-restricting pathways");
             let pathways = restrict_pathways(this.full_pathways, this.background)
 
             // Further filter out pathways with extreme size
@@ -213,8 +219,26 @@ Vue.component( 'pathway-analysis', {
                 type: "set_pathways",
                 pathways: pathways,
             });
-            console.log("Messaging worker...");
             return pathways;
+        },
+
+        all_genes_in_pathways: function() {
+            let vm = this;
+            let ids_union = new Set();
+            vm.pathways.forEach(function(pathways) {
+                pathways.feature_ids.forEach(function(id) {
+                    ids_union.add(id);
+                });
+            });
+            return ids_union;
+        },
+
+        reduced_background: function() {
+            let vm = this;
+            let all_genes_in_pathway = vm.all_genes_in_pathways;
+            return vm.background.filter(function(gene) {
+                return all_genes_in_pathway.has(gene);
+            });
         },
     },
 
@@ -240,6 +264,7 @@ Vue.component( 'pathway-analysis', {
             });
             Object.freeze(results);
             vm.results = results;
+            vm.last_ran_state = vm.running_state;
             vm.running_state = null;
 
             vm.worker_busy = false;
@@ -282,26 +307,10 @@ Vue.component( 'pathway-analysis', {
                 });
         },
 
-        "full_pathways": function() {
-            let vm = this;
-            if (vm.full_pathways != [] && vm.config.continuous) {
-                this.runPathwayAnalysis();
-            }
-        },
-
-        "foreground": function() {
-            let vm = this;
-            if (vm.full_pathways != [] && vm.config.continuous) {
-                this.runPathwayAnalysis();
-            }
-        },
-
-        "config.continuous": function() {
-            let vm = this;
-            if (vm.full_pathways != [] && vm.config.continuous) {
-                this.runPathwayAnalysis();
-            }
-        },
+        "full_pathways": "runPathwayAnalysis",
+        "foreground": "runPathwayAnalysis",
+        "config.continuous": "runPathwayAnalysis",
+        "config.remove_unannotated": "runPathwayAnalysis",
     },
 
     template: `
@@ -324,16 +333,18 @@ Vue.component( 'pathway-analysis', {
                 </button>
                 <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
                 <label class="form-check-label" for="run_continuously">Update continuously</label>
-                <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-3"
+                <input class="form-check-input ml-2" id="remove_unannotated" type="checkbox" v-model="config.remove_unannotated">
+                <label class="form-check-label" for="remove_unannotated">Remove unannotated genes</label>
+                <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-1"
                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                    title="Pathway Analysis Help"
-                   data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background. If updating continuously, any change to the selected gene set will automatically recompute pathways.">
+                   data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background. If updating continuously, any change to the selected gene set will automatically recompute pathways. If removing unannotated genes, any genes will be dropped from the analysis if they appear in no pathways.">
                     <i class="fas fa-info-circle"></i>
                 </a>
             </div>
 
-            <div>
-                <table class="table table-sm" v-if="shown_pathways.length > 0">
+            <div v-if="shown_pathways.length > 0">
+                <table class="table table-sm">
                     <thead>
                     <tr> <th scope="col">Name</th> <th scope="col">p-Value</th> <th>Overlap</th> <th>Pathway Size</th> <th>Download</th> </tr>
                     </thead>
@@ -347,6 +358,13 @@ Vue.component( 'pathway-analysis', {
                         </tr>
                     </tbody>
                 </table>
+                <div class="row">
+                    <div class="col">
+                        Foreground size: {{last_ran_state.foreground.length}}
+                        Background size: {{last_ran_state.background.length}}
+                    </div>
+                </div>
+
             </div>
 
             <div class="form-inline">
