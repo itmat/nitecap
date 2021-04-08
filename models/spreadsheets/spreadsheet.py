@@ -471,7 +471,8 @@ class Spreadsheet(db.Model):
             if self.get_raw_data().shape[1] > MAX_JTK_COLUMNS:
                 # Can't compute JTK when there are too many columns
                 # it takes too long and will fail
-                self.df[meta2d_cols] = float("NaN")
+                for c in meta2d_cols:
+                    self.df[col] = float("NaN")
                 return True
             else:
                 return False
