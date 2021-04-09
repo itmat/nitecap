@@ -83,7 +83,7 @@ Vue.component( 'pathway-analysis', {
     methods:{
         "runPathwayAnalysis": function() {
             // Nothing to run yet
-            if (this.full_pathways != [] && this.config.continuous) { return; }
+            if (this.full_pathways.length < 0) { return; }
 
             // Grab but don't use pathways
             // this forces them to be recomputed and set to worker
@@ -307,10 +307,18 @@ Vue.component( 'pathway-analysis', {
                 });
         },
 
-        "full_pathways": "runPathwayAnalysis",
-        "foreground": "runPathwayAnalysis",
-        "config.continuous": "runPathwayAnalysis",
-        "config.remove_unannotated": "runPathwayAnalysis",
+        "full_pathways": function () {
+            if (this.config.continuous) { this.runPathwayAnalysis(); }
+        },
+        "foreground": function () {
+            if (this.config.continuous) { this.runPathwayAnalysis(); }
+        },
+        "config.continuous": function () {
+            if (this.config.continuous) { this.runPathwayAnalysis(); }
+        },
+        "config.remove_unannotated": function () {
+            if (this.config.continuous) { this.runPathwayAnalysis(); }
+        },
     },
 
     template: `
