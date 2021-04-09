@@ -47,7 +47,7 @@
 
 <p class="text-danger">* required</p>
 
-<form action="{{ url_for('spreadsheets.upload_file') }}" method="post" enctype="multipart/form-data">
+<form>
     <div class="form-group required">
         <label for="header_row">The Spreadsheet Header is on Row:</label>
         <input type="number" id="header_row" name="header_row" class="form-control" value="{{header_row or 1}}"
@@ -57,9 +57,11 @@
         <label for="upload_file">Spreadsheet File:</label>
         <input type="file" id="upload_file" name="upload_file" required>
     </div>
-    <button type="submit" class="btn btn-primary">
+    <button class="btn btn-primary" type="button" id="submit_btn" onclick="javascript: upload();">
         Submit
     </button>
+    <span id="progress_report">
+    </span>
 </form>
 
 <div class="alert alert-warning smaller-text" role="alert">
@@ -69,4 +71,68 @@
         security, and sensitive data (such as anything covered by HIPAA) should not be uploaded.
     </p>
 </div>
+
+<script>
+    $(document).ready ( function() {
+        nitecap_error = $("#error-modal");
+        nitecap_error_message = $("#error-modal-message");
+        nitecap_error_message.text("");
+
+        let progress_report = document.getElementById("progress_report");
+        progress_report.textContent = '';
+
+    });
+
+    function upload() {
+        let target = "{{ url_for('spreadsheets.upload_file') }}";
+        let header_row = $("#header_row").val();
+        let upload_files = document.getElementById("upload_file").files;
+        if (upload_files.length < 1) {
+            nitecap_error_message.text("Must provide a file to upload");
+            nitecap_error.modal();
+        }
+        let upload_file = upload_files[0];
+
+        const xhr = new XMLHttpRequest();
+        const self = this;
+        xhr.upload.addEventListener("progress", function(e) {
+            if (e.lengthComputable) {
+                const percentage = Math.round(e.loaded / e.total * 100);
+                console.log(percentage);
+                progress_report.textContent = percentage + "%";
+            }
+        }, false);
+
+        xhr.onload = function (e) {
+            // Finished uploading
+            progress_report.textContent = "100%";
+
+            // Check for errors
+            let response = JSON.parse(xhr.response);
+            let errors = response.errors || [];
+            if (errors.length > 0) {
+                nitecap_error_message.text(errors);
+                nitecap_error.modal();
+                console.log(errors);
+                return;
+            }
+
+            // Go to the resulting URL of the uploaded spreadsheet
+            let uploaded_url = response.url;
+            window.location.href = uploaded_url;
+        };
+
+        xhr.onerror = function(e) {
+            nitecap_error_message.text(e.errors);
+            nitecap_error.modal();
+        };
+
+        xhr.open("POST", target);
+        form = new FormData();
+        form.append("header_row", header_row);
+        form.append("upload_file", upload_file, upload_file.name);
+        xhr.send(form);
+        progress_report.textContent = '0%';
+    }
+</script>
 {% endblock %}

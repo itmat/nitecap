@@ -69,10 +69,11 @@ def upload_file():
         upload_file = request.files.get('upload_file', None)
         if not upload_file or not len(upload_file.filename):
             errors.append(MISSING_SPREADSHEET_MESSAGE)
-        if not allowed_file(upload_file.filename):
+        elif not allowed_file(upload_file.filename):
             errors.append(FILE_EXTENSION_ERROR)
         if errors:
-            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=errors)
+            return jsonify({"errors": errors}), 400
+            #return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=errors)
 
         # Identify any logged in user or current visitor accout so that ownership of the spreadsheet is established.
         user_id = None
@@ -96,8 +97,7 @@ def upload_file():
         # problem.
         if not user:
             current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
-            return render_template('spreadsheets/upload_file.html', header_row=header_row,
-                                   errors=[FILE_UPLOAD_ERROR])
+            return jsonify({"errors": [FILE_UPLOAD_ERROR]}), 500
 
         directory_path = pathlib.Path(os.path.join(user.get_user_directory_path(), f"{uuid.uuid4().hex}"))
         directory_path.mkdir(parents=True, exist_ok=True)
@@ -111,7 +111,7 @@ def upload_file():
         file_mime_type, errors = validate_mime_type(file_path)
         if errors:
             shutil.rmtree(directory_path)
-            return render_template('spreadsheets/upload_file.html', header_row=header_row ,errors=errors)
+            return jsonify({"errors": errors}), 400
 
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it as such when pandas fails to parse it while creating a spreadsheet object.
@@ -131,7 +131,7 @@ def upload_file():
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
             shutil.rmtree(directory_path)
-            return render_template('spreadsheets/upload_file.html', header_row=header_row, errors=[FILE_UPLOAD_ERROR])
+            return jsonify({"errors": [FILE_UPLOAD_ERROR]}), 400
 
         # Save the spreadsheet file to the database using the temporary spreadsheet data path (using the uuid)
         spreadsheet.save_to_db()
@@ -148,7 +148,7 @@ def upload_file():
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
 
-        return redirect(url_for('.collect_data', spreadsheet_id=spreadsheet.id))
+        return jsonify({"url": url_for('.collect_data', spreadsheet_id=spreadsheet.id)})
 
     # Display spreadsheet file form
     return render_template('spreadsheets/upload_file.html')
