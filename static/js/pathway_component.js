@@ -355,6 +355,12 @@ Vue.component( 'pathway-analysis', {
                 .then(function(res) {return res.json()})
                 .then(function(res) {
                     Object.preventExtensions(res); // Contents aren't reactive
+                    // Convert the feature ids to strings (eg: for NCBI which are integers)
+                    res.forEach(function(pathway) {
+                        pathway.feature_ids = pathway.feature_ids.map( function(x) {
+                            return ''+x;
+                        });
+                    });
                     vm.full_pathways = res;
                     vm.loading_resources = false;
                 })
