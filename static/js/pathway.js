@@ -70,10 +70,10 @@ function test_pathway(selected_set, pathway, background_list) {
 
 function test_pathways(selected_set, background_list, pathways) {
     // Capitalize background
-    background_list = new Set(background_list.map(function(id) {return id.toUpperCase();}));
+    background_list = new Set(background_list);
 
     // Capitalize and intersect with background
-    selected_set = new Set(selected_set.filter(function(id) { return background_list.has(id); }).map(function(id) {return id.toUpperCase();}));
+    selected_set = new Set(selected_set.filter(function(id) { return background_list.has(id); }));
 
     // Compute p values of each pathway
     let ps = Array.from(pathways.values(), function (pathway) {
@@ -85,7 +85,7 @@ function test_pathways(selected_set, background_list, pathways) {
 }
 
 function restrict_pathways(pathways, background_list) {
-    background_list = new Set(background_list.map( function( id) { return id.toUpperCase(); }));
+    background_list = new Set(background_list);
     // Restrict pathways to those ids that appear in our background list
     return pathways.map( function(pathway) {
         let p = Object.assign({}, pathway);

@@ -615,7 +615,7 @@
                         v-bind:selected_rows="selected_rows"
                         v-bind:ids="spreadsheets[0] ? spreadsheets[0].ids : []"
                         v-bind:id_labels="spreadsheets[0] ? spreadsheets[0].id_col_labels : []"
-                        v-bind:background="background_ids"
+                        v-bind:background_rows="background_rows"
                         >
                     </pathway-analysis>
                 </div>
@@ -1700,10 +1700,10 @@
                 return selected;
             },
 
-            background_ids: function() {
+            background_rows: function() {
                 let vm = this;
                 if (vm.spreadsheets.length == 0) { return []; }
-                return vm.spreadsheets[0].labels.filter( function(label, i) {return !vm.spreadsheets[0].filtered[i];});
+                return vm.spreadsheets[0].labels.map(function(x,i) { return i; }).filter( function(i) {return !vm.spreadsheets[0].filtered[i];});
             },
 
             useable_stats: function () {

@@ -134,7 +134,7 @@ Vue.component( 'pathway-analysis', {
 
 
     props: {
-        "background": Array,
+        "background_rows": Array,
         "selected_rows": Array,
         "ids": Array,
         "id_labels": Array,
@@ -147,7 +147,7 @@ Vue.component( 'pathway-analysis', {
 
             // Grab but don't use pathways
             // this forces them to be recomputed and set to worker
-            let pathways = this.pathways; 
+            let pathways = this.pathways;
 
             let background = this.background;
             if (this.config.remove_unannotated) {
@@ -293,19 +293,35 @@ Vue.component( 'pathway-analysis', {
             return ids_union;
         },
 
+        background: function() {
+            let vm = this;
+            return vm.background_rows.map( function(i) {
+                // Convert id to string if necessary
+                return ''+vm.ids[vm.config.selected_id_column][i];
+            });
+
+        },
+
         reduced_background: function() {
             let vm = this;
+            let background = vm.background;
+
             let all_genes_in_pathway = vm.all_genes_in_pathways;
-            return vm.background.filter(function(gene) {
+            return background.filter(function(gene) {
                 return all_genes_in_pathway.has(gene);
             });
         },
 
         foreground: function() {
             let vm = this;
-            return vm.selected_rows.map(function(i) {
+            let foreground = vm.selected_rows.map(function(i) {
                 // Convert id to string if necessary
                 return ''+vm.ids[vm.config.selected_id_column][i];
+            });
+
+            let all_genes_in_pathway = vm.all_genes_in_pathways;
+            return foreground.filter(function(gene) {
+                return all_genes_in_pathway.has(gene);
             });
         },
     },
@@ -400,12 +416,23 @@ Vue.component( 'pathway-analysis', {
             <div class="form-check form-inline">
                 <label class="form-check-label" for="database_id_selector">Pathway Database</label>
                 <select name="database_id_selector" id="database_id_selector" v-model="config.database_id">
-                    <option 
+                    <option
                         v-for="(db, db_id) in all_databases"
                         v-bind:value="db_id">
                         {{db_id}}
                     </option>
                 </select>
+
+                <div v-show="id_labels.length > 1">
+                    <label class="form-check-label" for="id_column_selector">ID Column</label>
+                    <select name="id_column_selected" id="id_column_selector" v-model="config.selected_id_column">
+                        <option
+                            v-for="(id_col, index) in id_labels"
+                            v-bind:value="index">
+                            {{id_col}}
+                        </option>
+                    </select>
+                </div>
 
                 <button class="btn btn-primary m-3"
                     v-on:click="runPathwayAnalysis"
@@ -413,16 +440,23 @@ Vue.component( 'pathway-analysis', {
                     Run Pathway Analysis
                     <span v-if="loading_resources" class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'> </span>
                 </button>
-                <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
-                <label class="form-check-label" for="run_continuously">Update continuously</label>
-                <input class="form-check-input ml-2" id="remove_unannotated" type="checkbox" v-model="config.remove_unannotated">
-                <label class="form-check-label" for="remove_unannotated">Remove unannotated genes</label>
                 <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-1"
                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                    title="Pathway Analysis Help"
                    data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background. If updating continuously, any change to the selected gene set will automatically recompute pathways. If removing unannotated genes, any genes will be dropped from the analysis if they appear in no pathways.">
                     <i class="fas fa-info-circle"></i>
                 </a>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-check form-inline">
+                        <input class="form-check-input" id="run_continuously" type="checkbox" v-model="config.continuous">
+                        <label class="form-check-label" for="run_continuously">Update continuously</label>
+                        <input class="form-check-input ml-2" id="remove_unannotated" type="checkbox" v-model="config.remove_unannotated">
+                        <label class="form-check-label" for="remove_unannotated">Remove unannotated genes</label>
+                    </div>
+                </div>
             </div>
 
             <div v-if="shown_pathways.length > 0">
@@ -451,7 +485,7 @@ Vue.component( 'pathway-analysis', {
 
             <div v-if="shown_pathways.length == 0">
                 <!-- error/status messages for when no pathway results -->
-                <div v-if="last_ran_state !== null && last_ran_state.background.length == 0" class="alert alert-warning">
+                <div v-if="reduced_background.length == 0" class="alert alert-warning">
                     No genes identifiers are shared between pathway list and given spreadsheet(s).
                     Do the species and ID type match the chosen pathway list?
                 </div>
