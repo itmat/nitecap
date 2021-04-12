@@ -645,7 +645,8 @@ def download(user=None):
 
             comp_data = comp_data[config['compare_columns']]
             comp_data = comp_data.iloc[config['rows']]
-            comp_data = comp_data.rename(columns=lambda x: add_suffix(x,primary))
+            comp_data.rename(columns=lambda x: x.replace("upside", "damping"), inplace=True)
+            comp_data.rename(columns=lambda x: add_suffix(x,primary), inplace=True)
             comparison_data.append(comp_data)
 
         # Add suffixes to original spreadsheet dfs
