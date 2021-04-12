@@ -771,11 +771,11 @@
 
 {% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
 
-<script src="{{url_for('static', filename='js/row_selector.js')}}"></script>
-<script src="{{url_for('static', filename='js/PCA_plot.js')}}"></script>
-<script src="{{url_for('static', filename='js/heatmap_plot.js')}}"></script>
-<script src="{{url_for('static', filename='js/pathway.js')}}"></script>
-<script src="{{url_for('static', filename='js/pathway_component.js')}}"></script>
+<script src="{{url_for('static', filename='js/row_selector.js')}}?v=1"></script>
+<script src="{{url_for('static', filename='js/PCA_plot.js')}}?v=1"></script>
+<script src="{{url_for('static', filename='js/heatmap_plot.js')}}?v=1"></script>
+<script src="{{url_for('static', filename='js/pathway.js')}}?v=1"></script>
+<script src="{{url_for('static', filename='js/pathway_component.js')}}?v=1"></script>
 
 <script>
     Vue.prototype.util = {
