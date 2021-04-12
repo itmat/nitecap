@@ -403,9 +403,6 @@ def cosinor_analysis(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_
 
         # For each feature, perform Least-Squares fits
 
-        # TODO: if no missing values, can actually compute all of these at once by passing in all of data_A (or maybe data_A.T)
-        #x_A, resid_A, rank_A, sing_A = numpy.linalg.lstsq(predictor_A, data_A[i], rcond=None)
-        #x_B, resid_B, rank_B, sing_B = numpy.linalg.lstsq(predictor_B, data_B[i], rcond=None)
         res_A = sm.OLS(data_A[i], predictor_A, missing='drop').fit()
         res_B = sm.OLS(data_B[i], predictor_B, missing='drop').fit()
         x_A = res_A.params

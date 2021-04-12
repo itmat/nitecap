@@ -769,7 +769,7 @@
 
 </div>
 
-{% endraw %} <!-- TODO remove these raw tags when we are no longer using templating at all -->
+{% endraw %}
 
 <script src="{{url_for('static', filename='js/row_selector.js')}}?v=1"></script>
 <script src="{{url_for('static', filename='js/PCA_plot.js')}}?v=1"></script>
@@ -918,7 +918,7 @@
                 return maximums(missing, axis=0);
             },
             name: "Missing Timepoints",
-            independent: true, // TODO: is this actually right?
+            independent: true,
             key: "missing_timepoints"},
     ];
 

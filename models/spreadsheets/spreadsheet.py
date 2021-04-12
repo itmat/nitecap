@@ -249,8 +249,6 @@ class Spreadsheet(db.Model):
         self.timepoint_assignments = {col: self.label_to_timepoint(label) for col, label in zip(self.df.columns, self.column_labels)}
         x_values = [value for value in self.timepoint_assignments.values() if value is not None]
 
-        # TODO: replace these eventually when phasing out 'days'
-
         # Count the number of replicates at each timepoint
         self.num_replicates = [len([1 for x in x_values if x == i])
                                     for i in range(self.num_timepoints)]
@@ -368,7 +366,6 @@ class Spreadsheet(db.Model):
         timepoints = numpy.array(self.x_values)
 
         # Main nitecap computation
-        # TODO: number of permutations to use?
         td, perm_td = nitecap.nitecap_statistics(data, timepoints, self.timepoints,
                                                  repeated_measures=self.repeated_measures,
                                                  N_PERMS=1000)
@@ -697,6 +694,7 @@ class Spreadsheet(db.Model):
         return error
 
     def apply_filters(self, filtered_out, rerun_qvalues=False):
+        # TODO: do we still want to use this? No way to trigger it from server side right now
         filtered_out = numpy.array(filtered_out, dtype=bool)
         self.df["filtered_out"] = filtered_out
 
