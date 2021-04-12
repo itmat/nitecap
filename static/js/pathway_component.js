@@ -423,16 +423,14 @@ Vue.component( 'pathway-analysis', {
                     </option>
                 </select>
 
-                <div v-show="id_labels.length > 1">
-                    <label class="form-check-label" for="id_column_selector">ID Column</label>
-                    <select name="id_column_selected" id="id_column_selector" v-model="config.selected_id_column">
-                        <option
-                            v-for="(id_col, index) in id_labels"
-                            v-bind:value="index">
-                            {{id_col}}
-                        </option>
-                    </select>
-                </div>
+                <label v-show="id_labels.length > 1"class="form-check-label" for="id_column_selector">ID Column</label>
+                <select v-show="id_labels.length > 1"name="id_column_selected" id="id_column_selector" v-model="config.selected_id_column">
+                    <option
+                        v-for="(id_col, index) in id_labels"
+                        v-bind:value="index">
+                        {{id_col}}
+                    </option>
+                </select>
 
                 <button class="btn btn-primary m-3"
                     v-on:click="runPathwayAnalysis"
