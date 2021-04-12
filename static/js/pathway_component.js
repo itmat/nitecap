@@ -358,11 +358,11 @@ Vue.component( 'pathway-analysis', {
                     </thead>
                     <tbody is="transition-group" name="swap-list">
                         <tr v-for="(pathway,i) in shown_pathways" v-bind:key="i" class="swap-list-item">
-                            <td><a v-bind:href="pathway.url">{{ pathway.name.slice(0,this.MAX_PATHWAY_NAME_LENGTH) }}</a></td>
-                            <td>{{util.formatNum(pathway.p, 4)}} </td>
-                            <td>{{pathway.overlap}} </td>
-                            <td>{{pathway.pathway_size}} </td>
-                            <td> <button v-on:click="download_shown_pathway(i)" type="button" class="btn btn-secondary btn-sm" >Download</button></td>
+                            <td style="width: 51%"><a v-bind:href="pathway.url">{{ pathway.name.slice(0,this.MAX_PATHWAY_NAME_LENGTH) }}</a></td>
+                            <td style="width: 12%">{{util.formatNum(pathway.p, 4)}} </td>
+                            <td style="width: 12%">{{pathway.overlap}} </td>
+                            <td style="width: 12%">{{pathway.pathway_size}} </td>
+                            <td style="width: 12%"> <button v-on:click="download_shown_pathway(i)" type="button" class="btn btn-secondary btn-sm" >Download</button></td>
                         </tr>
                     </tbody>
                 </table>
