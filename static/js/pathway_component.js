@@ -117,6 +117,7 @@ Vue.component( 'pathway-analysis', {
                 num_pathways_shown: 10,
                 top_pathway_shown: 0,
                 remove_unannotated: true, // Background to only include genes in at least one pathway
+                selected_id_column: 0,
             },
             loading_resources: false,
             worker: null,
@@ -134,7 +135,9 @@ Vue.component( 'pathway-analysis', {
 
     props: {
         "background": Array,
-        "foreground": Array,
+        "selected_rows": Array,
+        "ids": Array,
+        "id_labels": Array,
     },
 
     methods:{
@@ -297,6 +300,14 @@ Vue.component( 'pathway-analysis', {
                 return all_genes_in_pathway.has(gene);
             });
         },
+
+        foreground: function() {
+            let vm = this;
+            return vm.selected_rows.map(function(i) {
+                // Convert id to string if necessary
+                return ''+vm.ids[vm.config.selected_id_column][i];
+            });
+        },
     },
 
     created: function() {
@@ -373,7 +384,7 @@ Vue.component( 'pathway-analysis', {
         "full_pathways": function () {
             if (this.config.continuous) { this.runPathwayAnalysis(); }
         },
-        "foreground": function () {
+        "selected_rows": function () {
             if (this.config.continuous) { this.runPathwayAnalysis(); }
         },
         "config.continuous": function () {

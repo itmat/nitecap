@@ -612,7 +612,9 @@
 
                 <div class="tab-pane fade" id="pathways" role="tabpanel" aria-labelledby="pathways-tab">
                     <pathway-analysis
-                        v-bind:foreground="spreadsheets[0] ? selected_rows.map(function(i) {return spreadsheets[0].labels[i];}): []"
+                        v-bind:selected_rows="selected_rows"
+                        v-bind:ids="spreadsheets[0] ? spreadsheets[0].ids : []"
+                        v-bind:id_labels="spreadsheets[0] ? spreadsheets[0].id_col_labels : []"
                         v-bind:background="background_ids"
                         >
                     </pathway-analysis>

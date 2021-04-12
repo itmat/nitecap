@@ -304,15 +304,19 @@ class Spreadsheet(db.Model):
         ordered_columns = sorted(filtered_columns, key = sorter)
         return [column for column, label in ordered_columns]
 
-    def get_id_columns(self):
+    def get_id_columns(self, label=False):
         """
         Return the columns corresponding to the selected IDs
+        :param label: if True, return column names not column indexes
         :return: list of column indexes corresponding to the ID columns
         """
         id_indices = [index
                       for index, column_label in enumerate(self.column_labels)
                       if column_label == Spreadsheet.ID_COLUMN]
-        return id_indices
+        if label:
+            return self.df.columns[id_indices]
+        else:
+            return id_indices
 
     def get_ids(self, *args):
         """

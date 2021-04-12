@@ -405,6 +405,8 @@ def get_spreadsheets(user=None):
                      ars_q=None,
                      ls_p=None,
                      ls_q=None,
+                     id_col_labels=list(spreadsheet.get_id_columns(label=True)),
+                     ids=df.iloc[:,spreadsheet.get_id_columns()].T,
                      column_headers=spreadsheet.get_data_columns(),
                      cosinor_p=df.cosinor_p,
                      cosinor_q=df.cosinor_q,
