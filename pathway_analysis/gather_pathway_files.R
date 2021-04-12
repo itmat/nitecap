@@ -9,7 +9,8 @@ work.dir <- "C:/Users/tgb/nitecap/"
 species.list <- c("mmusculus", "hsapiens", "dmelanogaster");
 kegg.species.list <- c("mmu", "hsa", "dme");
 #TODO: to include any different ID types, we would have to update the group_by function
-id_types <- c("ensembl_gene_id", "uniprot_gn_id", "entrezgene_id", "external_gene_name");
+id_types <- c("ensembl_gene_id",  "entrezgene_id", "external_gene_name");
+# Other id types: "uniprot_gn_id",
 ensembl_mart <- useMart("ensembl");
 
 # If true, then an annotation of a gene to a GO term
