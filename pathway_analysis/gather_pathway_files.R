@@ -1,6 +1,7 @@
 library(biomaRt);
 library(dplyr);
 library(jsonlite);
+library(tidyr);
 
 # TODO: update this when you run this file
 work.dir <- "C:/Users/tgb/nitecap/"
@@ -8,8 +9,13 @@ work.dir <- "C:/Users/tgb/nitecap/"
 species.list <- c("mmusculus", "hsapiens", "dmelanogaster");
 kegg.species.list <- c("mmu", "hsa", "dme");
 #TODO: to include any different ID types, we would have to update the group_by function
-id_types <- c("ensembl_gene_id");
+id_types <- c("ensembl_gene_id", "uniprot_gn_id", "entrezgene_id", "external_gene_name");
 ensembl_mart <- useMart("ensembl");
+
+# If true, then an annotation of a gene to a GO term
+# will also get put in the pathway for all GO terms
+# that are higher up on the ontology
+trickle_up_pathways <- FALSE;
 
 # Use this to check the avialable datasets (to find species)
 #datasets <- listDatasets(mart);
@@ -32,19 +38,23 @@ for (species in species.list) {
         bm <- bm %>%
             filter(go_id != "")
 
-        # If a gene is annotated to a GO term, also annotate it to parent terms
-        with_parents <- bm %>%
-            left_join(go_parents, by=c("go_id" = "child")) %>%
-            select(id_type, "parent") %>%
-            rename(go_id = parent) %>%
-            distinct()
-        all_annotations <- bind_rows(bm, with_parents) %>% distinct()
+        if (trickle_up_pathways) {
+            # If a gene is annotated to a GO term, also annotate it to parent terms
+            with_parents <- bm %>%
+                left_join(go_parents, by=c("go_id" = "child")) %>%
+                select(id_type, "parent") %>%
+                rename(go_id = parent) %>%
+                distinct()
+            all_annotations <- bind_rows(bm, with_parents) %>% distinct()
+        } else {
+            all_annotations <- bm %>% distinct();
+        }
 
 
         # Output as json, grouping by the GO terms
         objectified <- all_annotations %>%
             group_by(go_id) %>%
-            summarise(feature_ids = list(ensembl_gene_id),) %>%
+            summarise(feature_ids = list(.data[[id_type]]),) %>%
             left_join(go_definitions, by="go_id") %>%
             replace_na(list(name = "unkown pathway")) %>%
             rename(pathway = go_id);
@@ -53,7 +63,7 @@ for (species in species.list) {
         write_json(objectified, paste(work.dir, "static/json/", species, ".", id_type, ".GO.pathways.json", sep=''));
 
         # If not human, we get homologous genes and form pathways from those
-        if (species != "hsapiens") {
+        if (species != "hsapiens" & id_type == "ensembl_gene_id") {
             homologs <- getBM(attributes=c(id_type, "hsapiens_homolog_ensembl_gene"), mart=mart);
             homolog_pathways <- human_pathways %>%
                 inner_join(homologs, by=c("ensembl_gene_id" = "hsapiens_homolog_ensembl_gene")) %>%
@@ -61,13 +71,17 @@ for (species in species.list) {
                 select(ensembl_gene_id.y, go_id) %>%
                 rename(ensembl_gene_id = ensembl_gene_id.y);
 
-            # If a gene is annotated to a GO term, also annotate it to parent terms
-            with_parents <- homolog_pathways %>%
-                left_join(go_parents, by=c("go_id" = "child")) %>%
-                select(id_type, "parent") %>%
-                rename(go_id = parent) %>%
-                distinct()
-            all_annotations <- bind_rows(homolog_pathways, with_parents) %>% distinct()
+            if (trickle_up_pathways) {
+                # If a gene is annotated to a GO term, also annotate it to parent terms
+                with_parents <- homolog_pathways %>%
+                    left_join(go_parents, by=c("go_id" = "child")) %>%
+                    select(id_type, "parent") %>%
+                    rename(go_id = parent) %>%
+                    distinct()
+                all_annotations <- bind_rows(homolog_pathways, with_parents) %>% distinct()
+            } else {
+                all_annotations <- homolog_pathways %>% distinct();
+            }
 
 
             # Output as json, grouping by the GO terms
@@ -107,6 +121,13 @@ for (i in seq_len(length(kegg.species.list))) {
         left_join(kegg_to_ncbi) %>%
         select(c("ncbi_geneid", "pathway"));
 
+    # Output as JSON
+    objectified <- kegg_pathways_ncbi %>%
+        group_by(pathway) %>%
+        summarise(feature_ids = list(ncbi_geneid),) %>%
+        left_join(kegg_pathway_info);
+    write_json(objectified, paste(work.dir, "/static/json/", species, ".ncbi_gene_id.KEGG.pathways.json", sep=''));
+
     # Convert NCBI/Entrez gene ids to Ensembl IDs
     mart <- useDataset(paste(species, "_gene_ensembl", sep=''), ensembl_mart);
     ncbi_to_ensembl <- getBM(attributes=c("ensembl_gene_id", "entrezgene_id"), mart=mart);
@@ -123,8 +144,3 @@ for (i in seq_len(length(kegg.species.list))) {
         left_join(kegg_pathway_info);
     write_json(objectified, paste(work.dir, "/static/json/", species, ".ensembl_gene_id.KEGG.pathways.json", sep=''));
 }
-
-# Convert to alternative id_types:
-# uniprot_gn_id
-# entrezgene_id
-# external_gene_name
