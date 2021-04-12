@@ -17,6 +17,23 @@ Vue.component( 'pathway-analysis', {
                     species: "Drosophila melanogaster",
                     pathways: "KEGG",
                 },
+
+                "NCBI_KEGG_HSapiens": {
+                    url: "/static/json/hsapiens.ncbi_gene_id.KEGG.pathways.json",
+                    species: "Homo sapiens",
+                    pathways: "KEGG",
+                },
+                "NCBI_KEGG_MMusculus": {
+                    url: "/static/json/mmusculus.ncbi_gene_id.KEGG.pathways.json",
+                    species: "Mus musculus",
+                    pathways: "KEGG",
+                },
+                "NCBI_KEGG_DMelanogaster": {
+                    url: "/static/json/dmelanogaster.ncbi_gene_id.KEGG.pathways.json",
+                    species: "Drosophila melanogaster",
+                    pathways: "KEGG",
+                },
+
                 "Ensembl_GO_HSapiens": {
                     url: "/static/json/hsapiens.ensembl_gene_id.GO.pathways.json",
                     species: "Homo sapiens",
@@ -29,15 +46,54 @@ Vue.component( 'pathway-analysis', {
                     id_types: "Ensembl Genes",
                     pathways: "GO",
                 },
-                "Ensembl_Homology_GO_MMusculus": {
-                    url: "/static/json/mmusculus.ensembl_gene_id.GO.homology_pathways.json",
-                    species: "Mus musculus",
-                    id_types: "Ensembl Genes",
-                    pathways: "GO",
-                },
                 "Ensembl_GO_DMelanogaster": {
                     url: "/static/json/dmelanogaster.ensembl_gene_id.GO.pathways.json",
                     species: "Drosophila melanogaster",
+                    id_types: "Ensembl Genes",
+                    pathways: "GO",
+                },
+
+                "NCBI_GO_HSapiens": {
+                    url: "/static/json/hsapiens.entrezgene_id.GO.pathways.json",
+                    species: "Homo sapiens",
+                    id_types: "NCBI Genes",
+                    pathways: "GO",
+                },
+                "NCBI_GO_MMusculus": {
+                    url: "/static/json/mmusculus.entrezgene_id.GO.pathways.json",
+                    species: "Mus musculus",
+                    id_types: "NCBI Genes",
+                    pathways: "GO",
+                },
+                "NCBI_GO_DMelanogaster": {
+                    url: "/static/json/dmelanogaster.entrezgene_id.GO.pathways.json",
+                    species: "Drosophila melanogaster",
+                    id_types: "NCBI Genes",
+                    pathways: "GO",
+                },
+
+                "GeneSymbol_GO_HSapiens": {
+                    url: "/static/json/hsapiens.external_gene_name.GO.pathways.json",
+                    species: "Homo sapiens",
+                    id_types: "GeneSymbol Genes",
+                    pathways: "GO",
+                },
+                "GeneSymbol_GO_MMusculus": {
+                    url: "/static/json/mmusculus.external_gene_name.GO.pathways.json",
+                    species: "Mus musculus",
+                    id_types: "GeneSymbol Genes",
+                    pathways: "GO",
+                },
+                "GeneSymbol_GO_DMelanogaster": {
+                    url: "/static/json/dmelanogaster.external_gene_name.GO.pathways.json",
+                    species: "Drosophila melanogaster",
+                    id_types: "GeneSymbol Genes",
+                    pathways: "GO",
+                },
+
+                "Ensembl_Homology_GO_MMusculus": {
+                    url: "/static/json/mmusculus.ensembl_gene_id.GO.homology_pathways.json",
+                    species: "Mus musculus",
                     id_types: "Ensembl Genes",
                     pathways: "GO",
                 },
@@ -48,6 +104,7 @@ Vue.component( 'pathway-analysis', {
                     pathways: "GO",
                 },
             },
+
             results: [],
             full_pathways: [],
             config: {
@@ -373,6 +430,14 @@ Vue.component( 'pathway-analysis', {
                     </div>
                 </div>
 
+            </div>
+
+            <div v-if="shown_pathways.length == 0">
+                <!-- error/status messages for when no pathway results -->
+                <div v-if="last_ran_state !== null && last_ran_state.background.length == 0" class="alert alert-warning">
+                    No genes identifiers are shared between pathway list and given spreadsheet(s).
+                    Do the species and ID type match the chosen pathway list?
+                </div>
             </div>
 
             <div class="form-inline">
