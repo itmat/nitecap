@@ -34,8 +34,8 @@ Vue.component("heatmap-plot", {
 
             let phase_sorted_order = vm.selected_rows.sort( function (i,j) {
                 return compare(
-                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_times[i],
-                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_times[j],
+                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_time[i],
+                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_time[j],
                             i,j);
             } );
 

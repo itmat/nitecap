@@ -385,8 +385,8 @@ def get_spreadsheets(user=None):
                      nitecap_q=df.nitecap_q,
                      nitecap_p=df.nitecap_p,
                      total_delta=df.total_delta,
-                     amplitudes=df.amplitude,
-                     peak_times=df.peak_time,
+                     amplitude=df.amplitude,
+                     peak_time=df.peak_time,
                      anova_p=df.anova_p,
                      anova_q=df.anova_q,
                      filtered=df.filtered_out,
@@ -609,6 +609,9 @@ def download(user=None):
         spreadsheets.append(spreadsheet)
         if not spreadsheet:
             return jsonify({"error": "No such spreadsheet"}), 404
+        # We force check whether there are jtk columns incase they are requested
+        # if they don't exist, they'll be filled in as NAs so we can download
+        spreadsheet.has_jtk()
     joined_dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
     # Get the ids, as separate columns

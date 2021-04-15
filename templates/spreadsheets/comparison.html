@@ -773,7 +773,7 @@
 
 <script src="{{url_for('static', filename='js/row_selector.js')}}?v=1"></script>
 <script src="{{url_for('static', filename='js/PCA_plot.js')}}?v=1"></script>
-<script src="{{url_for('static', filename='js/heatmap_plot.js')}}?v=1"></script>
+<script src="{{url_for('static', filename='js/heatmap_plot.js')}}?v=2"></script>
 <script src="{{url_for('static', filename='js/pathway.js')}}?v=1"></script>
 <script src="{{url_for('static', filename='js/pathway_component.js')}}?v=1"></script>
 
@@ -859,13 +859,13 @@
          per_spreadsheet: false,
          num_spreadsheets: 'multi'},
         amplitude: {name: "Amplitude",
-         value: "amplitudes",
+         value: "amplitude",
          description: "Amplitude of the variation.",
          per_spreadsheet: true,
          num_spreadsheets: 'any',
          sort_direction: -1},
         peak_time: {name: "Peak-time",
-         value: "peak_times",
+         value: "peak_time",
          description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
          per_spreadsheet: true,
          num_spreadsheets: 'any'},
