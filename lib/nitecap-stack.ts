@@ -1,4 +1,5 @@
-import * as cdk from '@aws-cdk/core';
+import * as cdk from "@aws-cdk/core";
+import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as s3 from "@aws-cdk/aws-s3";
 
 export class NitecapStack extends cdk.Stack {
@@ -20,6 +21,24 @@ export class NitecapStack extends cdk.Stack {
       ],
       autoDeleteObjects: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Table of connections
+
+    let connectionTable = new dynamodb.Table(this, "ConnectionTable", {
+      partitionKey: {
+        name: "connectionId",
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const userId = "userId";
+    connectionTable.addGlobalSecondaryIndex({
+      indexName: `${userId}-index`,
+      partitionKey: { name: userId, type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.KEYS_ONLY,
     });
   }
 }
