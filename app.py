@@ -110,6 +110,10 @@ def gallery():
     return render_template("gallery.html",
                 gallery=gallery)
 
+@app.route('/user_guide', methods=['GET'])
+def user_guide():
+    return render_template("user_guide.html")
+
 
 @app.route('/dashboard', methods=['GET'])
 @requires_admin
