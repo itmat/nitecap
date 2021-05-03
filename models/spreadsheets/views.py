@@ -1117,7 +1117,7 @@ def get_valid_comparisons(user=None):
         # NOTE: doesn't check for compatibility of, say, ids
         if (other_spreadsheet.timepoints == spreadsheet.timepoints and
             other_spreadsheet.repeated_measures == spreadsheet.repeated_measures and
-            other_spreadsheet.days == spreadsheet.days):
+            other_spreadsheet.num_timepoints == spreadsheet.num_timepoints):
 
             valid_comparisons.append({
                 "id": other_spreadsheet.id,
