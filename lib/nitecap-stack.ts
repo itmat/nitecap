@@ -1,6 +1,9 @@
 import * as apigateway from "@aws-cdk/aws-apigatewayv2";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
+import * as ec2 from "@aws-cdk/aws-ec2";
+import * as ecs from "@aws-cdk/aws-ecs";
+import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as s3 from "@aws-cdk/aws-s3";
@@ -255,5 +258,59 @@ export class NitecapStack extends cdk.Stack {
         tracingEnabled: true,
       }
     );
+
+    // Server
+
+    let serverCluster = new ecs.Cluster(this, "ServerCluster", {
+      vpc: ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true }),
+      capacity: {
+        instanceType: ec2.InstanceType.of(
+          ec2.InstanceClass.T2,
+          ec2.InstanceSize.SMALL
+        ),
+        keyName: "NitecapServerKey",
+      },
+      containerInsights: true,
+    });
+
+    let serverRole = new iam.Role(this, "ServerRole", {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+    });
+
+    spreadsheetBucket.grantReadWrite(serverRole);
+    computationStateMachine.grantStartExecution(serverRole);
+
+    let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
+      taskRole: serverRole,
+    });
+
+    let serverContainer = serverTask.addContainer("ServerContainer", {
+      image: ecs.ContainerImage.fromAsset(
+        path.join(__dirname, "../src/server")
+      ),
+      memoryLimitMiB: 1920,
+      environment: {
+        SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
+        COMPUTATION_STATE_MACHINE_ARN: computationStateMachine.stateMachineArn,
+        NOTIFICATION_API_ENDPOINT: `wss://${notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
+        AWS_DEFAULT_REGION: this.region,
+      },
+      portMappings: [
+        {
+          containerPort: 5000,
+          hostPort: 80,
+          protocol: ecs.Protocol.TCP,
+        },
+      ],
+    });
+
+    new ecs_patterns.ApplicationLoadBalancedEc2Service(this, "ServerService", {
+      cluster: serverCluster,
+      cpu: 1024,
+      memoryLimitMiB: 2048,
+      desiredCount: 1,
+      publicLoadBalancer: true,
+      taskDefinition: serverTask,
+    });
   }
 }
