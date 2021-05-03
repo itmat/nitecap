@@ -390,7 +390,7 @@
         </p>
 
 
-        <h3 id="sharing"> Sharing </h3>
+        <h2 id="sharing"> Sharing </h2>
 
         <p>
             Next to the dataset name, there are several buttons.
@@ -410,7 +410,7 @@
             </figcaption>
         </figure>
 
-        <h3 id="comparisons"> Comparisons </h3>
+        <h2 id="comparisons"> Comparisons </h2>
 
         <p>
             Nitecap provides support for comparing rhythmicity among different conditions, such as between wildtype and knock-out mice or between a control and treatment group.
@@ -434,6 +434,69 @@
             Click the name of the spreadsheet you'd like to compare to and that comparison will open.
         </p>
 
+        <p>
+            If you do not have a second dataset, you can experiment with a shared comparison <a href="https://nitecap.org/spreadsheets/share/yeAJS-gTKrPt00o-6n4GTQ-EynbHyQ1xQl-Faij7j_keXQHUOqDxV69ZeWz_1YlyAIhjjrIrQDyRr4zWfm_v5ijS8I8giXIX-yUV">here</a>.
+        </p>
+
+        <h3 id="comparison-view">Comparison View</h3>
+
+        <p>
+            Viewing the comparison gives a similar view as in a single dataset.
+            The rows of the spreadsheets are matched by their ID columns.
+            Any rows without matches in the other spreadsheet are dropped from the comparison.
+            The central profile plot shows the profile of the feature in both conditions, colored accordingly.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_comparison_profile.png" alt="Example comparison profile plot">
+            <figcaption class="figure-caption">Comparison of two example datasets, a wildtype mouse and clock knock-out model mouse.</figcaption>
+        </figure>
+
+        <p>
+            Note that Nitecap automatically attempts to generate shortened condition names from your two study names.
+            Parts of the study names that are the same in both datasets will be dropped for simplicity.
+            So it is recommended that you give consistent dataset names such as "Study 1 Control" and "Study 1 Case", which will result in readable labels of "Control" and "Case".
+        </p>
+
+        <h3 id="comparison-statistics"> Comparison Statistics </h3>
+
+        <p>
+            In addition to all the single-dataset statistics (including user-uploaded statistics), Nitecap computes additional comparisons statistics.
+            These are:
+        </p>
+
+        <ul>
+            <li> Damping - a permutation test for reduction of amplitude in a condition.</li>
+            <li> Two Way ANOVA - the interaction effect of a two-way ANOVA where one factor is the timepoint and the other is dataset. This requires replicates or multiple cycles to be run. Tests for a difference in shape between the two conditions, without any restrictions on shape. If more than one cycle of data is provided, the timepoints are collapsed down first. </li>
+            <li> Main Effect Diff - the main effect from the two-way ANOVA test looking for a offset of mean expression values between the datasets. While not a circadian test per se, this is useful to have in some datasets. </li>
+            <li> Phase Difference - A cosinor linear-modelling based test for differences in phase between the two conditions. Only gives significant results if both conditions are significantly rhythmic and also have different phases. </li>
+            <li> Amplitude Difference - A cosinor linear-modelling based test for differences in amplitude between the two conditions. Unlike the dampening test, this is two-sided and can be significant for either an increase or decrease in amplitude. </li>
+        </ul>
+
+        <p>
+            You can now choose to sort by statistics from either dataset, or shared statistics from the comparison.
+            Note that sorting by JTK p-values, for example, will be done for one dataset or the other without incorporating the other spreadsheet at all.
+            Make sure to check which spreadsheet the sorting is applied to by checking where the blue highlighted statistic is in the statistics panel.
+            To change which spreadsheet it is sorting by, just click the statistic under the corresponding header in the statistics box.
+
+        <h3 id="comparison-plots">Comparison Plots</h3>
+
+        <p>
+            All the advanced analysis tabs (filters, pathways, heatmap, and PCA) at the bottom work as well on comparisons.
+            In particular the PCA plots are highly useful.
+            For our example, select a set of rhythmic genes in the wild-type mice.
+            For our example <a href="https://nitecap.org/spreadsheets/share/yeAJS-gTKrPt00o-6n4GTQ-EynbHyQ1xQl-Faij7j_keXQHUOqDxV69ZeWz_1YlyAIhjjrIrQDyRr4zWfm_v5ijS8I8giXIX-yUV">here</a>, select 350 top rhythmic genes in the WT (wild-type) condition and generate the PCA.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_comparison_pca.png" alt="Example of PCA on two datasets">
+            <figcaption class="figure-caption">Comparison of two datasets visualized as a PCA plot of top 350 rhythmic genes according to JTK p-value in the wild-type (KO) condition compared to a clock knock-out (KO).</figcaption>
+        </figure>
+
+        <p>
+            Observe that the rhythmicity of the wild-types is evident from the clustering by timepoints along a circular arc.
+            However, in the knock-outs we can clearly see that the dataset has greatly reduced rhythm in the selected genes and indeed does not separate by timepoint at all.
+        </p>
 
     </div>
 
@@ -459,6 +522,11 @@
                     <li> <a href="#pca">PCA</a> </li>
                     <li> <a href="#sharing">Sharing</a> </li>
                     <li> <a href="#comparisons">Comparisons</a> </li>
+                    <ul>
+                        <li> <a href="#comparison-view">Comparison View</a> </li>
+                        <li> <a href="#comparison-statistics">Comparison Statistics</a> </li>
+                        <li> <a href="#comparison-plots">Comparison Plots</a> </li>
+                    </ul>
                 </ul>
             </div>
         </div>
