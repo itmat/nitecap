@@ -2,9 +2,18 @@ import * as apigateway from "@aws-cdk/aws-apigatewayv2";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as iam from "@aws-cdk/aws-iam";
+import * as lambda from "@aws-cdk/aws-lambda";
 import * as s3 from "@aws-cdk/aws-s3";
+import * as sfn from "@aws-cdk/aws-stepfunctions";
+import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 
 import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
+
+import * as path from "path";
+
+function capitalize(name: string) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
 
 export class NitecapStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -166,5 +175,85 @@ export class NitecapStack extends cdk.Stack {
 
     notificationApiDeployment.addDependsOn(notificationApiDisconnectRoute);
     notificationApiDeployment.addDependsOn(notificationApiDefaultRoute);
+
+    // Computation engine
+
+    let algorithms = ["cosinor", "ls", "arser"];
+
+    let computationLambdas = new Map<string, lambda.DockerImageFunction>();
+    for (let algorithm of algorithms) {
+      computationLambdas.set(
+        algorithm,
+        new lambda.DockerImageFunction(
+          this,
+          `${capitalize(algorithm)}ComputationLambda`,
+          {
+            memorySize: 10240,
+            timeout: cdk.Duration.minutes(15),
+            code: lambda.DockerImageCode.fromImageAsset(
+              path.join(__dirname, "../src/computation"),
+              {
+                file: `algorithms/${algorithm}/Dockerfile`,
+              }
+            ),
+            tracing: lambda.Tracing.ACTIVE,
+            environment: {
+              CONNECTION_TABLE_NAME: connectionTable.tableName,
+              NOTIFICATION_API_ENDPOINT: `https://${notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
+              SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
+            },
+          }
+        )
+      );
+    }
+
+    for (let computationLambda of computationLambdas.values()) {
+      spreadsheetBucket.grantRead(computationLambda);
+      spreadsheetBucket.grantPut(computationLambda);
+      connectionTable.grantReadData(computationLambda);
+
+      computationLambda.addToRolePolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ["execute-api:Invoke", "execute-api:ManageConnections"],
+          resources: [
+            `arn:aws:execute-api:${this.region}:${this.account}:${notificationApi.ref}/*`,
+          ],
+        })
+      );
+    }
+
+    let computationTasks = new Map<string, tasks.LambdaInvoke>();
+    for (let [algorithm, computationLambda] of computationLambdas.entries()) {
+      computationTasks.set(
+        algorithm,
+        new tasks.LambdaInvoke(
+          this,
+          `${capitalize(algorithm)}ComputationTask`,
+          { lambdaFunction: computationLambda }
+        )
+      );
+    }
+
+    let algorithmChoice = new sfn.Choice(this, "AlgorithmChoice");
+    for (let [
+      algorithm,
+      algorithmComputationTask,
+    ] of computationTasks.entries()) {
+      algorithmChoice.when(
+        sfn.Condition.stringEquals("$.algorithm", algorithm),
+        algorithmComputationTask
+      );
+    }
+
+    let computationStateMachine = new sfn.StateMachine(
+      this,
+      "ComputationStateMachine",
+      {
+        definition: algorithmChoice,
+        timeout: cdk.Duration.hours(2),
+        tracingEnabled: true,
+      }
+    );
   }
 }
