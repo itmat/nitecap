@@ -154,6 +154,9 @@ def upload_file():
     return render_template('spreadsheets/upload_file.html')
 
 
+from computation.api import store_spreadsheet_to_s3
+
+
 @spreadsheet_blueprint.route('/collect_data/<spreadsheet_id>', methods=['GET', 'POST'])
 @requires_account
 def collect_data(spreadsheet_id, user=None):
@@ -202,6 +205,7 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.increment_edit_version()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
+        store_spreadsheet_to_s3(spreadsheet)
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
 
     spreadsheet.init_on_load()

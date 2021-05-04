@@ -176,6 +176,10 @@ spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab(
 scheduler.start()
 
 
+import computation.api
+import computation.example
+
+
 if __name__ == '__main__':
     db.init_app(app)
     app.run(host='0.0.0.0')
