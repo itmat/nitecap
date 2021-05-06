@@ -41,6 +41,10 @@ def handler(event, context):
     data = np.loadtxt(spreadsheet, delimiter=",")
     timepoints = np.array(metadata["timepoints"]) * 24 // metadata["cycle_length"]
 
+    # Sort by timepoints
+    data[:, timepoints.argsort()]
+    timepoints.sort()
+
     send_notification = send_notification_via_websockets(
         {"userId": userId, "analysisId": analysisId}
     )
@@ -52,7 +56,7 @@ def handler(event, context):
         q = multipletests(p, method="fdr_bh")[1].tolist()
         results = json.dumps({"x": x, "p": p, "q": q}, ignore_nan=True)
 
-    if algorithm == "ls":
+    if algorithm == "ls" or algorithm == "jtk":
         p = parallel(
             compute(algorithm), data, timepoints, send_notification=send_notification
         )
@@ -66,10 +70,6 @@ def handler(event, context):
 
         # timepoints = np.concatenate((timepoints, 72 + timepoints, 2*72 + timepoints, 3*72 + timepoints))
         # data = np.concatenate((data, data, data, data), axis=1)
-
-        # Sort by timepoints
-        data[:, timepoints.argsort()]
-        timepoints.sort()
 
         p = parallel(
             compute(algorithm), data, timepoints, send_notification=send_notification

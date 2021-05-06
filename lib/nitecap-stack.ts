@@ -181,7 +181,7 @@ export class NitecapStack extends cdk.Stack {
 
     // Computation engine
 
-    let algorithms = ["cosinor", "ls", "arser"];
+    let algorithms = ["cosinor", "ls", "arser", "jtk"];
 
     let computationLambdas = new Map<string, lambda.DockerImageFunction>();
     for (let algorithm of algorithms) {
@@ -260,7 +260,7 @@ export class NitecapStack extends cdk.Stack {
     );
 
     // Server
-
+    
     let serverCluster = new ecs.Cluster(this, "ServerCluster", {
       vpc: ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true }),
       capacity: {

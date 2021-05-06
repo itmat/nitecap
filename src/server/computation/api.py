@@ -14,7 +14,7 @@ from models.users.decorators import ajax_requires_account
 s3 = boto3.resource("s3")
 sfn = boto3.client("stepfunctions")
 
-ALGORITHMS = ["cosinor", "ls", "arser"]
+ALGORITHMS = ["cosinor", "ls", "arser", "jtk"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
