@@ -9,7 +9,7 @@ from io import BytesIO
 
 from flask import request
 from __main__ import app
-from models.users.decorators import ajax_requires_account
+from models.users.decorators import ajax_requires_account, ajax_requires_account_or_share
 
 s3 = boto3.resource("s3")
 sfn = boto3.client("stepfunctions")
@@ -35,6 +35,7 @@ def submit_analysis(user):
         "userId": str(user.id),
         "algorithm": parameters["algorithm"],
         "spreadsheetId": parameters["spreadsheetId"],
+        "version": parameters['version'],
     }
 
     analysisId = sha256(
@@ -53,7 +54,9 @@ def submit_analysis(user):
             input=json.dumps({"analysisId": analysisId, **analysis}),
             traceHeader=analysisId,
         )
-
+    except sfn.exceptions.ExecutionAlreadyExists as error:
+        # Already ran/running, so we just need to let them know about it
+        return analysisId
     except Exception as error:
         return f"Failed to send request to perform computations: {error}", 500
 

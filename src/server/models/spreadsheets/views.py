@@ -345,11 +345,15 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
         return render_template('spreadsheets/show_mpv_spreadsheet.html',
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
+                           user_id=user.id,
+                           NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
         return render_template('spreadsheets/comparison.html',
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
+                           user_id=user.id,
+                           NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 @spreadsheet_blueprint.route('/get_spreadsheets', methods=['POST'])
