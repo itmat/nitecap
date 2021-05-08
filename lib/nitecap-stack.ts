@@ -5,6 +5,7 @@ import * as ec2 from "@aws-cdk/aws-ec2";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as efs from "@aws-cdk/aws-efs";
+import * as elb from "@aws-cdk/aws-elasticloadbalancingv2";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as s3 from "@aws-cdk/aws-s3";
@@ -334,11 +335,23 @@ export class NitecapStack extends cdk.Stack {
         cluster: serverCluster,
         memoryLimitMiB: 2048,
         desiredCount: 1,
-        publicLoadBalancer: true,
         taskDefinition: serverTask,
+        loadBalancer: new elb.ApplicationLoadBalancer(
+          this,
+          "ServerLoadBalancer",
+          { loadBalancerName: "nitecap", vpc: serverVpc, internetFacing: true }
+        ),
       }
     );
 
     serverFileSystem.connections.allowDefaultPortFrom(serverService.service);
+
+    spreadsheetBucket.addCorsRule({
+      allowedMethods: [s3.HttpMethods.GET],
+      allowedOrigins: [
+        `http://${serverService.loadBalancer.loadBalancerDnsName}`,
+        "http://localhost:5000",
+      ],
+    });
   }
 }

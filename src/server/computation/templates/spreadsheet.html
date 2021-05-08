@@ -152,7 +152,9 @@
           },
 
           fetchResults: async function (analysisId) {
-            let response = await fetch(`/analysis/${analysisId}/results`);
+            let response = await fetch(`/analysis/${analysisId}/results/url`);
+            let analysisResultsUrl = await response.text();
+            response = await fetch(analysisResultsUrl);
             let results = await response.json();
             Vue.set(this.results, analysisId, results);
           },

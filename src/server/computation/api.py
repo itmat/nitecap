@@ -4,14 +4,16 @@ import os
 
 import pandas as pd
 
+from botocore.client import Config
+from flask import request
 from hashlib import sha256
 from io import BytesIO
 
-from flask import request
 from __main__ import app
 from models.users.decorators import ajax_requires_account
 
 s3 = boto3.resource("s3")
+s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
 sfn = boto3.client("stepfunctions")
 
 ALGORITHMS = ["cosinor", "ls", "arser", "jtk"]
@@ -60,21 +62,22 @@ def submit_analysis(user):
     return analysisId
 
 
-@app.route("/analysis/<analysisId>/results", methods=["get"])
+@app.route("/analysis/<analysisId>/results/url", methods=["get"])
 @ajax_requires_account
-def get_results(user, analysisId):
+def get_results_url(user, analysisId):
     try:
-        results = BytesIO()
-        s3.Object(
-            SPREADSHEET_BUCKET_NAME,
-            f"{user.id}/analyses/{analysisId}/results",
-        ).download_fileobj(results)
+        response = s3_client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": SPREADSHEET_BUCKET_NAME,
+                "Key": f"{user.id}/analyses/{analysisId}/results",
+            },
+        )
 
     except Exception as error:
-        return f"Failed to retrieve analysis results: {error}", 500
+        return f"Failed to generate analysis results URL: {error}", 500
 
-    results.seek(0)
-    return results.read()
+    return response
 
 
 @app.route("/analysis/<analysisId>/parameters", methods=["get"])
