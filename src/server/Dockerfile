@@ -32,13 +32,6 @@ RUN Rscript prep_R.Rscript
 ADD requirements.txt .
 RUN pip install -r requirements.txt
 
-# TODO: refactor needed
-RUN mkdir /nitecap_web \
-  && mkdir /nitecap_web/uploads \
-  && mkdir /nitecap_web/db_backup \
-  && mkdir /nitecap_web/db \
-  && touch /nitecap_web/log
-
 COPY . .
 COPY .env_example .env
 

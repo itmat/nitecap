@@ -1,6 +1,16 @@
 #!/usr/bin/env python
 import smtplib
 import sys
+
+# create the necessary directories and files, if needed
+import os
+os.makedirs("/storage/uploads", exist_ok=True)
+os.makedirs("/storage/db_backup", exist_ok=True)
+os.makedirs("/storage/db", exist_ok=True)
+
+from pathlib import Path
+Path("/storage/log").touch()
+
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger

@@ -4,6 +4,7 @@ import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
+import * as efs from "@aws-cdk/aws-efs";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as s3 from "@aws-cdk/aws-s3";
@@ -260,17 +261,12 @@ export class NitecapStack extends cdk.Stack {
     );
 
     // Server
-    
-    let serverCluster = new ecs.Cluster(this, "ServerCluster", {
-      vpc: ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true }),
-      capacity: {
-        instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.T2,
-          ec2.InstanceSize.SMALL
-        ),
-        keyName: "NitecapServerKey",
-      },
-      containerInsights: true,
+
+    let serverVpc = ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true });
+
+    let serverFileSystem = new efs.FileSystem(this, "ServerFileSystem", {
+      vpc: serverVpc,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     let serverRole = new iam.Role(this, "ServerRole", {
@@ -282,6 +278,14 @@ export class NitecapStack extends cdk.Stack {
 
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
       taskRole: serverRole,
+      volumes: [
+        {
+          name: "ServerVolume",
+          efsVolumeConfiguration: {
+            fileSystemId: serverFileSystem.fileSystemId,
+          },
+        },
+      ],
     });
 
     let serverContainer = serverTask.addContainer("ServerContainer", {
@@ -298,19 +302,43 @@ export class NitecapStack extends cdk.Stack {
       portMappings: [
         {
           containerPort: 5000,
-          hostPort: 80,
           protocol: ecs.Protocol.TCP,
         },
       ],
+      logging: ecs.LogDriver.awsLogs({ streamPrefix: "ServerLogs" }),
     });
 
-    new ecs_patterns.ApplicationLoadBalancedEc2Service(this, "ServerService", {
-      cluster: serverCluster,
-      cpu: 1024,
-      memoryLimitMiB: 2048,
-      desiredCount: 1,
-      publicLoadBalancer: true,
-      taskDefinition: serverTask,
+    serverContainer.addMountPoints({
+      sourceVolume: "ServerVolume",
+      containerPath: "/storage",
+      readOnly: false,
     });
+
+    let serverCluster = new ecs.Cluster(this, "ServerCluster", {
+      vpc: serverVpc,
+      capacity: {
+        instanceType: ec2.InstanceType.of(
+          ec2.InstanceClass.T2,
+          ec2.InstanceSize.SMALL
+        ),
+        minCapacity: 1,
+        keyName: "NitecapServerKey",
+      },
+      containerInsights: true,
+    });
+
+    let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
+      this,
+      "ServerService",
+      {
+        cluster: serverCluster,
+        memoryLimitMiB: 2048,
+        desiredCount: 1,
+        publicLoadBalancer: true,
+        taskDefinition: serverTask,
+      }
+    );
+
+    serverFileSystem.connections.allowDefaultPortFrom(serverService.service);
   }
 }
