@@ -16,12 +16,19 @@ import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
 
 import * as path from "path";
 
+const DOMAIN_NAME = "nitebelt.org";
+const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
+
 function capitalize(name: string) {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 export class NitecapStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(
+    scope: cdk.Construct,
+    id: string,
+    props: cdk.StackProps & { emailSuppressionList: dynamodb.Table }
+  ) {
     super(scope, id, props);
 
     let spreadsheetBucket = new s3.Bucket(this, "SpreadsheetBucket", {
@@ -277,6 +284,21 @@ export class NitecapStack extends cdk.Stack {
     spreadsheetBucket.grantReadWrite(serverRole);
     computationStateMachine.grantRead(serverRole);
     computationStateMachine.grantStartExecution(serverRole);
+    props.emailSuppressionList.grantReadData(serverRole);
+
+    serverRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendEmail"],
+        resources: [
+          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${DOMAIN_NAME}`,
+          ...VERIFIED_EMAIL_RECIPIENTS.map(
+            (recipient) =>
+              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
+          ),
+        ],
+      })
+    );
 
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
       taskRole: serverRole,
@@ -296,10 +318,12 @@ export class NitecapStack extends cdk.Stack {
       ),
       memoryLimitMiB: 1920,
       environment: {
+        AWS_DEFAULT_REGION: this.region,
         SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
         COMPUTATION_STATE_MACHINE_ARN: computationStateMachine.stateMachineArn,
         NOTIFICATION_API_ENDPOINT: `wss://${notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
-        AWS_DEFAULT_REGION: this.region,
+        EMAIL_SENDER: `no-reply@${DOMAIN_NAME}`,
+        EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
       },
       portMappings: [
         {

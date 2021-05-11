@@ -11,10 +11,12 @@ const BOUNCES_DESTINATION_EMAIL = "nitebelt@gmail.com";
 const COMPLAINTS_DESTINATION_EMAIL = "nitebelt@gmail.com";
 
 export class EmailStack extends cdk.Stack {
+  readonly emailSuppressionList: dynamodb.Table;
+  
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    let emailSuppressionList = new dynamodb.Table(
+    this.emailSuppressionList = new dynamodb.Table(
       this,
       "EmailSuppressionList",
       {
@@ -36,11 +38,11 @@ export class EmailStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_8,
       environment: {
         BOUNCES_DESTINATION_EMAIL,
-        EMAIL_SUPPRESSION_LIST_NAME: emailSuppressionList.tableName,
+        EMAIL_SUPPRESSION_LIST_NAME: this.emailSuppressionList.tableName,
       },
     });
 
-    emailSuppressionList.grantWriteData(bouncesLambda);
+    this.emailSuppressionList.grantWriteData(bouncesLambda);
 
     bouncesLambda.addToRolePolicy(
       new iam.PolicyStatement({
