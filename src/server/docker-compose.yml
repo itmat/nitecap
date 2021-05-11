@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     image: nitecap_img
     ports:
-      - 80:5000
+      - 5000:5000
     environment:
       - ENV=${ENV}
       - DATABASE_FILE=${DATABASE_FILE}
