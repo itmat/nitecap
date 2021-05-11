@@ -98,8 +98,11 @@ def parallel_compute(
 
                 if message["status"] == "COMPLETED":
                     job["result"] = message["result"]
-                    job["number_of_processed_items"] = job["size"]
-                    del running[connection]
+                    if isinstance(job["result"], Exception):
+                        raise job["result"]
+                    else:
+                        job["number_of_processed_items"] = job["size"]
+                        del running[connection]
 
     send_notification({"status": "FINALIZING"})
 
