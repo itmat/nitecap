@@ -65,7 +65,7 @@ def register_user():
             flash("You are already registered but have not activated.  Activate "
                   "your account by clicking on the email confirmation link sent to you."
                   "Note: Please check your spam box if you cannot find the confirmation link.")
-            return redirect(url_for('.resend_confirmation'))
+            return resend_confirmation()
 
         # User already registered and activated.  Send user to login page.
         if status == 'confirmed':
@@ -73,7 +73,7 @@ def register_user():
             return redirect(url_for('.login_user'))
 
         # User successfully registered and email sent.
-        current_app.logger.info(f"user {username} - {email} just registered.")
+        current_app.logger.info(f"User {username} - {email} just registered.")
         flash(CONFIRMATION_SENT_MESSAGE)
         return redirect(url_for('spreadsheets.upload_file'))
 
