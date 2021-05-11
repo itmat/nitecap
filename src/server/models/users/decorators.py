@@ -112,6 +112,7 @@ def ajax_requires_account_or_share(func):
         share_token = data.get("share_token", '')
         if share_token != '':
             # Check sharing token matches the target spreadsheets and has a user
+            current_app.logger.info(f"Using share token {share_token}")
             try:
                 share = Share.find_by_id(share_token)
             except Exception as e:

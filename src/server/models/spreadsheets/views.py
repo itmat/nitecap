@@ -57,8 +57,6 @@ dumps = json_encoder.encode # Our encoder function
 @spreadsheet_blueprint.route('/upload_file', methods=['GET', 'POST'])
 @timeit
 def upload_file():
-    current_app.logger.info('Uploading spreadsheet')
-
     errors = []
 
     # Spreadsheet file form submitted
@@ -82,10 +80,13 @@ def upload_file():
             user = User.find_by_email(user_email)
             user_id = user.id if user else None
 
+            current_app.logger.info(f'Uploading spreadsheet for user {user_email}')
+
         # If user is not logged in or has a current visitor accout, assign a visitor account to protect user's
         # spreadsheet ownership.
         else:
             user = User.create_visitor()
+            current_app.logger.info("Uploading spreadsheet from new visitor")
             if user:
                 # Visitor's session has a fixed expiry date.
                 session.permanent = True
@@ -161,6 +162,7 @@ from computation.api import store_spreadsheet_to_s3
 @requires_account
 def collect_data(spreadsheet_id, user=None):
 
+    current_app.logger.info(f"Collecting spreadsheet data from spreadsheet {spreadsheet_id}, user {user.email}")
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
 
     # If the spreadsheet is not verified as owned by the user, the user is either returned to the his/her
@@ -326,6 +328,8 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
         errors.append("No spreadsheets were provided")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
 
+    current_app.logger.info(f"Showing spreadsheet(s) {spreadsheet_ids} from user {user.email}")
+
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
@@ -335,7 +339,7 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
     is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
     if any(is_categorical) and not all(is_categorical):
         flash("Spreadsheets must all be categorical or all time-series.")
-        return redict(url_for('.display_spreadsheets'))
+        return redirect(url_for('.display_spreadsheets'))
 
     #errors = Spreadsheet.check_for_timepoint_consistency(spreadsheets)
     #if errors:
@@ -361,18 +365,19 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
 @ajax_requires_account_or_share
 def get_spreadsheets(user=None):
 
-
     data = json.loads(request.data)
     spreadsheet_ids = data['spreadsheet_ids']
 
     if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
+    current_app.logger.info(f"Getting spreadsheets {spreadsheet_ids} for user {user.username}")
+
     spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            return access_not_permitted(get_spreadsheet.__name__, user, spreadsheet_id)
+            return access_not_permitted(get_spreadsheets.__name__, user, spreadsheet_id)
 
         # Populate
         spreadsheet.init_on_load()
@@ -437,11 +442,13 @@ def get_mpv_spreadsheets(user=None):
     if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
+    current_app.logger.info(f"Fetching MPV spreadsheets {', '.join(spreadsheet_ids)} for user {user.username}")
+
     spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
         spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
         if not spreadsheet:
-            return access_not_permitted(get_mpv_spreadsheet.__name__, user, spreadsheet_id)
+            return access_not_permitted(get_mpv_spreadsheets.__name__, user, spreadsheet_id)
 
         # Populate
         spreadsheet.init_on_load()
@@ -485,6 +492,8 @@ def get_mpv_spreadsheets(user=None):
 @timeit
 @ajax_requires_account_or_share
 def get_jtk(user=None):
+
+    # TODO: remove now that we use the computation backend
 
     spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
 
@@ -578,6 +587,7 @@ def delete(user=None):
     """
 
     spreadsheet_id = json.loads(request.data).get('spreadsheet_id', None)
+    current_app.logger.warn(f"Deleting spreadsheet {spreadsheet_id} from user {user.email}")
 
     if not spreadsheet_id:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
@@ -608,6 +618,8 @@ def download(user=None):
     data = json.loads(request.data)
     spreadsheet_ids = data['spreadsheet_ids']
     config = data['config']
+
+    current_app.logger.warn(f"Downloading spreadsheet(s) {spreadsheet_ids} from user {user.email}")
 
     # Load the spreadsheets and dataframes
     spreadsheets = []
@@ -762,7 +774,7 @@ def share(user=None):
             current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE.substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_ids))
             return jsonify({"errors": SPREADSHEET_NOT_FOUND_MESSAGE}, 404)
 
-    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_ids} and config {config}")
+    current_app.logger.info(f"Sharing spreadsheet {spreadsheet_ids} with config {config} from user {user.email}")
     share = Share(spreadsheet_ids, user.id, config)
     share.save_to_db()
     return jsonify({'share': share.id})
@@ -779,6 +791,9 @@ def consume_share(token):
     receiving user.  If the current user is not logged in, the user is assigned a visitor account.
     :param token: the share token given to the receiving user
     """
+
+    #TODO: remove this, it is no longer used; shares use the ajax_requires_account_or_share decorator
+
     errors = []
     share = Share.find_by_id(token)
 
@@ -808,6 +823,7 @@ def consume_share(token):
         current_app.logger.error(errors)
         return render_template('spreadsheets/upload_file.html', errors=errors)
 
+
     sharing_user = User.find_by_id(share.user_id)
     spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
     config = json.loads(share.config_json)
@@ -826,7 +842,7 @@ def consume_share(token):
     is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
     if any(is_categorical) and not all(is_categorical):
         flash("Spreadsheets must all be categorical or all time-series.")
-        return redict(url_for('.display_spreadsheets'))
+        return redirect(url_for('.display_spreadsheets'))
 
     # Updates the last-access time
     share.save_to_db()
@@ -861,13 +877,13 @@ def copy_share(token, user=None):
             session['visitor'] = user.is_visitor()
 
     # This should not happen ever - indicates a software bug
+    errors = []
     if not user:
         errors.append("We are unable to create your share at the present time.  Please try again later")
         current_app.logger.error("Spreadsheet share consumption issue, unable to identify or generate a user.")
         return render_template('spreadsheets/upload_file.html', errors=errors)
 
     # Load the share token
-    errors = []
     try:
         share = Share.find_by_id(token)
     except Exception as e:
@@ -881,6 +897,8 @@ def copy_share(token, user=None):
 
     # TODO: we don't use the config when copying
     #config = json.loads(share.config_json)
+
+    current_app.logger.info(f"Copying shared spreadsheets {spreadsheet_ids} from {sharing_user.email}")
 
     # Load the shared spreadsheets
     spreadsheets = []
@@ -897,7 +915,7 @@ def copy_share(token, user=None):
     is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
     if any(is_categorical) and not all(is_categorical):
         flash("Spreadsheets must all be categorical or all time-series.")
-        return redict(url_for('.display_spreadsheets'))
+        return redirect(url_for('.display_spreadsheets'))
 
     # Updates the last-access time of the share
     share.save_to_db()
@@ -921,6 +939,8 @@ def copy_share(token, user=None):
 @timeit
 @ajax_requires_account_or_share
 def get_upside(user=None):
+    # TODO: remove this eventually when using the computation backend
+
     comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
     if not os.path.exists(comparisons_directory):
         os.makedirs(comparisons_directory, exist_ok=True)
@@ -1004,6 +1024,8 @@ def run_pca(user=None):
     selected_genes = args['selected_genes']
     take_zscore = args['take_zscore']
     take_log_transform = args['take_logtransform']
+
+    current_app.logger.info(f"Computing PCA from spreadsheets {spreadsheet_ids} of user {user.email}")
 
     if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
@@ -1104,8 +1126,11 @@ def get_valid_comparisons(user=None):
     among those that the user has
     """
 
+
     data = json.loads(request.data)
     spreadsheet_ids = data['spreadsheet_ids']
+
+    current_app.logger.info(f"Finding the valid comparisons for spreadsheet {spreadsheet_ids} of user {user.email}")
 
     if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
