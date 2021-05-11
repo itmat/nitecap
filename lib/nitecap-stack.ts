@@ -323,7 +323,7 @@ export class NitecapStack extends cdk.Stack {
           ec2.InstanceClass.T2,
           ec2.InstanceSize.SMALL
         ),
-        minCapacity: 1,
+        minCapacity: 2,
         keyName: "NitecapServerKey",
       },
       containerInsights: true,
@@ -354,5 +354,15 @@ export class NitecapStack extends cdk.Stack {
         "http://localhost:5000",
       ],
     });
+
+    let outputs = {
+      SpreadsheetBucketName: spreadsheetBucket.bucketName,
+      NotificationApiEndpoint: notificationApi.attrApiEndpoint,
+      ComputationStateMachineArn: computationStateMachine.stateMachineArn,
+    };
+
+    for (let [outputName, outputValue] of Object.entries(outputs)) {
+      new cdk.CfnOutput(this, outputName, { value: outputValue });
+    }
   }
 }
