@@ -8,7 +8,7 @@ from hashlib import sha256
 from io import BytesIO
 
 from flask import request
-from __main__ import app
+from app import app
 from models.users.decorators import ajax_requires_account, ajax_requires_account_or_share
 
 s3 = boto3.resource("s3")

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import os
 sys.path.append('/var/www/flask_apps/nitecap')

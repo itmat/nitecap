@@ -1,7 +1,7 @@
 import os
 import simplejson as json
 
-from __main__ import app
+from app import app
 from models.users.decorators import requires_account
 
 ALGORITHMS = ["cosinor", "ls", "arser"]
