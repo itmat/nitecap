@@ -4,10 +4,12 @@ import os
 
 import pandas as pd
 
-from botocore.client import Config
 from flask import request
 from hashlib import sha256
 from io import BytesIO
+
+from botocore.client import Config
+from botocore.exceptions import ClientError
 
 from __main__ import app
 from models.users.decorators import ajax_requires_account
@@ -95,6 +97,37 @@ def get_parameters(user, analysisId):
 
     parameters.seek(0)
     return parameters.read()
+
+
+@app.route("/analysis/<analysisId>/status", methods=["get"])
+@ajax_requires_account
+def get_analysis_status(user, analysisId):
+    """
+    Possible responses:
+     - RUNNING
+     - COMPLETED
+     - FAILED - the failure is not supposed to be due to transient network errors
+     - DOES_NOT_EXIST - the analysis has never been submitted, or was submitted more than 90 days ago and it failed
+    """
+
+    try:
+        s3_client.head_object(
+            Bucket=SPREADSHEET_BUCKET_NAME,
+            Key=f"{user.id}/analyses/{analysisId}/results",
+        )
+        return "COMPLETED"
+    except ClientError:
+        try:
+            executionArn = f"{COMPUTATION_STATE_MACHINE_ARN.replace('stateMachine', 'execution')}:{analysisId}"
+            status = sfn.describe_execution(executionArn=executionArn)["status"]
+            if status == "RUNNING":
+                return "RUNNING"
+            if status == "SUCCEEDED":
+                return "COMPLETED"
+            if status in ["FAILED", "TIMED_OUT", "ABORTED"]:
+                return "FAILED"
+        except sfn.exceptions.ExecutionDoesNotExist:
+            return "DOES_NOT_EXIST"
 
 
 def store_spreadsheet_to_s3(spreadsheet):

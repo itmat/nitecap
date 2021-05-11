@@ -275,6 +275,7 @@ export class NitecapStack extends cdk.Stack {
     });
 
     spreadsheetBucket.grantReadWrite(serverRole);
+    computationStateMachine.grantRead(serverRole);
     computationStateMachine.grantStartExecution(serverRole);
 
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
