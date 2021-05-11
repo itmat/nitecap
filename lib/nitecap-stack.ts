@@ -19,8 +19,11 @@ import * as path from "path";
 const DOMAIN_NAME = "nitebelt.org";
 const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
 
-function capitalize(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1);
+function toCamelCase(name: string) {
+  return name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
 }
 
 export class NitecapStack extends cdk.Stack {
@@ -190,15 +193,15 @@ export class NitecapStack extends cdk.Stack {
 
     // Computation engine
 
-    let algorithms = ["cosinor", "ls", "arser", "jtk"];
+    let ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"];
 
     let computationLambdas = new Map<string, lambda.DockerImageFunction>();
-    for (let algorithm of algorithms) {
+    for (let algorithm of ALGORITHMS) {
       computationLambdas.set(
         algorithm,
         new lambda.DockerImageFunction(
           this,
-          `${capitalize(algorithm)}ComputationLambda`,
+          `${toCamelCase(algorithm)}ComputationLambda`,
           {
             memorySize: 10240,
             timeout: cdk.Duration.minutes(15),
@@ -241,7 +244,7 @@ export class NitecapStack extends cdk.Stack {
         algorithm,
         new tasks.LambdaInvoke(
           this,
-          `${capitalize(algorithm)}ComputationTask`,
+          `${toCamelCase(algorithm)}ComputationTask`,
           { lambdaFunction: computationLambda }
         )
       );

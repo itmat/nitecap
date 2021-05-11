@@ -56,7 +56,7 @@ def handler(event, context):
         q = multipletests(p, method="fdr_bh")[1].tolist()
         results = json.dumps({"x": x, "p": p, "q": q}, ignore_nan=True)
 
-    if algorithm == "ls" or algorithm == "jtk":
+    if algorithm in ["ls", "jtk", "one_way_anova"]:
         p = parallel(
             compute(algorithm), data, timepoints, send_notification=send_notification
         )

@@ -4,7 +4,7 @@ import simplejson as json
 from __main__ import app
 from models.users.decorators import requires_account
 
-ALGORITHMS = ["cosinor", "ls", "arser", "jtk"]
+ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"]
 NOTIFICATION_API_ENDPOINT = os.environ["NOTIFICATION_API_ENDPOINT"]
 
 template = {}
