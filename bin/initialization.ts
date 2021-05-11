@@ -2,8 +2,12 @@
 import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
 import { NitecapStack } from '../lib/nitecap-stack';
+import { EmailStack as EmailComplianceStack } from '../lib/compliance/email-stack';
 
 const app = new cdk.App();
+
+new EmailComplianceStack(app, 'EmailComplianceStack-dev'); 
+
 new NitecapStack(app, 'NitecapStack-dev', {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
