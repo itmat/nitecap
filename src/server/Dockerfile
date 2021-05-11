@@ -8,7 +8,6 @@ RUN apt-get update \
   && apt-get install -y apache2 \
   && apt-get install -y apache2-dev \
   && apt-get install -y sqlite3 \
-  #&& apt-get install -y libapache2-mod-wsgi-py3 \
   && mkdir -p /var/www/flask_apps/nitecap \
   && pip install --upgrade pip
 
@@ -16,11 +15,8 @@ RUN apt-get update \
 
 # Install the python packages we use
 ADD requirements.txt .
-RUN python -m venv venv_server
-RUN sh venv_server/bin/activate
 RUN pip --no-cache-dir install -r requirements.txt
 
-## TODO: refactor needed
 RUN mkdir /nitecap_web \
   && mkdir /nitecap_web/uploads \
   && mkdir /nitecap_web/db_backup \
@@ -41,4 +37,5 @@ RUN a2dissite 000-default.conf \
 
 EXPOSE 80
 
-CMD ["/usr/sbin/apache2ctl","-DFOREGROUND"]
+CMD ["sh", "start_server.sh"]
+#CMD ["/usr/sbin/apache2ctl","-DFOREGROUND"]
