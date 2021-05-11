@@ -7,8 +7,7 @@ import pandas as pd
 from hashlib import sha256
 from io import BytesIO
 
-from flask import request
-from app import app
+from flask import request, Blueprint
 from models.users.decorators import ajax_requires_account, ajax_requires_account_or_share
 
 s3 = boto3.resource("s3")
@@ -18,8 +17,9 @@ ALGORITHMS = ["cosinor", "ls", "arser"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
+analysis_blueprint = Blueprint("analysis", __name__)
 
-@app.route("/analysis", methods=["post"])
+@analysis_blueprint.route("/", methods=["post"])
 @ajax_requires_account
 def submit_analysis(user):
     parameters = request.get_json()
@@ -63,7 +63,7 @@ def submit_analysis(user):
     return analysisId
 
 
-@app.route("/analysis/<analysisId>/results", methods=["get"])
+@analysis_blueprint.route("/<analysisId>/results", methods=["get"])
 @ajax_requires_account
 def get_results(user, analysisId):
     try:
@@ -80,7 +80,7 @@ def get_results(user, analysisId):
     return results.read()
 
 
-@app.route("/analysis/<analysisId>/parameters", methods=["get"])
+@analysis_blueprint.route("/<analysisId>/parameters", methods=["get"])
 @ajax_requires_account
 def get_parameters(user, analysisId):
     try:

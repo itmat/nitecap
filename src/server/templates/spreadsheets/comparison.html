@@ -1504,11 +1504,25 @@
             runAnalysis: async function (spreadsheet, algorithm) {
                 let spreadsheetId = spreadsheet.spreadsheet_id;
 
-                let response = await fetch("/analysis", {
+                let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ algorithm, spreadsheetId, version: 20}),
                 });
+
+                if (!response.ok) {
+                    console.error("Failed to start analysis with status", response.status);
+
+                    Vue.set(this.analyses, analysisId, {
+                        algorithm,
+                        spreadsheetId,
+                        status: "FAILED",
+                        startTime: performance.now(),
+                        progress: null,
+                        duration: 0,
+                    });
+                    return;
+                }
 
                 let analysisId = await response.text();
 

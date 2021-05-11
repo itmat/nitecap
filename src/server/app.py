@@ -153,6 +153,11 @@ app.register_blueprint(user_blueprint, url_prefix='/users')
 app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 
+from computation.api import analysis_blueprint
+app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
+import computation.example
+
+
 def db_backup_job():
     logger.info('Database backup underway.')
     backup.backup(app.config['DATABASE'])
@@ -176,10 +181,7 @@ spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab(
 scheduler.start()
 
 
-import computation.api
-import computation.example
-
-
 if __name__ == '__main__':
+    print("Starting app")
     db.init_app(app)
     app.run(host='0.0.0.0')
