@@ -1,10 +1,10 @@
 import * as apigateway from "@aws-cdk/aws-apigatewayv2";
+import * as autoscaling from "@aws-cdk/aws-autoscaling";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
-import * as efs from "@aws-cdk/aws-efs";
 import * as elb from "@aws-cdk/aws-elasticloadbalancingv2";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
@@ -16,10 +16,12 @@ import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
 
 import * as path from "path";
 
+import mountEbsVolume from "./mountEbsVolume";
+
 const DOMAIN_NAME = "nitebelt.org";
 const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
 
-function toCamelCase(name: string) {
+function toPascalCase(name: string) {
   return name
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -201,7 +203,7 @@ export class NitecapStack extends cdk.Stack {
         algorithm,
         new lambda.DockerImageFunction(
           this,
-          `${toCamelCase(algorithm)}ComputationLambda`,
+          `${toPascalCase(algorithm)}ComputationLambda`,
           {
             memorySize: 10240,
             timeout: cdk.Duration.minutes(15),
@@ -244,7 +246,7 @@ export class NitecapStack extends cdk.Stack {
         algorithm,
         new tasks.LambdaInvoke(
           this,
-          `${toCamelCase(algorithm)}ComputationTask`,
+          `${toPascalCase(algorithm)}ComputationTask`,
           { lambdaFunction: computationLambda }
         )
       );
@@ -271,14 +273,15 @@ export class NitecapStack extends cdk.Stack {
       }
     );
 
-    // Server
+    // Server persistent storage
 
-    let serverVpc = ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true });
+    const serverEbsVolume = {
+      deviceName: "/dev/xvdb",
+      mountPoint: "/mnt/storage",
+      snapshotId: "snap-011e8fd69817cf783",
+    };
 
-    let serverFileSystem = new efs.FileSystem(this, "ServerFileSystem", {
-      vpc: serverVpc,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    // Server permissions
 
     let serverRole = new iam.Role(this, "ServerRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
@@ -303,13 +306,15 @@ export class NitecapStack extends cdk.Stack {
       })
     );
 
+    // Server software
+
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
       taskRole: serverRole,
       volumes: [
         {
           name: "ServerVolume",
-          efsVolumeConfiguration: {
-            fileSystemId: serverFileSystem.fileSystemId,
+          host: {
+            sourcePath: serverEbsVolume.mountPoint,
           },
         },
       ],
@@ -319,7 +324,7 @@ export class NitecapStack extends cdk.Stack {
       image: ecs.ContainerImage.fromAsset(
         path.join(__dirname, "../src/server")
       ),
-      memoryLimitMiB: 1920,
+      memoryLimitMiB: 1536,
       environment: {
         AWS_DEFAULT_REGION: this.region,
         SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
@@ -343,36 +348,64 @@ export class NitecapStack extends cdk.Stack {
       readOnly: false,
     });
 
+    // Server hardware
+
+    let serverVpc = ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true });
+
     let serverCluster = new ecs.Cluster(this, "ServerCluster", {
       vpc: serverVpc,
       capacity: {
+        maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
           ec2.InstanceClass.T2,
           ec2.InstanceSize.SMALL
         ),
-        minCapacity: 2,
+        blockDevices: [
+          {
+            deviceName: serverEbsVolume.deviceName,
+            volume: autoscaling.BlockDeviceVolume.ebsFromSnapshot(
+              serverEbsVolume.snapshotId,
+              {
+                deleteOnTermination: true,
+              }
+            ),
+          },
+        ],
         keyName: "NitecapServerKey",
       },
       containerInsights: true,
     });
+
+    mountEbsVolume(
+      serverEbsVolume.deviceName,
+      serverEbsVolume.mountPoint,
+      serverCluster
+    );
+
+    const SERVER_INSTANCE_ID = undefined;
 
     let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
       {
         cluster: serverCluster,
-        memoryLimitMiB: 2048,
+        memoryLimitMiB: 1792,
         desiredCount: 1,
         taskDefinition: serverTask,
         loadBalancer: new elb.ApplicationLoadBalancer(
           this,
           "ServerLoadBalancer",
-          { loadBalancerName: "nitecap", vpc: serverVpc, internetFacing: true }
+          { loadBalancerName: "nitebelt", vpc: serverVpc, internetFacing: true }
         ),
       }
     );
 
-    serverFileSystem.connections.allowDefaultPortFrom(serverService.service);
+    if (SERVER_INSTANCE_ID)
+      serverService.service.addPlacementConstraints(
+        ecs.PlacementConstraint.memberOf(
+          `ec2InstanceId == '${SERVER_INSTANCE_ID}'`
+        )
+      );
 
     spreadsheetBucket.addCorsRule({
       allowedMethods: [s3.HttpMethods.GET],
