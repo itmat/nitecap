@@ -1,0 +1,537 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row">
+    <div class="col-8 user-guide">
+        <h1 id="user-guide"> Nitecap User Guide </h1>
+
+        <p>
+            In this guide, we walk through the steps of preparing, uploading, and exploring a circadian dataset using Nitecap.
+        </p>
+        
+        <h2 id="example-dataset"> Example dataset </h2>
+
+        <p>
+            As an example, the we will use the dataset available <a href="TODO">here</a>.
+            This contains 24 wildetype (WT) mouse liver RNA-seq samples performed at 4-hour intervals, each with four replicates, under dark-dark conditions, from <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE70497">here</a>.
+            First download the spreadsheet and open it up to examine the format.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_spreadsheet.png" alt="example spreadsheet content">
+            <figcaption class="figure-caption">First several rows of the example spreadsheet, with RNA-seq from mouse liver.</figcaption>
+        </figure>
+
+        <p>
+            The first row of the spreadsheet gives the column names.
+            Note that the first column has a unique gene identifier (Ensembl gene ID), the second has gene symbols for readable gene identifiers, and the remaining columns are the data for each sample.
+            The sample columns are labelled including "CT00", "CT04", etc..
+            Unlabelled columns can be used as well, but including labels like "CT00", "ZT00", or "12:00" makes the process easier.
+        </p>
+
+        <h2 id="uploading-data"> Uploading Data </h2>
+
+        <p>
+            Next, we upload the spreadsheet to Nitecap.
+            From the <a href="/">homepage</a>, click the <a href="/spreadsheet/upload_file">Load New Spreadsheet</a> button.
+            Since our spreadsheet has the column labels on the first row, we leave the spreadsheet header on row 1.
+            We click browse and select our file to upload.
+            Click Submit and wait for the spreadsheet to upload to our server.
+            Depending on the size of your experiment and internet connection, this may take a little while.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_upload.png" alt="Spreadsheet upload page">
+            <figcaption class="figure-caption">Spreadsheet upload page</figcaption>
+        </figure>
+
+        <h2 id="metadata-entry"> Metadata entry </h2>
+
+        <p>
+            After uploading, we next enter information about our spreadsheet.
+            Choose a good name for the dataset, here we call it "mouse liver".
+            Then enter the number of timepoints in the dataset.
+            This is the number of distinct timepoints that were sampled, not counting multiple replicates of the same timepoint separately.
+            For our spreadsheet, we have timepoints CT00, CT04, CT08, CT12, CT16, and CT20, each with four replicates.
+            Since this is six timepoints we enter six.
+        </p>
+        <p>
+            Next we enter the number of timepoints per cycle.
+            In our case, we are looking for 24 hour cycles and our dataset just has exactly one cycle.
+            So this has the same value as the previous, and we enter 6 again.
+            Be careful not to accidentally enter one too many here: it's easy to count CT00, CT04, CT08, CT12, CT16, CT20, up to CT24 as one cycle and accidentally enter 7.
+            But the CT24 timepoint is part of the next cycle from the first CT00 timepoint, so we do not include it.
+            As quick check, multiply the number of timepoints by the number of hours between each timepoint - does that equal 24 hours (or whatever period you're investigating)?
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_metadata.png" alt="Spreadsheet metadata entry">
+            <figcaption class="figure-caption">Spreadsheet metadata entry. Our dataset has 6 timepoints (CT00, CT04, CT08, CT12, CT16, CT20) and also has 6 timepoints per cycle (i.e. per day).</figcaption>
+        </figure>
+
+        <p>
+            Next we need to tell Nitecap what each column means.
+            Nitecap attempts to guess based off of column headers, but if yours don't contain a commonly used label like CT00 or 0:00, then you will have to enter them manually.
+            Each column can be set to "Ignore", "ID", "Stat" or one of the timepoint labels such as "Day 1 Timepoint 1".
+            Choose "Ignore" if you do not want to use the column  at all.
+            Choose "ID" for at least one, but possibly more if you want, columns containing feature identifiers.
+            It is always recommended to have unique identifiers, but a second column with more readable names is often convenient, such as gene symbols.
+            Here we select the geneSymbol column as an ID column too so that it will be displayed and the "id" column had been correctly assigned ID already.
+        <p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_column_selectors.png" alt="Spreadsheet column selectors">
+            <figcaption class="figure-caption">Spreadsheet column selectors. We set the "geneSymbol" column to be an "ID" column. Choose "Ignore" to leave out a column. Choose "Stat" to make the values in the column visible for per-gene information (such as a statistic that you have computed, or feature metadata). Choose "Day 1 Timepoint 1" or similar for each column containing data corresponding to a sample's data.</figcaption>
+        </figure>
+
+        <p>
+            For the other columns, we check that Nitecap has correctly assigned the labels already.
+            For example, CT00 is our first timepoint and the four samples from CT00 are assigned "Day1 Timepoint1".
+            If they had not been, we could set them manually.
+            If we wanted to exclude any of these columns, we could change them to "Ignore".
+        <p>
+        <p>
+            Finally, note that any additional per-gene level information can be displayed, sorted or filtered by Nitecap alongside the computed results Nitecap provides if you set the column to "Stat".
+            For example, you might include in your spreadsheet a p-value or other statistics computed by an analysis you have already run on your dataset, if Nitecap does not include your preferred statistics already.
+            Or you could include any information about the gene, protein, etc. that you want quick reference to, for example gene biotype.
+            In either case, you could any such columns as "Stat" and find their values alongside Nitecap's automatically generated rhythmic statistics.
+        <p>
+
+        <h2 id="spreadsheet-view"> Spreadsheet view </h2>
+
+        <p>
+            After hitting Submit, Nitecap will begin initial processing of your spreadsheet.
+            For large studies, this may take a minute or two.
+            Then you will be redirected to the main spreadsheet viewing page.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_spreadsheet_view.png" alt="Spreadsheet viewer page">
+            <figcaption class="figure-caption">
+                Main spreadsheet view page. We can see the list of features (genes, in this case) on the left.
+                In the center, the profile of the selected feature is plotted.
+                Below that, selectors let you configure the plot style.
+                On the right, the statistics computed for each feature and choice of sorting for the rows.
+                On the bottom, a slider bar allows one to "scrub" quickly through the dataset in order of how it is sorted and immediately see what the values look like
+            </figcaption>
+        </figure>
+
+        <h3 id="row-list"> Row List </h3>
+
+        <p>
+            The spreadsheet view page has several features.
+            First, the list of spreadsheet rows shows each feature (here, gene) in the uploaded spreadsheet.
+            The features are sorted according to the chosen statistic from the statistics panel on the right, in ascending order of significance for p-values.
+            The q-value of that statistic is displayed for reference in the row list, if applicable.
+            Since two ID columns were selected, we see the values of both in this list.
+            Note that very long identifiers will be truncated, so we recommend using a small number of ID columns.
+        </p>
+
+
+        <p>
+            Below the row selector, one can search for rows by their identifier.
+            We search for "Arntl", which brings up the gene of that gene symbol, also known as Bmal1, a core clock gene.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_row_search.png" alt="Spreadsheet row search example">
+            <figcaption class="figure-caption">
+                Search for any row, such as Arntl (a.k.a. Bmal1).
+            </figcaption>
+        </figure>
+
+        <p>
+            Select "Hide filtered rows" if you have filtered rows out and want them to be hidden from the list (actually, moved to the back of the list) instead of just greyed out.
+            See filtering below.
+        </p>
+
+        <h3 id="statistics-panel"> Statistics Panel </h3>
+
+        <p>
+            On the right side, we see the statistics panel.
+            There, we can see the values of all statistics computed from your data.
+            If you provided a 'Stat' column in your data, then it would be displayed here, at the bottom of the list.
+            Otherwise, we see the values computed by Nitecap.
+        </p>
+
+        <p>
+            Nitecap will automatically compute for you the following:
+        </p>
+        <ul>
+            <li> Cosinor - a linear model fitting cosine-shaped curves, assuming normally distributed noise </li>
+            <li> ANOVA - an ANOVA model separating your data into groups by timepoint (grouping like timepoint from different timepoints), only available if you have multiple replicates or multiple cycles</li>
+            <li> JTK - the JTK_CYCLE method, using a known cycle length (determined by what you enter in the spreadsheet metadata)</li>
+            <li> ARS - ARSER method from metaCycle, only if you have no replicates and multiple cycles of data </li>
+            <li> LS - the Lomb-Scargle method from metaCycle </li>
+            <li> Nitecap - our custom, permutation-based rhythmicity detection method </li>
+            <li> Amplitude - a measure of the peak-to-trough height in your data, as determined by a cyclic moving quadratic regression fit </li>
+            <li> Peak Time - Acrophase (time which the peak value occurs) according to the same fit from amplitude, measured in units of 'timepoints' (i.e. 0 is your first timepoint, 1 is your second timepoint, etc.) </li>
+        </ul>
+
+        <p>
+            You can change the sorting of the rows in the spreadsheet by either click on any of the statistics or by using the drop-down list at the top of the statistics panel.
+        </p>
+
+        <h3 id="profile-plot"> Profile Plot </h3>
+
+        <p>
+            The profile of the selected row is displayed in the center of the page.
+            You can hover over a data point to get its value and sample name.
+        </p>
+        <p>
+            Below the profile you can select plot style and the x-axis (time) labels.
+            The x-axis labels default to the "inferred labels", which will extract labels from the column headers if the column headers contain "CT00", "ZT00", or "12:00" style labels that are consistent with the metadata.
+            Similarly, "Inferred labels wrapping" will give the same, but will "wrap" back to 0 after 24 hours.
+            You can also select "Include zero" to force the y-axis to always include zero as a baseline.
+        </p>
+
+        <p>
+            Press "Download Plot" to download an SVG copy of the plot.
+        </p>
+
+        <h3 id="slider-bar"> Slider Bar </h3>
+
+        <p>
+            Below the plot is a slider bar, which can be dragged back and forth to "scrub" through the spreadsheet rows.
+            Dragging it to the far left selects the top row, i.e. the most significant one according to the statistic we are ranking by.
+            Dragging it to the far right selects the bottom row, i.e. the least significant.
+            These changes update immediately the profile plot and statistics page.
+            This is useful to examine the overall appearance of a dataset among high, mid or low ranked features.
+        </p>
+        <p>
+            Use this now to scroll through the dataset and determine approximately where you judge where the approximate transition from rhythmic to non-rhythmic genes occurs in our dataset, after sorting by one of the rhythmicity p-values.
+            This is useful for determining which q-value cutoffs to use for later analysis, to judge the performance of a method, or to check for quality control, such as consistent outliers.
+            Note that our example dataset has a large amount of rhythmicity and you may be able to argue for rhythmicity in a majority of the genes.
+        </p>
+        <p>
+            Below these, we can set specific cutoffs to go to.
+            First, setting "Number of selected rows" chooses that row number (ignoring filtered out rows, if any).
+            Second, setting "Cutoff" will allow you to set the false discovery rate q-value of the statistic you are sorting for, and to select the top feature below that.
+            Se the cutoff to 0.1, and you will be given the top gene for which the q-value is less than 0.1.
+        </p>
+
+        <h2 id="filters"> Filters </h2>
+        
+        <p>
+            At the bottom of the page are several tabs, the first of which is the Filters tab.
+            Select it now, if it isn't already.
+        </p>
+        <p>
+            Hit the "plus" button to add a new filter.
+            Select a statistic to sort by from the drop-down list.
+            For example, let's pick "JTK p".
+            Now we can select only genes matching this criteria.
+            Let's examine what non-rhythmic genes look like, so set the left box to 0.5, so that the filter will be choosing only features whose JTK p value is at least 0.5.
+            Then hit "Apply filters".
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_filters.png" alt="Example filter by JTK p at least 0.5">
+            <figcaption class="figure-caption">
+                We can set filters to only include certain features.
+                Here we have set one to select only genes with JTK p-value at least 0.5, so that we have only genes that appear to be non-rhythmic.
+            </figcaption>
+        </figure>
+
+        <p>
+            All rows with JTK p-value less than 0.5 are now greyed out.
+            To move them to the back of the list, we select the "Hide filtered rows" option below the Spreadsheet Row list.
+            Now we scrub the slider bar back and forth to examine the new ordering of genes, with those of JTK p &ge; 0.5 at the front of the list.
+            Choose "ANOVA" and drag the slider bar to the far left.
+            This shows the top ANOVA-ranked gene that is poorly ranked by JTK.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_anova_not_jtk.png" alt="Top ranked gene by ANOVA among those with JTK p at least 0.5.">
+            <figcaption class="figure-caption">
+                After filtering to only genes with JTK p &ge; 0.5, we sort by ANOVA and find the most significant gene.
+                Here that is the Tbcel which has an unusual shape that is not preferred by JTK.
+            </figcaption>
+        </figure>
+
+        <p>
+            Filters can be removed with the minus sign box to their right.
+            You can also revert to the previously applied set of filters by clicking the circular arrow button.
+        </p>
+
+        <p>
+            Delete the JTK p value filter now and hit "Apply filters" so we can continue to see our full dataset.
+        </p>
+
+        <h2 id="pathways"> Pathways </h2>
+
+        <p>
+            Nitecap provides basic pathway analysis features for exploratory work.
+            Click the "Pathways" tab.
+            We now must choose a pathway database.
+            Since our dataset is mouse and we have Ensembl gene IDs, we choose one matching that, so we select "Ensembl_Homology_GO_MMusculus".
+            This database is then downloaded.
+        </p>
+
+        <p>
+            Next, choose the ID column to sort for pathways on.
+            The first ID column is chose by default, which is correct for our dataset.
+            If you only have one ID column, then this is not necessary to change either.
+        </p>
+
+        <p>
+            Hit "Run Pathway Analysis" button and see the results below.
+            We are presented with a list of pathways, ranked according to a hypergeometric enrichment test.
+            The set of genes used is determined according the sorting, filters, and selected row that you have set above.
+            Essentially, any gene passing the filters you've provided and ranked above your selected gene (the one that is displayed in the main profile plot), is considered "selected" and therefore part of the "foreground" set.
+            At the bottom of the results, we can see the number of genes in the foreground list.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_pathways.png" alt="Pathway analysis example">
+            <figcaption class="figure-caption">
+                Nitecap can run exploratory pathway analysis on your datasets.
+                Here we choose the top 100 most rhythmic, sorting by JTK, and use the GO term annotations according to Ensembl gene IDs.
+            </figcaption>
+        </figure>
+
+        <p>
+            By default, the background list of genes is determined as all genes in the dataset that are annotated in at least one pathway.
+            If you uncheck "Remove unannotated genes" then all genes in your dataset will be considered as part of the background.
+        </p>
+
+        <p>
+            To examine how the cutoff changes the pathway analysis, check the "Update continuously" option.
+            Now, any changes to slider bar, chosen sorting, filtering, etc. will be reflected in the pathway analysis in real-time.
+            Scrub through your dataset and see which pathways are enriched at different cutoffs.
+            Check if pathways remain enriched at extremely high cutoffs, which could indicate that the pathways are not well correlated with the feature of interest and instead are enriched due to, say, expression level in that tissue rather than rhythmicity.
+        </p>
+
+        <p>
+            We recommend using Nitecap only as a preliminary pathway analysis tool and that all publication-ready pathway analyses be performed in a dedicated tool.
+            The advantage of the Nitecap system is its quick responsiveness and ease-of-use, allowing one to quickly get a feel for a new dataset and how pathway enrichment responds to choice of parameters like the number of genes selected.
+            Using dedicated tools like Ingenuity Pathway Analysis or GSEA will give you better pathway lists for your finalized pathway enrichment analysis.
+        </p>
+
+        <p>
+            You can download results of the pathway enrichment to examine them further.
+            For individual pathways, download buttons are on the right of the results table and provide the list of genes in the pathway and the genes overlapping in both pathway and our data set's selected genes.
+            For the entire set of pathway enrichments, you can download the summary in the "Download Results" button at the bottom.
+        </p>
+        <p>
+            One can also search for a specific pathway by name, or page through the list of results to see past the top 10.
+        </p>
+
+        <h2 id="heatmap"> Heatmap </h2>
+
+        <p>
+            Heatmaps provide quick and easy visualization of the behavior of a moderately large number of genes, but cannot show more than a few hundred genes.
+            Click on the Heatmap tab and the "Generate Heatmap" button.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_heatmap.png" alt="Heatmap of top 100 genes by JTK">
+            <figcaption class="figure-caption">
+                Heatmap of top 100 genes according to JTK p-value.
+            </figcaption>
+        </figure>
+
+        <p>
+            The set of features shown in the heatmap depends upon your selected rows, just as in the pathway analysis.
+            Specifically, it takes all features that rank at least as highly as the selected feature (shown in the main profile plot) that are not filtered out (shown in grey in the row selector list).
+            Therefore you can use the slider bar, set a number of selected features, or set a cutoff value to determine how many features to display in the heatmap.
+            In the example figure, we have set it to sort by JTK and selected the top 100 genes.
+            Note that if you include more genes than there is space to display, only a subset of rows will be displayed until you zoom in.
+        </p>
+
+        <p>
+            Each row in the heatmap shows that data of one feature.
+            The data has been z-scored (i.e. that feature's mean and standard deviations have been set to 0 and 1, respectively), so that values are comparable across different scales.
+            White indicates the average value of that feature across all timepoints.
+        </p>
+
+        <p>
+            A heatmap takes the set of selected genes are re-sorts them according to their peak time (aka acrophase).
+            This creates a more readable visualization for most datasets since similarly timed genes will be side-by-side.
+            If this were not done, then they would be sorted by significance and nearby genes, while both significanly rhythmic, would likely be entirely out of phase and the plot would be extremely difficult to read.
+            However, in some circumstances (such as small datasets with few timepoints and no replicates), this can create the appearance of patterns that are not likely to be replicable.
+        </p>
+
+        <p>
+            You can also adjust the plot combine replicates of the same time points together, to combine multiple cycles of data into one (if you dataset contains multiple cycles), or to show row labels (from the ID columns).
+            Note you should only choose to show row labels if there is a fairly small number of rows, anything more than around 50 is unreadable and may be slow to render.
+        </p>
+
+        <h2 id="pca"> PCA </h2>
+
+        <p>
+            The PCA plots provide a way to view the bulk rhythmic behavior of a condition.
+            Like heatmaps and pathway analysis, Nitecap performs PCA on the set of features you have selected.
+            Specifically, it takes all features that rank at least as highly as the selected feature (shown in the main profile plot) that are not filtered out (shown in grey in the row selector list).
+            This contrasts with a more standard PCA which would include all features.
+            Users can still generate those by selecting all features (dragging the slider bar to the far right).
+            However, we find that running PCA on different sets of features can be highly informative, and we encourage investigators to try multiple options.
+        </p>
+
+        <p>
+            For our example, select the top 500 genes sorted by JTK p-values and hit "Run PCA."
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_pca.png" alt="PCA of top 500 JTK genes">
+            <figcaption class="figure-caption">
+                PCA results of using the top 500 genes by JTK p-value, and using the log(1+x) transformation.
+            </figcaption>
+        </figure>
+
+        <p>
+            Since this dataset has strong rhythmicity in the selected genes, we observe that the PCA plot forms a circular shape with the samples of the same timepoint clustering together, and timepoints in order around the clock.
+            The PCA displays the timepoint with a "PAC-MAN" shape indicating the time of day.
+            Note that choice of signs in PCA is arbitrary so while sometimes plots like these have the timepoints going clockwise and sometimes have them going counter-clockwise, there direction is completely arbitrary.
+        </p>
+
+        <p>
+            PCAs are particularly informative for comparisons of different datasets, for example a wild-type versus a knock-out mouse to explore the effects of the knock-out.
+        </p>
+
+
+        <h2 id="sharing"> Sharing </h2>
+
+        <p>
+            Next to the dataset name, there are several buttons.
+            Press the arrow-shaped "Share" button to create a shareable link to your dataset.
+            Copy-and-paste the provided link and you can give it to any colleague to use to see your dataset, including your chosen sorting, filtering, and selected rows.
+        </p>
+
+        <p>
+            You must be logged into an account in order to create these shareable links.
+            Accounts are free and allow your uploaded datasets to be stored for later use.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_share.png" alt="Shareable url creation">
+            <figcaption class="figure-caption">
+                Click on the arrow-shaped "Share" button above the central profile plot to generate a copy-and-pastable shareable URL.
+            </figcaption>
+        </figure>
+
+        <h2 id="comparisons"> Comparisons </h2>
+
+        <p>
+            Nitecap provides support for comparing rhythmicity among different conditions, such as between wildtype and knock-out mice or between a control and treatment group.
+            In order for two datasets to be comparable, you must first upload each of them as described here.
+            Only spreadsheets with the same study design are currently supported for comparing: they must have the same numbers of total timepoints and the same number of timepoints per cycle in their metadata.
+            However, they do not need to have the same number of replicates at each timepoint.
+            Additionally, the spreadsheets need to have matching ID columns, with some IDs common to both datasets.
+            Check that you have chosen the same ID types as ID columns in both spreadsheets and that they both have the same number of ID columns set in the metadata (click the "Edit" button while viewing a spreadsheet to check this).
+        </p>
+        <p>
+            If two datasets match these requirements, it still may be inadvisable to compare them if they were not produced as part of a single study.
+            For example, comparing two studies from different labs or different years may be possible but not recommended as the differences observed will be technical in nature.
+        </p>
+
+        <p>
+            To compare the datasets, there are two easy ways.
+            First, you can click on "Display Spreadsheets" at the top of the page (while logged in) to access the list of your stored spreadsheets.
+            Then, select two spreadsheets and hit the "Compare" button.
+            Alternatively, open one spreadsheet first, then hit the "Compare" button next to the dataset name at top.
+            Then a list of comparable datasets is displayed.
+            Click the name of the spreadsheet you'd like to compare to and that comparison will open.
+        </p>
+
+        <p>
+            If you do not have a second dataset, you can experiment with a shared comparison <a href="https://nitecap.org/spreadsheets/share/yeAJS-gTKrPt00o-6n4GTQ-EynbHyQ1xQl-Faij7j_keXQHUOqDxV69ZeWz_1YlyAIhjjrIrQDyRr4zWfm_v5ijS8I8giXIX-yUV">here</a>.
+        </p>
+
+        <h3 id="comparison-view">Comparison View</h3>
+
+        <p>
+            Viewing the comparison gives a similar view as in a single dataset.
+            The rows of the spreadsheets are matched by their ID columns.
+            Any rows without matches in the other spreadsheet are dropped from the comparison.
+            The central profile plot shows the profile of the feature in both conditions, colored accordingly.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_comparison_profile.png" alt="Example comparison profile plot">
+            <figcaption class="figure-caption">Comparison of two example datasets, a wildtype mouse and clock knock-out model mouse.</figcaption>
+        </figure>
+
+        <p>
+            Note that Nitecap automatically attempts to generate shortened condition names from your two study names.
+            Parts of the study names that are the same in both datasets will be dropped for simplicity.
+            So it is recommended that you give consistent dataset names such as "Study 1 Control" and "Study 1 Case", which will result in readable labels of "Control" and "Case".
+        </p>
+
+        <h3 id="comparison-statistics"> Comparison Statistics </h3>
+
+        <p>
+            In addition to all the single-dataset statistics (including user-uploaded statistics), Nitecap computes additional comparisons statistics.
+            These are:
+        </p>
+
+        <ul>
+            <li> Damping - a permutation test for reduction of amplitude in a condition.</li>
+            <li> Two Way ANOVA - the interaction effect of a two-way ANOVA where one factor is the timepoint and the other is dataset. This requires replicates or multiple cycles to be run. Tests for a difference in shape between the two conditions, without any restrictions on shape. If more than one cycle of data is provided, the timepoints are collapsed down first. </li>
+            <li> Main Effect Diff - the main effect from the two-way ANOVA test looking for a offset of mean expression values between the datasets. While not a circadian test per se, this is useful to have in some datasets. </li>
+            <li> Phase Difference - A cosinor linear-modelling based test for differences in phase between the two conditions. Only gives significant results if both conditions are significantly rhythmic and also have different phases. </li>
+            <li> Amplitude Difference - A cosinor linear-modelling based test for differences in amplitude between the two conditions. Unlike the dampening test, this is two-sided and can be significant for either an increase or decrease in amplitude. </li>
+        </ul>
+
+        <p>
+            You can now choose to sort by statistics from either dataset, or shared statistics from the comparison.
+            Note that sorting by JTK p-values, for example, will be done for one dataset or the other without incorporating the other spreadsheet at all.
+            Make sure to check which spreadsheet the sorting is applied to by checking where the blue highlighted statistic is in the statistics panel.
+            To change which spreadsheet it is sorting by, just click the statistic under the corresponding header in the statistics box.
+
+        <h3 id="comparison-plots">Comparison Plots</h3>
+
+        <p>
+            All the advanced analysis tabs (filters, pathways, heatmap, and PCA) at the bottom work as well on comparisons.
+            In particular the PCA plots are highly useful.
+            For our example, select a set of rhythmic genes in the wild-type mice.
+            For our example <a href="https://nitecap.org/spreadsheets/share/yeAJS-gTKrPt00o-6n4GTQ-EynbHyQ1xQl-Faij7j_keXQHUOqDxV69ZeWz_1YlyAIhjjrIrQDyRr4zWfm_v5ijS8I8giXIX-yUV">here</a>, select 350 top rhythmic genes in the WT (wild-type) condition and generate the PCA.
+        </p>
+
+        <figure class="figure">
+            <img class="figure-img img-fluid rounded" src="static/images/user_guide_comparison_pca.png" alt="Example of PCA on two datasets">
+            <figcaption class="figure-caption">Comparison of two datasets visualized as a PCA plot of top 350 rhythmic genes according to JTK p-value in the wild-type (KO) condition compared to a clock knock-out (KO).</figcaption>
+        </figure>
+
+        <p>
+            Observe that the rhythmicity of the wild-types is evident from the clustering by timepoints along a circular arc.
+            However, in the knock-outs we can clearly see that the dataset has greatly reduced rhythm in the selected genes and indeed does not separate by timepoint at all.
+        </p>
+
+    </div>
+
+    <div class="col-3">
+        <!-- nav bar -->
+        <div class="sidenav">
+            <div class="sticky">
+                <ul>
+                    <li> <a href="#user-guide">User Guide</a> </li>
+                    <li> <a href="#example-dataset">Example Dataset</a> </li>
+                    <li> <a href="#uploading-data">Uploading Data</a> </li>
+                    <li> <a href="#metadata-entry">Metadata Entry</a> </li>
+                    <li> <a href="#spreadsheet-view">Spreadsheet View</a> </li>
+                    <ul>
+                        <li> <a href="#row-list">Row List</a> </li>
+                        <li> <a href="#statistics-panel">Statistics Panel</a> </li>
+                        <li> <a href="#profile-plot">Profile Plot</a> </li>
+                        <li> <a href="#slider-bar">Slider Bar</a> </li>
+                    </ul>
+                    <li> <a href="#filters">Filters</a> </li>
+                    <li> <a href="#pathways">Pathways</a> </li>
+                    <li> <a href="#heatmap">Heatmap</a> </li>
+                    <li> <a href="#pca">PCA</a> </li>
+                    <li> <a href="#sharing">Sharing</a> </li>
+                    <li> <a href="#comparisons">Comparisons</a> </li>
+                    <ul>
+                        <li> <a href="#comparison-view">Comparison View</a> </li>
+                        <li> <a href="#comparison-statistics">Comparison Statistics</a> </li>
+                        <li> <a href="#comparison-plots">Comparison Plots</a> </li>
+                    </ul>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
