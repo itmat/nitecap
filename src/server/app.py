@@ -2,15 +2,6 @@
 import smtplib
 import sys
 
-# create the necessary directories and files, if needed
-import os
-os.makedirs("/storage/uploads", exist_ok=True)
-os.makedirs("/storage/db_backup", exist_ok=True)
-os.makedirs("/storage/db", exist_ok=True)
-
-from pathlib import Path
-Path("/storage/log").touch()
-
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
@@ -53,16 +44,16 @@ mail_handler = SMTPHandler(
 mail_handler.setLevel(logging.WARN)
 mail_handler.setFormatter(formatter)
 
+# Email warning and errors only for production server
+#if not app.debug:
+#    app.logger.addHandler(mail_handler)
+
 # File logger - rotates for every 1Mb up to 10 files.
 file_handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
 file_handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 file_handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 logger.addHandler(file_handler)
-
-# Email warning and errors only for production server
-#if not app.debug:
-#    app.logger.addHandler(mail_handler)
 
 # Catch exceptions and log them
 @app.errorhandler(Exception)
@@ -76,20 +67,9 @@ def handle_404(e):
     errors = ["URL not found"]
     return render_template("home.html", errors=errors), 404
 
-# Check python version and paths:
-logger.debug("Python version")
-logger.debug(sys.version)
-logger.debug("Python paths")
-for python_path in sys.path:
-    logger.debug(python_path)
-
 @app.before_first_request
 def create_tables():
     db.create_all()
-
-# @app.before_request
-# def check_session():
-#     print(session)
 
 
 @app.route('/', methods=['GET'])
@@ -100,20 +80,24 @@ def home():
 
 @app.route('/faqs', methods=['GET'])
 def faqs():
+    logger.info("Accessing faqs")
     return render_template("faqs.html")
 
 
 @app.route('/people', methods=['GET'])
 def people():
+    logger.info("Accessing people")
     return render_template("people.html")
 
 
 @app.route('/about', methods=['GET'])
 def about():
+    logger.info("Accessing about page")
     return render_template("about.html")
 
 @app.route('/gallery', methods=['GET'])
 def gallery():
+    logger.info("Accessing gallery")
     # load the gallery shares
     with open("static/json/gallery_shares.json") as gallery_json:
         gallery = json.load(gallery_json)
@@ -162,6 +146,12 @@ from models.spreadsheets.views import spreadsheet_blueprint
 app.register_blueprint(user_blueprint, url_prefix='/users')
 app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
+from computation.api import analysis_blueprint
+app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
+
+#TODO: Remove this in production
+from computation.example import computation_test_blueprint
+app.register_blueprint(computation_test_blueprint, url_prefix='/computation')
 
 def db_backup_job():
     logger.info('Database backup underway.')
@@ -186,10 +176,7 @@ spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab(
 scheduler.start()
 
 
-import computation.api
-import computation.example
-
-
 if __name__ == '__main__':
+    print("Starting app")
     db.init_app(app)
     app.run(host='0.0.0.0')

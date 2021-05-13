@@ -4,15 +4,15 @@ import os
 
 import pandas as pd
 
-from flask import request
+from flask import Blueprint, request
 from hashlib import sha256
 from io import BytesIO
 
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
-from __main__ import app
-from models.users.decorators import ajax_requires_account
+from models.users.decorators import ajax_requires_account, ajax_requires_account_or_share
+
 
 s3 = boto3.resource("s3")
 s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
@@ -22,8 +22,9 @@ ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
+analysis_blueprint = Blueprint("analysis", __name__)
 
-@app.route("/analysis", methods=["post"])
+@analysis_blueprint.route("/", methods=["post"])
 @ajax_requires_account
 def submit_analysis(user):
     parameters = request.get_json()
@@ -39,6 +40,7 @@ def submit_analysis(user):
         "userId": str(user.id),
         "algorithm": parameters["algorithm"],
         "spreadsheetId": parameters["spreadsheetId"],
+        "version": parameters['version'],
     }
 
     analysisId = sha256(
@@ -57,14 +59,16 @@ def submit_analysis(user):
             input=json.dumps({"analysisId": analysisId, **analysis}),
             traceHeader=analysisId,
         )
-
+    except sfn.exceptions.ExecutionAlreadyExists as error:
+        # Already ran/running, so we just need to let them know about it
+        return analysisId
     except Exception as error:
         return f"Failed to send request to perform computations: {error}", 500
 
     return analysisId
 
 
-@app.route("/analysis/<analysisId>/results/url", methods=["get"])
+@analysis_blueprint.route("/<analysisId>/results/url", methods=["get"])
 @ajax_requires_account
 def get_results_url(user, analysisId):
     try:
@@ -82,7 +86,7 @@ def get_results_url(user, analysisId):
     return response
 
 
-@app.route("/analysis/<analysisId>/parameters", methods=["get"])
+@analysis_blueprint.route("/<analysisId>/parameters", methods=["get"])
 @ajax_requires_account
 def get_parameters(user, analysisId):
     try:
@@ -98,8 +102,7 @@ def get_parameters(user, analysisId):
     parameters.seek(0)
     return parameters.read()
 
-
-@app.route("/analysis/<analysisId>/status", methods=["get"])
+@analysis_blueprint.route("/<analysisId>/status", methods=["get"])
 @ajax_requires_account
 def get_analysis_status(user, analysisId):
     """

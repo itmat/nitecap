@@ -12,7 +12,7 @@ ACCOUNT_NOT_FOUND_MESSAGE = "No such account was found.  Please register."
 PROFILE_UPDATED_MESSAGE = "Your user profile has been updated."
 MISSING_USER_ID_ERROR = "No user id was provided."
 PASSWORD_RESET_MESSAGE = "Your password has been reset"
-PASSWORD_RESET_SENT_MESSAGE = "An email has been sent with instructions for reseting your password"
+PASSWORD_RESET_SENT_MESSAGE = "An email has been sent with instructions for resetting your password"
 PASSWORD_RESET_TOKEN_EXPIRED = "Your reset request is either invalid or expired.  Please try again."
 ALREADY_LOGGED_IN_MESSAGE = "You are already logged in.  Log out first to resent password."
 ALREADY_ACTIVATED_MESSAGE = "You are already activated.  If you are still unable to log in, please communicate with us."
@@ -65,7 +65,7 @@ def register_user():
             flash("You are already registered but have not activated.  Activate "
                   "your account by clicking on the email confirmation link sent to you."
                   "Note: Please check your spam box if you cannot find the confirmation link.")
-            return redirect(url_for('.resend_confirmation'))
+            return resend_confirmation()
 
         # User already registered and activated.  Send user to login page.
         if status == 'confirmed':
@@ -73,7 +73,7 @@ def register_user():
             return redirect(url_for('.login_user'))
 
         # User successfully registered and email sent.
-        current_app.logger.info(f"user {username} - {email} just registered.")
+        current_app.logger.info(f"User {username} - {email} just registered.")
         flash(CONFIRMATION_SENT_MESSAGE)
         return redirect(url_for('spreadsheets.upload_file'))
 

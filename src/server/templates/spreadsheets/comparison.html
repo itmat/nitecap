@@ -16,6 +16,8 @@
         share_token = "{{ share_token }}";
         initial_config = {{ config | tojson }};
 
+        user_id = {{user_id| safe}};
+
         initial_config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
         // If not supplied in config (eg: no config at all), order by the given spreadsheet_ids
@@ -23,6 +25,7 @@
             initial_config.spreadsheet_ids = {{ spreadsheet_ids | safe }};
         }
 
+        NOTIFICATION_API_ENDPOINT = "{{NOTIFICATION_API_ENDPOINT}}";
 
         $.ajax({
             url: "/spreadsheets/get_spreadsheets",
@@ -133,55 +136,12 @@
             vm.editing_filters.push(Object.assign({},filter));
         });
 
-        // Load the JTK values for each spreadsheet
-        function jtk(){
-            $.ajax({
-                url: "/spreadsheets/jtk",
-                data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}), // Use original_spreadsheet_ids since it needs to be consistent with original page load order
-                dataType: "json",
-                contentType: "application/json",
-                type: 'POST',
-                success: function(response) {
+        spreadsheets.forEach(function(spreadsheet) {
+            Vue.set(spreadsheet, "analyses", {});
+            vm.runAnalysis(spreadsheet, "ls");
+            vm.runAnalysis(spreadsheet, "arser");
+        });
 
-                    if ((response.status == 'waiting') || (response.status == 'running')) {
-                        // Must requery the status after a bit
-                        setTimeout(jtk, 5*1000);
-                        return;
-                    }
-                    let jtk_p = response['jtk_p'];
-                    let jtk_q = response['jtk_q'];
-                    let ars_p = response['ars_p'];
-                    let ars_q = response['ars_q'];
-                    let ls_p = response['ls_p'];
-                    let ls_q = response['ls_q'];
-
-                    initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
-                        let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
-                        // For Vue performance see VUE PERF NOTE
-                        Object.preventExtensions(jtk_p[idx]);
-                        Object.preventExtensions(jtk_q[idx]);
-                        spreadsheet.jtk_p = jtk_p[idx];
-                        spreadsheet.jtk_q = jtk_q[idx];
-                        Object.preventExtensions(ars_p[idx]);
-                        Object.preventExtensions(ars_q[idx]);
-                        spreadsheet.ars_p = ars_p[idx];
-                        spreadsheet.ars_q = ars_q[idx];
-                        Object.preventExtensions(ls_p[idx]);
-                        Object.preventExtensions(ls_q[idx]);
-                        spreadsheet.ls_p = ls_p[idx];
-                        spreadsheet.ls_q = ls_q[idx];
-                    });
-                },
-                error: function(error) {
-                    console.log("Error loading JTK values");
-                    console.log(error);
-
-                    nitecap_error_message.text("Error loading JTK values");
-                    nitecap_error.modal();
-                }
-            });
-        }
-        jtk();
 
         // Load the Upside values
         if (spreadsheets.length > 1) {
@@ -242,6 +202,8 @@
         $('[data-toggle="tooltip"]').tooltip();
 
         vm.share_token = share_token;
+
+        vm.connectToNotificationApi();
     }
 </script>
 
@@ -977,6 +939,8 @@
 
             share_token: '', // If from a share, the token used
 
+            notificationApiConnection: null, // WebSocket connection to listen for analysis results
+            analyses: {}, // analysisID -> analyses information map
         },
 
         methods: {
@@ -1481,6 +1445,151 @@
                 this.config.spreadsheet_ids = spreadsheets;
             },
 
+            connectToNotificationApi: function() {
+                console.log("Attempting to connect to", NOTIFICATION_API_ENDPOINT);
+                let vm = this;
+                if (this.notificationApiConnection) return;
+
+                this.notificationApiConnection = new WebSocket(
+                    NOTIFICATION_API_ENDPOINT
+                );
+
+                this.notificationApiConnection.onopen = () =>
+                    this.notificationApiConnection.send(user_id);
+
+                this.notificationApiConnection.onerror = (event) =>
+                    console.log(
+                        "An error in communication with notification API has occurred:",
+                        event
+                );
+
+                this.notificationApiConnection.onclose = () => {
+                    this.notificationApiConnection = null;
+                    console.log("Connection with notification API closed");
+                };
+
+                this.notificationApiConnection.onmessage = this.processNotification;
+            },
+
+            fetchAnalysisResults: async function (spreadsheet_id, analysisId) {
+                let response = await fetch(`/analysis/${analysisId}/results`);
+                let results = await response.json();
+                let analysis = {
+                    ...this.analyses[analysisId],
+                    ...results,
+                    status: "COMPLETED",
+                };
+                Vue.set(this.analyses, analysisId, analysis);
+
+                // Load the values
+                let spreadsheet = app.spreadsheets_by_id[analysis.spreadsheetId];
+                console.log("Obtained results of ", analysis.algorithm, " for spreadsheet ", analysis.spreadsheetId);
+                if(analysis.algorithm == "cosinor") {
+                    spreadsheet.cosinor_p = analysis.p;
+                    spreadsheet.cosinor_q = analysis.q;
+                    spreadsheet.cosinor_x0 = analysis.x[0];
+                    spreadsheet.cosinor_x1 = analysis.x[1];
+                    spreadsheet.cosinor_x2 = analysis.x[2];
+                } else if(analysis.algorithm == "ls") {
+                    spreadsheet.ls_p = analysis.p;
+                    spreadsheet.ls_q = analysis.q;
+                } else if(analysis.algorithm == "arser") {
+                    spreadsheet.ars_p = analysis.p;
+                    spreadsheet.ars_q = analysis.q;
+                } else {
+                    console.error("Unknown algorithm results found:", analysis.algorithm, analysis);
+                }
+            },
+
+            runAnalysis: async function (spreadsheet, algorithm) {
+                let spreadsheetId = spreadsheet.spreadsheet_id;
+
+                let response = await fetch("/analysis/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ algorithm, spreadsheetId, version: 20}),
+                });
+
+                if (!response.ok) {
+                    console.error("Failed to start analysis with status", response.status);
+
+                    Vue.set(this.analyses, analysisId, {
+                        algorithm,
+                        spreadsheetId,
+                        status: "FAILED",
+                        startTime: performance.now(),
+                        progress: null,
+                        duration: 0,
+                    });
+                    return;
+                }
+
+                let analysisId = await response.text();
+
+                // // Check analysis id
+                // let parameters = JSON.stringify({
+                //   algorithm,
+                //   spreadsheetId,
+                //   userId: this.userId,
+                // });
+
+                // if (analysisId !== (await sha256(parameters)))
+                //   console.error("Mismatch in analysis ID calculation");
+
+                Vue.set(this.analyses, analysisId, {
+                    algorithm,
+                    spreadsheetId,
+                    status: "PENDING",
+                    startTime: performance.now(),
+                    progress: null,
+                    duration: 0,
+                });
+
+                this.connectToNotificationApi();
+
+                // Check if results exist already
+                try {
+                    await this.fetchAnalysisResults(spreadsheetId, analysisId);
+                    // fetchAnalysisResults succeeded, already have results
+                } catch(error) {
+                    // Results not yet ready, we wait
+                }
+            },
+
+            processNotification: async function (event) {
+                console.log("Processing Notification");
+                message = JSON.parse(event.data);
+
+                let { analysisId, spreadsheet_id, ...analysisUpdate } = message;
+                let analysis = this.analyses[analysisId];
+
+                // There are several explanations for the situation when the analysis is not in our analyses collection:
+                //  - the user might have refreshed the page
+                //  - this update is for analysis of another spreadsheet
+                //
+                // Let's first fetch the information about the missing analysis:
+                if (!analysis) {
+                    let response = await fetch(`/analysis/${analysisId}/parameters`);
+                    analysis = await response.json();
+                }
+
+                // Skip if this update is for analysis of another spreadsheet
+                if (this.spreadsheets_by_id[analysis.spreadsheetId] === undefined) {
+                    console.warn("Received data from wrong spreadsheet, ignoring", analysis);
+                    return;
+                }
+
+                analysis["duration"] = performance.now() - analysis.startTime; // the start time information is lost upon refresh
+
+                Vue.set(this.analyses, analysisId, {
+                    ...analysis,
+                    ...analysisUpdate,
+                });
+
+                if (analysisUpdate["status"] === "COMPLETED") {
+                    this.fetchAnalysisResults(spreadsheet_id, analysisId);
+                }
+            },
         },
 
         computed: {
@@ -1944,6 +2053,12 @@
                 handler: "redrawPlot",
                 deep: true
             },
+        },
+
+        beforeUnmount: function () {
+            if (this.notificationApiConnection !== null) {
+                this.notificationApiConnection.close(1001);
+            }
         },
     });
 </script>

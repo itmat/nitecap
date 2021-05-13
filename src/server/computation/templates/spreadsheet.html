@@ -67,10 +67,10 @@
           runAnalysis: async function (algorithm) {
             let spreadsheetId = this.spreadsheet.id;
 
-            let response = await fetch("/analysis", {
+            let response = await fetch("/analysis/", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ algorithm, spreadsheetId }),
+              body: JSON.stringify({ algorithm, spreadsheetId, version: 0 }),
             });
 
             let analysisId = await response.text();

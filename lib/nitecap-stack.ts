@@ -13,6 +13,7 @@ import * as sfn from "@aws-cdk/aws-stepfunctions";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 
 import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
+import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
 import * as path from "path";
 
@@ -326,6 +327,8 @@ export class NitecapStack extends cdk.Stack {
       ),
       memoryLimitMiB: 1536,
       environment: {
+        ENVIRONMENT: "PROD",
+        LOG_FILE: "/nitecap_web/log",
         AWS_DEFAULT_REGION: this.region,
         SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
         COMPUTATION_STATE_MACHINE_ARN: computationStateMachine.stateMachineArn,
@@ -344,8 +347,14 @@ export class NitecapStack extends cdk.Stack {
 
     serverContainer.addMountPoints({
       sourceVolume: "ServerVolume",
-      containerPath: "/storage",
+      containerPath: "/nitecap_web",
       readOnly: false,
+    });
+
+    serverContainer.addUlimits({
+      softLimit: 1048576,
+      hardLimit: 1048576,
+      name: UlimitName.NOFILE,
     });
 
     // Server hardware
@@ -358,7 +367,7 @@ export class NitecapStack extends cdk.Stack {
         maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
           ec2.InstanceClass.T2,
-          ec2.InstanceSize.SMALL
+          ec2.InstanceSize.MEDIUM
         ),
         blockDevices: [
           {
@@ -382,6 +391,20 @@ export class NitecapStack extends cdk.Stack {
       serverCluster
     );
 
+    let serverLoadBalancer = new elb.ApplicationLoadBalancer(
+      this,
+      "ServerLoadBalancer",
+      { loadBalancerName: "nitebelt", vpc: serverVpc, internetFacing: true }
+    );
+
+    spreadsheetBucket.addCorsRule({
+      allowedMethods: [s3.HttpMethods.GET],
+      allowedOrigins: [
+        `http://${serverLoadBalancer.loadBalancerDnsName}`,
+        "http://localhost:5000",
+      ],
+    });
+
     const SERVER_INSTANCE_ID = undefined;
 
     let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
@@ -392,11 +415,7 @@ export class NitecapStack extends cdk.Stack {
         memoryLimitMiB: 1792,
         desiredCount: 1,
         taskDefinition: serverTask,
-        loadBalancer: new elb.ApplicationLoadBalancer(
-          this,
-          "ServerLoadBalancer",
-          { loadBalancerName: "nitebelt", vpc: serverVpc, internetFacing: true }
-        ),
+        loadBalancer:serverLoadBalancer
       }
     );
 
@@ -407,18 +426,11 @@ export class NitecapStack extends cdk.Stack {
         )
       );
 
-    spreadsheetBucket.addCorsRule({
-      allowedMethods: [s3.HttpMethods.GET],
-      allowedOrigins: [
-        `http://${serverService.loadBalancer.loadBalancerDnsName}`,
-        "http://localhost:5000",
-      ],
-    });
-
     let outputs = {
       SpreadsheetBucketName: spreadsheetBucket.bucketName,
-      NotificationApiEndpoint: notificationApi.attrApiEndpoint,
+      NotificationApiEndpoint: `${notificationApi.attrApiEndpoint}/default`,
       ComputationStateMachineArn: computationStateMachine.stateMachineArn,
+      EmailSuppressionListName: props.emailSuppressionList.tableName,
     };
 
     for (let [outputName, outputValue] of Object.entries(outputs)) {
