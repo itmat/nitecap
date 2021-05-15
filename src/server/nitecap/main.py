@@ -8,7 +8,8 @@ from . import upside
 
 try:
     import pyximport
-    pyximport.install()
+    from pathlib import Path
+    pyximport.install(build_dir=Path('./nitecap'))
     from .total_delta import sum_abs_differences as _sum_abs_differences
     def sum_abs_differences(data, timepoints, timepoints_per_cycle, out, contains_nans=True):
         # C implementation always handles NaNs correctly by zeroing them out

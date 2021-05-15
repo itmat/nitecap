@@ -4,16 +4,20 @@ import os
 
 import pandas as pd
 
+from flask import Blueprint, request
 from hashlib import sha256
 from io import BytesIO
 
-from flask import request, Blueprint
+from botocore.client import Config
+from botocore.exceptions import ClientError
+
 from models.users.decorators import ajax_requires_account, ajax_requires_account_or_share
 
 s3 = boto3.resource("s3")
+s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
 sfn = boto3.client("stepfunctions")
 
-ALGORITHMS = ["cosinor", "ls", "arser"]
+ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
@@ -63,21 +67,22 @@ def submit_analysis(user):
     return analysisId
 
 
-@analysis_blueprint.route("/<analysisId>/results", methods=["get"])
+@analysis_blueprint.route("/<analysisId>/results/url", methods=["get"])
 @ajax_requires_account
-def get_results(user, analysisId):
+def get_results_url(user, analysisId):
     try:
-        results = BytesIO()
-        s3.Object(
-            SPREADSHEET_BUCKET_NAME,
-            f"{user.id}/analyses/{analysisId}/results",
-        ).download_fileobj(results)
+        response = s3_client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": SPREADSHEET_BUCKET_NAME,
+                "Key": f"{user.id}/analyses/{analysisId}/results",
+            },
+        )
 
     except Exception as error:
-        return f"Failed to retrieve analysis results: {error}", 500
+        return f"Failed to generate analysis results URL: {error}", 500
 
-    results.seek(0)
-    return results.read()
+    return response
 
 
 @analysis_blueprint.route("/<analysisId>/parameters", methods=["get"])
@@ -95,6 +100,36 @@ def get_parameters(user, analysisId):
 
     parameters.seek(0)
     return parameters.read()
+
+@analysis_blueprint.route("/<analysisId>/status", methods=["get"])
+@ajax_requires_account
+def get_analysis_status(user, analysisId):
+    """
+    Possible responses:
+     - RUNNING
+     - COMPLETED
+     - FAILED - the failure is not supposed to be due to transient network errors
+     - DOES_NOT_EXIST - the analysis has never been submitted, or was submitted more than 90 days ago and it failed
+    """
+
+    try:
+        s3_client.head_object(
+            Bucket=SPREADSHEET_BUCKET_NAME,
+            Key=f"{user.id}/analyses/{analysisId}/results",
+        )
+        return "COMPLETED"
+    except ClientError:
+        try:
+            executionArn = f"{COMPUTATION_STATE_MACHINE_ARN.replace('stateMachine', 'execution')}:{analysisId}"
+            status = sfn.describe_execution(executionArn=executionArn)["status"]
+            if status == "RUNNING":
+                return "RUNNING"
+            if status == "SUCCEEDED":
+                return "COMPLETED"
+            if status in ["FAILED", "TIMED_OUT", "ABORTED"]:
+                return "FAILED"
+        except sfn.exceptions.ExecutionDoesNotExist:
+            return "DOES_NOT_EXIST"
 
 
 def store_spreadsheet_to_s3(spreadsheet):

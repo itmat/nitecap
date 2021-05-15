@@ -1,3 +1,4 @@
+import boto3
 import datetime
 import pathlib
 import random
@@ -24,7 +25,9 @@ PASSWORD_LENGTH = 12
 BLACKLISTED_USERNAME_CONTENTS = ["https:", "$"]
 BLACKLISTED_EMAIL_CONTENTS = ["https:", "$"]
 
-
+ses = boto3.client("ses")
+dynamodb = boto3.resource("dynamodb")
+suppression_list = dynamodb.Table(os.environ["EMAIL_SUPPRESSION_LIST_NAME"])
 
 class User(db.Model):
     __tablename__ = "users"
@@ -216,7 +219,7 @@ class User(db.Model):
                           "Please request a password reset later or notify us of the problem.")
         return errors
 
-    def send_email(self, subject, sender, content):
+    def send_email_via_smtp(self, subject, sender, content):
         """
         Sends an email to the user.  Note that the host and port indicate a local SMTP service (like sendmail) and a
         insecure connection.  The assumption is that sendmail will be configured to relay the email via ssl.
@@ -243,6 +246,40 @@ class User(db.Model):
             current_app.logger.error(f"Email delivery failed: {e}")
             self.delete_from_db()
             error = True
+        return error
+
+    def send_email(self, subject, sender, content):
+        """
+        Sends an email to the user.
+        :param subject: The email subject line
+        :param sender: The address of the sender (input via an environmental variable)
+        :param content: The email body.
+        :return: Any problem with delivery is noted with an error flag.
+        """
+        error = False
+
+        # First check if the email is in the suppression list
+        try:
+            suppression_list.get_item(Key={"email": self.email})["Item"]
+        except KeyError:
+            try:
+                ses.send_email(
+                    Source=sender,
+                    Destination={
+                        "ToAddresses": [self.email],
+                    },
+                    Message={
+                        "Subject": {"Data": subject},
+                        "Body": {"Text": {"Data": content}},
+                    },
+                )
+            except Exception as exception:
+                current_app.logger.error(f"Email delivery failed: {exception}")
+                self.delete_from_db()
+                error = True
+        else:
+            error = True
+            
         return error
 
     def get_confirmation_token(self, expires_sec=CONFIRMATION_EXPIRATION_DELTA):

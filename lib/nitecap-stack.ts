@@ -1,9 +1,11 @@
 import * as apigateway from "@aws-cdk/aws-apigatewayv2";
+import * as autoscaling from "@aws-cdk/aws-autoscaling";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
+import * as elb from "@aws-cdk/aws-elasticloadbalancingv2";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as s3 from "@aws-cdk/aws-s3";
@@ -11,15 +13,28 @@ import * as sfn from "@aws-cdk/aws-stepfunctions";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 
 import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
+import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
 import * as path from "path";
 
-function capitalize(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1);
+import mountEbsVolume from "./mountEbsVolume";
+
+const DOMAIN_NAME = "nitebelt.org";
+const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
+
+function toPascalCase(name: string) {
+  return name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
 }
 
 export class NitecapStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(
+    scope: cdk.Construct,
+    id: string,
+    props: cdk.StackProps & { emailSuppressionList: dynamodb.Table }
+  ) {
     super(scope, id, props);
 
     let spreadsheetBucket = new s3.Bucket(this, "SpreadsheetBucket", {
@@ -181,15 +196,15 @@ export class NitecapStack extends cdk.Stack {
 
     // Computation engine
 
-    let algorithms = ["cosinor", "ls", "arser"];
+    let ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"];
 
     let computationLambdas = new Map<string, lambda.DockerImageFunction>();
-    for (let algorithm of algorithms) {
+    for (let algorithm of ALGORITHMS) {
       computationLambdas.set(
         algorithm,
         new lambda.DockerImageFunction(
           this,
-          `${capitalize(algorithm)}ComputationLambda`,
+          `${toPascalCase(algorithm)}ComputationLambda`,
           {
             memorySize: 10240,
             timeout: cdk.Duration.minutes(15),
@@ -232,7 +247,7 @@ export class NitecapStack extends cdk.Stack {
         algorithm,
         new tasks.LambdaInvoke(
           this,
-          `${capitalize(algorithm)}ComputationTask`,
+          `${toPascalCase(algorithm)}ComputationTask`,
           { lambdaFunction: computationLambda }
         )
       );
@@ -259,58 +274,167 @@ export class NitecapStack extends cdk.Stack {
       }
     );
 
-    // Server
+    // Server persistent storage
 
-    let serverCluster = new ecs.Cluster(this, "ServerCluster", {
-      vpc: ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true }),
-      capacity: {
-        instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.T2,
-          ec2.InstanceSize.SMALL
-        ),
-        keyName: "NitecapServerKey",
-      },
-      containerInsights: true,
-    });
+    const serverEbsVolume = {
+      deviceName: "/dev/xvdb",
+      mountPoint: "/mnt/storage",
+      snapshotId: "snap-011e8fd69817cf783",
+    };
+
+    // Server permissions
 
     let serverRole = new iam.Role(this, "ServerRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
 
     spreadsheetBucket.grantReadWrite(serverRole);
+    computationStateMachine.grantRead(serverRole);
     computationStateMachine.grantStartExecution(serverRole);
+    props.emailSuppressionList.grantReadData(serverRole);
+
+    serverRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendEmail"],
+        resources: [
+          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${DOMAIN_NAME}`,
+          ...VERIFIED_EMAIL_RECIPIENTS.map(
+            (recipient) =>
+              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
+          ),
+        ],
+      })
+    );
+
+    // Server software
 
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
       taskRole: serverRole,
+      volumes: [
+        {
+          name: "ServerVolume",
+          host: {
+            sourcePath: serverEbsVolume.mountPoint,
+          },
+        },
+      ],
     });
 
     let serverContainer = serverTask.addContainer("ServerContainer", {
       image: ecs.ContainerImage.fromAsset(
         path.join(__dirname, "../src/server")
       ),
-      memoryLimitMiB: 1920,
+      memoryLimitMiB: 1536,
       environment: {
+        ENVIRONMENT: "PROD",
+        LOG_FILE: "/nitecap_web/log",
+        AWS_DEFAULT_REGION: this.region,
         SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
         COMPUTATION_STATE_MACHINE_ARN: computationStateMachine.stateMachineArn,
         NOTIFICATION_API_ENDPOINT: `wss://${notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
-        AWS_DEFAULT_REGION: this.region,
+        EMAIL_SENDER: `no-reply@${DOMAIN_NAME}`,
+        EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
       },
       portMappings: [
         {
           containerPort: 5000,
-          hostPort: 80,
           protocol: ecs.Protocol.TCP,
         },
       ],
+      logging: ecs.LogDriver.awsLogs({ streamPrefix: "ServerLogs" }),
     });
 
-    new ecs_patterns.ApplicationLoadBalancedEc2Service(this, "ServerService", {
-      cluster: serverCluster,
-      cpu: 1024,
-      memoryLimitMiB: 2048,
-      desiredCount: 1,
-      publicLoadBalancer: true,
-      taskDefinition: serverTask,
+    serverContainer.addMountPoints({
+      sourceVolume: "ServerVolume",
+      containerPath: "/nitecap_web",
+      readOnly: false,
     });
+
+    serverContainer.addUlimits({
+      softLimit: 1048576,
+      hardLimit: 1048576,
+      name: UlimitName.NOFILE,
+    });
+
+    // Server hardware
+
+    let serverVpc = ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true });
+
+    let serverCluster = new ecs.Cluster(this, "ServerCluster", {
+      vpc: serverVpc,
+      capacity: {
+        maxCapacity: 1,
+        instanceType: ec2.InstanceType.of(
+          ec2.InstanceClass.T2,
+          ec2.InstanceSize.MEDIUM
+        ),
+        blockDevices: [
+          {
+            deviceName: serverEbsVolume.deviceName,
+            volume: autoscaling.BlockDeviceVolume.ebsFromSnapshot(
+              serverEbsVolume.snapshotId,
+              {
+                deleteOnTermination: true,
+              }
+            ),
+          },
+        ],
+        keyName: "NitecapServerKey",
+      },
+      containerInsights: true,
+    });
+
+    mountEbsVolume(
+      serverEbsVolume.deviceName,
+      serverEbsVolume.mountPoint,
+      serverCluster
+    );
+
+    let serverLoadBalancer = new elb.ApplicationLoadBalancer(
+      this,
+      "ServerLoadBalancer",
+      { loadBalancerName: "nitebelt", vpc: serverVpc, internetFacing: true }
+    );
+
+    spreadsheetBucket.addCorsRule({
+      allowedMethods: [s3.HttpMethods.GET],
+      allowedOrigins: [
+        `http://${serverLoadBalancer.loadBalancerDnsName}`,
+        "http://localhost:5000",
+      ],
+    });
+
+    const SERVER_INSTANCE_ID = undefined;
+
+    let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
+      this,
+      "ServerService",
+      {
+        cluster: serverCluster,
+        memoryLimitMiB: 1792,
+        desiredCount: 1,
+        taskDefinition: serverTask,
+        loadBalancer:serverLoadBalancer
+      }
+    );
+
+    if (SERVER_INSTANCE_ID)
+      serverService.service.addPlacementConstraints(
+        ecs.PlacementConstraint.memberOf(
+          `ec2InstanceId == '${SERVER_INSTANCE_ID}'`
+        )
+      );
+
+    let outputs = {
+      SpreadsheetBucketName: spreadsheetBucket.bucketName,
+      NotificationApiEndpoint: `${notificationApi.attrApiEndpoint}/default`,
+      ComputationStateMachineArn: computationStateMachine.stateMachineArn,
+      EmailSuppressionListName: props.emailSuppressionList.tableName,
+    };
+
+    for (let [outputName, outputValue] of Object.entries(outputs)) {
+      new cdk.CfnOutput(this, outputName, { value: outputValue });
+    }
   }
 }

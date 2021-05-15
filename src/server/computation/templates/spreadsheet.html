@@ -67,10 +67,10 @@
           runAnalysis: async function (algorithm) {
             let spreadsheetId = this.spreadsheet.id;
 
-            let response = await fetch("/analysis", {
+            let response = await fetch("/analysis/", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ algorithm, spreadsheetId }),
+              body: JSON.stringify({ algorithm, spreadsheetId, version: 0 }),
             });
 
             let analysisId = await response.text();
@@ -147,12 +147,17 @@
               ...analysisUpdate,
             });
 
+            // let status = await fetch(`/analysis/${analysisId}/status`);
+            // console.log(await status.text());
+
             if (analysisUpdate["status"] === "COMPLETED")
               this.fetchResults(analysisId);
           },
 
           fetchResults: async function (analysisId) {
-            let response = await fetch(`/analysis/${analysisId}/results`);
+            let response = await fetch(`/analysis/${analysisId}/results/url`);
+            let analysisResultsUrl = await response.text();
+            response = await fetch(analysisResultsUrl);
             let results = await response.json();
             Vue.set(this.results, analysisId, results);
           },

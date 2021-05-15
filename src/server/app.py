@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import smtplib
 import sys
+
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
@@ -148,6 +149,9 @@ app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 from computation.api import analysis_blueprint
 app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
 
+#TODO: Remove this in production
+from computation.example import computation_test_blueprint
+app.register_blueprint(computation_test_blueprint, url_prefix='/computation')
 
 def db_backup_job():
     logger.info('Database backup underway.')
