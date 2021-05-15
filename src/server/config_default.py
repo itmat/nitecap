@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 
 DEBUG = True
-ENV = os.environ.get("ENV", "PROD")
+ENV = 'production' if os.environ.get("ENV", "PROD") == "PROD" else "ENV"
 DEBUG = (ENV == "DEV")
 DATABASE_FILE = os.environ['DATABASE_FILE']
 DATABASE_FOLDER = os.environ.get('DATABASE_FOLDER', '')

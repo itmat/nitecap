@@ -168,7 +168,7 @@ NOTE: you must log out and log back in for this to take effect.
 Create the .env file in the nitecap directory, eg:
 
 ```
-APPLICATION_SETTINGS="config.py"
+APPLICATION_SETTINGS="default_config.py"
 EMAIL_SENDER="noreply@nitecap.org"
 UPLOAD_FOLDER="/mnt/vol1/uploads"
 DB_BACKUP_FOLDER="/mnt/vol1/dbs"
