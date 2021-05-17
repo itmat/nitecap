@@ -1625,23 +1625,30 @@
             },
 
             getStatStatusDisplay: function(stat_id, spreadsheet_num) {
-                let algorithm = this.stats_table[stat_id].algorithm_name ?? stat_id;
-                let spreadsheet = this.spreadsheets[spreadsheet_num];
-                let spreadsheet_id = spreadsheet.spreadsheet_id;
-                // Find the appropriate analysis (if any) and format display based off that
-                for (let [id, analysis] of Object.entries(this.analyses)) {
-                    if ((analysis.algorithm == algorithm) && (analysis.spreadsheetId == spreadsheet_id)) {
-                        if (analysis.status === "RUNNING") {
-                            return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
-                        } else if (analysis.status === "COMPLETED") {
-                            return "100%";
-                        }
-                        else {
-                            return analysis.status;
+                let stat = this.stats_table[stat_id];
+                let algorithm = stat.algorithm_name ?? stat_id;
+                if (stat.num_spreadsheets == "multi") {
+                    // For now these are not run by 'analyses'
+                    // TODO: update this when we put comparison stats into analyses
+                    return "loading";
+                } else {
+                    let spreadsheet = this.spreadsheets[spreadsheet_num];
+                    let spreadsheet_id = spreadsheet.spreadsheet_id;
+                    // Find the appropriate analysis (if any) and format display based off that
+                    for (let [id, analysis] of Object.entries(this.analyses)) {
+                        if ((analysis.algorithm == algorithm) && (analysis.spreadsheetId == spreadsheet_id)) {
+                            if (analysis.status === "RUNNING") {
+                                return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
+                            } else if (analysis.status === "COMPLETED") {
+                                return "100%";
+                            }
+                            else {
+                                return analysis.status;
+                            }
                         }
                     }
                 }
-                return "UNKNOWN";
+                return "Unknown";
             },
         },
 
