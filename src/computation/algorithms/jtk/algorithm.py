@@ -1,3 +1,4 @@
+import numpy as np
 import rpy2.robjects as R
 
 from pathlib import Path
@@ -15,6 +16,9 @@ def jtk(data, timepoints):
 
     p = []
     for y in data:
-        p.append(JTK.jtkx(R.FloatVector(y))[0])
+        if all(np.isnan(y)):
+            p.append(np.nan)
+        else:
+            p.append(JTK.jtkx(R.FloatVector(y))[0])
 
     return [p]

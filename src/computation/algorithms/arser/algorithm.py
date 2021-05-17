@@ -11,23 +11,31 @@ END_PERIOD = 28
 
 NUMBER_OF_FREQUENCIES_AT_WHICH_TO_ESTIMATE_THE_SPECTRAL_DENSITY = 500
 
+ε = 1e-15
+
 spec_ar = R.r["spec.ar"]
-
-
-def remove_missing_values(y, timepoints):
-    indices_of_finite_values_of_y = np.isfinite(y)
-    return y[indices_of_finite_values_of_y], timepoints[indices_of_finite_values_of_y]
 
 
 def arser(data, timepoints):
     autoregressive_model_parameters_estimation_methods = ["yule-walker", "mle", "burg"]
 
+    if len(timepoints) != len(set(timepoints)):
+        raise ValueError("Only one replicate per timepoint is allowed")
+
+    Δt = timepoints[1] - timepoints[0]
+    for k, t in enumerate(timepoints):
+        if t != timepoints[0] + k * Δt:
+            raise ValueError("Time series must be evenly spaced")
+
     p = []
     for y in data:
-        y, t = remove_missing_values(y, timepoints)
+        if any(np.isnan(y)):
+            p.append(np.nan)
+            continue
+
         y = detrend(y, type="linear")
 
-        if np.var(y) == 0 or t.size == 0:
+        if np.var(y) < ε:
             p.append(1.0)
             continue
 
@@ -36,7 +44,9 @@ def arser(data, timepoints):
             for method in autoregressive_model_parameters_estimation_methods:
                 cycling_periods = [
                     period
-                    for period in estimate_cycling_periods(y, t, method, smoothing)
+                    for period in estimate_cycling_periods(
+                        y, timepoints, method, smoothing
+                    )
                     if START_PERIOD <= period <= END_PERIOD
                 ]
 
@@ -45,8 +55,8 @@ def arser(data, timepoints):
 
                 x = np.concatenate(
                     (
-                        [np.cos(2 * np.pi / T * t) for T in cycling_periods],
-                        [np.sin(2 * np.pi / T * t) for T in cycling_periods],
+                        [np.cos(2 * np.pi / T * timepoints) for T in cycling_periods],
+                        [np.sin(2 * np.pi / T * timepoints) for T in cycling_periods],
                     )
                 ).T
 

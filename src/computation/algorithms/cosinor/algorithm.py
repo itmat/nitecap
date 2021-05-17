@@ -2,6 +2,11 @@ import numpy as np
 import statsmodels.api as sm
 
 
+def remove_missing_values(y, timepoints):
+    indices_of_finite_values_of_y = np.isfinite(y)
+    return y[indices_of_finite_values_of_y], timepoints[indices_of_finite_values_of_y]
+
+
 def cosinor(data, timepoints, cycle_length=24):
     """
     Fit data to cosinor model with parameters x₀, x₁, x₂:
@@ -16,19 +21,24 @@ def cosinor(data, timepoints, cycle_length=24):
     x, p = [], []
 
     for y in data:
+        y, t = remove_missing_values(y, timepoints)
+
+        if y.size < 3:
+            p.append(np.nan)
+            continue
+
         fit = sm.OLS(
             y,
             np.array(
                 [
-                    np.repeat(1.0, timepoints.size),
-                    np.cos(ω * timepoints),
-                    np.sin(ω * timepoints),
+                    np.repeat(1.0, t.size),
+                    np.cos(ω * t),
+                    np.sin(ω * t),
                 ]
             ).T,
-            missing="drop",
         ).fit()
 
         x.append(fit.params.tolist())
-        p.append(fit.f_pvalue if not np.isnan(fit.f_pvalue) else 1.0)
+        p.append(fit.f_pvalue)
 
     return x, p

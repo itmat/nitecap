@@ -37,7 +37,7 @@ def ls(data, timepoints):
                 np.sum(r * cos(Δ)) ** 2 / np.sum(cos(Δ) ** 2)
             ) + (np.sum(r * sin(Δ)) ** 2 / np.sum(sin(Δ) ** 2))
 
-        spectral_power_density /= 2 * np.var(y)
+        spectral_power_density /= 2 * np.var(y, ddof=1)
 
         peak_index = np.argmax(spectral_power_density)
         probabilities = (
