@@ -1573,7 +1573,6 @@
             },
 
             processNotification: async function (event) {
-                console.log("Processing Notification");
                 message = JSON.parse(event.data);
 
                 let { analysisId, spreadsheet_id, ...analysisUpdate } = message;
