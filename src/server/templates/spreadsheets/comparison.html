@@ -1363,82 +1363,85 @@
                     });
                 }
 
-                let download_columns = [];
-                let download_compare_columns = [];
-                // Gather which statistic columns have been selected
+                let restrict = function(column) {
+                    // Returns just the relevant rows of the column
+                    return download_rows.map(i => column[i]);
+                };
+
+                // Assemble the data to be downloaded
+                let columns = new Map();
+
+                // First include the ID columns
+                vm.spreadsheets[0].id_col_labels.forEach(function(label, i) {
+                    columns.set(label, restrict(vm.spreadsheets[0].ids[i]));
+                });
+
+                // Include raw spreadsheet data if requested
+                if (vm.download.include_data) {
+                    vm.spreadsheets.forEach( function(spreadsheet, idx) {
+                        let suffix = (vm.spreadsheets.length > 1) ? "_" +vm.descriptive_names[idx] : '';
+                        spreadsheet.column_headers.forEach(function(column_header, i) {
+                            let column_data = spreadsheet.data.map(row => row[i]);
+                            columns.set(column_header + suffix, restrict(column_data));
+                        });
+                    });
+                }
+
+                // Gather the statistic columns which were selected
                 for (let stat_name in vm.stats_table) {
                     if (vm.download.stats[stat_name] === true) {
                         let stat = vm.stats_table[stat_name];
-                        let column_list = download_columns;
-                        if ((stat.num_spreadsheets === "multi") &&
-                            (vm.spreadsheets.length > 1)) {
-                            column_list = download_compare_columns;
-                        }
 
                         if (typeof stat.value === 'string') {
-                            // Name of stat
-                            column_list.push(stat.value)
+                            // stat.value is the name of the stat itself
+                            if (stat.per_spreadsheet) {
+                                vm.spreadsheets.forEach( function(spreadsheet, idx) {
+                                    let suffix = (vm.spreadsheets.length > 1) ? "_" +vm.descriptive_names[idx] : '';
+                                    columns.set(stat.value + suffix, restrict(spreadsheet[stat.value]));
+                                });
+                            } else {
+                                columns.set(stat.value, restrict(vm.stats[stat.value]));
+                            }
                         } else {
                             // Object containing p,q
-                            column_list.push(stat.value.p, stat.value.q);
+                            if (stat.per_spreadsheet) {
+                                vm.spreadsheets.forEach(function(spreadsheet, idx) {
+                                    let suffix = (vm.spreadsheets.length > 1) ? "_" +vm.descriptive_names[idx] : '';
+                                    columns.set(stat.value.p + suffix, restrict(spreadsheet[stat.value.p]));
+                                    columns.set(stat.value.q + suffix, restrict(spreadsheet[stat.value.q]));
+                                });
+                            } else {
+                                columns.set(stat.value.p, restrict(vm.stats[stat.value + "_p"]));
+                                columns.set(stat.value.q, restrict(vm.stats[stat.value + "_q"]));
+                            }
                         }
 
-                        if (stat.sort_value !== undefined) {
-                            column_list.push(stat.sort_value)
-                        }
-                        if (stat.secondary_sort_value !== undefined) {
-                            column_list.push(stat.secondary_sort_value)
-                        }
+                        // TODO: right now we're not including these. Only really loses 'total_delta' from nitecap
+                        //if (stat.sort_value !== undefined) {
+                        //    column_list.push(stat.sort_value)
+                        //}
+                        //if (stat.secondary_sort_value !== undefined) {
+                        //    column_list.push(stat.secondary_sort_value)
+                        //}
                     }
                 }
-                // Remove any duplicates (like sort_value == value)
-                download_columns = Array.from(new Set(download_columns));
-                download_compare_columns = Array.from(new Set(download_compare_columns));
 
-                // Order the suffixes correctly (in case spreadsheets have been rearranged)
-                let suffixes = vm.config.original_spreadsheet_ids.map(function(id) {
-                    let new_index = vm.config.spreadsheet_ids.indexOf(id);
-                    return vm.download.suffixes[new_index];
-                });
+                let tsv = toTSV(columns);
 
-                $.ajax({
-                    url: "/spreadsheets/download",
-                    data: JSON.stringify({
-                        'spreadsheet_ids': vm.config.original_spreadsheet_ids,
-                        'share_token': share_token,
-                        'config': {
-                            rows: download_rows,
-                            columns: download_columns,
-                            compare_columns: download_compare_columns,
-                            suffixes: suffixes,
-                            include_data: vm.download.include_data,
-                        },
-                    }),
-                    dataType:"text",
-                    contentType: "application/json",
-                    type: "POST",
-                    success: function (response) {
-                        // Create a URL for it
-                        let blob = new Blob([response]);
-                        let url = URL.createObjectURL(blob);
+                // Create a URL for it
+                let blob = new Blob([tsv]);
+                let url = URL.createObjectURL(blob);
 
-                        // Trigger downloading of the URL by making an <a href ...> to it and clicking it
-                        let anchor = document.createElement("a");
-                        anchor.href = url;
-                        anchor.download = "spreadsheet.txt";
-                        document.body.appendChild(anchor);
-                        anchor.click();
-                        document.body.removeChild(anchor);
+                // Trigger downloading of the URL by making an <a href ...> to it and clicking it
+                let anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = "spreadsheet.txt";
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
 
-                        // Cleanup after 5mins
-                        setTimeout(function () { URL.revokeObjectURL(url) }, 5*60*1000);
-                    },
-                    error: function(request) {
-                        error_message = $.parseJSON(request.responseText).err;
-                        nitecap_error_message.text(error_message);
-                        nitecap_error.modal();
-                    },
-                });
+                // Cleanup after 5mins
+                setTimeout(function () { URL.revokeObjectURL(url) }, 5*60*1000);
             },
 
             shiftSpreadsheets: function () {
