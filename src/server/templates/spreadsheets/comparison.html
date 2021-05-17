@@ -8,7 +8,7 @@
 
 <script>
 
-    VERSION = 23;
+    VERSION = 30;
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -392,7 +392,7 @@
                                                         {{util.formatStatsEntry(spreadsheet[stat.value][row_index])}}
                                                     </td>
                                                     <td v-else>
-                                                        loading
+                                                        {{getStatStatusDisplay(stat_id, i)}}
                                                     </td>
                                                 </template>
                                             </template>
@@ -405,7 +405,7 @@
                                                     {{util.formatStatsEntry(stats[stat.value][row_index])}}
                                                 </td>
                                                 <td v-else>
-                                                    loading
+                                                    {{getStatStatusDisplay(stat_id)}}
                                                 </td>
                                             </template>
                                         </template>
@@ -420,7 +420,7 @@
                                                         p: {{util.formatStatsEntry(spreadsheet[stat.value.p][row_index])}}
                                                     </td>
                                                     <td v-else>
-                                                        loading
+                                                        {{getStatStatusDisplay(stat_id, i)}}
                                                     </td>
                                                 </template>
                                             </template>
@@ -433,7 +433,7 @@
                                                     p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
                                                 </td>
                                                 <td v-else v-bind:colspan="spreadsheets.length">
-                                                    loading
+                                                    {{getStatStatusDisplay(stat_id)}}
                                                 </td>
                                             </template>
                                         </template>
@@ -449,7 +449,7 @@
                                                     q: {{util.formatStatsEntry(spreadsheet[stat.value.q][row_index])}}
                                                 </td>
                                                 <td v-else>
-                                                    loading
+                                                    {{getStatStatusDisplay(stat_id, i)}}
                                                 </td>
                                             </template>
                                         </template>
@@ -462,7 +462,7 @@
                                                 q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
                                             </td>
                                             <td v-else v-bind:colspan="spreadsheets.length">
-                                                loading
+                                                {{getStatStatusDisplay(stat_id)}}
                                             </td>
                                         </template>
                                     </tr>
@@ -775,7 +775,8 @@
                  q: "ars_q"},
          description: "ARSER significance of rhythmicity for dataset. Computed by meta2d. Requires multiple cycles with a single replicate each in order to run.",
         per_spreadsheet: true,
-        num_spreadsheets:'any'},
+        num_spreadsheets:'any',
+        algorithm_name: "arser"},
         ls: {name: "LS",
          value: {p: "ls_p",
                  q: "ls_q"},
@@ -793,7 +794,8 @@
                  q: "anova_q"},
          description: "1-Way ANOVA on primary dataset. Tests whether the means of the timepoints are equal. Requires either multiple replicates or more than one cycle.",
          per_spreadsheet: true,
-         num_spreadsheets: 'any'},
+         num_spreadsheets: 'any',
+         algorithm_name: "one_way_anova"},
         damping: {name: "Damping",
          value: {p: "upside_p",
                  q: "upside_q"},
@@ -1589,7 +1591,7 @@
 
                 // Skip if this update is for analysis of another spreadsheet
                 if (this.spreadsheets_by_id[analysis.spreadsheetId] === undefined) {
-                    console.warn("Received data from wrong spreadsheet, ignoring", analysis);
+                    console.log("Received data from wrong spreadsheet, ignoring", analysis);
                     return;
                 }
 
@@ -1603,6 +1605,20 @@
                 if (analysisUpdate["status"] === "COMPLETED") {
                     this.fetchAnalysisResults(spreadsheet_id, analysisId);
                 }
+            },
+
+            getStatStatusDisplay: function(stat_id, spreadsheet_num) {
+                let algorithm = this.stats_table[stat_id].algorithm_name ?? stat_id;
+                let spreadsheet = this.spreadsheets[spreadsheet_num];
+                let spreadsheet_id = spreadsheet.spreadsheet_id;
+                console.log("Looking for ", algorithm, spreadsheet_id);
+                for (let [id, analysis] of Object.entries(this.analyses)) {
+                    console.log("Found ", analysis.algorithm, analysis.spreadsheetId);
+                    if ((analysis.algorithm == algorithm) && (analysis.spreadsheetId == spreadsheet_id)) {
+                        return analysis.status;
+                    }
+                }
+                return "UNKNOWN";
             },
         },
 
