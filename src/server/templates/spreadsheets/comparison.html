@@ -8,6 +8,7 @@
 
 <script>
 
+    VERSION = 23;
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -140,6 +141,9 @@
             Vue.set(spreadsheet, "analyses", {});
             vm.runAnalysis(spreadsheet, "ls");
             vm.runAnalysis(spreadsheet, "arser");
+            vm.runAnalysis(spreadsheet, "jtk");
+            vm.runAnalysis(spreadsheet, "cosinor");
+            vm.runAnalysis(spreadsheet, "one_way_anova");
         });
 
 
@@ -1472,8 +1476,12 @@
             },
 
             fetchAnalysisResults: async function (spreadsheet_id, analysisId) {
-                let response = await fetch(`/analysis/${analysisId}/results`);
+                let url_response = await fetch(`/analysis/${analysisId}/results/url`);
+                let target_url = await url_response.text();
+
+                let response = await fetch(target_url);
                 let results = await response.json();
+
                 let analysis = {
                     ...this.analyses[analysisId],
                     ...results,
@@ -1496,6 +1504,12 @@
                 } else if(analysis.algorithm == "arser") {
                     spreadsheet.ars_p = analysis.p;
                     spreadsheet.ars_q = analysis.q;
+                } else if(analysis.algorithm == "jtk") {
+                    spreadsheet.jtk_p = analysis.p;
+                    spreadsheet.jtk_q = analysis.q;
+                } else if(analysis.algorithm == "one_way_anova") {
+                    spreadsheet.anova_p = analysis.p;
+                    spreadsheet.anova_q = analysis.q;
                 } else {
                     console.error("Unknown algorithm results found:", analysis.algorithm, analysis);
                 }
@@ -1507,7 +1521,7 @@
                 let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ algorithm, spreadsheetId, version: 20}),
+                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION}),
                 });
 
                 if (!response.ok) {
@@ -1547,12 +1561,12 @@
 
                 this.connectToNotificationApi();
 
-                // Check if results exist already
-                try {
+
+                // Check if it's already done - may have nothing else to do
+                let status_result = await fetch(`/analysis/${analysisId}/status`);
+                let status = await status_result.text();
+                if (status === "COMPLETED") {
                     await this.fetchAnalysisResults(spreadsheetId, analysisId);
-                    // fetchAnalysisResults succeeded, already have results
-                } catch(error) {
-                    // Results not yet ready, we wait
                 }
             },
 
