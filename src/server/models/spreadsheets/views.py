@@ -386,8 +386,6 @@ def get_spreadsheets(user=None):
 
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-    # TODO: should load JTK ps and qs here if available, currently just report them as None
-
     # Gather all values except for the actual numerical data
     # Which is handled separately
     spreadsheet_values = []
@@ -400,9 +398,7 @@ def get_spreadsheets(user=None):
                      total_delta=df.total_delta,
                      amplitude=df.amplitude,
                      peak_time=df.peak_time,
-                     filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
-                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                      descriptive_name=spreadsheet.descriptive_name,
                      timepoints_per_cycle=spreadsheet.timepoints,
                      num_timepoints=spreadsheet.num_timepoints or (spreadsheet.timepoints * spreadsheet.days), #TODO: this is a temporary work-around until 'days' is phased out
@@ -472,9 +468,7 @@ def get_mpv_spreadsheets(user=None):
                      x_label_values=x_label_values,
                      anova_p=df['anova_p'],
                      anova_q=df['anova_q'],
-                     filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
-                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                      descriptive_name=spreadsheet.descriptive_name,
                      spreadsheet_id=spreadsheet.id,
                      spreadsheet_note=spreadsheet.note,
@@ -485,80 +479,6 @@ def get_mpv_spreadsheets(user=None):
         spreadsheet_values.append(values)
 
     return dumps(spreadsheet_values)
-
-@spreadsheet_blueprint.route('/jtk', methods=['POST'])
-@timeit
-@ajax_requires_account_or_share
-def get_jtk(user=None):
-
-    # TODO: remove now that we use the computation backend
-
-    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
-
-    if not spreadsheet_ids:
-        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
-
-    spreadsheets = []
-    jtk_status = []
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        if not spreadsheet:
-            current_app.logger.warn(f"Attempted access of JTK for invalid spreadsheets {spreadsheet_id} by user {user}")
-            return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 403
-
-        # Populate
-        spreadsheet.init_on_load()
-
-        if not spreadsheet.has_jtk():
-            # Check queue for the JTK compute job
-            # if it's already running we don't need to start it
-            job_params = [user.id, spreadsheet.id, spreadsheet.edit_version]
-            job = Job.find_or_make("jtk", job_params)
-            status = job.run()
-            if status in ['failed', 'timed_out']:
-                return jsonify({'status': status}), 500
-            if status == 'completed':
-                # Reload the spreadsheet since job is supposedly completed
-                spreadsheet.init_on_load()
-                if not spreadsheet.has_jtk():
-                    status = "failed" # Job says completed but no rows loaded
-                    job.status = "failed"
-                    job.save_to_db()
-                    current_app.logger.error(f"Error: could not load JTK even though job completed.")
-            jtk_status.append(status)
-        else:
-            jtk_status.append('has_jtk')
-
-        spreadsheets.append(spreadsheet)
-
-    if any(status in ['failed', 'timed_out', 'unknown'] for status in jtk_status):
-        return jsonify({'status': 'failed'}), 500
-    elif any(status == 'waiting' for status in jtk_status):
-        return jsonify({'status': 'waiting'}), 200
-    elif any(status == 'running' for status in jtk_status):
-        return jsonify({'status': 'running'}), 200
-
-    # Inner join of the spreadsheets so that they match indexes
-    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
-
-    # Now just extract the right columns
-    jtk_p = [df["jtk_p"] for df in dfs]
-    jtk_q = [df["jtk_q"] for df in dfs]
-    ars_p = [df["ars_p"] for df in dfs]
-    ars_q = [df["ars_q"] for df in dfs]
-    ls_p = [df["ls_p"] for df in dfs]
-    ls_q = [df["ls_q"] for df in dfs]
-
-    return dumps({
-        'status': "done",
-        "jtk_p": jtk_p,
-        "jtk_q": jtk_q,
-        "ars_p": ars_p,
-        "ars_q": ars_q,
-        "ls_p": ls_p,
-        "ls_q": ls_q,
-    })
-
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
 @requires_login
@@ -894,7 +814,6 @@ def get_upside(user=None):
     # Run Upside dampening analysis, if it hasn't already been stored to disk
     upside_p_list = []
     upside_q_list = []
-    datasets = []
     spreadsheets = []
 
     # Check user ownership over these spreadsheets
