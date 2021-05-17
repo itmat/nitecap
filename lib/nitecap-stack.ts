@@ -18,6 +18,7 @@ import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 import * as path from "path";
 
 import mountEbsVolume from "./mountEbsVolume";
+import getContainerInstanceId from "./getContainerInstanceId";
 
 const DOMAIN_NAME = "nitebelt.org";
 const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
@@ -405,8 +406,6 @@ export class NitecapStack extends cdk.Stack {
       ],
     });
 
-    const SERVER_INSTANCE_ID = undefined;
-
     let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
@@ -415,16 +414,14 @@ export class NitecapStack extends cdk.Stack {
         memoryLimitMiB: 1792,
         desiredCount: 1,
         taskDefinition: serverTask,
-        loadBalancer:serverLoadBalancer
+        loadBalancer: serverLoadBalancer,
       }
     );
 
-    if (SERVER_INSTANCE_ID)
-      serverService.service.addPlacementConstraints(
-        ecs.PlacementConstraint.memberOf(
-          `ec2InstanceId == '${SERVER_INSTANCE_ID}'`
-        )
-      );
+    let serverInstanceId = getContainerInstanceId(this, serverCluster);
+    serverService.service.addPlacementConstraints(
+      ecs.PlacementConstraint.memberOf(`ec2InstanceId == '${serverInstanceId}'`)
+    );
 
     let outputs = {
       SpreadsheetBucketName: spreadsheetBucket.bucketName,
