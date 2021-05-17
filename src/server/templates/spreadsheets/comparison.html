@@ -8,7 +8,7 @@
 
 <script>
 
-    VERSION = 30;
+    VERSION = 31;
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -1611,11 +1611,17 @@
                 let algorithm = this.stats_table[stat_id].algorithm_name ?? stat_id;
                 let spreadsheet = this.spreadsheets[spreadsheet_num];
                 let spreadsheet_id = spreadsheet.spreadsheet_id;
-                console.log("Looking for ", algorithm, spreadsheet_id);
+                // Find the appropriate analysis (if any) and format display based off that
                 for (let [id, analysis] of Object.entries(this.analyses)) {
-                    console.log("Found ", analysis.algorithm, analysis.spreadsheetId);
                     if ((analysis.algorithm == algorithm) && (analysis.spreadsheetId == spreadsheet_id)) {
-                        return analysis.status;
+                        if (analysis.status === "RUNNING") {
+                            return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
+                        } else if (analysis.status === "COMPLETED") {
+                            return "100%";
+                        }
+                        else {
+                            return analysis.status;
+                        }
                     }
                 }
                 return "UNKNOWN";
