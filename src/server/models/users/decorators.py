@@ -108,8 +108,9 @@ def ajax_requires_account_or_share(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
         data = json.loads(request.data)
-        spreadsheet_ids = data['spreadsheet_ids']
+        spreadsheet_ids = data['spreadsheet_ids'] if 'spreadsheet_ids' in data else [data['spreadsheetId']]
         share_token = data.get("share_token", '')
+        current_app.logger.info(f"Consuming share for {spreadsheet_ids} from {share_token}")
         if share_token != '':
             # Check sharing token matches the target spreadsheets and has a user
             current_app.logger.info(f"Using share token {share_token}")

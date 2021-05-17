@@ -24,7 +24,7 @@ SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 analysis_blueprint = Blueprint("analysis", __name__)
 
 @analysis_blueprint.route("/", methods=["post"])
-@ajax_requires_account
+@ajax_requires_account_or_share
 def submit_analysis(user):
     parameters = request.get_json()
 
@@ -67,8 +67,8 @@ def submit_analysis(user):
     return analysisId
 
 
-@analysis_blueprint.route("/<analysisId>/results/url", methods=["get"])
-@ajax_requires_account
+@analysis_blueprint.route("/<analysisId>/results/url", methods=["get", "post"])
+@ajax_requires_account_or_share
 def get_results_url(user, analysisId):
     try:
         response = s3_client.generate_presigned_url(
@@ -85,8 +85,8 @@ def get_results_url(user, analysisId):
     return response
 
 
-@analysis_blueprint.route("/<analysisId>/parameters", methods=["get"])
-@ajax_requires_account
+@analysis_blueprint.route("/<analysisId>/parameters", methods=["get", "post"])
+@ajax_requires_account_or_share
 def get_parameters(user, analysisId):
     try:
         parameters = BytesIO()
@@ -101,8 +101,8 @@ def get_parameters(user, analysisId):
     parameters.seek(0)
     return parameters.read()
 
-@analysis_blueprint.route("/<analysisId>/status", methods=["get"])
-@ajax_requires_account
+@analysis_blueprint.route("/<analysisId>/status", methods=["get", "post"])
+@ajax_requires_account_or_share
 def get_analysis_status(user, analysisId):
     """
     Possible responses:

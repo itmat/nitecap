@@ -656,8 +656,6 @@ def consume_share(token):
     :param token: the share token given to the receiving user
     """
 
-    #TODO: remove this, it is no longer used; shares use the ajax_requires_account_or_share decorator
-
     errors = []
     share = Share.find_by_id(token)
 
@@ -716,12 +714,16 @@ def consume_share(token):
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
                            share_token=share.id,
+                           user_id=sharing_user.id,
+                           NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
         return render_template('spreadsheets/comparison.html',
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
                            share_token=share.id,
+                           user_id=sharing_user.id,
+                           NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 @spreadsheet_blueprint.route('/copy_share/<string:token>', methods=['GET'])

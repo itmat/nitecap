@@ -1477,14 +1477,21 @@
             },
 
             fetchAnalysisResults: async function (spreadsheet_id, analysisId) {
-                let url_response = await fetch(`/analysis/${analysisId}/results/url`);
+                let analysis = this.analyses[analysisId];
+                let url_response = await fetch(`/analysis/${analysisId}/results/url`,{
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        spreadsheetId:spreadsheet_id,
+                        share_token: share_token}),
+                });
                 let target_url = await url_response.text();
 
                 let response = await fetch(target_url);
                 let results = await response.json();
 
-                let analysis = {
-                    ...this.analyses[analysisId],
+                analysis = {
+                    ...analysis,
                     ...results,
                     status: "COMPLETED",
                 };
@@ -1522,7 +1529,7 @@
                 let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION}),
+                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION, share_token: share_token}),
                 });
 
                 if (!response.ok) {
@@ -1564,7 +1571,12 @@
 
 
                 // Check if it's already done - may have nothing else to do
-                let status_result = await fetch(`/analysis/${analysisId}/status`);
+                let status_result = await fetch(`/analysis/${analysisId}/status`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION, share_token: share_token}),
+                });
+
                 let status = await status_result.text();
                 if (status === "COMPLETED") {
                     await this.fetchAnalysisResults(spreadsheetId, analysisId);
@@ -1574,7 +1586,7 @@
             processNotification: async function (event) {
                 message = JSON.parse(event.data);
 
-                let { analysisId, spreadsheet_id, ...analysisUpdate } = message;
+                let { analysisId, spreadsheetId, ...analysisUpdate } = message;
                 let analysis = this.analyses[analysisId];
 
                 // There are several explanations for the situation when the analysis is not in our analyses collection:
@@ -1583,7 +1595,11 @@
                 //
                 // Let's first fetch the information about the missing analysis:
                 if (!analysis) {
-                    let response = await fetch(`/analysis/${analysisId}/parameters`);
+                    let response = await fetch(`/analysis/${analysisId}/parameters`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({spreadsheetId, share_token: share_token}),
+                    });
                     analysis = await response.json();
                 }
 
@@ -1601,7 +1617,7 @@
                 });
 
                 if (analysisUpdate["status"] === "COMPLETED") {
-                    this.fetchAnalysisResults(spreadsheet_id, analysisId);
+                    this.fetchAnalysisResults(spreadsheetId, analysisId);
                 }
             },
 
