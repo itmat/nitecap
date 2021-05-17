@@ -1349,6 +1349,9 @@
             downloadSpreadsheet: function() {
                 let vm = this;
 
+                let suffixes = vm.download.suffixes.map(x => "_"+x);
+                if (vm.spreadsheets.length === 1) { suffixes = ['']; }
+
                 let download_rows = null;
                 if (vm.download.just_selected_rows) {
                     download_rows = vm.sort_order.slice(0,vm.config.selected_row+1);
@@ -1379,7 +1382,7 @@
                 // Include raw spreadsheet data if requested
                 if (vm.download.include_data) {
                     vm.spreadsheets.forEach( function(spreadsheet, idx) {
-                        let suffix = (vm.spreadsheets.length > 1) ? "_" +vm.descriptive_names[idx] : '';
+                        let suffix = suffixes[idx];
                         spreadsheet.column_headers.forEach(function(column_header, i) {
                             let column_data = spreadsheet.data.map(row => row[i]);
                             columns.set(column_header + suffix, restrict(column_data));
@@ -1396,7 +1399,7 @@
                             // stat.value is the name of the stat itself
                             if (stat.per_spreadsheet) {
                                 vm.spreadsheets.forEach( function(spreadsheet, idx) {
-                                    let suffix = (vm.spreadsheets.length > 1) ? "_" +vm.descriptive_names[idx] : '';
+                                    let suffix = suffixes[idx];
                                     columns.set(stat.value + suffix, restrict(spreadsheet[stat.value]));
                                 });
                             } else {
@@ -1406,13 +1409,13 @@
                             // Object containing p,q
                             if (stat.per_spreadsheet) {
                                 vm.spreadsheets.forEach(function(spreadsheet, idx) {
-                                    let suffix = (vm.spreadsheets.length > 1) ? "_" +vm.descriptive_names[idx] : '';
+                                    let suffix = suffixes[idx];
                                     columns.set(stat.value.p + suffix, restrict(spreadsheet[stat.value.p]));
                                     columns.set(stat.value.q + suffix, restrict(spreadsheet[stat.value.q]));
                                 });
                             } else {
-                                columns.set(stat.value.p, restrict(vm.stats[stat.value + "_p"]));
-                                columns.set(stat.value.q, restrict(vm.stats[stat.value + "_q"]));
+                                columns.set(stat.value.p, restrict(vm.stats[stat.value.p]));
+                                columns.set(stat.value.q, restrict(vm.stats[stat.value.q]));
                             }
                         }
 
