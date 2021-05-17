@@ -76,7 +76,6 @@
             Vue.set(vm.spreadsheets_by_id, spreadsheet.spreadsheet_id, spreadsheet);
         });
 
-
         vm.labels = spreadsheets[0].labels;
         vm.timepoints_per_cycle = spreadsheets[0].timepoints_per_cycle;
         vm.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_cycle;
@@ -1847,7 +1846,7 @@
             background_rows: function() {
                 let vm = this;
                 if (vm.spreadsheets.length == 0) { return []; }
-                return vm.spreadsheets[0].labels.map(function(x,i) { return i; }).filter( function(i) {return !vm.spreadsheets[0].filtered[i];});
+                return vm.spreadsheets[0].labels.map(function(x,i) { return i; }).filter( function(i) {return !vm.filtered[i];});
             },
 
             useable_stats: function () {

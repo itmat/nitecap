@@ -173,11 +173,6 @@ class Spreadsheet(db.Model):
                 print(e)
                 self.error = True
 
-
-        if self.df is not None and ("filtered_out" not in self.df.columns):
-            # Everything defaults to unfiltered
-            self.df["filtered_out"] = False
-
         self.num_replicates = None if not self.num_replicates_str \
              else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
@@ -357,7 +352,10 @@ class Spreadsheet(db.Model):
         # Runs NITECAP on the data but just to order the features
 
         data = self.get_raw_data().values
-        filtered_out = self.df.filtered_out.values.astype("bool") # Ensure bool and not 0,1, should be unnecessary
+
+        # We don't filter any rows out for now
+        # however this could be used to use only a subset of rows
+        filtered_out = numpy.full(data.shape[0], fill_value=False)
 
         # Seed the computation so that results are reproducible
         numpy.random.seed(1)
@@ -397,11 +395,9 @@ class Spreadsheet(db.Model):
     def compute_categorical(self):
         # Runs ANOVA-style computations on the data
         data = self.get_raw_data()
-        filtered_out = self.df.filtered_out.values.astype("bool")
 
         ps = nitecap.util.anova_on_groups(data.values, self.group_assignments)
         qs = nitecap.util.BH_FDR(ps)
-        qs[filtered_out] = float("NaN")
         self.df["anova_p"] = ps
         self.df["anova_q"] = qs
         self.update_dataframe()
@@ -672,47 +668,6 @@ class Spreadsheet(db.Model):
             current_app.logger.error(error_message, e)
             error = error_message
         return error
-
-    def apply_filters(self, filtered_out, rerun_qvalues=False):
-        # TODO: do we still want to use this? No way to trigger it from server side right now
-        filtered_out = numpy.array(filtered_out, dtype=bool)
-        self.df["filtered_out"] = filtered_out
-
-        if rerun_qvalues:
-            # Must recalculate q-values on the filtered part
-            # TODO: ideally we wouldn't have to recompute all of this
-            #       only really want to recompute the q-values but then
-            #       we need the permutation values too and we don't store that
-            # TODO: this code is copy-and-pasted from compute_nitecap(), shouldn't be duplicated
-            data = self.get_raw_data().values
-            data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
-
-            # Seed the computation so that results are reproducible
-            numpy.random.seed(1)
-
-            # Main nitecap computation
-            # Perform on all the features for sorting purposes
-            td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days,
-                                                     repeated_measures=self.repeated_measures)
-
-            # Apply q-value computation but just for the features surviving filtering
-            good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
-            good_q, good_p = nitecap.FDR(good_td, good_perm_td)
-
-            q = numpy.empty(td.shape)
-            q[~filtered_out] = good_q
-            q[filtered_out] = float("NaN")
-
-            self.df["nitecap_q"] = q
-
-            # Recompute BH q-values, too
-            for col in ['jtk', 'ars', 'ls', 'anova', 'cosinor']:
-                qs = numpy.empty(self.df[f"{col}_p"].shape)
-                qs[~filtered_out] = nitecap.util.BH_FDR(ps[~filtered_out])
-                qs[filtered_out] = flat("NaN")
-                self.df[f"{col}_q"] = qs
-
-        self.update_dataframe()
 
     @staticmethod
     def make_share_copy(spreadsheet, user):

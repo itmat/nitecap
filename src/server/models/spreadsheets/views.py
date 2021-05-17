@@ -400,7 +400,6 @@ def get_spreadsheets(user=None):
                      total_delta=df.total_delta,
                      amplitude=df.amplitude,
                      peak_time=df.peak_time,
-                     filtered=df.filtered_out,
                      filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
                      breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -473,7 +472,6 @@ def get_mpv_spreadsheets(user=None):
                      x_label_values=x_label_values,
                      anova_p=df['anova_p'],
                      anova_q=df['anova_q'],
-                     filtered=df.filtered_out,
                      filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
                      breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
@@ -693,60 +691,6 @@ def download(user=None):
         current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
                                  f"downloaded.", e)
         return jsonify({"error":"The processed spreadsheet data could not be downloaded."}), 500
-
-
-@spreadsheet_blueprint.route('/save_filters', methods=['POST'])
-@ajax_requires_account
-def save_filters(user=None):
-    """
-    AJAX endpoint - apply filters set on the graphs page.  Those filter values are also saved to the
-    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annonymous user).
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    :return: A json string containing filtered values along with associated q values and p values.
-    """
-
-    json_data = request.get_json()
-    spreadsheet_id = json_data.get('spreadsheet_id', None)
-    filtered_out = json_data.get('filtered_out', None)
-    rerun_qvalues = json_data.get('rerun_qvalues', False)
-    filters = json_data.get('filters', '[]')
-
-    # Bad data
-    if not spreadsheet_id:
-        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
-
-    # Collect spreadsheet owned by user
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-
-    # Attempt to access spreadsheet not owned.
-    if not spreadsheet:
-        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
-                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
-        return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
-
-    # Check request data
-    if not filtered_out:
-        return jsonify({"error": "Incomplete request data, need 'filtered_out'"}), 400
-
-    # Verify that the filters are valid JSON
-    try:
-        _ = json.loads(filters)
-    except json.JSONDecodeError:
-        return jsonify({"error": "Error parsing 'filters' json blob"}), 400
-
-    # Populate spreadsheet with raw data
-    spreadsheet.init_on_load()
-
-    spreadsheet.filters = filters
-    spreadsheet.apply_filters(filtered_out, rerun_qvalues)
-    spreadsheet.save_to_db()
-
-    response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
-                        'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
-                        'jtk_qs': [x if x == x else None for x in list(spreadsheet.df.jtk_q.values)],
-                        'anova_qs': [x if x == x else None for x in list(spreadsheet.df.anova_q.values)]})
-    return response
-
 
 @spreadsheet_blueprint.route('/share', methods=['POST'])
 @ajax_requires_login
