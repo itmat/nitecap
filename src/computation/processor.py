@@ -53,12 +53,15 @@ def parallel_compute(
         jobs[i]["start_index"] = i * (workload_size // number_of_processors)
         jobs[i]["end_index"] = (i + 1) * (workload_size // number_of_processors)
 
-    for i in range(workload_size % number_of_processors):
-        jobs[i]["start_index"] += i
-        jobs[i]["end_index"] += i + 1
+    for i in range(number_of_processors):
+        if i < workload_size % number_of_processors:
+            jobs[i]["start_index"] += i
+            jobs[i]["end_index"] += i + 1
+        else:
+            jobs[i]["start_index"] += workload_size % number_of_processors
+            jobs[i]["end_index"] += workload_size % number_of_processors
 
-    for job in jobs:
-        job["size"] = job["end_index"] - job["start_index"]
+        jobs[i]["size"] = jobs[i]["end_index"] - jobs[i]["start_index"]
 
     # Start the notifier
     notifier_parent_connection, notifier_child_connection = Pipe()
