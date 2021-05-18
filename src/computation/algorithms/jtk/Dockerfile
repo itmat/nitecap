@@ -18,6 +18,6 @@ RUN yum -y install bzip2-devel curl-devel gcc gcc-c++ gcc-gfortran gzip make pcr
 ENV PATH="${PATH}:/opt/R/bin/"
 ENV LD_LIBRARY_PATH="/opt/R/lib/"
 
-RUN pip install -U pip && pip install rpy2 simplejson statsmodels
+RUN pip install -U pip && pip install rpy2 simplejson numpy
 COPY . ./
 CMD ["handler.handler"]
