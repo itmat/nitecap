@@ -159,6 +159,10 @@
             let analysisResultsUrl = await response.text();
             response = await fetch(analysisResultsUrl);
             let results = await response.json();
+
+            let parameters = await fetch(`/analysis/${analysisId}/parameters`);
+            console.log(await parameters.json());
+            
             Vue.set(this.results, analysisId, results);
           },
         },

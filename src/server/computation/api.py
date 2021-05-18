@@ -11,7 +11,10 @@ from io import BytesIO
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
-from models.users.decorators import ajax_requires_account, ajax_requires_account_or_share
+from models.users.decorators import (
+    ajax_requires_account,
+    ajax_requires_account_or_share,
+)
 
 
 s3 = boto3.resource("s3")
@@ -23,6 +26,7 @@ COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
 analysis_blueprint = Blueprint("analysis", __name__)
+
 
 @analysis_blueprint.route("/", methods=["post"])
 @ajax_requires_account
@@ -40,7 +44,7 @@ def submit_analysis(user):
         "userId": str(user.id),
         "algorithm": parameters["algorithm"],
         "spreadsheetId": parameters["spreadsheetId"],
-        "version": parameters['version'],
+        "version": parameters["version"],
     }
 
     analysisId = sha256(
@@ -86,21 +90,31 @@ def get_results_url(user, analysisId):
     return response
 
 
+def get_analysis_parameters(userId, analysisId):
+    parameters = BytesIO()
+    s3.Object(
+        SPREADSHEET_BUCKET_NAME,
+        f"{userId}/analyses/{analysisId}/parameters",
+    ).download_fileobj(parameters)
+
+    parameters.seek(0)
+    return parameters.read()
+
+
+def get_spreadsheets_associated_with_analysis(userId, analysisId):
+    parameters = json.loads(get_analysis_parameters(userId, analysisId))
+
+    return [parameters["spreadsheetId"]]
+
+
 @analysis_blueprint.route("/<analysisId>/parameters", methods=["get"])
 @ajax_requires_account
 def get_parameters(user, analysisId):
     try:
-        parameters = BytesIO()
-        s3.Object(
-            SPREADSHEET_BUCKET_NAME,
-            f"{user.id}/analyses/{analysisId}/parameters",
-        ).download_fileobj(parameters)
-
+        return get_analysis_parameters(user.id, analysisId)
     except Exception as error:
         return f"Failed to retrieve analysis parameters: {error}", 500
 
-    parameters.seek(0)
-    return parameters.read()
 
 @analysis_blueprint.route("/<analysisId>/status", methods=["get"])
 @ajax_requires_account
