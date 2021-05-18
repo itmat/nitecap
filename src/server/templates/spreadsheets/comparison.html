@@ -1485,11 +1485,7 @@
             fetchAnalysisResults: async function (spreadsheet_id, analysisId) {
                 let analysis = this.analyses[analysisId];
                 let url_response = await fetch(`/analysis/${analysisId}/results/url`,{
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        spreadsheetId:spreadsheet_id,
-                        share_token: share_token}),
+                    headers: { "Authentication": share_token },
                 });
                 let target_url = await url_response.text();
 
@@ -1534,7 +1530,7 @@
 
                 let response = await fetch("/analysis/", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json", "Authorization": share_token },
                     body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION, share_token: share_token}),
                 });
 
@@ -1578,9 +1574,7 @@
 
                 // Check if it's already done - may have nothing else to do
                 let status_result = await fetch(`/analysis/${analysisId}/status`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION, share_token: share_token}),
+                    headers: { "Authentication": share_token },
                 });
 
                 let status = await status_result.text();
