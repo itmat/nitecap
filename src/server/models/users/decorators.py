@@ -96,6 +96,12 @@ def ajax_requires_account(func):
         return func(*args, **kwargs)
     return decorated_function
 
+ANALYSIS_STATUS_ENDPOINT = "/analysis/<analysisId>/status"
+ANALYSIS_RESULT_ENDPOINT = "/analysis/<analysisId>/results/url"
+ANALYSIS_PARAMETERS_ENDPOINT = "/analysis/<analysisId>/parameters"
+
+from computation.utils import get_spreadsheets_associated_with_analysis
+
 def ajax_requires_account_or_share(func):
     """
     Insures that the given wrapped function is accessible only to users with accounts (either visitor's who have
@@ -107,9 +113,20 @@ def ajax_requires_account_or_share(func):
     """
     @wraps(func)
     def decorated_function(*args, **kwargs):
-        data = json.loads(request.data)
-        spreadsheet_ids = data['spreadsheet_ids']
-        share_token = data.get("share_token", '')
+        spreadsheet_ids = []
+        if str(request.url_rule) in [ANALYSIS_STATUS_ENDPOINT, ANALYSIS_RESULT_ENDPOINT, ANALYSIS_PARAMETERS_ENDPOINT]:
+            share_token = request.headers.get('Authorization', '')
+            if share_token:
+                # TODO: Refactor needed so that error handling is taken care of
+                user_id = Share.find_by_id(share_token).user_id
+                analysis_id = request.view_args['analysisId']
+                spreadsheet_ids = get_spreadsheets_associated_with_analysis(user_id, analysis_id)
+        else:
+            data = json.loads(request.data)
+            spreadsheet_ids = data['spreadsheet_ids'] if 'spreadsheet_ids' in data else [data['spreadsheetId']]
+            share_token = data.get("share_token", '')
+
+        current_app.logger.info(f"Consuming share for {spreadsheet_ids} from {share_token}")
         if share_token != '':
             # Check sharing token matches the target spreadsheets and has a user
             current_app.logger.info(f"Using share token {share_token}")

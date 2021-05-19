@@ -1,21 +1,19 @@
 import boto3
 import simplejson as json
+from functools import wraps
 import os
 
 import pandas as pd
 
-from flask import Blueprint, request
+from flask import Blueprint, request, session
 from hashlib import sha256
 from io import BytesIO
 
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
-from models.users.decorators import (
-    ajax_requires_account,
-    ajax_requires_account_or_share,
-)
-
+from computation.utils import get_analysis_parameters
+from models.users.decorators import ajax_requires_account_or_share
 
 s3 = boto3.resource("s3")
 s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
@@ -29,7 +27,7 @@ analysis_blueprint = Blueprint("analysis", __name__)
 
 
 @analysis_blueprint.route("/", methods=["post"])
-@ajax_requires_account
+@ajax_requires_account_or_share
 def submit_analysis(user):
     parameters = request.get_json()
 
@@ -73,8 +71,9 @@ def submit_analysis(user):
 
 
 @analysis_blueprint.route("/<analysisId>/results/url", methods=["get"])
-@ajax_requires_account
+@ajax_requires_account_or_share
 def get_results_url(user, analysisId):
+    import warnings
     try:
         response = s3_client.generate_presigned_url(
             "get_object",
@@ -90,25 +89,8 @@ def get_results_url(user, analysisId):
     return response
 
 
-def get_analysis_parameters(userId, analysisId):
-    parameters = BytesIO()
-    s3.Object(
-        SPREADSHEET_BUCKET_NAME,
-        f"{userId}/analyses/{analysisId}/parameters",
-    ).download_fileobj(parameters)
-
-    parameters.seek(0)
-    return parameters.read()
-
-
-def get_spreadsheets_associated_with_analysis(userId, analysisId):
-    parameters = json.loads(get_analysis_parameters(userId, analysisId))
-
-    return [parameters["spreadsheetId"]]
-
-
 @analysis_blueprint.route("/<analysisId>/parameters", methods=["get"])
-@ajax_requires_account
+@ajax_requires_account_or_share
 def get_parameters(user, analysisId):
     try:
         return get_analysis_parameters(user.id, analysisId)
@@ -117,7 +99,7 @@ def get_parameters(user, analysisId):
 
 
 @analysis_blueprint.route("/<analysisId>/status", methods=["get"])
-@ajax_requires_account
+@ajax_requires_account_or_share
 def get_analysis_status(user, analysisId):
     """
     Possible responses:

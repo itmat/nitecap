@@ -29,8 +29,7 @@ import copy
 import nitecap
 from timer_decorator import timeit
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p",
-                        "anova_p", "anova_q", "cosinor_p", "cosinor_q", "cosinor_x0", "cosinor_x1", "cosinor_x2"]
+NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p",]
 CATEGORICAL_DATA_COLUMNS = ["anova_p", "anova_q"]
 MAX_JTK_COLUMNS = 85
 
@@ -173,11 +172,6 @@ class Spreadsheet(db.Model):
             except Exception as e:
                 print(e)
                 self.error = True
-
-
-        if self.df is not None and ("filtered_out" not in self.df.columns):
-            # Everything defaults to unfiltered
-            self.df["filtered_out"] = False
 
         self.num_replicates = None if not self.num_replicates_str \
              else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
@@ -358,7 +352,10 @@ class Spreadsheet(db.Model):
         # Runs NITECAP on the data but just to order the features
 
         data = self.get_raw_data().values
-        filtered_out = self.df.filtered_out.values.astype("bool") # Ensure bool and not 0,1, should be unnecessary
+
+        # We don't filter any rows out for now
+        # however this could be used to use only a subset of rows
+        filtered_out = numpy.full(data.shape[0], fill_value=False)
 
         # Seed the computation so that results are reproducible
         numpy.random.seed(1)
@@ -388,40 +385,19 @@ class Spreadsheet(db.Model):
         # TODO: should users be able to choose their cycle length?
         amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data, timepoints, self.timepoints, cycle_length=self.timepoints)
 
-        try:
-            anova_p = nitecap.util.anova(data, timepoints, self.timepoints)
-            anova_q = nitecap.util.BH_FDR(anova_p)
-        except ValueError:
-            # Can't run anova (eg: no replicates)
-            anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
-            anova_q = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
-
-        cosinor_X, cosinor_p = nitecap.cosinor.fit(data, timepoints, self.timepoints, T=self.timepoints)
-
-        self.df["cosinor_p"] = cosinor_p
-        self.df["cosinor_q"] = nitecap.util.BH_FDR(cosinor_p)
-        self.df["cosinor_x0"] = cosinor_X[0,:]
-        self.df["cosinor_x1"] = cosinor_X[1,:]
-        self.df["cosinor_x2"] = cosinor_X[2,:]
-
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
-        self.df["anova_p"] = anova_p
-        self.df["anova_q"] = anova_q
-        self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 
     @timeit
     def compute_categorical(self):
         # Runs ANOVA-style computations on the data
         data = self.get_raw_data()
-        filtered_out = self.df.filtered_out.values.astype("bool")
 
         ps = nitecap.util.anova_on_groups(data.values, self.group_assignments)
         qs = nitecap.util.BH_FDR(ps)
-        qs[filtered_out] = float("NaN")
         self.df["anova_p"] = ps
         self.df["anova_q"] = qs
         self.update_dataframe()
@@ -693,47 +669,6 @@ class Spreadsheet(db.Model):
             error = error_message
         return error
 
-    def apply_filters(self, filtered_out, rerun_qvalues=False):
-        # TODO: do we still want to use this? No way to trigger it from server side right now
-        filtered_out = numpy.array(filtered_out, dtype=bool)
-        self.df["filtered_out"] = filtered_out
-
-        if rerun_qvalues:
-            # Must recalculate q-values on the filtered part
-            # TODO: ideally we wouldn't have to recompute all of this
-            #       only really want to recompute the q-values but then
-            #       we need the permutation values too and we don't store that
-            # TODO: this code is copy-and-pasted from compute_nitecap(), shouldn't be duplicated
-            data = self.get_raw_data().values
-            data_formatted = nitecap.reformat_data(data, self.timepoints, self.num_replicates, self.days)
-
-            # Seed the computation so that results are reproducible
-            numpy.random.seed(1)
-
-            # Main nitecap computation
-            # Perform on all the features for sorting purposes
-            td, perm_td = nitecap.nitecap_statistics(data_formatted, num_cycles=self.days,
-                                                     repeated_measures=self.repeated_measures)
-
-            # Apply q-value computation but just for the features surviving filtering
-            good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
-            good_q, good_p = nitecap.FDR(good_td, good_perm_td)
-
-            q = numpy.empty(td.shape)
-            q[~filtered_out] = good_q
-            q[filtered_out] = float("NaN")
-
-            self.df["nitecap_q"] = q
-
-            # Recompute BH q-values, too
-            for col in ['jtk', 'ars', 'ls', 'anova', 'cosinor']:
-                qs = numpy.empty(self.df[f"{col}_p"].shape)
-                qs[~filtered_out] = nitecap.util.BH_FDR(ps[~filtered_out])
-                qs[filtered_out] = flat("NaN")
-                self.df[f"{col}_q"] = qs
-
-        self.update_dataframe()
-
     @staticmethod
     def make_share_copy(spreadsheet, user):
         """
@@ -782,7 +717,6 @@ class Spreadsheet(db.Model):
                                         breakpoint=spreadsheet.breakpoint,
                                         num_replicates_str=spreadsheet.num_replicates_str,
                                         categorical_data=spreadsheet.categorical_data,
-                                        filters=spreadsheet.filters,
                                         last_access=None,
                                         spreadsheet_data_path=temporary_share_spreadsheet_data_path,
                                         user_id=user.id)

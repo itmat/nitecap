@@ -595,3 +595,31 @@ function mergeDeep(target, ...sources) {
 
   return mergeDeep(target, ...sources);
 }
+
+function toTSV(map_of_columns) {
+    // Given a Map column_name -> array of column values
+    // generates a tab-separated file
+    // Very basic function, don't expect it to handle, say, escape tabs or anything
+
+    let spreadsheet_length = null;
+    let column_list = [];
+    for(let [col_name, column] of map_of_columns) {
+        if (spreadsheet_length === null) {
+            spreadsheet_length = column.length;
+        }
+
+        if (spreadsheet_length !== column.length) {
+            throw new Error("Different column lengths, cannot generate spreadsheet");
+        }
+        column_list.push(column);
+    }
+
+    let column_names = [...map_of_columns.keys()];
+    let header = column_names.join("\t");
+    let rows = [header];
+    for (let i = 0; i <= spreadsheet_length; i++) {
+        let row = column_list.map(col => col[i]).join('\t');
+        rows.push(row);
+    }
+    return rows.join('\n');
+}

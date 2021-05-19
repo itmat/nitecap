@@ -386,8 +386,6 @@ def get_spreadsheets(user=None):
 
     dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
 
-    # TODO: should load JTK ps and qs here if available, currently just report them as None
-
     # Gather all values except for the actual numerical data
     # Which is handled separately
     spreadsheet_values = []
@@ -400,32 +398,29 @@ def get_spreadsheets(user=None):
                      total_delta=df.total_delta,
                      amplitude=df.amplitude,
                      peak_time=df.peak_time,
-                     anova_p=df.anova_p,
-                     anova_q=df.anova_q,
-                     filtered=df.filtered_out,
-                     filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
-                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                      descriptive_name=spreadsheet.descriptive_name,
                      timepoints_per_cycle=spreadsheet.timepoints,
                      num_timepoints=spreadsheet.num_timepoints or (spreadsheet.timepoints * spreadsheet.days), #TODO: this is a temporary work-around until 'days' is phased out
                      spreadsheet_id=spreadsheet.id,
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
+                     id_col_labels=list(spreadsheet.get_id_columns(label=True)),
+                     ids=df.iloc[:,spreadsheet.get_id_columns()].T,
+                     column_headers=spreadsheet.get_data_columns(),
                      jtk_p=None,
                      jtk_q=None,
                      ars_p=None,
                      ars_q=None,
                      ls_p=None,
                      ls_q=None,
-                     id_col_labels=list(spreadsheet.get_id_columns(label=True)),
-                     ids=df.iloc[:,spreadsheet.get_id_columns()].T,
-                     column_headers=spreadsheet.get_data_columns(),
-                     cosinor_p=df.cosinor_p,
-                     cosinor_q=df.cosinor_q,
-                     cosinor_x0=df.cosinor_x0,
-                     cosinor_x1=df.cosinor_x1,
-                     cosinor_x2=df.cosinor_x2,
+                     anova_p=None,
+                     anova_q=None,
+                     cosinor_p=None,
+                     cosinor_q=None,
+                     cosinor_x0=None,
+                     cosinor_x1=None,
+                     cosinor_x2=None,
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                     )
         spreadsheet_values.append(values)
@@ -473,10 +468,7 @@ def get_mpv_spreadsheets(user=None):
                      x_label_values=x_label_values,
                      anova_p=df['anova_p'],
                      anova_q=df['anova_q'],
-                     filtered=df.filtered_out,
-                     filters=spreadsheet.filters if spreadsheet.filters else [],
                      labels=combined_index.to_list(),
-                     breakpoint=spreadsheet.breakpoint if spreadsheet.breakpoint is not None else 0,
                      descriptive_name=spreadsheet.descriptive_name,
                      spreadsheet_id=spreadsheet.id,
                      spreadsheet_note=spreadsheet.note,
@@ -487,80 +479,6 @@ def get_mpv_spreadsheets(user=None):
         spreadsheet_values.append(values)
 
     return dumps(spreadsheet_values)
-
-@spreadsheet_blueprint.route('/jtk', methods=['POST'])
-@timeit
-@ajax_requires_account_or_share
-def get_jtk(user=None):
-
-    # TODO: remove now that we use the computation backend
-
-    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
-
-    if not spreadsheet_ids:
-        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
-
-    spreadsheets = []
-    jtk_status = []
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        if not spreadsheet:
-            current_app.logger.warn(f"Attempted access of JTK for invalid spreadsheets {spreadsheet_id} by user {user}")
-            return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 403
-
-        # Populate
-        spreadsheet.init_on_load()
-
-        if not spreadsheet.has_jtk():
-            # Check queue for the JTK compute job
-            # if it's already running we don't need to start it
-            job_params = [user.id, spreadsheet.id, spreadsheet.edit_version]
-            job = Job.find_or_make("jtk", job_params)
-            status = job.run()
-            if status in ['failed', 'timed_out']:
-                return jsonify({'status': status}), 500
-            if status == 'completed':
-                # Reload the spreadsheet since job is supposedly completed
-                spreadsheet.init_on_load()
-                if not spreadsheet.has_jtk():
-                    status = "failed" # Job says completed but no rows loaded
-                    job.status = "failed"
-                    job.save_to_db()
-                    current_app.logger.error(f"Error: could not load JTK even though job completed.")
-            jtk_status.append(status)
-        else:
-            jtk_status.append('has_jtk')
-
-        spreadsheets.append(spreadsheet)
-
-    if any(status in ['failed', 'timed_out', 'unknown'] for status in jtk_status):
-        return jsonify({'status': 'failed'}), 500
-    elif any(status == 'waiting' for status in jtk_status):
-        return jsonify({'status': 'waiting'}), 200
-    elif any(status == 'running' for status in jtk_status):
-        return jsonify({'status': 'running'}), 200
-
-    # Inner join of the spreadsheets so that they match indexes
-    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
-
-    # Now just extract the right columns
-    jtk_p = [df["jtk_p"] for df in dfs]
-    jtk_q = [df["jtk_q"] for df in dfs]
-    ars_p = [df["ars_p"] for df in dfs]
-    ars_q = [df["ars_q"] for df in dfs]
-    ls_p = [df["ls_p"] for df in dfs]
-    ls_q = [df["ls_q"] for df in dfs]
-
-    return dumps({
-        'status': "done",
-        "jtk_p": jtk_p,
-        "jtk_q": jtk_q,
-        "ars_p": ars_p,
-        "ars_q": ars_q,
-        "ls_p": ls_p,
-        "ls_q": ls_q,
-    })
-
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
 @requires_login
@@ -607,147 +525,6 @@ def delete(user=None):
         return jsonify({"error": 'The spreadsheet data may not have been all successfully removed'}), 500
     return '', 204
 
-@spreadsheet_blueprint.route('/download', methods=['GET', 'POST'])
-@ajax_requires_account_or_share
-def download(user=None):
-    """
-    AJAX request to download a spreadsheet with given configuration options of what to provide
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    """
-    errors = []
-    data = json.loads(request.data)
-    spreadsheet_ids = data['spreadsheet_ids']
-    config = data['config']
-
-    current_app.logger.warn(f"Downloading spreadsheet(s) {spreadsheet_ids} from user {user.email}")
-
-    # Load the spreadsheets and dataframes
-    spreadsheets = []
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        spreadsheet.init_on_load()
-        spreadsheets.append(spreadsheet)
-        if not spreadsheet:
-            return jsonify({"error": "No such spreadsheet"}), 404
-        # We force check whether there are jtk columns incase they are requested
-        # if they don't exist, they'll be filled in as NAs so we can download
-        spreadsheet.has_jtk()
-    joined_dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
-
-    # Get the ids, as separate columns
-    id_columns = spreadsheets[0].get_id_columns()
-    ids = joined_dfs[0].iloc[config['rows'],id_columns]
-
-
-    # Process the dataframes
-    dfs = []
-    for joined_df, spreadsheet in zip(joined_dfs, spreadsheets):
-        df = joined_df[[]] # just the index
-        if config['include_data']:
-            df = pd.concat([df, joined_df[spreadsheet.get_data_columns()]], axis=1)
-        df = pd.concat([df, joined_df[config['columns']]], axis=1)
-        df = df.iloc[config['rows']]
-        dfs.append(df)
-
-    if len(spreadsheets) > 1:
-        # Load the comparison data
-        comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
-        def add_suffix(x,i):
-            suffix = config['suffixes'][i]
-            return f"{x}_{suffix}"
-        comparison_data = []
-        for primary, secondary in [(0, 1), (1, 0)]:
-            primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-            file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
-            try:
-                comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
-                current_app.logger.info(f"Loaded upside values from file {file_path}")
-            except OSError: # Parquet file could not be read (hasn't been written yet)
-                current_app.logger.info(f"Failed to download comparison spreadsheet since we can't load the file {primary_id}v{secondary_id}.comparison.parquet")
-                return jsonify({"error": "Computations not finished yet"}), 500
-
-            comp_data = comp_data[config['compare_columns']]
-            comp_data = comp_data.iloc[config['rows']]
-            comp_data.rename(columns=lambda x: x.replace("upside", "damping"), inplace=True)
-            comp_data.rename(columns=lambda x: add_suffix(x,primary), inplace=True)
-            comparison_data.append(comp_data)
-
-        # Add suffixes to original spreadsheet dfs
-        dfs = [df.rename(columns=lambda x: add_suffix(x,i)) for i, df in enumerate(dfs)]
-
-        # Join together
-        df = pd.concat(dfs + comparison_data, axis=1)
-        df = pd.concat([ids, df], axis=1).reset_index(drop=True)
-    else:
-        df = pd.concat([ids, dfs[0]], axis=1)
-
-    txt_data = io.StringIO()
-    df.to_csv(txt_data, sep='\t', index=False)
-    txt = txt_data.getvalue()
-    byte_data = io.BytesIO(str.encode(txt))
-
-    try:
-        return send_file(byte_data, mimetype="text/plain", as_attachment=True, attachment_filename='processed_spreadsheet.txt')
-    except Exception as e:
-        errors.append()
-        current_app.logger.error(f"The processed spreadsheet data for spreadsheet {spreadsheet_id} could not be "
-                                 f"downloaded.", e)
-        return jsonify({"error":"The processed spreadsheet data could not be downloaded."}), 500
-
-
-@spreadsheet_blueprint.route('/save_filters', methods=['POST'])
-@ajax_requires_account
-def save_filters(user=None):
-    """
-    AJAX endpoint - apply filters set on the graphs page.  Those filter values are also saved to the
-    spreadsheet entry in the database.  The call may be made by both logged in users and visitors (annonymous user).
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    :return: A json string containing filtered values along with associated q values and p values.
-    """
-
-    json_data = request.get_json()
-    spreadsheet_id = json_data.get('spreadsheet_id', None)
-    filtered_out = json_data.get('filtered_out', None)
-    rerun_qvalues = json_data.get('rerun_qvalues', False)
-    filters = json_data.get('filters', '[]')
-
-    # Bad data
-    if not spreadsheet_id:
-        return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
-
-    # Collect spreadsheet owned by user
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-
-    # Attempt to access spreadsheet not owned.
-    if not spreadsheet:
-        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
-                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
-        return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
-
-    # Check request data
-    if not filtered_out:
-        return jsonify({"error": "Incomplete request data, need 'filtered_out'"}), 400
-
-    # Verify that the filters are valid JSON
-    try:
-        _ = json.loads(filters)
-    except json.JSONDecodeError:
-        return jsonify({"error": "Error parsing 'filters' json blob"}), 400
-
-    # Populate spreadsheet with raw data
-    spreadsheet.init_on_load()
-
-    spreadsheet.filters = filters
-    spreadsheet.apply_filters(filtered_out, rerun_qvalues)
-    spreadsheet.save_to_db()
-
-    response = jsonify({'qs': [x if x == x else None for x in list(spreadsheet.df.nitecap_q.values)],
-                        'ps': [x if x == x else None for x in list(spreadsheet.df.nitecap_p.values)],
-                        'jtk_qs': [x if x == x else None for x in list(spreadsheet.df.jtk_q.values)],
-                        'anova_qs': [x if x == x else None for x in list(spreadsheet.df.anova_q.values)]})
-    return response
-
-
 @spreadsheet_blueprint.route('/share', methods=['POST'])
 @ajax_requires_login
 def share(user=None):
@@ -791,8 +568,6 @@ def consume_share(token):
     receiving user.  If the current user is not logged in, the user is assigned a visitor account.
     :param token: the share token given to the receiving user
     """
-
-    #TODO: remove this, it is no longer used; shares use the ajax_requires_account_or_share decorator
 
     errors = []
     share = Share.find_by_id(token)
@@ -852,12 +627,16 @@ def consume_share(token):
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
                            share_token=share.id,
+                           user_id=sharing_user.id,
+                           NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
         return render_template('spreadsheets/comparison.html',
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
                            share_token=share.id,
+                           user_id=sharing_user.id,
+                           NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
 @spreadsheet_blueprint.route('/copy_share/<string:token>', methods=['GET'])
@@ -950,7 +729,6 @@ def get_upside(user=None):
     # Run Upside dampening analysis, if it hasn't already been stored to disk
     upside_p_list = []
     upside_q_list = []
-    datasets = []
     spreadsheets = []
 
     # Check user ownership over these spreadsheets

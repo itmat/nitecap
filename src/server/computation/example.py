@@ -3,7 +3,6 @@ import simplejson as json
 
 from flask import Blueprint
 
-from app import app
 from models.users.decorators import requires_account
 
 ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"]

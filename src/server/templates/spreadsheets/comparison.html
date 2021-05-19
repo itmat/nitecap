@@ -8,6 +8,7 @@
 
 <script>
 
+    VERSION = 31;
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -75,7 +76,6 @@
             Vue.set(vm.spreadsheets_by_id, spreadsheet.spreadsheet_id, spreadsheet);
         });
 
-
         vm.labels = spreadsheets[0].labels;
         vm.timepoints_per_cycle = spreadsheets[0].timepoints_per_cycle;
         vm.num_days = (Math.max.apply(null, spreadsheets[0].x_values) + 1) / spreadsheets[0].timepoints_per_cycle;
@@ -140,6 +140,9 @@
             Vue.set(spreadsheet, "analyses", {});
             vm.runAnalysis(spreadsheet, "ls");
             vm.runAnalysis(spreadsheet, "arser");
+            vm.runAnalysis(spreadsheet, "jtk");
+            vm.runAnalysis(spreadsheet, "cosinor");
+            vm.runAnalysis(spreadsheet, "one_way_anova");
         });
 
 
@@ -388,7 +391,7 @@
                                                         {{util.formatStatsEntry(spreadsheet[stat.value][row_index])}}
                                                     </td>
                                                     <td v-else>
-                                                        loading
+                                                        {{getStatStatusDisplay(stat_id, i)}}
                                                     </td>
                                                 </template>
                                             </template>
@@ -401,7 +404,7 @@
                                                     {{util.formatStatsEntry(stats[stat.value][row_index])}}
                                                 </td>
                                                 <td v-else>
-                                                    loading
+                                                    {{getStatStatusDisplay(stat_id)}}
                                                 </td>
                                             </template>
                                         </template>
@@ -416,7 +419,7 @@
                                                         p: {{util.formatStatsEntry(spreadsheet[stat.value.p][row_index])}}
                                                     </td>
                                                     <td v-else>
-                                                        loading
+                                                        {{getStatStatusDisplay(stat_id, i)}}
                                                     </td>
                                                 </template>
                                             </template>
@@ -429,7 +432,7 @@
                                                     p: {{util.formatStatsEntry(stats[stat.value.p][row_index])}}
                                                 </td>
                                                 <td v-else v-bind:colspan="spreadsheets.length">
-                                                    loading
+                                                    {{getStatStatusDisplay(stat_id)}}
                                                 </td>
                                             </template>
                                         </template>
@@ -445,7 +448,7 @@
                                                     q: {{util.formatStatsEntry(spreadsheet[stat.value.q][row_index])}}
                                                 </td>
                                                 <td v-else>
-                                                    loading
+                                                    {{getStatStatusDisplay(stat_id, i)}}
                                                 </td>
                                             </template>
                                         </template>
@@ -458,7 +461,7 @@
                                                 q: {{util.formatStatsEntry(stats[stat.value.q][row_index])}}
                                             </td>
                                             <td v-else v-bind:colspan="spreadsheets.length">
-                                                loading
+                                                {{getStatStatusDisplay(stat_id)}}
                                             </td>
                                         </template>
                                     </tr>
@@ -771,7 +774,8 @@
                  q: "ars_q"},
          description: "ARSER significance of rhythmicity for dataset. Computed by meta2d. Requires multiple cycles with a single replicate each in order to run.",
         per_spreadsheet: true,
-        num_spreadsheets:'any'},
+        num_spreadsheets:'any',
+        algorithm_name: "arser"},
         ls: {name: "LS",
          value: {p: "ls_p",
                  q: "ls_q"},
@@ -789,7 +793,8 @@
                  q: "anova_q"},
          description: "1-Way ANOVA on primary dataset. Tests whether the means of the timepoints are equal. Requires either multiple replicates or more than one cycle.",
          per_spreadsheet: true,
-         num_spreadsheets: 'any'},
+         num_spreadsheets: 'any',
+         algorithm_name: "one_way_anova"},
         damping: {name: "Damping",
          value: {p: "upside_p",
                  q: "upside_q"},
@@ -1344,6 +1349,9 @@
             downloadSpreadsheet: function() {
                 let vm = this;
 
+                let suffixes = vm.download.suffixes.map(x => "_"+x);
+                if (vm.spreadsheets.length === 1) { suffixes = ['']; }
+
                 let download_rows = null;
                 if (vm.download.just_selected_rows) {
                     download_rows = vm.sort_order.slice(0,vm.config.selected_row+1);
@@ -1358,82 +1366,85 @@
                     });
                 }
 
-                let download_columns = [];
-                let download_compare_columns = [];
-                // Gather which statistic columns have been selected
+                let restrict = function(column) {
+                    // Returns just the relevant rows of the column
+                    return download_rows.map(i => column[i]);
+                };
+
+                // Assemble the data to be downloaded
+                let columns = new Map();
+
+                // First include the ID columns
+                vm.spreadsheets[0].id_col_labels.forEach(function(label, i) {
+                    columns.set(label, restrict(vm.spreadsheets[0].ids[i]));
+                });
+
+                // Include raw spreadsheet data if requested
+                if (vm.download.include_data) {
+                    vm.spreadsheets.forEach( function(spreadsheet, idx) {
+                        let suffix = suffixes[idx];
+                        spreadsheet.column_headers.forEach(function(column_header, i) {
+                            let column_data = spreadsheet.data.map(row => row[i]);
+                            columns.set(column_header + suffix, restrict(column_data));
+                        });
+                    });
+                }
+
+                // Gather the statistic columns which were selected
                 for (let stat_name in vm.stats_table) {
                     if (vm.download.stats[stat_name] === true) {
                         let stat = vm.stats_table[stat_name];
-                        let column_list = download_columns;
-                        if ((stat.num_spreadsheets === "multi") &&
-                            (vm.spreadsheets.length > 1)) {
-                            column_list = download_compare_columns;
-                        }
 
                         if (typeof stat.value === 'string') {
-                            // Name of stat
-                            column_list.push(stat.value)
+                            // stat.value is the name of the stat itself
+                            if (stat.per_spreadsheet) {
+                                vm.spreadsheets.forEach( function(spreadsheet, idx) {
+                                    let suffix = suffixes[idx];
+                                    columns.set(stat.value + suffix, restrict(spreadsheet[stat.value]));
+                                });
+                            } else {
+                                columns.set(stat.value, restrict(vm.stats[stat.value]));
+                            }
                         } else {
                             // Object containing p,q
-                            column_list.push(stat.value.p, stat.value.q);
+                            if (stat.per_spreadsheet) {
+                                vm.spreadsheets.forEach(function(spreadsheet, idx) {
+                                    let suffix = suffixes[idx];
+                                    columns.set(stat.value.p + suffix, restrict(spreadsheet[stat.value.p]));
+                                    columns.set(stat.value.q + suffix, restrict(spreadsheet[stat.value.q]));
+                                });
+                            } else {
+                                columns.set(stat.value.p, restrict(vm.stats[stat.value.p]));
+                                columns.set(stat.value.q, restrict(vm.stats[stat.value.q]));
+                            }
                         }
 
-                        if (stat.sort_value !== undefined) {
-                            column_list.push(stat.sort_value)
-                        }
-                        if (stat.secondary_sort_value !== undefined) {
-                            column_list.push(stat.secondary_sort_value)
-                        }
+                        // TODO: right now we're not including these. Only really loses 'total_delta' from nitecap
+                        //if (stat.sort_value !== undefined) {
+                        //    column_list.push(stat.sort_value)
+                        //}
+                        //if (stat.secondary_sort_value !== undefined) {
+                        //    column_list.push(stat.secondary_sort_value)
+                        //}
                     }
                 }
-                // Remove any duplicates (like sort_value == value)
-                download_columns = Array.from(new Set(download_columns));
-                download_compare_columns = Array.from(new Set(download_compare_columns));
 
-                // Order the suffixes correctly (in case spreadsheets have been rearranged)
-                let suffixes = vm.config.original_spreadsheet_ids.map(function(id) {
-                    let new_index = vm.config.spreadsheet_ids.indexOf(id);
-                    return vm.download.suffixes[new_index];
-                });
+                let tsv = toTSV(columns);
 
-                $.ajax({
-                    url: "/spreadsheets/download",
-                    data: JSON.stringify({
-                        'spreadsheet_ids': vm.config.original_spreadsheet_ids,
-                        'share_token': share_token,
-                        'config': {
-                            rows: download_rows,
-                            columns: download_columns,
-                            compare_columns: download_compare_columns,
-                            suffixes: suffixes,
-                            include_data: vm.download.include_data,
-                        },
-                    }),
-                    dataType:"text",
-                    contentType: "application/json",
-                    type: "POST",
-                    success: function (response) {
-                        // Create a URL for it
-                        let blob = new Blob([response]);
-                        let url = URL.createObjectURL(blob);
+                // Create a URL for it
+                let blob = new Blob([tsv]);
+                let url = URL.createObjectURL(blob);
 
-                        // Trigger downloading of the URL by making an <a href ...> to it and clicking it
-                        let anchor = document.createElement("a");
-                        anchor.href = url;
-                        anchor.download = "spreadsheet.txt";
-                        document.body.appendChild(anchor);
-                        anchor.click();
-                        document.body.removeChild(anchor);
+                // Trigger downloading of the URL by making an <a href ...> to it and clicking it
+                let anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = "spreadsheet.txt";
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
 
-                        // Cleanup after 5mins
-                        setTimeout(function () { URL.revokeObjectURL(url) }, 5*60*1000);
-                    },
-                    error: function(request) {
-                        error_message = $.parseJSON(request.responseText).err;
-                        nitecap_error_message.text(error_message);
-                        nitecap_error.modal();
-                    },
-                });
+                // Cleanup after 5mins
+                setTimeout(function () { URL.revokeObjectURL(url) }, 5*60*1000);
             },
 
             shiftSpreadsheets: function () {
@@ -1471,9 +1482,15 @@
                 this.notificationApiConnection.onmessage = this.processNotification;
             },
 
-            fetchAnalysisResults: async function (spreadsheet_id, analysisId) {
-                let response = await fetch(`/analysis/${analysisId}/results`);
+            fetchAnalysisResults: async function (analysisId) {
+                let url_response = await fetch(`/analysis/${analysisId}/results/url`,{
+                    headers: { "Authorization": share_token },
+                });
+                let target_url = await url_response.text();
+
+                let response = await fetch(target_url);
                 let results = await response.json();
+
                 let analysis = {
                     ...this.analyses[analysisId],
                     ...results,
@@ -1496,6 +1513,12 @@
                 } else if(analysis.algorithm == "arser") {
                     spreadsheet.ars_p = analysis.p;
                     spreadsheet.ars_q = analysis.q;
+                } else if(analysis.algorithm == "jtk") {
+                    spreadsheet.jtk_p = analysis.p;
+                    spreadsheet.jtk_q = analysis.q;
+                } else if(analysis.algorithm == "one_way_anova") {
+                    spreadsheet.anova_p = analysis.p;
+                    spreadsheet.anova_q = analysis.q;
                 } else {
                     console.error("Unknown algorithm results found:", analysis.algorithm, analysis);
                 }
@@ -1506,8 +1529,8 @@
 
                 let response = await fetch("/analysis/", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ algorithm, spreadsheetId, version: 20}),
+                    headers: { "Content-Type": "application/json", "Authorization": share_token },
+                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION, share_token: share_token}),
                 });
 
                 if (!response.ok) {
@@ -1547,20 +1570,22 @@
 
                 this.connectToNotificationApi();
 
-                // Check if results exist already
-                try {
-                    await this.fetchAnalysisResults(spreadsheetId, analysisId);
-                    // fetchAnalysisResults succeeded, already have results
-                } catch(error) {
-                    // Results not yet ready, we wait
+
+                // Check if it's already done - may have nothing else to do
+                let status_result = await fetch(`/analysis/${analysisId}/status`, {
+                    headers: { "Authorization": share_token },
+                });
+
+                let status = await status_result.text();
+                if (status === "COMPLETED") {
+                    await this.fetchAnalysisResults(analysisId);
                 }
             },
 
             processNotification: async function (event) {
-                console.log("Processing Notification");
                 message = JSON.parse(event.data);
 
-                let { analysisId, spreadsheet_id, ...analysisUpdate } = message;
+                let { analysisId, spreadsheetId, ...analysisUpdate } = message;
                 let analysis = this.analyses[analysisId];
 
                 // There are several explanations for the situation when the analysis is not in our analyses collection:
@@ -1569,13 +1594,15 @@
                 //
                 // Let's first fetch the information about the missing analysis:
                 if (!analysis) {
-                    let response = await fetch(`/analysis/${analysisId}/parameters`);
+                    let response = await fetch(`/analysis/${analysisId}/parameters`, {
+                        headers: { "Authorization": share_token },
+                    });
                     analysis = await response.json();
                 }
 
                 // Skip if this update is for analysis of another spreadsheet
                 if (this.spreadsheets_by_id[analysis.spreadsheetId] === undefined) {
-                    console.warn("Received data from wrong spreadsheet, ignoring", analysis);
+                    console.log("Received data from wrong spreadsheet, ignoring", analysis);
                     return;
                 }
 
@@ -1587,8 +1614,35 @@
                 });
 
                 if (analysisUpdate["status"] === "COMPLETED") {
-                    this.fetchAnalysisResults(spreadsheet_id, analysisId);
+                    this.fetchAnalysisResults(analysisId);
                 }
+            },
+
+            getStatStatusDisplay: function(stat_id, spreadsheet_num) {
+                let stat = this.stats_table[stat_id];
+                let algorithm = stat.algorithm_name ?? stat_id;
+                if (stat.num_spreadsheets == "multi") {
+                    // For now these are not run by 'analyses'
+                    // TODO: update this when we put comparison stats into analyses
+                    return "loading";
+                } else {
+                    let spreadsheet = this.spreadsheets[spreadsheet_num];
+                    let spreadsheet_id = spreadsheet.spreadsheet_id;
+                    // Find the appropriate analysis (if any) and format display based off that
+                    for (let [id, analysis] of Object.entries(this.analyses)) {
+                        if ((analysis.algorithm == algorithm) && (analysis.spreadsheetId == spreadsheet_id)) {
+                            if (analysis.status === "RUNNING") {
+                                return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
+                            } else if (analysis.status === "COMPLETED") {
+                                return "100%";
+                            }
+                            else {
+                                return analysis.status;
+                            }
+                        }
+                    }
+                }
+                return "Unknown";
             },
         },
 
@@ -1812,7 +1866,7 @@
             background_rows: function() {
                 let vm = this;
                 if (vm.spreadsheets.length == 0) { return []; }
-                return vm.spreadsheets[0].labels.map(function(x,i) { return i; }).filter( function(i) {return !vm.spreadsheets[0].filtered[i];});
+                return vm.spreadsheets[0].labels.map(function(x,i) { return i; }).filter( function(i) {return !vm.filtered[i];});
             },
 
             useable_stats: function () {
