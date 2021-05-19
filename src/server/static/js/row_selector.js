@@ -89,13 +89,14 @@ Vue.component('row-selector', {
             let desired_label_length = Math.max.apply(0, vm.labels.map( function (x) {return x.length;}));
             desired_label_length = Math.min(desired_label_length, vm.labelMaxLength);
 
+            let q_values = vm.qValues;
+            let max_length = vm.labelMaxLength;
             return vm.labels.map( function(label, i) {
-                label = String(label).slice(0,vm.labelMaxLength);
+                label = String(label).slice(0, max_length);
                 label = padEnd(label, desired_label_length, ' ');
 
-                if (vm.qValues !== null) {
-                    let q = vm.qValues[i];
-                    return label + ' Q: ' + toFixed(vm.qValues[i], 2);
+                if (q_values !== null) {
+                    return label + ' Q: ' + toFixed(q_values[i], 2);
                 } else {
                     return label;
                 }

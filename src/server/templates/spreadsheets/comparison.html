@@ -1491,34 +1491,34 @@
                 let response = await fetch(target_url);
                 let results = await response.json();
 
-                let analysis = {
+                let analysis = Object.freeze({
                     ...this.analyses[analysisId],
                     ...results,
                     status: "COMPLETED",
-                };
+                });
                 Vue.set(this.analyses, analysisId, analysis);
 
                 // Load the values
                 let spreadsheet = app.spreadsheets_by_id[analysis.spreadsheetId];
                 console.log("Obtained results of ", analysis.algorithm, " for spreadsheet ", analysis.spreadsheetId);
                 if(analysis.algorithm == "cosinor") {
-                    spreadsheet.cosinor_p = analysis.p;
-                    spreadsheet.cosinor_q = analysis.q;
-                    spreadsheet.cosinor_x0 = analysis.x[0];
-                    spreadsheet.cosinor_x1 = analysis.x[1];
-                    spreadsheet.cosinor_x2 = analysis.x[2];
+                    spreadsheet.cosinor_p = Object.freeze(analysis.p);
+                    spreadsheet.cosinor_q = Object.freeze(analysis.q);
+                    spreadsheet.cosinor_x0 = Object.freeze(analysis.x[0]);
+                    spreadsheet.cosinor_x1 = Object.freeze(analysis.x[1]);
+                    spreadsheet.cosinor_x2 = Object.freeze(analysis.x[2]);
                 } else if(analysis.algorithm == "ls") {
-                    spreadsheet.ls_p = analysis.p;
-                    spreadsheet.ls_q = analysis.q;
+                    spreadsheet.ls_p = Object.freeze(analysis.p);
+                    spreadsheet.ls_q = Object.freeze(analysis.q);
                 } else if(analysis.algorithm == "arser") {
-                    spreadsheet.ars_p = analysis.p;
-                    spreadsheet.ars_q = analysis.q;
+                    spreadsheet.ars_p = Object.freeze(analysis.p);
+                    spreadsheet.ars_q = Object.freeze(analysis.q);
                 } else if(analysis.algorithm == "jtk") {
-                    spreadsheet.jtk_p = analysis.p;
-                    spreadsheet.jtk_q = analysis.q;
+                    spreadsheet.jtk_p = Object.freeze(analysis.p);
+                    spreadsheet.jtk_q = Object.freeze(analysis.q);
                 } else if(analysis.algorithm == "one_way_anova") {
-                    spreadsheet.anova_p = analysis.p;
-                    spreadsheet.anova_q = analysis.q;
+                    spreadsheet.anova_p = Object.freeze(analysis.p);
+                    spreadsheet.anova_q = Object.freeze(analysis.q);
                 } else {
                     console.error("Unknown algorithm results found:", analysis.algorithm, analysis);
                 }
@@ -1840,8 +1840,10 @@
                 // discards filtered out rows
                 let num_significant_below = new Array(this.labels.length);
                 let ctr = 0;
+                let filtered = this.filtered;
+                let sort_order = this.sort_order;
                 this.labels.forEach(function(label, index) {
-                    if (!app.filtered[app.sort_order[index]]) {
+                    if (!filtered[sort_order[index]]) {
                         ctr++;
                     }
 
