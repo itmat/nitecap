@@ -1623,7 +1623,7 @@
 
             getStatStatusDisplay: function(stat_id, spreadsheet_num) {
                 let stat = this.stats_table[stat_id];
-                let algorithm = stat.algorithm_name ?? stat_id;
+                let algorithm = stat.algorithm_name || stat_id;
                 if (stat.num_spreadsheets == "multi") {
                     // For now these are not run by 'analyses'
                     // TODO: update this when we put comparison stats into analyses
