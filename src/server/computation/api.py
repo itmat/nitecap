@@ -5,7 +5,7 @@ import os
 
 import pandas as pd
 
-from flask import Blueprint, request, session
+from flask import Blueprint, request
 from hashlib import sha256
 from io import BytesIO
 
@@ -73,7 +73,6 @@ def submit_analysis(user):
 @analysis_blueprint.route("/<analysisId>/results/url", methods=["get"])
 @ajax_requires_account_or_share
 def get_results_url(user, analysisId):
-    import warnings
     try:
         response = s3_client.generate_presigned_url(
             "get_object",
@@ -130,7 +129,7 @@ def get_analysis_status(user, analysisId):
 
 
 def store_spreadsheet_to_s3(spreadsheet):
-    data = spreadsheet.get_raw_data().to_csv(header=False, index=False)
+    data = spreadsheet.get_raw_data().to_csv(header=False, index=False, na_rep="nan")
 
     index, header = spreadsheet.get_raw_data().axes
     metadata = {

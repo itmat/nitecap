@@ -86,16 +86,16 @@ def handler(event, context):
         results = json.dumps({"p": p, "q": q}, ignore_nan=True)
 
     if algorithm == "arser":
-        timepoints = np.array(
-            [0, 24, 48, 4, 28, 52, 8, 32, 56, 12, 36, 60, 16, 40, 64, 20, 44, 68]
-        )
+        # timepoints = np.array(
+        #     [0, 24, 48, 4, 28, 52, 8, 32, 56, 12, 36, 60, 16, 40, 64, 20, 44, 68]
+        # )
 
         # timepoints = np.concatenate((timepoints, 72 + timepoints, 2*72 + timepoints, 3*72 + timepoints))
         # data = np.concatenate((data, data, data, data), axis=1)
 
         # Sort by timepoints
-        data[:, timepoints.argsort()]
-        timepoints.sort()
+        # data[:, timepoints.argsort()]
+        # timepoints.sort()
 
         p = parallel(
             compute(algorithm), data, timepoints, send_notification=send_notification
