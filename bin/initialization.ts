@@ -20,6 +20,7 @@ let emailComplianceStack = new EmailComplianceStack(
 );
 
 new NitecapStack(app, "NitecapStack-dev", {
-  emailSuppressionList: emailComplianceStack.emailSuppressionList,
   env: environment,
+  emailSuppressionList: emailComplianceStack.emailSuppressionList,
+  serverSecretKeyName: "NitebeltServerSecretKey",
 });

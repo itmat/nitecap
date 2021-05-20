@@ -9,6 +9,7 @@ import * as elb from "@aws-cdk/aws-elasticloadbalancingv2";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as s3 from "@aws-cdk/aws-s3";
+import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 
@@ -34,7 +35,10 @@ export class NitecapStack extends cdk.Stack {
   constructor(
     scope: cdk.Construct,
     id: string,
-    props: cdk.StackProps & { emailSuppressionList: dynamodb.Table }
+    props: cdk.StackProps & {
+      emailSuppressionList: dynamodb.Table;
+      serverSecretKeyName: string;
+    }
   ) {
     super(scope, id, props);
 
@@ -308,6 +312,14 @@ export class NitecapStack extends cdk.Stack {
       })
     );
 
+    let serverSecretKey = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      "ServerSecretKey",
+      props.serverSecretKeyName
+    );
+
+    serverSecretKey.grantRead(serverRole);
+
     // Server software
 
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
@@ -331,6 +343,7 @@ export class NitecapStack extends cdk.Stack {
         ENVIRONMENT: "PROD",
         LOG_FILE: "/nitecap_web/log",
         AWS_DEFAULT_REGION: this.region,
+        SERVER_SECRET_KEY_ARN: serverSecretKey.secretArn,
         SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
         COMPUTATION_STATE_MACHINE_ARN: computationStateMachine.stateMachineArn,
         NOTIFICATION_API_ENDPOINT: `wss://${notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
