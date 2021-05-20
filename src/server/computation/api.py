@@ -1,9 +1,8 @@
 import boto3
-import simplejson as json
-from functools import wraps
 import os
+import simplejson as json
 
-import pandas as pd
+import numpy as np
 
 from flask import Blueprint, request
 from hashlib import sha256
@@ -38,10 +37,16 @@ def submit_analysis(user):
     ]:
         raise KeyError
 
+    # TODO: Remove this after the frontend starts passing the view ID
+    if "viewId" not in parameters:
+        parameters["viewId"] = 1
+
+    # TODO: Disable version parameter for production
     analysis = {
         "userId": str(user.id),
         "algorithm": parameters["algorithm"],
         "spreadsheetId": parameters["spreadsheetId"],
+        "viewId": parameters["viewId"],
         "version": parameters["version"],
     }
 
@@ -53,7 +58,9 @@ def submit_analysis(user):
         s3.Object(
             SPREADSHEET_BUCKET_NAME,
             f"{user.id}/analyses/{analysisId}/parameters",
-        ).upload_fileobj(BytesIO(json.dumps(parameters).encode()))
+        ).upload_fileobj(
+            BytesIO(json.dumps({"analysisId": analysisId, **analysis}).encode())
+        )
 
         sfn.start_execution(
             stateMachineArn=COMPUTATION_STATE_MACHINE_ARN,
@@ -131,14 +138,6 @@ def get_analysis_status(user, analysisId):
 def store_spreadsheet_to_s3(spreadsheet):
     data = spreadsheet.get_raw_data().to_csv(header=False, index=False, na_rep="nan")
 
-    index, header = spreadsheet.get_raw_data().axes
-    metadata = {
-        "header": header.to_list(),
-        "index": index.to_list(),
-        "cycle_length": spreadsheet.timepoints,
-        "timepoints": spreadsheet.x_values,
-    }
-
     with open(spreadsheet.uploaded_file_path, "rb") as original:
         s3.Object(
             SPREADSHEET_BUCKET_NAME,
@@ -152,12 +151,23 @@ def store_spreadsheet_to_s3(spreadsheet):
             },
         )
 
+    cycle_length = 24
+
+    metadata = {
+        "cycle_length": cycle_length,
+        "sample_collection_times": [
+            t * cycle_length / spreadsheet.timepoints for t in spreadsheet.x_values
+        ],
+    }
+
+    viewId = spreadsheet.edit_version
+
     s3.Object(
         SPREADSHEET_BUCKET_NAME,
-        f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/data",
+        f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/views/{viewId}/data",
     ).upload_fileobj(BytesIO(data.encode()))
 
     s3.Object(
         SPREADSHEET_BUCKET_NAME,
-        f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/metadata",
+        f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/views/{viewId}/metadata",
     ).upload_fileobj(BytesIO(json.dumps(metadata).encode()))

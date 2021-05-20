@@ -39,14 +39,14 @@ def bh(P):
 
 
 def handler(event, context):
-    analysisId, userId, spreadsheetId, algorithm = itemgetter(
-        "analysisId", "userId", "spreadsheetId", "algorithm"
+    analysisId, userId, spreadsheetId, viewId, algorithm = itemgetter(
+        "analysisId", "userId", "spreadsheetId", "viewId", "algorithm"
     )(event)
 
     spreadsheet = BytesIO()
     s3.Object(
         SPREADSHEET_BUCKET_NAME,
-        f"{userId}/spreadsheets/{spreadsheetId}/data",
+        f"{userId}/spreadsheets/{spreadsheetId}/views/{viewId}/data",
     ).download_fileobj(spreadsheet)
 
     spreadsheet.seek(0)
@@ -54,53 +54,35 @@ def handler(event, context):
     metadata = BytesIO()
     s3.Object(
         SPREADSHEET_BUCKET_NAME,
-        f"{userId}/spreadsheets/{spreadsheetId}/metadata",
+        f"{userId}/spreadsheets/{spreadsheetId}/views/{viewId}/metadata",
     ).download_fileobj(metadata)
 
     metadata.seek(0)
     metadata = json.load(metadata)
 
     data = np.loadtxt(spreadsheet, delimiter=",")
-    timepoints = np.array(metadata["timepoints"]) * 24 // metadata["cycle_length"]
+    sample_collection_times = np.array(metadata["sample_collection_times"])
 
-    # Sort by timepoints
-    data[:, timepoints.argsort()]
-    timepoints.sort()
+    # Sort by time
+    data[:, sample_collection_times.argsort()]
+    sample_collection_times.sort()
 
     send_notification = send_notification_via_websockets(
         {"userId": userId, "analysisId": analysisId}
     )
 
+    parameters = (data, sample_collection_times)
+
     if algorithm == "cosinor":
         x, p = parallel(
-            compute(algorithm), data, timepoints, send_notification=send_notification
+            compute(algorithm), *parameters, send_notification=send_notification
         )
         q = bh(p).tolist()
         results = json.dumps({"x": x, "p": p, "q": q}, ignore_nan=True)
-
-    if algorithm in ["ls", "jtk", "one_way_anova"]:
+    else:
         p = parallel(
-            compute(algorithm), data, timepoints, send_notification=send_notification
+            compute(algorithm), *parameters, send_notification=send_notification
         )
-        q = bh(p).tolist()
-        results = json.dumps({"p": p, "q": q}, ignore_nan=True)
-
-    if algorithm == "arser":
-        # timepoints = np.array(
-        #     [0, 24, 48, 4, 28, 52, 8, 32, 56, 12, 36, 60, 16, 40, 64, 20, 44, 68]
-        # )
-
-        # timepoints = np.concatenate((timepoints, 72 + timepoints, 2*72 + timepoints, 3*72 + timepoints))
-        # data = np.concatenate((data, data, data, data), axis=1)
-
-        # Sort by timepoints
-        # data[:, timepoints.argsort()]
-        # timepoints.sort()
-
-        p = parallel(
-            compute(algorithm), data, timepoints, send_notification=send_notification
-        )
-
         q = bh(p).tolist()
         results = json.dumps({"p": p, "q": q}, ignore_nan=True)
 

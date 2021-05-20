@@ -48,7 +48,7 @@ for data_directory, spreadsheet in spreadsheets.items():
     df = spreadsheet["dataframe"]["python"]
 
     data = spreadsheet["data"]
-    timepoints = np.array(metadata["timepoints"])
+    timepoints = 1.0*np.array(metadata["timepoints"])
     cycle_length = metadata["cycle_length"]
 
     ARSER, JTK, LS = 0, 1, 2
