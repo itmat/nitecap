@@ -476,10 +476,6 @@
                     <a href="{{ url_for('spreadsheets.show_spreadsheet', spreadsheet_id = spreadsheet.id) }}">
                         <i class="fas fa-eye" data-toggle="tooltip" data-placement="top" title="View graphs"></i>
                     </a>
-                    <a href="{{ url_for('spreadsheets.download', spreadsheet_id = spreadsheet.id) }}"
-                       download="processed_file_{{spreadsheet.id}}.txt">
-                        <i class="fas fa-download" data-toggle="tooltip" data-placement="top" title="Download"></i>
-                    </a>
                     <a id='share_spreadsheet_{{spreadsheet.id}}' class="share_spreadsheet text-primary">
                        <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
                     </a>
