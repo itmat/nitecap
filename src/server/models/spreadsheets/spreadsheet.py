@@ -37,28 +37,23 @@ class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id = db.Column(db.Integer, primary_key=True)
     descriptive_name = db.Column(db.String(250), nullable=False)
-    days = db.Column(db.Integer)
     num_timepoints = db.Column(db.Integer)
     timepoints = db.Column(db.Integer)
     repeated_measures = db.Column(db.Boolean, nullable=False, default=False)
     header_row = db.Column(db.Integer, nullable=False, default=1)
     original_filename = db.Column(db.String(250), nullable=False)
     file_mime_type = db.Column(db.String(250), nullable=False)
-    breakpoint = db.Column(db.Integer, default=0)
     file_path = db.Column(db.String(250))
     uploaded_file_path = db.Column(db.String(250), nullable=False)
     date_uploaded = db.Column(db.DateTime, nullable=False)
-    num_replicates_str = db.Column(db.String(250))
     column_labels_str = db.Column(db.String(2500))
-    filters = db.Column(db.String(1000))
     last_access = db.Column(db.DateTime, nullable=False)
-    ids_unique = db.Column(db.Boolean, nullable=False, default=0)
+    ids_unique = db.Column(db.Boolean, nullable=False, default=0) # Deprecated - can't remove without modifying the DB since it is nonnullable
     note = db.Column(db.String(5000))
     spreadsheet_data_path = db.Column(db.String(250))
     categorical_data = db.Column(db.String(5000))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User")
-    # Incremented whenever metadata editted and we need new computations run
     edit_version = db.Column(db.Integer, default=0)
 
     ID_COLUMN = "ID"
@@ -72,10 +67,10 @@ class Spreadsheet(db.Model):
     SPREADSHEET_DIRECTORY_NAME_TEMPLATE = Template('spreadsheet_$spreadsheet_id')
 
     @timeit
-    def __init__(self, descriptive_name, days, num_timepoints, timepoints, repeated_measures, header_row, original_filename,
+    def __init__(self, descriptive_name, num_timepoints, timepoints, repeated_measures, header_row, original_filename,
                  file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
-                 breakpoint=None, num_replicates_str=None, last_access=None, user_id=None,
-                 date_uploaded=None, ids_unique=False, filters='', spreadsheet_data_path='', categorical_data=''):
+                 last_access=None, user_id=None,
+                 date_uploaded=None, spreadsheet_data_path='', categorical_data=''):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
         method (only __new__).  Many of the parameters are filled in only after the spreadsheet has been instantiated
@@ -83,7 +78,6 @@ class Spreadsheet(db.Model):
         list.
         :param descriptive_name: A name of 250 characters or less describing the spreadsheet content so that the user
         may easily recognize it or search for it in his/her spreadsheet list.
-        :param days: The number of days over which the data is collected.
         :param num_timepoints: The number of timepoints in the spreadsheet (across all the cycles)
         :param timepoints: The number of timepoints per day over whcih the data is collected.
         :param repeated_measures:
@@ -96,18 +90,13 @@ class Spreadsheet(db.Model):
         (note that this file is a tab delimited plain text file with the extension working.txt
         :param column_labels_str: A comma delimited listing of the column labels used to identify timepoint and id
         columns.
-        :param breakpoint: The cutoff value used to limit the number of rows displayed on a heatmap
-        :param num_replicates_str: A comma delimited listing of the number of replicates identified for each timepoint.
         :param last_access: A timestamp indicating when the spreadsheet was last accessed (actually last updated)
         :param user_id: The id of the spreadsheet's owner.  Visitors have individual (although more transitory)
         accounts and consequently a user id.
         :param date_uploaded:  The timestamp at which the original spreadsheet was uploaded.
-        :param ids_unique:  Flag indicating whether the ids are unique given the columns selected as ids
-        :param filters: JSON string of list of filters of the format [ ['variable', lower_bound, upper_bound],...]
         """
         current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
-        self.days = days
         self.num_timepoints = num_timepoints
         self.timepoints = timepoints
         self.repeated_measures = repeated_measures
@@ -117,11 +106,8 @@ class Spreadsheet(db.Model):
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
         self.date_uploaded = date_uploaded
-        self.num_replicates_str = num_replicates_str
         self.column_labels_str = column_labels_str
-        self.breakpoint = breakpoint
         self.last_access = last_access or datetime.datetime.utcnow()
-        self.ids_unique = ids_unique
         self.note = ''
         self.spreadsheet_data_path = spreadsheet_data_path
         self.categorical_data = categorical_data
@@ -177,8 +163,6 @@ class Spreadsheet(db.Model):
                 current_app.logger.error(e)
                 self.error = True
 
-        self.num_replicates = None if not self.num_replicates_str \
-             else [int(num_rep) for num_rep in self.num_replicates_str.split(",")]
         self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
 
         if self.column_labels_str:
@@ -238,14 +222,6 @@ class Spreadsheet(db.Model):
 
         self.timepoint_assignments = {col: self.label_to_timepoint(label) for col, label in zip(self.df.columns, self.column_labels)}
         x_values = [value for value in self.timepoint_assignments.values() if value is not None]
-
-        # Count the number of replicates at each timepoint
-        self.num_replicates = [len([1 for x in x_values if x == i])
-                                    for i in range(self.num_timepoints)]
-        self.num_replicates_str = ",".join([str(num_replicate) for num_replicate in self.num_replicates])
-        # Num replicates separated out by times not counting which day it comes from
-        self.num_replicates_by_time = [len([1 for x in x_values if x % self.timepoints == i])
-                                                for i in range(self.timepoints)]
 
         # This is 'x_values' ordered in the same manner as you get from get_data_columns()/get_raw_data()
         self.x_values = [self.timepoint_assignments[col] for col in self.get_data_columns()]
@@ -327,21 +303,9 @@ class Spreadsheet(db.Model):
         concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ')
         return concats
 
-    def find_replicate_ids(self, *args):
-        ids = list(self.get_ids(*args))
-        return [item for item, count in collections.Counter(ids).items() if count > 1]
-
     def find_unique_ids(self):
         ids = list(self.get_ids())
         return [item for item, count in collections.Counter(ids).items() if count == 1]
-
-    def set_ids_unique(self):
-        """
-        Determines whether the results of concatenating all ids columns together into a list results in a list of
-        unique ids.  Sets a flag in the spreadsheet accordingly (which will be added to the db)
-        """
-        ids = self.get_ids()
-        self.ids_unique = len(ids) == len(set(ids))
 
     @timeit
     def compute_nitecap(self):
@@ -415,29 +379,6 @@ class Spreadsheet(db.Model):
             df = self.df.astype({col: 'str' for col in str_columns})
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(df, preserve_index=False), self.file_path)
 
-    def reduce_dataframe(self, breakpoint):
-        above_breakpoint = self.df.iloc[:breakpoint+1]
-        sorted_by_peak_time = above_breakpoint.sort_values(by="peak_time")
-        raw_data = sorted_by_peak_time[self.get_data_columns()]
-        id_indices = [index for index, column_label in enumerate(self.column_labels)
-                                if column_label == Spreadsheet.ID_COLUMN]
-        labels = list(sorted_by_peak_time.iloc[:,id_indices].apply(lambda row: ' | '.join([str(ID) for ID in row]), axis=1))
-
-        original_indexes = numpy.argsort(above_breakpoint.peak_time)
-
-        return raw_data, labels, original_indexes
-
-    def check_breakpoint(self, breakpoint):
-        error = False
-        messages = []
-        if not breakpoint.isdigit():
-            error = True
-            messages = f"The breakpoint must be a valid integer."
-        elif breakpoint > len(self.df.index):
-            error = True
-            messages = f"The breakpoin must point to a row inside the spreadsheet."
-        return error, messages
-
     def has_jtk(self):
         meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
         if any((c not in self.df.columns) for c in meta2d_cols):
@@ -451,64 +392,6 @@ class Spreadsheet(db.Model):
                 return False
         return True
 
-    @ timeit
-    def compute_jtk(self):
-        # Process the data for JTK
-        df = self.get_raw_data().copy()
-
-        if df.shape[1] > MAX_JTK_COLUMNS:
-            # Can't compute JTK when there are too many columns
-            # it takes too long and will fail
-            self.df[meta2d_cols] = float("NaN")
-
-        # Check missing values - JTK will crash if there are too few timepoints
-        # so we will overwrite any such genes with all 0s, just to make it run
-        # We don't want to drop those timepoints entirely because we need something there
-        # to insert the results back into our spreadsheet
-        not_missing = ~df.isna()
-        timepoint_col_starts = numpy.concatenate(([0], numpy.cumsum(self.num_replicates)[:-1]))
-        timepoint_col_ends = numpy.cumsum(self.num_replicates)
-        timepoint_not_missing = numpy.array([not_missing.iloc[:,start:end].any(axis=1) for start,end in zip(timepoint_col_starts, timepoint_col_ends)])
-        num_not_missing_timepoints = timepoint_not_missing.sum(axis=0)
-        df[num_not_missing_timepoints < 2] = 0 # Zero out the things that are too missing
-
-        # Call out to an R script to run JTK
-        # write results to disk to pass the data to JTK
-        run_jtk_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../run_jtk.R"))
-        data_file_path = f"/tmp/{self.id}_{uuid.uuid4()}.jtk_data"
-        df.to_csv(data_file_path, sep="\t")
-        results_file_path = f"{data_file_path}.jtk_results"
-
-        num_reps = ','.join(str(x) for x in self.num_replicates)
-
-        res = subprocess.run(f"Rscript {run_jtk_file} {data_file_path} {results_file_path} {self.timepoints} {num_reps} {self.days}",
-                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout = current_app.config['JOB_TIMEOUT'])
-
-        if res.returncode != 0:
-            raise RuntimeError(f"Error running JTK: \n {res.args} \n {res.stdout.decode('ascii')} \n {res.stderr.decode('ascii')}")
-
-        results = pd.read_csv(results_file_path, sep='\t')
-
-        # We load a new copy of this spreadsheet to ensure it hasn't changed since the start
-        # Technically there is a race condition possible here, though unlikely
-        spreadsheet = self.user.find_user_spreadsheet_by_id(self.id)
-        if spreadsheet.edit_version != self.edit_version:
-            raise RuntimeError(f"Spreadsheet {self.id} was edited before JTK could finish")
-
-        spreadsheet.init_on_load()
-        spreadsheet.df["jtk_p"] = results.JTK_P
-        spreadsheet.df["jtk_q"] = results.JTK_Q
-        spreadsheet.df["ars_p"] = results.ARS_P
-        spreadsheet.df["ars_q"] = results.ARS_Q
-        spreadsheet.df["ls_p"] = results.LS_P
-        spreadsheet.df["ls_q"] = results.LS_Q
-
-        spreadsheet.update_dataframe()
-
-        os.remove(data_file_path)
-        os.remove(results_file_path)
-
     def increment_edit_version(self):
         ''' Trigger re-computations of anything that needs to be re-computed
         after a metadata change (eg: new column labels)
@@ -518,13 +401,6 @@ class Spreadsheet(db.Model):
 
         self.edit_version += 1
         self.save_to_db()
-
-
-    @staticmethod
-    def normalize_data(raw_data):
-        means = raw_data.mean(axis=1)
-        stds = raw_data.std(axis=1)
-        return raw_data.sub(means, axis=0).div(stds, axis=0)
 
     def validate(self, column_labels):
         """ Check spreadhseet for consistency.
@@ -568,17 +444,6 @@ class Spreadsheet(db.Model):
     def get_sample_dataframe(self):
         mini_df = self.df[:10]
         return mini_df.values.tolist()
-
-    def get_selection_options(self):
-
-        # If days or timepoints are not set, just provide an ignore column option.
-        if not self.days or not self.timepoints:
-            return Spreadsheet.NON_DATA_COLUMNS
-
-        return Spreadsheet.NON_DATA_COLUMNS + [f"Day{day + 1} Timepoint{timepoint + 1}"
-                                    for day in range(self.days)
-                                    for timepoint in range(self.timepoints)]
-
 
     def label_to_daytime(self, label, include_day = True):
         """ returns the day and time of column label """
@@ -634,7 +499,6 @@ class Spreadsheet(db.Model):
         """
         return cls.query.filter_by(id=_id).first()
 
-    def update_user(self, user_id):
         """
         Change ownership of this spreadsheet to the user identified by the given id.  This happens when
         a visitor who has been working on one or more spreadsheets, decides to log in.  This spreadsheets should have
@@ -694,7 +558,6 @@ class Spreadsheet(db.Model):
 
         # Create the share object - all path reflect the temporary share paths (i.e., paths containing uuid)
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
-                                        days=spreadsheet.days,
                                         timepoints=spreadsheet.timepoints,
                                         num_timepoints=spreadsheet.num_timepoints,
                                         repeated_measures=spreadsheet.repeated_measures,
@@ -705,8 +568,6 @@ class Spreadsheet(db.Model):
                                         date_uploaded=datetime.datetime.utcnow(),
                                         file_path=temporary_share_processed_file_path,
                                         column_labels_str=spreadsheet.column_labels_str,
-                                        breakpoint=spreadsheet.breakpoint,
-                                        num_replicates_str=spreadsheet.num_replicates_str,
                                         categorical_data=spreadsheet.categorical_data,
                                         last_access=None,
                                         spreadsheet_data_path=temporary_share_spreadsheet_data_path,
