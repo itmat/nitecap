@@ -97,7 +97,7 @@
         let table = spreadsheetTableElement.DataTable({
                         aoColumnDefs: [
                             { 'bSortable': false, 'aTargets': [ 8 ] },
-                            { 'visible': false, 'aTargets': [9] },
+                            { 'visible': false, 'aTargets': [8] },
                             {
                                 orderable: false,
                                 className: 'select-checkbox',
@@ -435,12 +435,11 @@
                 <th>Uploaded File</th>
                 <th>Date Installed</th>
                 <th>Name</th>
-                <th>Days</th>
+                <th>Cycle<br>length</th>
                 <th>Time-<br />points</th>
-                <th>Sig.<br />Cutoff</th>
                 <th>Last Update</th>
                 <th>Actions</th>
-                <th>IDs</th>
+                <th>ID</th>
             </tr>
         </thead>
         <tbody>
@@ -463,9 +462,8 @@
                         <div class="float-right text-primary"><i class="fas fa-pencil-alt"></i></div>
                     </div>
                 </td>
-                <td>{{spreadsheet.days}}</td>
                 <td>{{spreadsheet.timepoints}}</td>
-                <td>{{spreadsheet.breakpoint}}</td>
+                <td>{{spreadsheet.num_timepoints}}</td>
                 <td data-sort="{{spreadsheet.last_access}}">
                     {{ momentjs(spreadsheet.last_access).format('LLL') }}
                 </td>
@@ -504,22 +502,6 @@
             </tr>
         {% endfor %}
         </tbody>
-        <!--
-        <tfoot>
-            <tr>
-                <td></td>
-                <td>Uploaded File</td>
-                <td>Date Uploaded</td>
-                <td>Name</td>
-                <td>Days</td>
-                <td>Time<br />points</td>
-                <td>Sig.<br />Cutoff</td>
-                <td>Last Update</td>
-                <td>Actions</td>
-                <td>IDS</td>
-            </tr>
-        </tfoot>
-        -->
     </table>
 
     <button type="button" class="btn btn-primary selectedSignle" id="show-button">Show</button>
