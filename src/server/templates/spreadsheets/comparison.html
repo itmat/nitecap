@@ -1580,6 +1580,7 @@
                 if (status === "COMPLETED") {
                     await this.fetchAnalysisResults(analysisId);
                 }
+                this.analyses[analysisId].status = status;
             },
 
             processNotification: async function (event) {
