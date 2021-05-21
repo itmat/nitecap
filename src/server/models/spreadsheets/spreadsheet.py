@@ -161,16 +161,20 @@ class Spreadsheet(db.Model):
                     self.df = pd.read_csv(self.file_path, sep='\t')
                 else:
                     self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
+            else:
+                current_app.logger.warn(f"WARN: no file_path for processed spreadsheet {self.id} - setting up processed spreadsheet automatically")
+                self.setup_processed_spreadsheet()
         except Exception as e:
             # The parser failed...we may be able to recover.
-            print(e)
+            current_app.logger.error(f"Received error during loading of spreadsheet {self.id}")
+            current_app.logger.error(e)
             self.df = None
             try:
                 self.set_df()
 
             # If parsing the original fails, we are stuck
             except Exception as e:
-                print(e)
+                current_app.logger.error(e)
                 self.error = True
 
         self.num_replicates = None if not self.num_replicates_str \
@@ -179,14 +183,6 @@ class Spreadsheet(db.Model):
 
         if self.column_labels_str:
             self.identify_columns(self.column_labels)
-
-            if any(column not in self.df.columns for column in NITECAP_DATA_COLUMNS) and not self.categorical_data:
-                # Run our statistics if we have selected the column labels and are
-                # missing any output (eg: if we added more outputs, this will update spreadsheets,
-                # or if somehow a spreadsheet was never computed)
-                self.compute_nitecap()
-            elif self.categorical_data and any(column not in self.df.columns for column in CATEGORICAL_DATA_COLUMNS):
-                self.compute_categorical()
 
     def is_categorical(self):
         ''' Returns True if this is a Categorical (MPV) spreadsheet. False if not.'''
@@ -522,11 +518,6 @@ class Spreadsheet(db.Model):
 
         self.edit_version += 1
         self.save_to_db()
-
-        drop_columns = ["jtk_p", "jtk_q", "ars_p", "ars_q", "ls_p", "ls_q"]
-        drop_columns = [c for c in drop_columns if c in self.df.columns]
-        self.df.drop(columns = drop_columns, inplace=True)
-        self.update_dataframe()
 
 
     @staticmethod

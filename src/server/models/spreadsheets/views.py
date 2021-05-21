@@ -21,7 +21,7 @@ from itsdangerous import JSONWebSignatureSerializer as Serializer
 import constants
 import nitecap
 from exceptions import NitecapException
-from models.spreadsheets.spreadsheet import Spreadsheet
+from models.spreadsheets.spreadsheet import Spreadsheet, NITECAP_DATA_COLUMNS
 from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
     ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
 from models.users.user import User
@@ -170,9 +170,6 @@ def collect_data(spreadsheet_id, user=None):
     if not spreadsheet:
         return access_not_permitted(collect_data.__name__, user, spreadsheet_id)
 
-    # Set up the dataframe
-    spreadsheet.set_df()
-
     # Spreadsheet data form submitted.
     if request.method == 'POST':
         descriptive_name, num_timepoints, timepoints, repeated_measures, column_labels, errors = \
@@ -184,6 +181,9 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.num_timepoints = int(num_timepoints)
         spreadsheet.timepoints = int(timepoints)
         spreadsheet.repeated_measures = repeated_measures
+
+        # Load the DF to do the initial assessment
+        spreadsheet.init_on_load()
 
         # If label assignments are improper, the user is returned to the column label form and invited to edit.
         errors = spreadsheet.validate(column_labels)
@@ -203,7 +203,6 @@ def collect_data(spreadsheet_id, user=None):
 
         # Trigger recomputations as necessary
         spreadsheet.set_ids_unique()
-        spreadsheet.init_on_load()
         spreadsheet.increment_edit_version()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
@@ -211,7 +210,6 @@ def collect_data(spreadsheet_id, user=None):
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
 
     spreadsheet.init_on_load()
-    print(f"Spreadsheet column labels: {spreadsheet.column_labels}")
     return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet)
 
 
@@ -861,6 +859,7 @@ def run_pca(user=None):
 
 @spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
 @requires_account
+@timeit
 def check_id_uniqueness(user=None):
     """
     AJAX endpoint - accepts a json object ( id_columns: id_columns, spreadsheet_id: spreadsheet_id } and determines
@@ -891,7 +890,7 @@ def check_id_uniqueness(user=None):
         return jsonify({'error': SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     # Populate
-    spreadsheet.set_df()
+    spreadsheet.init_on_load()
 
     non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
     current_app.logger.debug(f"Non-unique ids {non_unique_ids}")
