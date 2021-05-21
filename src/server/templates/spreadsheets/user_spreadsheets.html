@@ -104,6 +104,7 @@
                                 targets:   0
                             }
                         ],
+                        pageLength: 25,
                         order: [[ 2, 'desc' ]],
                         select: {
                             style:    'multi+shift',
@@ -504,12 +505,16 @@
         </tbody>
     </table>
 
-    <button type="button" class="btn btn-primary selectedSignle" id="show-button">Show</button>
-    <button type="button" class="btn btn-primary" id="compare-button">Compare</button>
-    <button type="button" class="btn btn-primary" id="delete-button">
-        Delete
-        <i class="fas fa-trash"></i>
-    </button>
+    <div class="row" style="position:sticky; bottom:0%;">
+        <div class="col">
+            <button type="button" class="btn btn-primary selectedSignle" id="show-button">Show</button>
+            <button type="button" class="btn btn-primary" id="compare-button">Compare</button>
+            <button type="button" class="btn btn-primary" id="delete-button">
+                Delete
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
 {% endif %}
 
 
