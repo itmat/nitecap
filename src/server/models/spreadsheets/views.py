@@ -403,6 +403,7 @@ def get_spreadsheets(user=None):
                      timepoints_per_cycle=spreadsheet.timepoints,
                      num_timepoints=spreadsheet.num_timepoints or (spreadsheet.timepoints * spreadsheet.days), #TODO: this is a temporary work-around until 'days' is phased out
                      spreadsheet_id=spreadsheet.id,
+                     view_id=spreadsheet.edit_version, #TODO: make edit_version/view_id names agree eventually
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
                      id_col_labels=list(spreadsheet.get_id_columns(label=True)),

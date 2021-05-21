@@ -8,7 +8,7 @@
 
 <script>
 
-    VERSION = 31;
+    VERSION = 35;
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -1526,11 +1526,12 @@
 
             runAnalysis: async function (spreadsheet, algorithm) {
                 let spreadsheetId = spreadsheet.spreadsheet_id;
+                let viewId = spreadsheet.view_id;
 
                 let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": share_token },
-                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION, share_token: share_token}),
+                    body: JSON.stringify({ algorithm, spreadsheetId, viewId, version: VERSION, share_token: share_token}),
                 });
 
                 if (!response.ok) {
@@ -1579,8 +1580,9 @@
                 let status = await status_result.text();
                 if (status === "COMPLETED") {
                     await this.fetchAnalysisResults(analysisId);
+                } else if (status == "FAILED") {
+                    this.analyses[analysisId].status = status;
                 }
-                this.analyses[analysisId].status = status;
             },
 
             processNotification: async function (event) {
