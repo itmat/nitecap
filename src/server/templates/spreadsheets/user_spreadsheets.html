@@ -428,82 +428,86 @@
 {% endif %}
 
 {% if user.spreadsheets %}
-    <table id="spreadsheetTable" class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>
-                </th>
-                <th>Uploaded File</th>
-                <th>Date Installed</th>
-                <th>Name</th>
-                <th>Cycle<br>length</th>
-                <th>Time-<br />points</th>
-                <th>Last Update</th>
-                <th>Actions</th>
-                <th>ID</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for spreadsheet in user.spreadsheets %}
-            {% if spreadsheet.error %}
-                {% set class="alert alert_danger" %}
-            {% else %}
-                {% set class="text-dark" %}
-            {% endif %}
-            <tr class={{class}} id="spreadsheet_{{spreadsheet.id}}" data-id="{{ spreadsheet.id }}">
-                <td></td>
-                <td>{{spreadsheet.original_filename}}</td>
-                <td data-sort="{{spreadsheet.date_uploaded}}">
-                    {{ momentjs(spreadsheet.date_uploaded).format('LLL') }}
-                </td>
-                <td>
-                    <div data-id="{{ spreadsheet.id }}" data-name="{{ spreadsheet.descriptive_name }}"
-                         class="rename_spreadsheet" style="cursor:pointer">
-                        {{spreadsheet.descriptive_name}}
-                        <div class="float-right text-primary"><i class="fas fa-pencil-alt"></i></div>
-                    </div>
-                </td>
-                <td>{{spreadsheet.timepoints}}</td>
-                <td>{{spreadsheet.num_timepoints}}</td>
-                <td data-sort="{{spreadsheet.last_access}}">
-                    {{ momentjs(spreadsheet.last_access).format('LLL') }}
-                </td>
-                <td class="actions">
-                     <a href="{{ url_for('spreadsheets.collect_data', spreadsheet_id = spreadsheet.id) }}">
-                        <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
-                    </a>
-                    <a href="{{ url_for('spreadsheets.show_spreadsheet', spreadsheet_id = spreadsheet.id) }}">
-                        <i class="fas fa-eye" data-toggle="tooltip" data-placement="top" title="View graphs"></i>
-                    </a>
-                    <a id='share_spreadsheet_{{spreadsheet.id}}' class="share_spreadsheet text-primary">
-                       <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
-                    </a>
-                    <a data-id="{{ spreadsheet.id }}" class="delete_spreadsheet text-primary">
-                        <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
-                    </a>
-                    <a data-id="{{ spreadsheet.id }}" class="annotate_spreadsheet text-primary" rel="popover"
-                       data-container="body" data-toggle="popover" data-placement="left" data-trigger="click"
-                       title="Add a Note" data-html=true
-                       data-content="<div id='spreadsheet_notes_{{ spreadsheet.id }}' class='annotate_form'>
-                                       <textarea data-id='{{ spreadsheet.id }}' class='form-control' cols='30' rows='10'>{{ spreadsheet.note or '' }}</textarea>
-                                       <div class='float-right'>
-                                         <button class='btn-annotate btn btn-primary'>
-                                           <i class='fas fa-check'></i>
-                                         </button>
-                                         <button class='btn-annotate-dismiss btn btn-white'>
-                                           <i class='fas fa-times'></i>
-                                         </button>
-                                       </div>
-                                     </div>"
-                    >
-                        <i class="fas fa-sticky-note" data-toggle="tooltip" data-placement="top" title="Annotate"></i>
-                    </a>
-                </td>
-                <td>{{spreadsheet.id}}</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+    <div class="row">
+        <div class="col-auto">
+            <table id="spreadsheetTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>
+                        </th>
+                        <th>Uploaded File</th>
+                        <th>Date Installed</th>
+                        <th>Name</th>
+                        <th>Cycle<br>length</th>
+                        <th>Time-<br />points</th>
+                        <th>Last Update</th>
+                        <th>Actions</th>
+                        <th>ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for spreadsheet in user.spreadsheets %}
+                    {% if spreadsheet.error %}
+                        {% set class="alert alert_danger" %}
+                    {% else %}
+                        {% set class="text-dark" %}
+                    {% endif %}
+                    <tr class={{class}} id="spreadsheet_{{spreadsheet.id}}" data-id="{{ spreadsheet.id }}">
+                        <td></td>
+                        <td>{{spreadsheet.original_filename}}</td>
+                        <td data-sort="{{spreadsheet.date_uploaded}}">
+                            {{ momentjs(spreadsheet.date_uploaded).format('LLL') }}
+                        </td>
+                        <td>
+                            <div data-id="{{ spreadsheet.id }}" data-name="{{ spreadsheet.descriptive_name }}"
+                                class="rename_spreadsheet" style="cursor:pointer">
+                                {{spreadsheet.descriptive_name}}
+                                <div class="float-right text-primary"><i class="fas fa-pencil-alt"></i></div>
+                            </div>
+                        </td>
+                        <td>{{spreadsheet.timepoints}}</td>
+                        <td>{{spreadsheet.num_timepoints}}</td>
+                        <td data-sort="{{spreadsheet.last_access}}">
+                            {{ momentjs(spreadsheet.last_access).format('LLL') }}
+                        </td>
+                        <td class="actions">
+                            <a href="{{ url_for('spreadsheets.collect_data', spreadsheet_id = spreadsheet.id) }}">
+                                <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
+                            </a>
+                            <a href="{{ url_for('spreadsheets.show_spreadsheet', spreadsheet_id = spreadsheet.id) }}">
+                                <i class="fas fa-eye" data-toggle="tooltip" data-placement="top" title="View graphs"></i>
+                            </a>
+                            <a id='share_spreadsheet_{{spreadsheet.id}}' class="share_spreadsheet text-primary">
+                            <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
+                            </a>
+                            <a data-id="{{ spreadsheet.id }}" class="delete_spreadsheet text-primary">
+                                <i class="fas fa-trash" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                            </a>
+                            <a data-id="{{ spreadsheet.id }}" class="annotate_spreadsheet text-primary" rel="popover"
+                            data-container="body" data-toggle="popover" data-placement="left" data-trigger="click"
+                            title="Add a Note" data-html=true
+                            data-content="<div id='spreadsheet_notes_{{ spreadsheet.id }}' class='annotate_form'>
+                                            <textarea data-id='{{ spreadsheet.id }}' class='form-control' cols='30' rows='10'>{{ spreadsheet.note or '' }}</textarea>
+                                            <div class='float-right'>
+                                                <button class='btn-annotate btn btn-primary'>
+                                                <i class='fas fa-check'></i>
+                                                </button>
+                                                <button class='btn-annotate-dismiss btn btn-white'>
+                                                <i class='fas fa-times'></i>
+                                                </button>
+                                            </div>
+                                            </div>"
+                            >
+                                <i class="fas fa-sticky-note" data-toggle="tooltip" data-placement="top" title="Annotate"></i>
+                            </a>
+                        </td>
+                        <td>{{spreadsheet.id}}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <div class="row" style="position:sticky; bottom:0%;">
         <div class="col">
