@@ -23,6 +23,7 @@ let emailComplianceStack = new EmailComplianceStack(
   "NitecapEmailComplianceStack-dev",
   {
     env: environment,
+    hostedZone: domainStack.hostedZone
   }
 );
 
