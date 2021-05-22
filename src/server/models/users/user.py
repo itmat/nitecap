@@ -28,6 +28,7 @@ BLACKLISTED_EMAIL_CONTENTS = ["https:", "$"]
 ses = boto3.client("ses")
 dynamodb = boto3.resource("dynamodb")
 suppression_list = dynamodb.Table(os.environ["EMAIL_SUPPRESSION_LIST_NAME"])
+EMAIL_CONFIGURATION_SET_NAME = os.environ["EMAIL_CONFIGURATION_SET_NAME"]
 
 class User(db.Model):
     __tablename__ = "users"
@@ -272,6 +273,7 @@ class User(db.Model):
                         "Subject": {"Data": subject},
                         "Body": {"Text": {"Data": content}},
                     },
+                    ConfigurationSetName=EMAIL_CONFIGURATION_SET_NAME,
                 )
             except Exception as exception:
                 current_app.logger.error(f"Email delivery failed: {exception}")

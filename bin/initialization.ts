@@ -3,7 +3,7 @@ import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
 import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
-import { EmailStack as EmailComplianceStack } from "../lib/compliance/email-stack";
+import { EmailStack } from "../lib/email-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
 
@@ -18,15 +18,6 @@ let domainStack = new DomainStack(app, "NitecapDomainStack-dev", {
   env: environment,
 });
 
-let emailComplianceStack = new EmailComplianceStack(
-  app,
-  "NitecapEmailComplianceStack-dev",
-  {
-    env: environment,
-    hostedZone: domainStack.hostedZone
-  }
-);
-
 let persistentStorageStack = new PersistentStorageStack(
   app,
   "NitecapPersistentStorageStack-dev",
@@ -35,6 +26,13 @@ let persistentStorageStack = new PersistentStorageStack(
     domainName: domainStack.domainName,
   }
 );
+
+let emailStack = new EmailStack(app, "NitecapEmailStack-dev", {
+  env: environment,
+  domainName: domainStack.domainName,
+  hostedZone: domainStack.hostedZone,
+  emailSuppressionListArn: persistentStorageStack.emailSuppressionList.tableArn,
+});
 
 let computationStack = new ComputationStack(
   app,
@@ -48,10 +46,11 @@ let computationStack = new ComputationStack(
 let serverStack = new ServerStack(app, "NitecapServerStack-dev", {
   env: environment,
   computationStateMachine: computationStack.computationStateMachine,
-  emailSuppressionList: emailComplianceStack.emailSuppressionList,
+  emailSuppressionListArn: persistentStorageStack.emailSuppressionList.tableArn,
   notificationApi: computationStack.notificationApi,
   domainName: domainStack.domainName,
   hostedZone: domainStack.hostedZone,
+  emailConfigurationSetName: emailStack.configurationSetName,
   serverSecretKeyName: "NitebeltServerSecretKey",
   serverCertificate: domainStack.certificate,
   spreadsheetBucketArn: persistentStorageStack.spreadsheetBucket.bucketArn,

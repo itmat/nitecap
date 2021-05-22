@@ -23,11 +23,12 @@ const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
 
 type ServerStackProps = cdk.StackProps & {
   computationStateMachine: sfn.StateMachine;
-  emailSuppressionList: dynamodb.Table;
+  emailSuppressionListArn: string;
   notificationApi: apigateway.CfnApi;
   domainName: string;
   hostedZone: route53.IHostedZone;
   serverCertificate: acm.Certificate;
+  emailConfigurationSetName: string;
   serverSecretKeyName: string;
   spreadsheetBucketArn: string;
 };
@@ -38,17 +39,25 @@ export class ServerStack extends cdk.Stack {
 
     const {
       computationStateMachine,
+      emailSuppressionListArn,
       notificationApi,
       spreadsheetBucketArn,
       domainName,
       hostedZone,
-      serverCertificate
+      serverCertificate,
+      emailConfigurationSetName,
     } = props;
 
     let spreadsheetBucket = s3.Bucket.fromBucketArn(
       this,
       "SpreadsheetBucket",
       spreadsheetBucketArn
+    );
+
+    let emailSuppressionList = dynamodb.Table.fromTableArn(
+      this,
+      "EmailSuppressionList",
+      emailSuppressionListArn
     );
 
     // Server persistent storage
@@ -68,7 +77,7 @@ export class ServerStack extends cdk.Stack {
     spreadsheetBucket.grantReadWrite(serverRole);
     computationStateMachine.grantRead(serverRole);
     computationStateMachine.grantStartExecution(serverRole);
-    props.emailSuppressionList.grantReadData(serverRole);
+    emailSuppressionList.grantReadData(serverRole);
 
     serverRole.addToPolicy(
       new iam.PolicyStatement({
@@ -120,7 +129,8 @@ export class ServerStack extends cdk.Stack {
         COMPUTATION_STATE_MACHINE_ARN: computationStateMachine.stateMachineArn,
         NOTIFICATION_API_ENDPOINT: `wss://${notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
         EMAIL_SENDER: `no-reply@${domainName}`,
-        EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
+        EMAIL_CONFIGURATION_SET_NAME: emailConfigurationSetName,
+        EMAIL_SUPPRESSION_LIST_NAME: emailSuppressionList.tableName,
       },
       portMappings: [
         {
@@ -199,7 +209,7 @@ export class ServerStack extends cdk.Stack {
 
     let outputs = {
       ComputationStateMachineArn: computationStateMachine.stateMachineArn,
-      EmailSuppressionListName: props.emailSuppressionList.tableName,
+      EmailSuppressionListName: emailSuppressionList.tableName,
       NotificationApiEndpoint: `${notificationApi.attrApiEndpoint}/default`,
       ServerSecretKeyArn: serverSecretKey.secretArn,
       SpreadsheetBucketName: spreadsheetBucket.bucketName,

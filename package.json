@@ -26,6 +26,7 @@
     "@aws-cdk/aws-dynamodb": "^1.103.0",
     "@aws-cdk/aws-ecs-patterns": "^1.103.0",
     "@aws-cdk/aws-s3": "^1.103.0",
+    "@aws-cdk/aws-ses": "^1.103.0",
     "@aws-cdk/aws-stepfunctions": "^1.103.0",
     "@aws-cdk/aws-stepfunctions-tasks": "^1.103.0",
     "@aws-cdk/core": "^1.103.0",
