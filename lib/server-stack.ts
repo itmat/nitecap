@@ -50,6 +50,8 @@ export class ServerStack extends cdk.Stack {
       emailConfigurationSetName,
     } = props;
 
+    let serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
+
     let spreadsheetBucket = s3.Bucket.fromBucketArn(
       this,
       "SpreadsheetBucket",
@@ -80,6 +82,7 @@ export class ServerStack extends cdk.Stack {
     computationStateMachine.grantRead(serverRole);
     computationStateMachine.grantStartExecution(serverRole);
     emailSuppressionList.grantReadData(serverRole);
+    serverSecretKey.grantRead(serverRole);
 
     serverRole.addToPolicy(
       new iam.PolicyStatement({
@@ -94,14 +97,6 @@ export class ServerStack extends cdk.Stack {
         ],
       })
     );
-
-    let serverSecretKey = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      "ServerSecretKey",
-      props.serverSecretKeyName
-    );
-
-    serverSecretKey.grantRead(serverRole);
 
     // Server software
 
