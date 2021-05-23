@@ -157,7 +157,11 @@ export class ServerStack extends cdk.Stack {
 
     // Server hardware
 
-    let serverVpc = ec2.Vpc.fromLookup(this, "ServerVpc", { isDefault: true });
+    let serverVpc = new ec2.Vpc(this, "ServerVpc", {
+      subnetConfiguration: [
+        { name: "ServerSubnet", subnetType: ec2.SubnetType.PUBLIC },
+      ],
+    });
 
     let serverCluster = new ecs.Cluster(this, "ServerCluster", {
       vpc: serverVpc,
