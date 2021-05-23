@@ -16,6 +16,8 @@ import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
 import * as path from "path";
 
+import * as environment from "./.env.json";
+
 import mountEbsVolume from "./utilities/mountEbsVolume";
 import getContainerInstanceId from "./utilities/getContainerInstanceId";
 
@@ -199,6 +201,7 @@ export class ServerStack extends cdk.Stack {
         domainZone: hostedZone,
         certificate: serverCertificate,
         redirectHTTP: true,
+        openListener: environment.production ? true : false,
       }
     );
 
@@ -206,6 +209,23 @@ export class ServerStack extends cdk.Stack {
     serverService.service.addPlacementConstraints(
       ecs.PlacementConstraint.memberOf(`ec2InstanceId == '${serverInstanceId}'`)
     );
+
+    if (!environment.production) {
+      let serverSecurityGroup = new ec2.SecurityGroup(
+        this,
+        "ServerSecurityGroup",
+        { vpc: serverVpc }
+      );
+
+      environment.allowedCidrBlocks.map((cidrBlock) =>
+        serverSecurityGroup.addIngressRule(
+          ec2.Peer.ipv4(cidrBlock),
+          ec2.Port.allTcp()
+        )
+      );
+
+      serverService.loadBalancer.addSecurityGroup(serverSecurityGroup);
+    }
 
     let outputs = {
       ComputationStateMachineArn: computationStateMachine.stateMachineArn,
