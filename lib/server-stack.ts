@@ -20,6 +20,7 @@ import * as environment from "./.env.json";
 
 import mountEbsVolume from "./utilities/mountEbsVolume";
 import getContainerInstanceId from "./utilities/getContainerInstanceId";
+import setEc2UserPassword from "./utilities/setEc2UserPassword";
 
 const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
 
@@ -51,6 +52,10 @@ export class ServerStack extends cdk.Stack {
     } = props;
 
     let serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
+    let serverUserPassword = new secretsmanager.Secret(
+      this,
+      "ServerUserPassword"
+    );
 
     let spreadsheetBucket = s3.Bucket.fromBucketArn(
       this,
@@ -159,7 +164,7 @@ export class ServerStack extends cdk.Stack {
       capacity: {
         maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.T2,
+          ec2.InstanceClass.T3,
           ec2.InstanceSize.MEDIUM
         ),
         blockDevices: [
@@ -173,7 +178,6 @@ export class ServerStack extends cdk.Stack {
             ),
           },
         ],
-        keyName: "NitecapServerKey",
       },
       containerInsights: true,
     });
@@ -183,6 +187,8 @@ export class ServerStack extends cdk.Stack {
       serverEbsVolume.mountPoint,
       serverCluster
     );
+
+    setEc2UserPassword(serverCluster, serverUserPassword);
 
     let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
@@ -223,11 +229,11 @@ export class ServerStack extends cdk.Stack {
     }
 
     let outputs = {
-      ComputationStateMachineArn: computationStateMachine.stateMachineArn,
-      EmailSuppressionListName: emailSuppressionList.tableName,
-      NotificationApiEndpoint: `${notificationApi.attrApiEndpoint}/default`,
-      ServerSecretKeyArn: serverSecretKey.secretArn,
       SpreadsheetBucketName: spreadsheetBucket.bucketName,
+      ComputationStateMachineArn: computationStateMachine.stateMachineArn,
+      NotificationApiEndpoint: `${notificationApi.attrApiEndpoint}/default`,
+      EmailSuppressionListName: emailSuppressionList.tableName,
+      ServerSecretKeyArn: serverSecretKey.secretArn,
     };
 
     for (let [outputName, outputValue] of Object.entries(outputs)) {
