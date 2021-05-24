@@ -1,7 +1,7 @@
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 
-export default function mountEbsVolume(
+export default function setEc2UserPassword(
   cluster: ecs.Cluster,
   password: secretsmanager.Secret
 ) {

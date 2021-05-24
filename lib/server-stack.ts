@@ -21,6 +21,7 @@ import * as environment from "./.env.json";
 import mountEbsVolume from "./utilities/mountEbsVolume";
 import getContainerInstanceId from "./utilities/getContainerInstanceId";
 import setEc2UserPassword from "./utilities/setEc2UserPassword";
+import setupLogging from "./utilities/setupLogging";
 
 const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
 
@@ -103,6 +104,14 @@ export class ServerStack extends cdk.Stack {
       })
     );
 
+    serverRole.addManagedPolicy(
+      iam.ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "LoggingPolicy",
+        "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+      )
+    );
+
     // Server software
 
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
@@ -121,7 +130,7 @@ export class ServerStack extends cdk.Stack {
       image: ecs.ContainerImage.fromAsset(
         path.join(__dirname, "../src/server")
       ),
-      memoryLimitMiB: 1536,
+      memoryLimitMiB: 1280,
       environment: {
         ENVIRONMENT: "PROD",
         LOG_FILE: "/nitecap_web/log",
@@ -140,7 +149,6 @@ export class ServerStack extends cdk.Stack {
           protocol: ecs.Protocol.TCP,
         },
       ],
-      logging: ecs.LogDriver.awsLogs({ streamPrefix: "ServerLogs" }),
     });
 
     serverContainer.addMountPoints({
@@ -154,6 +162,8 @@ export class ServerStack extends cdk.Stack {
       hardLimit: 1048576,
       name: UlimitName.NOFILE,
     });
+
+    setupLogging(this, serverTask);
 
     // Server hardware
 
