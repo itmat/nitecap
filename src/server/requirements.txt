@@ -28,6 +28,7 @@ passlib==1.7.1
 plotly==3.5.0
 python-dateutil==2.7.5
 python-dotenv==0.10.1
+python-json-logger
 python-magic==0.4.15
 pytz==2018.9
 requests==2.21.0

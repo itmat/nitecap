@@ -29,6 +29,7 @@ import logging
 import os
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler, SMTPHandler
+from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
 logger = logging.getLogger("")
@@ -41,21 +42,22 @@ app.jinja_env.globals['momentjs'] = momentjs
 #CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
 
 # Log format for both file and email logging.
-formatter = logging.Formatter('%(asctime)s \t%(levelname)s\t%(module)s\t%(process)d\t%(thread)d\t%(message)s')
+# formatter = logging.Formatter('%(asctime)s \t%(levelname)s\t%(module)s\t%(process)d\t%(thread)d\t%(message)s')
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(module)s %(process)d %(thread)d %(message)s')
 
 # Email logger - assumes the existence of at least 1 admin email.
-mail_handler = SMTPHandler(
-    mailhost=os.environ['SMTP_SERVER_HOST'],
-    fromaddr=os.environ['EMAIL_SENDER'],
-    toaddrs=app.config['ADMIN_LIST'],
-    subject='Nitcap Application Issue'
-)
-mail_handler.setLevel(logging.WARN)
-mail_handler.setFormatter(formatter)
+# mail_handler = SMTPHandler(
+#     mailhost=os.environ['SMTP_SERVER_HOST'],
+#     fromaddr=os.environ['EMAIL_SENDER'],
+#     toaddrs=app.config['ADMIN_LIST'],
+#     subject='Nitcap Application Issue'
+# )
+# mail_handler.setLevel(logging.WARN)
+# mail_handler.setFormatter(formatter)
 
 # Email warning and errors only for production server
-#if not app.debug:
-#    app.logger.addHandler(mail_handler)
+# if not app.debug:
+#     app.logger.addHandler(mail_handler)
 
 # File logger - rotates for every 1Mb up to 10 files.
 file_handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
