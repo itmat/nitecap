@@ -17,60 +17,78 @@
     });
 </script>
 
-<div class="page-header">
-    <h1>Load Spreadsheet File <small>Expecting csv, tsv, txt, xls or xlsx fomats only</small></h1>
-</div>
+    <div class="page-header">
+        <h1>Load Spreadsheet File</h1>
+    </div>
 
 
-    <p>We first need your spreadsheet file</p>
+    <div class="row p-1">
+        <div class="col-6">
+            <p>We first need your spreadsheet file</p>
 
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="badge badge-info">Notes</div>
+                    <div class="server-notes">
+                        {% for message in messages %}
+                            <div>{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
 
-{% with messages = get_flashed_messages() %}
-    {% if messages %}
-        <div class="badge badge-info">Notes</div>
-        <div class="server-notes">
-            {% for message in messages %}
-                <div>{{ message }}</div>
-            {% endfor %}
+            {% if errors %}
+                <div class="badge badge-danger">Errors</div>
+                <div class="server-errors">
+                    {% for error in errors %}
+                        <div>{{error}}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <p class="text-danger">* required</p>
+
+            <form>
+                <div class="form-group required">
+                    <label for="header_row">The Spreadsheet Header is on Row:</label>
+                    <input type="number" id="header_row" name="header_row" class="form-control" value="{{header_row or 1}}"
+                        style="width:15rem" required />
+                </div>
+                <div class="form-group required">
+                    <label for="upload_file">Spreadsheet File:</label>
+                    <input type="file" id="upload_file" name="upload_file" required>
+                </div>
+                <button class="btn btn-primary" type="button" id="submit_btn" onclick="javascript: upload();">
+                    Submit
+                </button>
+                <span id="progress_report">
+                </span>
+            </form>
+
         </div>
-    {% endif %}
-{% endwith %}
 
-{% if errors %}
-    <div class="badge badge-danger">Errors</div>
-    <div class="server-errors">
-        {% for error in errors %}
-            <div>{{error}}</div>
-        {% endfor %}
+        <div class="col-6 border border-secondary rounded">
+            <h2>Requirements:</h2>
+
+            <ul>
+                <li> Excel, CSV, or tab-separated files supported </li>
+                <li> One row per feature (gene, protein, etc.)</li>
+                <li> One column per sample </li>
+                <li> Columns must be labelled in a header row, on a row you specify</li>
+                <li> At least one column with ID values for the rows</li>
+                <li> Any number of additional columns </li>
+                <li> (Optional) include time in column headers (such as "CT00", "ZT04", or "12:00")</li>
+            </ul>
+
+            <div class="alert alert-warning" role="alert">
+                <h3>Please Note:</h3>
+                <p>
+                    While we endeavor to protect the data uploaded to this site, we make no guarantees as to its
+                    security, and sensitive data (such as anything covered by HIPAA) should not be uploaded.
+                </p>
+            </div>
+        </div>
     </div>
-{% endif %}
-
-<p class="text-danger">* required</p>
-
-<form>
-    <div class="form-group required">
-        <label for="header_row">The Spreadsheet Header is on Row:</label>
-        <input type="number" id="header_row" name="header_row" class="form-control" value="{{header_row or 1}}"
-               style="width:15rem" required />
-    </div>
-    <div class="form-group required">
-        <label for="upload_file">Spreadsheet File:</label>
-        <input type="file" id="upload_file" name="upload_file" required>
-    </div>
-    <button class="btn btn-primary" type="button" id="submit_btn" onclick="javascript: upload();">
-        Submit
-    </button>
-    <span id="progress_report">
-    </span>
-</form>
-
-<div class="alert alert-warning smaller-text" role="alert">
-    <h2>Please Note:</h2>
-    <p>
-        While we endeavor to protect the data uploaded to this site, we make no guarantees as to its
-        security, and sensitive data (such as anything covered by HIPAA) should not be uploaded.
-    </p>
-</div>
 
 <script>
     $(document).ready ( function() {
