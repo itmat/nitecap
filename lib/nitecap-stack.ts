@@ -95,9 +95,13 @@ export class NitecapStack extends cdk.Stack {
       ],
     });
 
-    new ApiGatewayCfnAccount(this, "NotificationApiAccount", {
-      cloudWatchRoleArn: notificationApiRole.roleArn,
-    });
+    let notificationApiAccount = new ApiGatewayCfnAccount(
+      this,
+      "NotificationApiAccount",
+      {
+        cloudWatchRoleArn: notificationApiRole.roleArn,
+      }
+    );
 
     notificationApiRole.attachInlinePolicy(
       new iam.Policy(this, "NotificationApiPolicy", {
@@ -186,6 +190,8 @@ export class NitecapStack extends cdk.Stack {
         },
       }
     );
+
+    notificationApiStage.addDependsOn(notificationApiAccount);
 
     let notificationApiDeployment = new apigateway.CfnDeployment(
       this,
