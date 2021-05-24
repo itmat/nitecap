@@ -152,15 +152,17 @@
         <input type="number" id="timepoints" name="timepoints" class="form-control" style="width:10rem"
                value="{{spreadsheet.timepoints or ''}}" required />
     </div>
-    <div class="form-group">
-        Repeated Measures?
-        <label class="radio-inline">
-            <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y" {{"checked" if spreadsheet.repeated_measures else ''}}> Yes
-        </label>
-        <label class="radio-inline">
-            <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" {{"checked" if not spreadsheet.repeated_measures else ''}}> No
-        </label>
-    </div>
+    <!-- we do not use repeated measures currently since we don't run the appropriate algorithms, this could change later
+        <div class="form-group">
+            Repeated Measures?
+            <label class="radio-inline">
+                <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y" {{"checked" if spreadsheet.repeated_measures else ''}}> Yes
+            </label>
+            <label class="radio-inline">
+                <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" {{"checked" if not spreadsheet.repeated_measures else ''}}> No
+            </label>
+        </div>
+    -->
     <p>
         Shown are the first 10 rows of your data. Please indicate those columns that represent ids and timepoints.
         Use the same label from the droplist for each replicate. All columns not representing timepoints
