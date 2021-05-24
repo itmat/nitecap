@@ -93,12 +93,6 @@ def faqs():
     return render_template("faqs.html")
 
 
-@app.route('/people', methods=['GET'])
-def people():
-    logger.info("Accessing people")
-    return render_template("people.html")
-
-
 @app.route('/about', methods=['GET'])
 def about():
     logger.info("Accessing about page")
