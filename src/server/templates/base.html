@@ -50,17 +50,21 @@
         </button>
         <div id="navbarNav" class="navbar-collapse collapse">
             <ul class="nav navbar-nav mr-auto">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="loadDropdown" role="button"
-                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Load Data
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="loadDropdown">
-                        <a class="dropdown-item" href="{{ url_for('spreadsheets.upload_file') }}">As a Timeseries Spreadsheet</a>
-                        <a class="dropdown-item" href="{{ url_for('spreadsheets.upload_mpv_file') }}">As a Categorical Spreadsheet</a>
+                <!--
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="loadDropdown" role="button"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Load Data
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="loadDropdown">
+                            <a class="dropdown-item" href="{{ url_for('spreadsheets.upload_file') }}">As a Timeseries Spreadsheet</a>
+                            <a class="dropdown-item" href="{{ url_for('spreadsheets.upload_mpv_file') }}">As a Categorical Spreadsheet</a>
 
-                    </div>
-                </li>
+                        </div>
+                    </li>
+                -->
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('spreadsheets.upload_file') }}">Load Data</a></li>
+
                 {% if 'email' in session and session['email'] and 'visitor' in session and not session['visitor'] %}
                     <li class="nav-item"><a class="nav-link" href="{{url_for('spreadsheets.display_spreadsheets')}}">Display Spreadsheets</a></li>
                 {% endif %}
