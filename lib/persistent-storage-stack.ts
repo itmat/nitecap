@@ -4,6 +4,7 @@ import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as s3 from "@aws-cdk/aws-s3";
 
 import * as environment from "./.env.json";
+
 export class PersistentStorageStack extends cdk.Stack {
   readonly spreadsheetBucket: s3.Bucket;
   readonly emailSuppressionList: dynamodb.Table;
@@ -37,8 +38,10 @@ export class PersistentStorageStack extends cdk.Stack {
           allowedOrigins: [`https://${domainName}`, "http://localhost:5000"],
         },
       ],
-      autoDeleteObjects: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: environment.production ? false : true,
+      removalPolicy: environment.production
+        ? cdk.RemovalPolicy.RETAIN
+        : cdk.RemovalPolicy.DESTROY,
     });
 
     this.emailSuppressionList = new dynamodb.Table(
@@ -50,7 +53,9 @@ export class PersistentStorageStack extends cdk.Stack {
           type: dynamodb.AttributeType.STRING,
         },
         billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        removalPolicy: environment.production
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
       }
     );
 
