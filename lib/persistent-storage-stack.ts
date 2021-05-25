@@ -5,6 +5,8 @@ import * as s3 from "@aws-cdk/aws-s3";
 
 import * as environment from "./.env.json";
 
+type PersistentStorageStackProps = cdk.StackProps & { domainName: string };
+
 export class PersistentStorageStack extends cdk.Stack {
   readonly spreadsheetBucket: s3.Bucket;
   readonly emailSuppressionList: dynamodb.Table;
@@ -13,11 +15,13 @@ export class PersistentStorageStack extends cdk.Stack {
   constructor(
     scope: cdk.Construct,
     id: string,
-    props: cdk.StackProps & { domainName: string }
+    props: PersistentStorageStackProps
   ) {
     super(scope, id, props);
 
-    const { domainName } = props;
+    let allowedCorsOrigins = [`https://${props.domainName}`];
+    if (!environment.production)
+      allowedCorsOrigins.push("http://localhost:5000");
 
     this.spreadsheetBucket = new s3.Bucket(this, "SpreadsheetBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -35,7 +39,7 @@ export class PersistentStorageStack extends cdk.Stack {
       cors: [
         {
           allowedMethods: [s3.HttpMethods.GET],
-          allowedOrigins: [`https://${domainName}`, "http://localhost:5000"],
+          allowedOrigins: allowedCorsOrigins,
         },
       ],
       autoDeleteObjects: environment.production ? false : true,

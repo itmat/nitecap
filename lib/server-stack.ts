@@ -19,15 +19,12 @@ import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
 import * as path from "path";
 
-import * as environment from "./.env.json";
-
 import mountEbsVolume from "./utilities/mountEbsVolume";
 import getContainerInstanceId from "./utilities/getContainerInstanceId";
 import setEc2UserPassword from "./utilities/setEc2UserPassword";
 import setupLogging from "./utilities/setupLogging";
 
-const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
-const SERVER_ALARMS_EMAIL = "nitebelt@gmail.com";
+import * as environment from "./.env.json";
 
 type ServerStackProps = cdk.StackProps & {
   computationStateMachine: sfn.StateMachine;
@@ -57,8 +54,10 @@ export class ServerStack extends cdk.Stack {
     // Alarm topic
 
     let serverAlarmsTopic = new sns.Topic(this, "ServerAlarmsTopic");
-    serverAlarmsTopic.addSubscription(
-      new subscriptions.EmailSubscription(SERVER_ALARMS_EMAIL)
+    environment.email.serverAlarmsRecipients.map((recipient) =>
+      serverAlarmsTopic.addSubscription(
+        new subscriptions.EmailSubscription(recipient)
+      )
     );
 
     // Server permissions
@@ -79,7 +78,7 @@ export class ServerStack extends cdk.Stack {
         actions: ["ses:SendEmail"],
         resources: [
           `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.domainName}`,
-          ...VERIFIED_EMAIL_RECIPIENTS.map(
+          ...environment.email.verifiedRecipients.map(
             (recipient) =>
               `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
           ),
@@ -194,7 +193,7 @@ export class ServerStack extends cdk.Stack {
     );
 
     let serverInstanceId = getContainerInstanceId(this, serverCluster);
-    serverService.service.addPlacementConstraints(
+    serverTask.addPlacementConstraint(
       ecs.PlacementConstraint.memberOf(`ec2InstanceId == '${serverInstanceId}'`)
     );
 

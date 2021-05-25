@@ -10,8 +10,7 @@ import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 
 import * as path from "path";
 
-const BOUNCES_DESTINATION_EMAIL = "nitebelt@gmail.com";
-const COMPLAINTS_DESTINATION_EMAIL = "nitebelt@gmail.com";
+import * as environment from "./.env.json";
 
 function normalize(name: string) {
   return name.replace(/\./g, "_");
@@ -45,13 +44,13 @@ export class EmailStack extends cdk.Stack {
     let complaintsTopics = new sns.Topic(this, "ComplaintsTopics");
 
     let bouncesLambda = new lambda.Function(this, "BouncesLambda", {
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, "compliance/destinations")
-      ),
+      code: lambda.Code.fromAsset(path.join(__dirname, "compliance")),
       handler: "bounces.handler",
       runtime: lambda.Runtime.PYTHON_3_8,
       environment: {
-        BOUNCES_DESTINATION_EMAIL,
+        SOFT_BOUNCES_RECIPIENTS: JSON.stringify(
+          environment.email.softBouncesRecipients
+        ),
         EMAIL_SUPPRESSION_LIST_NAME: emailSuppressionList.tableName,
       },
     });
@@ -62,9 +61,10 @@ export class EmailStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["ses:SendEmail"],
-        resources: [
-          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${BOUNCES_DESTINATION_EMAIL}`,
-        ],
+        resources: environment.email.softBouncesRecipients.map(
+          (recipient) =>
+            `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
+        ),
       })
     );
 
@@ -72,8 +72,10 @@ export class EmailStack extends cdk.Stack {
       new subscriptions.LambdaSubscription(bouncesLambda)
     );
 
-    complaintsTopics.addSubscription(
-      new subscriptions.EmailSubscription(COMPLAINTS_DESTINATION_EMAIL)
+    environment.email.complaintsRecipients.map((recipient) =>
+      complaintsTopics.addSubscription(
+        new subscriptions.EmailSubscription(recipient)
+      )
     );
 
     // Configuration

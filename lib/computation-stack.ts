@@ -14,6 +14,8 @@ import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
 
 import * as path from "path";
 
+import * as environment from "./.env.json";
+
 function toPascalCase(name: string) {
   return name
     .split("_")
@@ -21,9 +23,7 @@ function toPascalCase(name: string) {
     .join("");
 }
 
-const COMPUTATION_BACKEND_ALARMS_EMAIL = "nitebelt@gmail.com";
-
-type ComputationStackProps = cdk.StackProps & { spreadsheetBucketArn: string };
+type ComputationStackProps = cdk.StackProps & { spreadsheetBucket: s3.Bucket };
 
 export class ComputationStack extends cdk.Stack {
   readonly computationStateMachine: sfn.StateMachine;
@@ -31,12 +31,6 @@ export class ComputationStack extends cdk.Stack {
 
   constructor(scope: cdk.Construct, id: string, props: ComputationStackProps) {
     super(scope, id, props);
-
-    let spreadsheetBucket = s3.Bucket.fromBucketArn(
-      this,
-      "SpreadsheetBucket",
-      props.spreadsheetBucketArn
-    );
 
     // Table of connections
 
@@ -208,7 +202,7 @@ export class ComputationStack extends cdk.Stack {
             environment: {
               CONNECTION_TABLE_NAME: connectionTable.tableName,
               NOTIFICATION_API_ENDPOINT: `https://${this.notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
-              SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
+              SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
             },
           }
         )
@@ -216,8 +210,8 @@ export class ComputationStack extends cdk.Stack {
     }
 
     for (let computationLambda of computationLambdas.values()) {
-      spreadsheetBucket.grantRead(computationLambda);
-      spreadsheetBucket.grantPut(computationLambda);
+      props.spreadsheetBucket.grantRead(computationLambda);
+      props.spreadsheetBucket.grantPut(computationLambda);
       connectionTable.grantReadData(computationLambda);
 
       computationLambda.addToRolePolicy(
@@ -284,8 +278,10 @@ export class ComputationStack extends cdk.Stack {
       "ComputationBackendAlarmsTopic"
     );
 
-    computationBackendAlarmsTopic.addSubscription(
-      new subscriptions.EmailSubscription(COMPUTATION_BACKEND_ALARMS_EMAIL)
+    environment.email.computationBackendAlarmsRecipients.map((recipient) =>
+      computationBackendAlarmsTopic.addSubscription(
+        new subscriptions.EmailSubscription(recipient)
+      )
     );
 
     allConcurrentExecutionsAlarm.addAlarmAction(

@@ -40,7 +40,7 @@ let computationStack = new ComputationStack(
   "NitecapComputationStack-dev",
   {
     env: environment,
-    spreadsheetBucketArn: persistentStorageStack.spreadsheetBucket.bucketArn,
+    spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
   }
 );
 
