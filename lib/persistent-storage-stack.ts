@@ -1,11 +1,15 @@
 import * as autoscaling from "@aws-cdk/aws-autoscaling";
+import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as s3 from "@aws-cdk/aws-s3";
 
 import * as environment from "./.env.json";
 
-type PersistentStorageStackProps = cdk.StackProps & { domainName: string };
+type PersistentStorageStackProps = cdk.StackProps & {
+  domainName: string;
+  backupPlan: backup.BackupPlan;
+};
 
 export class PersistentStorageStack extends cdk.Stack {
   readonly spreadsheetBucket: s3.Bucket;
@@ -72,5 +76,13 @@ export class PersistentStorageStack extends cdk.Stack {
         }
       ),
     };
+
+    // Backup
+
+    props.backupPlan.addSelection("EmailSuppressionListBackup", {
+      resources: [
+        backup.BackupResource.fromDynamoDbTable(this.emailSuppressionList),
+      ],
+    });
   }
 }

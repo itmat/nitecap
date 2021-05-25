@@ -3,11 +3,10 @@ import * as cr from "@aws-cdk/custom-resources";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as iam from "@aws-cdk/aws-iam";
 
-export default function getContainerInstanceId(
+export default function describeContainerInstance(
   stack: cdk.Stack,
   cluster: ecs.Cluster
 ) {
-
   let clusterContainerInstancesList = new cr.AwsCustomResource(
     stack,
     "ClusterContainerInstancesList",
@@ -17,7 +16,7 @@ export default function getContainerInstanceId(
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ["ecs:ListContainerInstances"],
-            resources: [cluster.clusterArn]
+            resources: [cluster.clusterArn],
           }),
         ],
       },
@@ -47,7 +46,7 @@ export default function getContainerInstanceId(
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ["ecs:DescribeContainerInstances"],
-            resources: [containerInstanceArn]
+            resources: [containerInstanceArn],
           }),
         ],
       },
@@ -69,5 +68,38 @@ export default function getContainerInstanceId(
       "containerInstances.0.ec2InstanceId"
     );
 
-  return containerInstanceId;
+  let ec2InstancesDescriptions = new cr.AwsCustomResource(
+    stack,
+    "Ec2InstancesDescriptions",
+    {
+      policy: {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["ec2:DescribeInstances"],
+            resources: ["*"],
+          }),
+        ],
+      },
+      onUpdate: {
+        service: "EC2",
+        action: "describeInstances",
+        parameters: {
+          InstanceIds: [containerInstanceId],
+        },
+        physicalResourceId: cr.PhysicalResourceId.of(containerInstanceArn),
+        outputPath:
+          "Reservations.0.Instances.0.BlockDeviceMappings.1.Ebs.VolumeId",
+      },
+    }
+  );
+
+  let containerInstanceVolumeId = ec2InstancesDescriptions.getResponseField(
+    "Reservations.0.Instances.0.BlockDeviceMappings.1.Ebs.VolumeId"
+  );
+
+  return {
+    instanceId: containerInstanceId,
+    volumeId: containerInstanceVolumeId,
+  };
 }

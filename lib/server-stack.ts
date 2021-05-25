@@ -2,6 +2,7 @@ import * as apigateway from "@aws-cdk/aws-apigatewayv2";
 import * as autoscaling from "@aws-cdk/aws-autoscaling";
 import * as autoscaling_hooktargets from "@aws-cdk/aws-autoscaling-hooktargets";
 import * as acm from "@aws-cdk/aws-certificatemanager";
+import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as ec2 from "@aws-cdk/aws-ec2";
@@ -20,7 +21,7 @@ import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 import * as path from "path";
 
 import mountEbsVolume from "./utilities/mountEbsVolume";
-import getContainerInstanceId from "./utilities/getContainerInstanceId";
+import describeContainerInstance from "./utilities/describeContainerInstance";
 import setEc2UserPassword from "./utilities/setEc2UserPassword";
 import setupLogging from "./utilities/setupLogging";
 
@@ -32,6 +33,7 @@ type ServerStackProps = cdk.StackProps & {
   notificationApi: apigateway.CfnApi;
   domainName: string;
   hostedZone: route53.IHostedZone;
+  backupPlan: backup.BackupPlan;
   serverBlockDevice: autoscaling.BlockDevice;
   serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
@@ -40,6 +42,11 @@ type ServerStackProps = cdk.StackProps & {
 };
 
 export class ServerStack extends cdk.Stack {
+  readonly containerInstance: {
+    instanceId: string;
+    volumeId: string;
+  };
+
   constructor(scope: cdk.Construct, id: string, props: ServerStackProps) {
     super(scope, id, props);
 
@@ -176,6 +183,22 @@ export class ServerStack extends cdk.Stack {
 
     setEc2UserPassword(serverCluster, serverUserPassword);
 
+    this.containerInstance = describeContainerInstance(this, serverCluster);
+
+    serverTask.addPlacementConstraint(
+      ecs.PlacementConstraint.memberOf(
+        `ec2InstanceId == '${this.containerInstance.instanceId}'`
+      )
+    );
+
+    props.backupPlan.addSelection("ServerBlockStorageBackup", {
+      resources: [
+        backup.BackupResource.fromArn(
+          `arn:${this.partition}:ec2:${this.region}:${this.account}:volume/${this.containerInstance.volumeId}`
+        ),
+      ],
+    });
+
     let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
@@ -190,11 +213,6 @@ export class ServerStack extends cdk.Stack {
         redirectHTTP: true,
         openListener: environment.production ? true : false,
       }
-    );
-
-    let serverInstanceId = getContainerInstanceId(this, serverCluster);
-    serverTask.addPlacementConstraint(
-      ecs.PlacementConstraint.memberOf(`ec2InstanceId == '${serverInstanceId}'`)
     );
 
     if (!environment.production) {

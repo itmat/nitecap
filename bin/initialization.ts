@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
+import { BackupStack } from "../lib/backup-stack";
 import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
 import { EmailStack } from "../lib/email-stack";
@@ -10,11 +11,12 @@ import { ServerStack } from "../lib/server-stack";
 const app = new cdk.App();
 
 let domainStack = new DomainStack(app, "NitecapDomainStack-dev", {});
+let backupStack = new BackupStack(app, "NitecapBackupStack-dev", {});
 
 let persistentStorageStack = new PersistentStorageStack(
   app,
   "NitecapPersistentStorageStack-dev",
-  { domainName: domainStack.domainName }
+  { domainName: domainStack.domainName, backupPlan: backupStack.backupPlan }
 );
 
 let emailStack = new EmailStack(app, "NitecapEmailStack-dev", {
@@ -36,6 +38,7 @@ let serverStack = new ServerStack(app, "NitecapServerStack-dev", {
   notificationApi: computationStack.notificationApi,
   domainName: domainStack.domainName,
   hostedZone: domainStack.hostedZone,
+  backupPlan: backupStack.backupPlan,
   emailConfigurationSetName: emailStack.configurationSetName,
   serverSecretKeyName: "NitebeltServerSecretKey",
   serverCertificate: domainStack.certificate,
