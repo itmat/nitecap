@@ -31,30 +31,22 @@ const SERVER_ALARMS_EMAIL = "nitebelt@gmail.com";
 
 type ServerStackProps = cdk.StackProps & {
   computationStateMachine: sfn.StateMachine;
-  emailSuppressionListArn: string;
+  emailSuppressionList: dynamodb.Table;
   notificationApi: apigateway.CfnApi;
   domainName: string;
   hostedZone: route53.IHostedZone;
+  serverBlockDevice: autoscaling.BlockDevice;
   serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
   serverSecretKeyName: string;
-  spreadsheetBucketArn: string;
+  spreadsheetBucket: s3.Bucket;
 };
 
 export class ServerStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: ServerStackProps) {
     super(scope, id, props);
 
-    const {
-      computationStateMachine,
-      emailSuppressionListArn,
-      notificationApi,
-      spreadsheetBucketArn,
-      domainName,
-      hostedZone,
-      serverCertificate,
-      emailConfigurationSetName,
-    } = props;
+    // Secrets
 
     let serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
     let serverUserPassword = new secretsmanager.Secret(
@@ -62,31 +54,12 @@ export class ServerStack extends cdk.Stack {
       "ServerUserPassword"
     );
 
-    let spreadsheetBucket = s3.Bucket.fromBucketArn(
-      this,
-      "SpreadsheetBucket",
-      spreadsheetBucketArn
-    );
-
-    let emailSuppressionList = dynamodb.Table.fromTableArn(
-      this,
-      "EmailSuppressionList",
-      emailSuppressionListArn
-    );
+    // Alarm topic
 
     let serverAlarmsTopic = new sns.Topic(this, "ServerAlarmsTopic");
-
     serverAlarmsTopic.addSubscription(
       new subscriptions.EmailSubscription(SERVER_ALARMS_EMAIL)
     );
-
-    // Server persistent storage
-
-    const serverEbsVolume = {
-      deviceName: "/dev/xvdb",
-      mountPoint: "/mnt/storage",
-      snapshotId: "snap-011e8fd69817cf783",
-    };
 
     // Server permissions
 
@@ -94,10 +67,10 @@ export class ServerStack extends cdk.Stack {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
 
-    spreadsheetBucket.grantReadWrite(serverRole);
-    computationStateMachine.grantRead(serverRole);
-    computationStateMachine.grantStartExecution(serverRole);
-    emailSuppressionList.grantReadData(serverRole);
+    props.spreadsheetBucket.grantReadWrite(serverRole);
+    props.computationStateMachine.grantRead(serverRole);
+    props.computationStateMachine.grantStartExecution(serverRole);
+    props.emailSuppressionList.grantReadData(serverRole);
     serverSecretKey.grantRead(serverRole);
 
     serverRole.addToPolicy(
@@ -105,7 +78,7 @@ export class ServerStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ["ses:SendEmail"],
         resources: [
-          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${domainName}`,
+          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.domainName}`,
           ...VERIFIED_EMAIL_RECIPIENTS.map(
             (recipient) =>
               `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
@@ -130,7 +103,7 @@ export class ServerStack extends cdk.Stack {
         {
           name: "ServerVolume",
           host: {
-            sourcePath: serverEbsVolume.mountPoint,
+            sourcePath: environment.server.storage.deviceMountPoint,
           },
         },
       ],
@@ -142,16 +115,16 @@ export class ServerStack extends cdk.Stack {
       ),
       memoryLimitMiB: 1280,
       environment: {
-        ENVIRONMENT: "PROD",
-        LOG_FILE: "/nitecap_web/log",
+        ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
         SERVER_SECRET_KEY_ARN: serverSecretKey.secretArn,
-        SPREADSHEET_BUCKET_NAME: spreadsheetBucket.bucketName,
-        COMPUTATION_STATE_MACHINE_ARN: computationStateMachine.stateMachineArn,
-        NOTIFICATION_API_ENDPOINT: `wss://${notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
-        EMAIL_SENDER: `no-reply@${domainName}`,
-        EMAIL_CONFIGURATION_SET_NAME: emailConfigurationSetName,
-        EMAIL_SUPPRESSION_LIST_NAME: emailSuppressionList.tableName,
+        SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
+        COMPUTATION_STATE_MACHINE_ARN:
+          props.computationStateMachine.stateMachineArn,
+        NOTIFICATION_API_ENDPOINT: `wss://${props.notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
+        EMAIL_SENDER: `no-reply@${props.domainName}`,
+        EMAIL_CONFIGURATION_SET_NAME: props.emailConfigurationSetName,
+        EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
       },
       portMappings: [
         {
@@ -163,7 +136,7 @@ export class ServerStack extends cdk.Stack {
 
     serverContainer.addMountPoints({
       sourceVolume: "ServerVolume",
-      containerPath: "/nitecap_web",
+      containerPath: environment.server.storage.containerMountPoint,
       readOnly: false,
     });
 
@@ -191,24 +164,14 @@ export class ServerStack extends cdk.Stack {
           ec2.InstanceClass.T3,
           ec2.InstanceSize.MEDIUM
         ),
-        blockDevices: [
-          {
-            deviceName: serverEbsVolume.deviceName,
-            volume: autoscaling.BlockDeviceVolume.ebsFromSnapshot(
-              serverEbsVolume.snapshotId,
-              {
-                deleteOnTermination: true,
-              }
-            ),
-          },
-        ],
+        blockDevices: [props.serverBlockDevice],
       },
       containerInsights: true,
     });
 
     mountEbsVolume(
-      serverEbsVolume.deviceName,
-      serverEbsVolume.mountPoint,
+      props.serverBlockDevice.deviceName,
+      environment.server.storage.deviceMountPoint,
       serverCluster
     );
 
@@ -222,9 +185,9 @@ export class ServerStack extends cdk.Stack {
         memoryLimitMiB: 1792,
         desiredCount: 1,
         taskDefinition: serverTask,
-        domainName,
-        domainZone: hostedZone,
-        certificate: serverCertificate,
+        domainName: props.domainName,
+        domainZone: props.hostedZone,
+        certificate: props.serverCertificate,
         redirectHTTP: true,
         openListener: environment.production ? true : false,
       }
@@ -266,10 +229,10 @@ export class ServerStack extends cdk.Stack {
     );
 
     let outputs = {
-      SpreadsheetBucketName: spreadsheetBucket.bucketName,
-      ComputationStateMachineArn: computationStateMachine.stateMachineArn,
-      NotificationApiEndpoint: `${notificationApi.attrApiEndpoint}/default`,
-      EmailSuppressionListName: emailSuppressionList.tableName,
+      SpreadsheetBucketName: props.spreadsheetBucket.bucketName,
+      ComputationStateMachineArn: props.computationStateMachine.stateMachineArn,
+      NotificationApiEndpoint: `${props.notificationApi.attrApiEndpoint}/default`,
+      EmailSuppressionListName: props.emailSuppressionList.tableName,
       ServerSecretKeyArn: serverSecretKey.secretArn,
     };
 

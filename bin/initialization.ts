@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import "source-map-support/register";
+import * as autoscaling from "@aws-cdk/aws-autoscaling";
 import * as cdk from "@aws-cdk/core";
 import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
@@ -46,12 +47,13 @@ let computationStack = new ComputationStack(
 let serverStack = new ServerStack(app, "NitecapServerStack-dev", {
   env: environment,
   computationStateMachine: computationStack.computationStateMachine,
-  emailSuppressionListArn: persistentStorageStack.emailSuppressionList.tableArn,
+  emailSuppressionList: persistentStorageStack.emailSuppressionList,
+  serverBlockDevice: persistentStorageStack.serverBlockDevice,
   notificationApi: computationStack.notificationApi,
   domainName: domainStack.domainName,
   hostedZone: domainStack.hostedZone,
   emailConfigurationSetName: emailStack.configurationSetName,
   serverSecretKeyName: "NitebeltServerSecretKey",
   serverCertificate: domainStack.certificate,
-  spreadsheetBucketArn: persistentStorageStack.spreadsheetBucket.bucketArn,
+  spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 });
