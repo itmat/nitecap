@@ -4,6 +4,8 @@ import * as logs from "@aws-cdk/aws-logs";
 
 import * as path from "path";
 
+import * as environment from "../.env.json";
+
 export default function setupLogging(
   stack: cdk.Stack,
   task: ecs.TaskDefinition
@@ -37,7 +39,7 @@ export default function setupLogging(
 
   loggingContainer.addMountPoints({
     sourceVolume: "ServerVolume",
-    containerPath: "/nitecap_web",
-    readOnly: false,
+    containerPath: environment.server.storage.containerMountPoint,
+    readOnly: true,
   });
 }
