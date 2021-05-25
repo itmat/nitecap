@@ -1,5 +1,6 @@
 import * as apigateway from "@aws-cdk/aws-apigatewayv2";
 import * as autoscaling from "@aws-cdk/aws-autoscaling";
+import * as autoscaling_hooktargets from "@aws-cdk/aws-autoscaling-hooktargets";
 import * as acm from "@aws-cdk/aws-certificatemanager";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
@@ -11,6 +12,8 @@ import * as route53 from "@aws-cdk/aws-route53";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
+import * as sns from "@aws-cdk/aws-sns";
+import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 
 import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
@@ -24,6 +27,7 @@ import setEc2UserPassword from "./utilities/setEc2UserPassword";
 import setupLogging from "./utilities/setupLogging";
 
 const VERIFIED_EMAIL_RECIPIENTS = ["nitebelt@gmail.com"];
+const SERVER_ALARMS_EMAIL = "nitebelt@gmail.com";
 
 type ServerStackProps = cdk.StackProps & {
   computationStateMachine: sfn.StateMachine;
@@ -68,6 +72,12 @@ export class ServerStack extends cdk.Stack {
       this,
       "EmailSuppressionList",
       emailSuppressionListArn
+    );
+
+    let serverAlarmsTopic = new sns.Topic(this, "ServerAlarmsTopic");
+
+    serverAlarmsTopic.addSubscription(
+      new subscriptions.EmailSubscription(SERVER_ALARMS_EMAIL)
     );
 
     // Server persistent storage
@@ -241,6 +251,19 @@ export class ServerStack extends cdk.Stack {
 
       serverService.loadBalancer.addSecurityGroup(serverSecurityGroup);
     }
+
+    // Alarms
+
+    serverCluster.autoscalingGroup?.addLifecycleHook(
+      "InstanceTerminationLifecycleHook",
+      {
+        lifecycleTransition:
+          autoscaling.LifecycleTransition.INSTANCE_TERMINATING,
+        notificationTarget: new autoscaling_hooktargets.TopicHook(
+          serverAlarmsTopic
+        ),
+      }
+    );
 
     let outputs = {
       SpreadsheetBucketName: spreadsheetBucket.bucketName,

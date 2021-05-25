@@ -1,10 +1,13 @@
 import * as apigateway from "@aws-cdk/aws-apigatewayv2";
 import * as cdk from "@aws-cdk/core";
+import * as cw_actions from "@aws-cdk/aws-cloudwatch-actions";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
+import * as sns from "@aws-cdk/aws-sns";
+import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 
 import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
@@ -17,6 +20,8 @@ function toPascalCase(name: string) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join("");
 }
+
+const COMPUTATION_BACKEND_ALARMS_EMAIL = "nitebelt@gmail.com";
 
 type ComputationStackProps = cdk.StackProps & { spreadsheetBucketArn: string };
 
@@ -257,6 +262,34 @@ export class ComputationStack extends cdk.Stack {
         timeout: cdk.Duration.hours(2),
         tracingEnabled: true,
       }
+    );
+
+    // Alarms
+
+    let allConcurrentExecutionsMetric =
+      lambda.Function.metricAllConcurrentExecutions({
+        period: cdk.Duration.minutes(5),
+        statistic: "max",
+      });
+
+    let allConcurrentExecutionsAlarm =
+      allConcurrentExecutionsMetric.createAlarm(
+        this,
+        "AllConcurrentExecutionsAlarm",
+        { evaluationPeriods: 1, threshold: 100 }
+      );
+
+    let computationBackendAlarmsTopic = new sns.Topic(
+      this,
+      "ComputationBackendAlarmsTopic"
+    );
+
+    computationBackendAlarmsTopic.addSubscription(
+      new subscriptions.EmailSubscription(COMPUTATION_BACKEND_ALARMS_EMAIL)
+    );
+
+    allConcurrentExecutionsAlarm.addAlarmAction(
+      new cw_actions.SnsAction(computationBackendAlarmsTopic)
     );
   }
 }
