@@ -10,20 +10,23 @@ try:
     import pyximport
     from pathlib import Path
     pyximport.install(build_dir=Path('./nitecap'))
-    from .total_delta import sum_abs_differences as _sum_abs_differences
-    def sum_abs_differences(data, timepoints, timepoints_per_cycle, out, contains_nans=True):
+    from . import total_delta as total_delta_pyx
+    def sum_abs_differences(data, timepoints, timepoint_permutations, timepoints_per_cycle, out, contains_nans=True):
         # C implementation always handles NaNs correctly by zeroing them out
         # So we discard the contains_nans param
         data = data.astype('double')
-        timepoints = timepoints.astype('int32') % timepoints_per_cycle
-        _sum_abs_differences(data, timepoints, timepoints_per_cycle, out)
+        timepoints = timepoints.astype('int32')
+        timepoint_permutations = timepoint_permutations.astype('int32')
+        total_delta_pyx.sum_abs_differences(data, timepoints, timepoint_permutations, timepoints_per_cycle, out)
 except ImportError as e:
     print("Encountered error while attempting to import cython module.")
     print("Defaulting to slower python-based implementation.")
     print(e)
-    def sum_abs_differences(data, timepoints, timepoints_per_cycle, out, contains_nans=True):
+    def sum_abs_differences(data, timepoints_, timepoint_permutations, timepoints_per_cycle, out, contains_nans=True):
         ''' python implementation of sum_abs_differences '''
         N_FEATURES, N_SAMPLES = data.shape
+
+        timepoints = timepoint_permutations[:, timepoints_]
 
         out[:,:] = 0
         for i, permuted_timepoints in enumerate(timepoints):
@@ -35,10 +38,10 @@ except ImportError as e:
                 # is now over all pairs of values according to numpy broadcasting rules
                 data1 = data[:, indexes_for_timepoint[timepoint]].reshape((N_FEATURES, -1, 1))
                 data2 = data[:, indexes_for_timepoint[next_timepoint]].reshape((N_FEATURES, 1, -1))
-                abs_diffs = numpy.abs(data1 - data2).sum(axis=(1,2))
+                abs_diffs = numpy.abs(data1 - data2)
                 if contains_nans:
                     util.zero_nans(abs_diffs)
-                out[i, :] += abs_diffs
+                out[i, :] += abs_diffs.sum(axis=(1,2))
 
 # Number of permutations to take for permuted test statistics
 N_PERMS = 100
@@ -145,11 +148,11 @@ def FDR(td, perm_td, single_tailed=True):
     unsort_order = numpy.argsort(sort_order)
     return q[unsort_order], ps
 
-def total_delta(data, timepoints, timepoints_per_cycle, contains_nans = "check", repeated_measures=False):
-    # Data without permutations is expected to be 3 dimensional (timepoints, reps, genes)
+def total_delta(data, timepoints, timepoint_permutations, timepoints_per_cycle, contains_nans = "check", repeated_measures=False):
+    # Data without permutations is expected to be 3 dimensional (features, samples)
     # so add a dimension to it represent that it is "one permutation" so the code is consistent
-    if timepoints.ndim == 1:
-        timepoints = timepoints.reshape( (1, *timepoints.shape) )
+    if timepoint_permutations.ndim == 1:
+        timepoint_permutations = timepoint_permutations.reshape( (1, *timepoint_permutations.shape) )
         no_permutations = True
     else:
         no_permutations = False
@@ -161,27 +164,30 @@ def total_delta(data, timepoints, timepoints_per_cycle, contains_nans = "check",
     timepoints = timepoints.astype('int32')
 
     N_FEATURES, N_SAMPLES = data.shape
-    N_PERMS, N_SAMPLES = timepoints.shape
+    assert timepoints.shape[0] == data.shape[1]
+    N_PERMS = timepoint_permutations.shape[0]
 
     if repeated_measures == False:
         # Compute the usual (non-repeated measures statistic)
         ### COMPUTE IN C:
         total_delta = numpy.empty((N_PERMS, N_FEATURES), dtype="double")
-        sum_abs_differences(data, timepoints, timepoints_per_cycle, total_delta, contains_nans)
+        sum_abs_differences(data, timepoints, timepoint_permutations, timepoints_per_cycle, total_delta, contains_nans)
         if contains_nans:
             # total_delta above counts a pair with a NaN as 0 difference
             # Need to renormalize by the number of pairings so that all genes are comparable
             # even if there are different numbers of NaNs in each
 
-            # First, compute the number of pairs in the sum assuming nothing in none
-            rep_counts = numpy.array([(timepoints == i).sum(axis=1) for i in range(timepoints_per_cycle)])
+            permuted_timepoints = timepoint_permutations[:,timepoints] % timepoints_per_cycle
+
+            # First, compute the number of pairs in the sum assuming nothing is null
+            rep_counts = numpy.array([(permuted_timepoints == i).sum(axis=1) for i in range(timepoints_per_cycle)])
             rep_counts_shifted = numpy.concatenate([rep_counts[[-1],:], rep_counts[:-1,:]])
             possible_pairs = numpy.sum( rep_counts * rep_counts_shifted, axis=0).reshape((-1,1))
 
             # Compute the number of non-nans in each timepoint for each features
             # NOTE: we don't care about *which* permutation of timepoints we use for this
-            # so just choose timepoints[0]
-            indexes_for_timepoints = [[i for i,t in enumerate(timepoints[0]) if (t % timepoints_per_cycle) == j]
+            # so just choose permuted_timepoints[0]
+            indexes_for_timepoints = [[i for i,t in enumerate(timepoints) if (t % timepoints_per_cycle) == j]
                                         for j in range(timepoints_per_cycle)]
             non_nan_per_timepoint =  numpy.array([numpy.sum(~numpy.isnan(data[:, indexes]), axis=1)
                                                     for indexes in indexes_for_timepoints])
@@ -271,7 +277,8 @@ def nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS
 
     contains_nans = numpy.isnan(data).any()
 
-    td = total_delta(data, timepoints, timepoints_per_cycle, contains_nans, repeated_measures=repeated_measures)
+    no_permutations = numpy.arange(len(timepoints)) % timepoints_per_cycle
+    td = total_delta(data, timepoints, no_permutations, timepoints_per_cycle, contains_nans, repeated_measures=repeated_measures)
 
     # If the total number of permutations possible is less than N_PERMS
     # then we just run all possible distinct permutations, for a deterministic p-value
@@ -298,21 +305,21 @@ def nitecap_statistics(data, timepoints, timepoints_per_cycle, N_PERMS = N_PERMS
             break
 
         # Number of permutations to do this time - usually is N_PERMS_PER_RUN
-        num_perms = min(N_PERMS - num_perms_done, N_PERMS_PER_RUN)
+        if N_PERMS_PER_RUN == None:
+            num_perms = N_PERMS
+        else:
+            num_perms = min(N_PERMS - num_perms_done, N_PERMS_PER_RUN)
 
         if permutations is not None:
             these_permutations = permutations[num_perms_done:num_perms_done+num_perms]
         else:
             # Pick random permutations
             these_permutations = numpy.array(
-                [numpy.random.choice(N_TIMEPOINTS, size=N_TIMEPOINTS, replace=False)
+                [numpy.random.choice(N_TIMEPOINTS, size=N_TIMEPOINTS, replace=False) % timepoints_per_cycle
                         for i in range(num_perms)])
 
-        # Prepare the permuted data
-        permuted_timepoints = numpy.array([permutation[timepoints] for permutation in these_permutations])
-
         # Actually compute the statistics
-        perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(data, permuted_timepoints, timepoints_per_cycle, contains_nans, repeated_measures=repeated_measures)
+        perm_td[num_perms_done:num_perms_done+num_perms,:] = total_delta(data, timepoints, these_permutations, timepoints_per_cycle, contains_nans, repeated_measures=repeated_measures)
 
         num_perms_done += num_perms
 

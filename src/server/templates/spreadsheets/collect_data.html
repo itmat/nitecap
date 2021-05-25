@@ -82,7 +82,6 @@
 
         // Form Submitted
         nitecap_form.on('submit', function (e) {
-            e.preventDefault();
 
             // Build the parameter list for the AJAX call.
             let spreadsheet_id = {{ spreadsheet.id }};
@@ -99,44 +98,7 @@
             if($.isEmptyObject(id_columns)) {
                 nitecap_error_message.text("You must select at least one ID column.");
                 nitecap_error.modal();
-            }
-            else {
-                // Otherwise check the id combined id columns for duplicates
-                $.ajax({
-                    url: "{{ url_for('spreadsheets.check_id_uniqueness') }}",
-                    data: JSON.stringify({'spreadsheet_id': spreadsheet_id, 'id_columns': id_columns}),
-                    dataType: "json",
-                    contentType: "application/json",
-                    type: 'POST',
-                    // Notify the user of any non-unique ids and then submit the form once the user acknowledges.
-                    success: function (response) {
-                        let non_unique_ids = response['non-unique_ids'];
-                        // No longer giving this alert since for most users, non-unique ids are not a problem
-                        //if (non_unique_ids && non_unique_ids.length > 0) {
-                        //    let warning = "The IDs listed here are non-unique and as such, will be excluded from any comparison studies: ";
-                        //    if (non_unique_ids.length > 5) {
-                        //        warning += non_unique_ids.slice(0, 5).join(', ');
-                        //        warning += ", ... and " + (non_unique_ids.length - 5) + " other";
-                        //        warning += non_unique_ids.length - 5 > 1 ? "s." : "."
-                        //    } else {
-                        //        warning += non_unique_ids.join(',');
-                        //    }
-                        //    alert(warning);
-                        //}
-
-                        // Only when form is about to be submitted should the submit button is disabled
-                        submit_button.prop('disabled', true);
-                        submit_button.html("<span class='spinner-border spinner-border-sm text-light mr-2' " +
-                                           "role='status' aria-hidden='true'></span>Loading...");
-                        e.currentTarget.submit();
-                    },
-                    // If an error is returned notify the user.
-                    error: function (request) {
-                        error_message = $.parseJSON(request.responseText).error;
-                        nitecap_error_message.text(error_message);
-                        nitecap_error.modal();
-                    }
-                });
+                e.preventDefault();
             }
         });
 

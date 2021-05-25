@@ -21,7 +21,7 @@ from itsdangerous import JSONWebSignatureSerializer as Serializer
 import constants
 import nitecap
 from exceptions import NitecapException
-from models.spreadsheets.spreadsheet import Spreadsheet
+from models.spreadsheets.spreadsheet import Spreadsheet, NITECAP_DATA_COLUMNS
 from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
     ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
 from models.users.user import User
@@ -119,7 +119,6 @@ def upload_file():
         # We throw the directory containing the file away and report the error.
         try:
             spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
-                                      days=None,
                                       timepoints=None,
                                       num_timepoints=None,
                                       repeated_measures=False,
@@ -170,9 +169,6 @@ def collect_data(spreadsheet_id, user=None):
     if not spreadsheet:
         return access_not_permitted(collect_data.__name__, user, spreadsheet_id)
 
-    # Set up the dataframe
-    spreadsheet.set_df()
-
     # Spreadsheet data form submitted.
     if request.method == 'POST':
         descriptive_name, num_timepoints, timepoints, repeated_measures, column_labels, errors = \
@@ -184,6 +180,9 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.num_timepoints = int(num_timepoints)
         spreadsheet.timepoints = int(timepoints)
         spreadsheet.repeated_measures = repeated_measures
+
+        # Load the DF to do the initial assessment
+        spreadsheet.init_on_load()
 
         # If label assignments are improper, the user is returned to the column label form and invited to edit.
         errors = spreadsheet.validate(column_labels)
@@ -202,16 +201,14 @@ def collect_data(spreadsheet_id, user=None):
 
 
         # Trigger recomputations as necessary
-        spreadsheet.set_ids_unique()
-        spreadsheet.init_on_load()
         spreadsheet.increment_edit_version()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
         store_spreadsheet_to_s3(spreadsheet)
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
 
+
     spreadsheet.init_on_load()
-    print(f"Spreadsheet column labels: {spreadsheet.column_labels}")
     return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet)
 
 
@@ -401,8 +398,9 @@ def get_spreadsheets(user=None):
                      labels=combined_index.to_list(),
                      descriptive_name=spreadsheet.descriptive_name,
                      timepoints_per_cycle=spreadsheet.timepoints,
-                     num_timepoints=spreadsheet.num_timepoints or (spreadsheet.timepoints * spreadsheet.days), #TODO: this is a temporary work-around until 'days' is phased out
+                     num_timepoints=spreadsheet.num_timepoints,
                      spreadsheet_id=spreadsheet.id,
+                     view_id=spreadsheet.edit_version, #TODO: make edit_version/view_id names agree eventually
                      spreadsheet_note=spreadsheet.note,
                      visitor=user.is_visitor(),
                      id_col_labels=list(spreadsheet.get_id_columns(label=True)),
@@ -858,44 +856,6 @@ def run_pca(user=None):
                 'explained_variance': pca.explained_variance_ratio_.tolist()
             })
 
-@spreadsheet_blueprint.route('/check_id_uniqueness', methods=['POST'])
-@requires_account
-def check_id_uniqueness(user=None):
-    """
-    AJAX endpoint - accepts a json object ( id_columns: id_columns, spreadsheet_id: spreadsheet_id } and determines
-    whether the id columns selected by the user, in combination, form a unique identifier.  Non unique ids will be left
-    out of comparisons.  The spreadsheet id is checked to be sure that it represents a spreadsheet owned by this user
-    account.  A successful save results in a list of non unique ids returned, if any.  Otherwise an error is returned
-    with the appropriate status code.
-    :param user:  Returned by the decorator.   Account bearing user is required.
-    :return: { non-unique_ids: non unique ids } or { error: error } and a 400 or 404 code.
-    """
-
-    errors = []
-
-    json_data = request.get_json()
-    spreadsheet_id = json_data.get('spreadsheet_id', None)
-    id_columns = json_data.get('id_columns', None)
-
-    if not id_columns:
-        errors.append("No id columns were selected. Please select at least one id column.")
-        return jsonify({'error': errors}), 400
-    if not spreadsheet_id:
-        return jsonify({'error': MISSING_SPREADSHEET_MESSAGE}), 400
-    else:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-    if not spreadsheet:
-        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
-                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
-        return jsonify({'error': SPREADSHEET_NOT_FOUND_MESSAGE}), 404
-
-    # Populate
-    spreadsheet.set_df()
-
-    non_unique_ids = spreadsheet.find_replicate_ids(id_columns)
-    current_app.logger.debug(f"Non-unique ids {non_unique_ids}")
-    return jsonify({'non-unique_ids': non_unique_ids})
-
 @spreadsheet_blueprint.route('/get_valid_comparisons', methods=['POST'])
 @ajax_requires_account
 def get_valid_comparisons(user=None):
@@ -928,7 +888,7 @@ def get_valid_comparisons(user=None):
         # NOTE: doesn't check for compatibility of, say, ids
         if (other_spreadsheet.timepoints == spreadsheet.timepoints and
             other_spreadsheet.repeated_measures == spreadsheet.repeated_measures and
-            other_spreadsheet.days == spreadsheet.days):
+            other_spreadsheet.num_timepoints == spreadsheet.num_timepoints):
 
             valid_comparisons.append({
                 "id": other_spreadsheet.id,
@@ -936,39 +896,6 @@ def get_valid_comparisons(user=None):
                 "original_filename": other_spreadsheet.original_filename,
             })
     return jsonify(valid_comparisons)
-
-
-
-@spreadsheet_blueprint.route('/save_cutoff', methods=['POST'])
-@ajax_requires_account
-def save_cutoff(user=None):
-    """
-    AJAX endpoint - accepts a json object ( spreadsheet_id: spreadsheet_id, cutoff: cutoff value } and saves the
-    significance cutoff value to the spreadsheet given by that spreadsheet id.  The spreadsheet id is checked to be
-    sure that it represents a spreadsheet owned by this user account.  A successful save results in no content
-    returned.  Otherwise an error is returned with the appropriate status code.
-    :param user:  Returned by the decorator.  Account bearing user is required.
-    :return: no content (204) or { error: error } and a 400 or 404 code.
-    """
-
-    json_data = request.get_json()
-    spreadsheet_id = json_data.get('spreadsheet_id', None)
-    cutoff = json_data.get('cutoff', 0)
-
-    # Spreadsheet id is required.
-    if not spreadsheet_id:
-        return jsonify({'error': [MISSING_SPREADSHEET_MESSAGE]}), 400
-
-    spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-
-    if not spreadsheet:
-        current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
-                                .substitute(user_id=user.id, endpoint=request.path, spreadsheet_id=spreadsheet_id))
-        return jsonify({'error': SPREADSHEET_NOT_FOUND_MESSAGE}), 404
-
-    spreadsheet.breakpoint = cutoff
-    spreadsheet.save_to_db()
-    return '', 204
 
 
 @spreadsheet_blueprint.route('/save_note', methods=['POST'])
@@ -1169,7 +1096,6 @@ def upload_mpv_file():
         # We throw the directory containing the file away and report the error.
         try:
             spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
-                                      days=None,
                                       timepoints=None,
                                       num_timepoints=None,
                                       repeated_measures=False,
@@ -1228,7 +1154,6 @@ def collect_mpv_data(spreadsheet_id, user=None):
             return render_template('spreadsheets/collect_mpv_data.html', errors=errors, labels=categorical_data_labels,
                                    spreadsheet=spreadsheet)
 
-        spreadsheet.set_ids_unique()
         spreadsheet.save_to_db()
         spreadsheet.init_on_load()
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))

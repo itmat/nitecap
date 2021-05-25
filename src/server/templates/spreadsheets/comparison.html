@@ -8,7 +8,7 @@
 
 <script>
 
-    VERSION = 31;
+    VERSION = 35;
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -1195,25 +1195,27 @@
                             t.push(period*i/sampling_density);
                         }
 
-                        let x0 = spreadsheet.cosinor_x0[row_index];
-                        let x1 = spreadsheet.cosinor_x1[row_index];
-                        let x2 = spreadsheet.cosinor_x2[row_index];
+                        if (spreadsheet.cosinor_x0 !== null) {
+                            let x0 = spreadsheet.cosinor_x0[row_index];
+                            let x1 = spreadsheet.cosinor_x1[row_index];
+                            let x2 = spreadsheet.cosinor_x2[row_index];
 
-                        let y = t.map(t => x0 + x1*Math.cos(2*Math.PI*t/24) + x2*Math.sin(2*Math.PI*t/24));
+                            let y = t.map(t => x0 + x1*Math.cos(2*Math.PI*t/24) + x2*Math.sin(2*Math.PI*t/24));
 
-                        // rescale to match the other plots
-                        for (let i = 0; i < t.length; i++) {
-                            t[i] *= spreadsheet.timepoints_per_cycle/24;
+                            // rescale to match the other plots
+                            for (let i = 0; i < t.length; i++) {
+                                t[i] *= spreadsheet.timepoints_per_cycle/24;
+                            }
+
+                            traces.push({
+                                x: t, y,
+                                mode: "lines",
+                                type: "scatter",
+                                line: {color: spreadsheet_color},
+                                opacity: 0.2,
+                                name: "Cosinor fit",
+                            });
                         }
-
-                        traces.push({
-                            x: t, y,
-                            mode: "lines",
-                            type: "scatter",
-                            line: {color: spreadsheet_color},
-                            opacity: 0.2,
-                            name: "Cosinor fit",
-                        });
                     }
 
                     traces.push(trace);
@@ -1504,9 +1506,9 @@
                 if(analysis.algorithm == "cosinor") {
                     spreadsheet.cosinor_p = Object.freeze(analysis.p);
                     spreadsheet.cosinor_q = Object.freeze(analysis.q);
-                    spreadsheet.cosinor_x0 = Object.freeze(analysis.x[0]);
-                    spreadsheet.cosinor_x1 = Object.freeze(analysis.x[1]);
-                    spreadsheet.cosinor_x2 = Object.freeze(analysis.x[2]);
+                    spreadsheet.cosinor_x0 = Object.freeze(analysis.x.map( row => row[0]));
+                    spreadsheet.cosinor_x1 = Object.freeze(analysis.x.map( row => row[1]));
+                    spreadsheet.cosinor_x2 = Object.freeze(analysis.x.map( row => row[2]));
                 } else if(analysis.algorithm == "ls") {
                     spreadsheet.ls_p = Object.freeze(analysis.p);
                     spreadsheet.ls_q = Object.freeze(analysis.q);
@@ -1526,11 +1528,12 @@
 
             runAnalysis: async function (spreadsheet, algorithm) {
                 let spreadsheetId = spreadsheet.spreadsheet_id;
+                let viewId = spreadsheet.view_id;
 
                 let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": share_token },
-                    body: JSON.stringify({ algorithm, spreadsheetId, version: VERSION, share_token: share_token}),
+                    body: JSON.stringify({ algorithm, spreadsheetId, viewId, version: VERSION, share_token: share_token}),
                 });
 
                 if (!response.ok) {
@@ -1579,6 +1582,8 @@
                 let status = await status_result.text();
                 if (status === "COMPLETED") {
                     await this.fetchAnalysisResults(analysisId);
+                } else if (status == "FAILED") {
+                    this.analyses[analysisId].status = status;
                 }
             },
 
