@@ -4,10 +4,11 @@ import * as logs from "@aws-cdk/aws-logs";
 
 import * as path from "path";
 
-import * as environment from "../.env.json";
+import { Environment } from "../environment";
 
 export default function setupLogging(
   stack: cdk.Stack,
+  environment: Environment,
   task: ecs.TaskDefinition
 ) {
   let errorLogGroup = new logs.LogGroup(stack, "ServerErrorLogGroup", {

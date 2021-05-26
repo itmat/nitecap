@@ -10,26 +10,26 @@ import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 
 import * as path from "path";
 
-import * as environment from "./.env.json";
+import { Environment } from "./environment";
 
 function normalize(name: string) {
   return name.replace(/\./g, "_");
 }
 
+type EmailStackProps = cdk.StackProps & {
+  environment: Environment;
+  domainName: string;
+  hostedZone: route53.IHostedZone;
+  emailSuppressionListArn: string;
+};
+
 export class EmailStack extends cdk.Stack {
   readonly configurationSetName: string;
 
-  constructor(
-    scope: cdk.Construct,
-    id: string,
-    props: cdk.StackProps & {
-      domainName: string;
-      hostedZone: route53.IHostedZone;
-      emailSuppressionListArn: string;
-    }
-  ) {
+  constructor(scope: cdk.Construct, id: string, props: EmailStackProps) {
     super(scope, id, props);
 
+    const environment = props.environment;
     const { domainName, hostedZone, emailSuppressionListArn } = props;
 
     // Compliance

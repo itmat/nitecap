@@ -25,9 +25,10 @@ import describeContainerInstance from "./utilities/describeContainerInstance";
 import setEc2UserPassword from "./utilities/setEc2UserPassword";
 import setupLogging from "./utilities/setupLogging";
 
-import * as environment from "./.env.json";
+import { Environment } from "./environment";
 
 type ServerStackProps = cdk.StackProps & {
+  environment: Environment;
   computationStateMachine: sfn.StateMachine;
   emailSuppressionList: dynamodb.Table;
   notificationApi: apigateway.CfnApi;
@@ -41,14 +42,15 @@ type ServerStackProps = cdk.StackProps & {
   spreadsheetBucket: s3.Bucket;
 };
 
+export type ContainerInstance = { instanceId: string; volumeId: string };
+
 export class ServerStack extends cdk.Stack {
-  readonly containerInstance: {
-    instanceId: string;
-    volumeId: string;
-  };
+  readonly containerInstance: ContainerInstance;
 
   constructor(scope: cdk.Construct, id: string, props: ServerStackProps) {
     super(scope, id, props);
+
+    const environment = props.environment;
 
     // Secrets
 
@@ -152,7 +154,7 @@ export class ServerStack extends cdk.Stack {
       name: UlimitName.NOFILE,
     });
 
-    setupLogging(this, serverTask);
+    setupLogging(this, environment, serverTask);
 
     // Server hardware
 

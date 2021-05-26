@@ -2,15 +2,19 @@ import * as acm from "@aws-cdk/aws-certificatemanager";
 import * as cdk from "@aws-cdk/core";
 import * as route53 from "@aws-cdk/aws-route53";
 
-import * as environment from "./.env.json";
+import { Environment } from "./environment";
+
+type DomainStackProps = cdk.StackProps & { environment: Environment };
 
 export class DomainStack extends cdk.Stack {
   readonly certificate: acm.Certificate;
   readonly domainName: string;
   readonly hostedZone: route53.IHostedZone;
 
-  constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
+  constructor(scope: cdk.Construct, id: string, props: DomainStackProps) {
     super(scope, id, props);
+
+    const environment = props.environment;
 
     this.domainName = environment.domainName;
 

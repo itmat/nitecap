@@ -8,18 +8,30 @@ import { EmailStack } from "../lib/email-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
 
+import * as environment from "./.env.json";
+
 const app = new cdk.App();
 
-let domainStack = new DomainStack(app, "NitecapDomainStack-dev", {});
-let backupStack = new BackupStack(app, "NitecapBackupStack-dev", {});
+let domainStack = new DomainStack(app, "NitecapDomainStack-dev", {
+  environment,
+});
+
+let backupStack = new BackupStack(app, "NitecapBackupStack-dev", {
+  environment,
+});
 
 let persistentStorageStack = new PersistentStorageStack(
   app,
   "NitecapPersistentStorageStack-dev",
-  { domainName: domainStack.domainName, backupPlan: backupStack.backupPlan }
+  {
+    environment,
+    domainName: domainStack.domainName,
+    backupPlan: backupStack.backupPlan,
+  }
 );
 
 let emailStack = new EmailStack(app, "NitecapEmailStack-dev", {
+  environment,
   domainName: domainStack.domainName,
   hostedZone: domainStack.hostedZone,
   emailSuppressionListArn: persistentStorageStack.emailSuppressionList.tableArn,
@@ -28,10 +40,11 @@ let emailStack = new EmailStack(app, "NitecapEmailStack-dev", {
 let computationStack = new ComputationStack(
   app,
   "NitecapComputationStack-dev",
-  { spreadsheetBucket: persistentStorageStack.spreadsheetBucket }
+  { environment, spreadsheetBucket: persistentStorageStack.spreadsheetBucket }
 );
 
 let serverStack = new ServerStack(app, "NitecapServerStack-dev", {
+  environment,
   computationStateMachine: computationStack.computationStateMachine,
   emailSuppressionList: persistentStorageStack.emailSuppressionList,
   serverBlockDevice: persistentStorageStack.serverBlockDevice,
