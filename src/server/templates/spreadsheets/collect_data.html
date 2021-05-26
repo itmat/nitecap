@@ -137,38 +137,63 @@
     <p class="text-danger">* required</p>
 
 <form method="post" action="{{ url_for('spreadsheets.collect_data', spreadsheet_id = spreadsheet.id) }}">
-    <div class="form-group required">
-        <label for="descriptive_name">Enter Descriptive Name for the Spreadsheet Data:</label>
-        <input type="text" id="descriptive_name" name="descriptive_name" class="form-control"
-               value="{{spreadsheet.descriptive_name or ''}}" style="width:40rem" maxlength="250" />
-    </div>
-    <div class="form-group required">
-        <label for="num_timepoints">Number of total timepoints (include all cycles, if more than one):</label>
-        <input type="number" id="num_timepoints" name="num_timepoints" class="form-control" style="width:10rem"
-               value="{{spreadsheet.num_timepoints or ''}}" required />
-    </div>
-    <div class="form-group required">
-        <label for="timepoints">Number of Timepoints Per Cycle:</label>
-        <input type="number" id="timepoints" name="timepoints" class="form-control" style="width:10rem"
-               value="{{spreadsheet.timepoints or ''}}" required />
-    </div>
-    <!-- we do not use repeated measures currently since we don't run the appropriate algorithms, this could change later
-        <div class="form-group">
-            Repeated Measures?
-            <label class="radio-inline">
-                <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y" {{"checked" if spreadsheet.repeated_measures else ''}}> Yes
-            </label>
-            <label class="radio-inline">
-                <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" {{"checked" if not spreadsheet.repeated_measures else ''}}> No
-            </label>
+    <div class="row">
+        <div class="col-6">
+            <div class="form-group required">
+                <label for="descriptive_name">Enter Descriptive Name for the Spreadsheet Data:</label>
+                <input type="text" id="descriptive_name" name="descriptive_name" class="form-control"
+                    value="{{spreadsheet.descriptive_name or ''}}" style="width:40rem" maxlength="250" />
+            </div>
+            <div class="form-group required">
+                <label for="num_timepoints">Number of total timepoints (include all cycles, if more than one):</label>
+                <input type="number" id="num_timepoints" name="num_timepoints" class="form-control" style="width:10rem"
+                    value="{{spreadsheet.num_timepoints or ''}}" required />
+            </div>
+            <div class="form-group required">
+                <label for="timepoints">Number of Timepoints Per Cycle:</label>
+                <input type="number" id="timepoints" name="timepoints" class="form-control" style="width:10rem"
+                    value="{{spreadsheet.timepoints or ''}}" required />
+            </div>
+            <!-- we do not use repeated measures currently since we don't run the appropriate algorithms, this could change later
+                <div class="form-group">
+                    Repeated Measures?
+                    <label class="radio-inline">
+                        <input type="radio" id="repeated_measures_yes" name="repeated_measures" value="y" {{"checked" if spreadsheet.repeated_measures else ''}}> Yes
+                    </label>
+                    <label class="radio-inline">
+                        <input type="radio" id="repeated_measures_no" name="repeated_measures" value="n" {{"checked" if not spreadsheet.repeated_measures else ''}}> No
+                    </label>
+                </div>
+            -->
+            <p>
+                Shown are the first 10 rows of your data. Please indicate those columns that represent ids and timepoints.
+                Use the same label from the droplist for each replicate. All columns not representing timepoints
+                or ids should be set to 'Ignore'. Additional columns may be selected as 'Stat' to mark values that you wish
+                to view, filter by, or sort by for your spreadsheet, for example the p-values of an analysis you have already run.
+            </p>
         </div>
-    -->
-    <p>
-        Shown are the first 10 rows of your data. Please indicate those columns that represent ids and timepoints.
-        Use the same label from the droplist for each replicate. All columns not representing timepoints
-        or ids should be set to 'Ignore'. Additional columns may be selected as 'Stat' to mark values that you wish
-        to view, filter by, or sort by for your spreadsheet, for example the p-values of an analysis you have already run.
-    </p>
+
+        <div class="col-6 border border-secondary rounded">
+            <h2>Instructions:</h2>
+            <ul>
+                <li> Give spreadsheet a descriptive name or use the default (file name)</li>
+                <li> Enter the total number of timepoints at which time was collected. Count distinct timepoints and include equivalent timepoints from different cycles (for example, 0:00 and 24:00 are distinct). One timepoint may or may not have multiple replicates.</li>
+                <li> Enter number of timepoints measured per cycle </li>
+                <li> For example, if data was collected at times 0, 4, 8, 12, 16, 20, and 24 then the total number of timepoints is 7 and the number of timepoints per cycle is 6.</li>
+                <li> Then mark column types: </li>
+                <ul>
+                    <li> Choose 'ID' for one or more columns that label the row. </li>
+                    <li> Choose 'Stat' for any columns that contained per-row data that you want to view, sort, or filter using Nitecap (for example, a p-value from a method not provided by Nitecap). </li>
+                    <li> Choose 'Day1 Timepoint1' for all columns containing data from the first measured timepoint in the first 'day' (i.e. first period of the cylce) </li>
+                    <li> Choose 'Day1 Timepoint2' for the columns of data from the second measured timepoint, etc. </li>
+                    <li> Choose 'Day2 Timepoint1' for all columns containing data from the first timepoint measured in the second 'day' (period of the cycle)</li>
+                    <li> Choose 'Ignore' for any other columns, which will then be dropped from analysis. </li>
+                </ul>
+                <li> If you include in your header column time markers like "CT00", "ZT04", or "8:00", then Nitecap will attempt to automatically select the correct column types.</li>
+            </ul>
+        </div>
+    </div>
+
     <div class="topScroll">
         <div></div>
     </div>
