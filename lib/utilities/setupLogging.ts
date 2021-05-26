@@ -26,7 +26,7 @@ export default function setupLogging(
 
   let loggingContainer = task.addContainer("LoggingContainer", {
     image: ecs.ContainerImage.fromAsset(
-      path.join(__dirname, "../../src/server/logging")
+      path.join(__dirname, "../../src/server/utilities/logging")
     ),
     memoryLimitMiB: 256,
     environment: {
