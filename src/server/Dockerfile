@@ -11,6 +11,7 @@ RUN groupmod -g 1001 www-data \
   && apt-get install -y apache2 \
   && apt-get install -y apache2-dev \
   && apt-get install -y sqlite3 \
+  && apt-get install -y dumb-init \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /var/www/flask_apps/nitecap \

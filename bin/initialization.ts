@@ -1,26 +1,46 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
-import { NitecapStack } from "../lib/nitecap-stack";
-import { EmailStack as EmailComplianceStack } from "../lib/compliance/email-stack";
+import { BackupStack } from "../lib/backup-stack";
+import { ComputationStack } from "../lib/computation-stack";
+import { DomainStack } from "../lib/domain-stack";
+import { EmailStack } from "../lib/email-stack";
+import { PersistentStorageStack } from "../lib/persistent-storage-stack";
+import { ServerStack } from "../lib/server-stack";
 
 const app = new cdk.App();
 
-const environment = {
-  account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION,
-};
+let domainStack = new DomainStack(app, "NitecapDomainStack-dev", {});
+let backupStack = new BackupStack(app, "NitecapBackupStack-dev", {});
 
-let emailComplianceStack = new EmailComplianceStack(
+let persistentStorageStack = new PersistentStorageStack(
   app,
-  "EmailComplianceStack-dev",
-  {
-    env: environment,
-  }
+  "NitecapPersistentStorageStack-dev",
+  { domainName: domainStack.domainName, backupPlan: backupStack.backupPlan }
 );
 
-new NitecapStack(app, "NitecapStack-dev", {
-  env: environment,
-  emailSuppressionList: emailComplianceStack.emailSuppressionList,
+let emailStack = new EmailStack(app, "NitecapEmailStack-dev", {
+  domainName: domainStack.domainName,
+  hostedZone: domainStack.hostedZone,
+  emailSuppressionListArn: persistentStorageStack.emailSuppressionList.tableArn,
+});
+
+let computationStack = new ComputationStack(
+  app,
+  "NitecapComputationStack-dev",
+  { spreadsheetBucket: persistentStorageStack.spreadsheetBucket }
+);
+
+let serverStack = new ServerStack(app, "NitecapServerStack-dev", {
+  computationStateMachine: computationStack.computationStateMachine,
+  emailSuppressionList: persistentStorageStack.emailSuppressionList,
+  serverBlockDevice: persistentStorageStack.serverBlockDevice,
+  notificationApi: computationStack.notificationApi,
+  domainName: domainStack.domainName,
+  hostedZone: domainStack.hostedZone,
+  backupPlan: backupStack.backupPlan,
+  emailConfigurationSetName: emailStack.configurationSetName,
   serverSecretKeyName: "NitebeltServerSecretKey",
+  serverCertificate: domainStack.certificate,
+  spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 });

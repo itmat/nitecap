@@ -8,8 +8,9 @@ chown www-data:www-data /nitecap_web /nitecap_web/uploads /nitecap_web/db_backup
 # Starts the appropriate server based off the current 'ENV' (i.e. either PROD or DEV server)
 if [[ ${ENV} == "DEV" ]] ; then
     # Dev - use Flask's built-in development server
-    exec python app.py
+    exec dumb-init python app.py
 else
     # Production - use apache
-    exec /usr/sbin/apache2ctl -DFOREGROUND
+    # The init system rewrites SIGTERM signal into SIGWINCH which gracefully stops Apache
+    exec dumb-init --rewrite 15:28 /usr/sbin/apache2ctl -DFOREGROUND
 fi

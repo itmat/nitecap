@@ -1,0 +1,28 @@
+{
+	"agent": {
+		"run_as_user": "cwagent"
+	},
+	"logs": {
+		"logs_collected": {
+			"files": {
+				"collect_list": [
+					{
+						"file_path": "/nitecap_web/log.error.log",
+						"log_group_name": "$ERROR_LOG_GROUP_NAME",
+						"log_stream_name": "$HOSTNAME"
+					},
+					{
+						"file_path": "/nitecap_web/log.access.log",
+						"log_group_name": "$ACCESS_LOG_GROUP_NAME",
+						"log_stream_name": "$HOSTNAME"
+					},
+					{
+						"file_path": "/nitecap_web/log",
+						"log_group_name": "$APPLICATION_LOG_GROUP_NAME",
+						"log_stream_name": "$HOSTNAME"
+					}
+				]
+			}
+		}
+	}
+}
