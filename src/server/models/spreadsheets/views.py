@@ -572,6 +572,11 @@ def consume_share(token):
 
     if share is None:
         # Try the old share token
+        # TODO at some point this can be deprecated and removed
+        #      We used to create signed tokens encoding share permissions
+        #      and to help users migrate off those, we still check for such tokens
+        #      and point them to the right spreadsheets to make a new share URL
+        #      Share tokens are now stored in the DB instead.
         try:
             s = Serializer(os.environ['OLD_SECRET_KEY'])
             token_value = s.loads(token)

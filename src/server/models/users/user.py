@@ -13,7 +13,6 @@ from db import db
 import os
 from email.message import EmailMessage
 from itsdangerous import TimedJSONWebSignatureSerializer as TimedSerializer
-from itsdangerous import JSONWebSignatureSerializer as Serializer
 from flask import current_app
 
 CONFIRMATION_EXPIRATION_DELTA = 6 * 60 * 60
