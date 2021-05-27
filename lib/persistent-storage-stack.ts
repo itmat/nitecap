@@ -4,9 +4,10 @@ import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as s3 from "@aws-cdk/aws-s3";
 
-import * as environment from "./.env.json";
+import { Environment } from "./environment";
 
 type PersistentStorageStackProps = cdk.StackProps & {
+  environment: Environment;
   domainName: string;
   backupPlan: backup.BackupPlan;
 };
@@ -22,6 +23,8 @@ export class PersistentStorageStack extends cdk.Stack {
     props: PersistentStorageStackProps
   ) {
     super(scope, id, props);
+
+    const environment = props.environment;
 
     let allowedCorsOrigins = [`https://${props.domainName}`];
     if (!environment.production)

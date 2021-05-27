@@ -22,34 +22,12 @@ ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
+environment = os.environ["ENV"]
+
 analysis_blueprint = Blueprint("analysis", __name__)
 
 
-@analysis_blueprint.route("/", methods=["post"])
-@ajax_requires_account_or_share
-def submit_analysis(user):
-    parameters = request.get_json()
-
-    if parameters["algorithm"] not in ALGORITHMS:
-        raise NotImplementedError
-    if parameters["spreadsheetId"] not in [
-        spreadsheet.id for spreadsheet in user.spreadsheets
-    ]:
-        raise KeyError
-
-    # TODO: Remove this after the frontend starts passing the view ID
-    if "viewId" not in parameters:
-        parameters["viewId"] = 1
-
-    # TODO: Disable version parameter for production
-    analysis = {
-        "userId": str(user.id),
-        "algorithm": parameters["algorithm"],
-        "spreadsheetId": parameters["spreadsheetId"],
-        "viewId": parameters["viewId"],
-        "version": parameters["version"],
-    }
-
+def run(analysis):
     analysisId = sha256(
         json.dumps(analysis, separators=(",", ":"), sort_keys=True).encode()
     ).hexdigest()
@@ -57,7 +35,7 @@ def submit_analysis(user):
     try:
         s3.Object(
             SPREADSHEET_BUCKET_NAME,
-            f"{user.id}/analyses/{analysisId}/parameters",
+            f"{analysis['userId']}/analyses/{analysisId}/parameters",
         ).upload_fileobj(
             BytesIO(json.dumps({"analysisId": analysisId, **analysis}).encode())
         )
@@ -74,7 +52,30 @@ def submit_analysis(user):
     except Exception as error:
         return f"Failed to send request to perform computations: {error}", 500
 
-    return analysisId
+
+@analysis_blueprint.route("/", methods=["post"])
+@ajax_requires_account_or_share
+def submit_analysis(user):
+    parameters = request.get_json()
+
+    if parameters["algorithm"] not in ALGORITHMS:
+        raise NotImplementedError
+    if parameters["spreadsheetId"] not in [
+        spreadsheet.id for spreadsheet in user.spreadsheets
+    ]:
+        raise KeyError
+
+    analysis = {
+        "userId": str(user.id),
+        "algorithm": parameters["algorithm"],
+        "spreadsheetId": parameters["spreadsheetId"],
+        "viewId": parameters["viewId"],
+    }
+
+    if environment != "production":
+        analysis.update(**parameters)
+
+    return run(analysis)
 
 
 @analysis_blueprint.route("/<analysisId>/results/url", methods=["get"])

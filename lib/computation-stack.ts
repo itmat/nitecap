@@ -14,7 +14,7 @@ import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
 
 import * as path from "path";
 
-import * as environment from "./.env.json";
+import { Environment } from "./environment";
 
 function toPascalCase(name: string) {
   return name
@@ -23,7 +23,10 @@ function toPascalCase(name: string) {
     .join("");
 }
 
-type ComputationStackProps = cdk.StackProps & { spreadsheetBucket: s3.Bucket };
+type ComputationStackProps = cdk.StackProps & {
+  environment: Environment;
+  spreadsheetBucket: s3.Bucket;
+};
 
 export class ComputationStack extends cdk.Stack {
   readonly computationStateMachine: sfn.StateMachine;
@@ -31,6 +34,8 @@ export class ComputationStack extends cdk.Stack {
 
   constructor(scope: cdk.Construct, id: string, props: ComputationStackProps) {
     super(scope, id, props);
+
+    const environment = props.environment;
 
     // Table of connections
 

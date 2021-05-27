@@ -4,10 +4,11 @@ import * as logs from "@aws-cdk/aws-logs";
 
 import * as path from "path";
 
-import * as environment from "../.env.json";
+import { Environment } from "../environment";
 
 export default function setupLogging(
   stack: cdk.Stack,
+  environment: Environment,
   task: ecs.TaskDefinition
 ) {
   let errorLogGroup = new logs.LogGroup(stack, "ServerErrorLogGroup", {
@@ -26,7 +27,7 @@ export default function setupLogging(
 
   let loggingContainer = task.addContainer("LoggingContainer", {
     image: ecs.ContainerImage.fromAsset(
-      path.join(__dirname, "../../src/server/logging")
+      path.join(__dirname, "../../src/server/utilities/logging")
     ),
     memoryLimitMiB: 256,
     environment: {

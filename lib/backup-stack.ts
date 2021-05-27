@@ -1,13 +1,17 @@
 import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 
-import * as environment from "./.env.json";
+import { Environment } from "./environment";
+
+type BackupStackProps = cdk.StackProps & { environment: Environment };
 
 export class BackupStack extends cdk.Stack {
   readonly backupPlan: backup.BackupPlan;
 
-  constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
+  constructor(scope: cdk.Construct, id: string, props: BackupStackProps) {
     super(scope, id, props);
+
+    const environment = props.environment;
 
     let backupVault = new backup.BackupVault(this, "BackupVault", {
       removalPolicy: environment.production
