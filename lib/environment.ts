@@ -21,9 +21,7 @@ export type Environment = {
       containerMountPoint: string;
     };
     variables: {
-      ENV: string;
-      LOG_FILE: string;
-      LOG_LEVEL: string;
+      [key: string]: string;
     };
   };
 };

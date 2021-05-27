@@ -27,7 +27,7 @@ import setupLogging from "./utilities/setupLogging";
 
 import { Environment } from "./environment";
 
-type ServerStackProps = cdk.StackProps & {
+export type ServerStackProps = cdk.StackProps & {
   environment: Environment;
   computationStateMachine: sfn.StateMachine;
   emailSuppressionList: dynamodb.Table;
@@ -38,27 +38,23 @@ type ServerStackProps = cdk.StackProps & {
   serverBlockDevice: autoscaling.BlockDevice;
   serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
-  serverSecretKeyName: string;
+  serverSecretKey: secretsmanager.Secret;
+  serverUserPassword: secretsmanager.Secret;
   spreadsheetBucket: s3.Bucket;
+  applicationDockerfile?: string;
+  additionalPermissions?: iam.PolicyStatement[];
 };
 
 export type ContainerInstance = { instanceId: string; volumeId: string };
 
 export class ServerStack extends cdk.Stack {
   readonly containerInstance: ContainerInstance;
+  readonly service: ecs_patterns.ApplicationLoadBalancedEc2Service;
 
   constructor(scope: cdk.Construct, id: string, props: ServerStackProps) {
     super(scope, id, props);
 
     const environment = props.environment;
-
-    // Secrets
-
-    let serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
-    let serverUserPassword = new secretsmanager.Secret(
-      this,
-      "ServerUserPassword"
-    );
 
     // Alarm topic
 
@@ -79,7 +75,7 @@ export class ServerStack extends cdk.Stack {
     props.computationStateMachine.grantRead(serverRole);
     props.computationStateMachine.grantStartExecution(serverRole);
     props.emailSuppressionList.grantReadData(serverRole);
-    serverSecretKey.grantRead(serverRole);
+    props.serverSecretKey.grantRead(serverRole);
 
     serverRole.addToPolicy(
       new iam.PolicyStatement({
@@ -103,6 +99,10 @@ export class ServerStack extends cdk.Stack {
       )
     );
 
+    if (props.additionalPermissions)
+      for (let statement of props.additionalPermissions)
+        serverRole.addToPolicy(statement)
+
     // Server software
 
     let serverTask = new ecs.Ec2TaskDefinition(this, "ServerTask", {
@@ -119,13 +119,14 @@ export class ServerStack extends cdk.Stack {
 
     let serverContainer = serverTask.addContainer("ServerContainer", {
       image: ecs.ContainerImage.fromAsset(
-        path.join(__dirname, "../src/server")
+        path.join(__dirname, "../src/server"),
+        { file: props.applicationDockerfile }
       ),
       memoryLimitMiB: 1280,
       environment: {
         ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
-        SERVER_SECRET_KEY_ARN: serverSecretKey.secretArn,
+        SERVER_SECRET_KEY_ARN: props.serverSecretKey.secretArn,
         SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
         COMPUTATION_STATE_MACHINE_ARN:
           props.computationStateMachine.stateMachineArn,
@@ -140,6 +141,7 @@ export class ServerStack extends cdk.Stack {
           protocol: ecs.Protocol.TCP,
         },
       ],
+      logging: ecs.LogDriver.awsLogs({ streamPrefix: "ServerTaskLogs" }),
     });
 
     serverContainer.addMountPoints({
@@ -183,7 +185,7 @@ export class ServerStack extends cdk.Stack {
       serverCluster
     );
 
-    setEc2UserPassword(serverCluster, serverUserPassword);
+    setEc2UserPassword(serverCluster, props.serverUserPassword);
 
     this.containerInstance = describeContainerInstance(this, serverCluster);
 
@@ -201,7 +203,7 @@ export class ServerStack extends cdk.Stack {
       ],
     });
 
-    let serverService = new ecs_patterns.ApplicationLoadBalancedEc2Service(
+    this.service = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
       {
@@ -231,7 +233,7 @@ export class ServerStack extends cdk.Stack {
         )
       );
 
-      serverService.loadBalancer.addSecurityGroup(serverSecurityGroup);
+      this.service.loadBalancer.addSecurityGroup(serverSecurityGroup);
     }
 
     // Alarms
@@ -252,7 +254,7 @@ export class ServerStack extends cdk.Stack {
       ComputationStateMachineArn: props.computationStateMachine.stateMachineArn,
       NotificationApiEndpoint: `${props.notificationApi.attrApiEndpoint}/default`,
       EmailSuppressionListName: props.emailSuppressionList.tableName,
-      ServerSecretKeyArn: serverSecretKey.secretArn,
+      ServerSecretKeyArn: props.serverSecretKey.secretArn,
     };
 
     for (let [outputName, outputValue] of Object.entries(outputs)) {

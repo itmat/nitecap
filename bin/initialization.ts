@@ -7,10 +7,17 @@ import { DomainStack } from "../lib/domain-stack";
 import { EmailStack } from "../lib/email-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
+import { ParameterStack } from "../lib/parameter-stack";
+import { TransitionStack } from "../lib/utilities/transition/transition-stack";
 
-import * as environment from "./.env.json";
+import { Environment } from "../lib/environment";
+import * as env from "./.env.json";
+
+const environment: Environment = env;
 
 const app = new cdk.App();
+
+let parameterStack = new ParameterStack(app, "NitecapParameterStack-dev");
 
 let domainStack = new DomainStack(app, "NitecapDomainStack-dev", {
   environment,
@@ -43,7 +50,7 @@ let computationStack = new ComputationStack(
   { environment, spreadsheetBucket: persistentStorageStack.spreadsheetBucket }
 );
 
-let serverStack = new ServerStack(app, "NitecapServerStack-dev", {
+let serverStackProps = {
   environment,
   computationStateMachine: computationStack.computationStateMachine,
   emailSuppressionList: persistentStorageStack.emailSuppressionList,
@@ -53,7 +60,22 @@ let serverStack = new ServerStack(app, "NitecapServerStack-dev", {
   hostedZone: domainStack.hostedZone,
   backupPlan: backupStack.backupPlan,
   emailConfigurationSetName: emailStack.configurationSetName,
-  serverSecretKeyName: "NitebeltServerSecretKey",
+  serverSecretKey: parameterStack.serverSecretKey,
+  serverUserPassword: parameterStack.serverUserPassword,
   serverCertificate: domainStack.certificate,
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
+};
+
+let transitionStack = new TransitionStack(app, "NitecapTransitionStack-dev", {
+  serverStackProps,
+  snapshotLambdaName: parameterStack.snapshotLambdaName,
+  snapshotIdParameter: parameterStack.serverBlockStorageSnapshotId,
 });
+
+// let serverStack = new ServerStack(
+//   app,
+//   "NitecapServerStack-dev",
+//   serverStackProps
+// );
+
+// serverStack.addDependency(transitionStack);

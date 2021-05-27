@@ -33,4 +33,4 @@ RUN a2dissite 000-default.conf \
  && mod_wsgi-express module-config >> /etc/apache2/apache2.conf \
  && echo "Listen 5000" >> /etc/apache2/ports.conf
 
-CMD ["dumb-init", "python", "utilities/transition/transition.py"]
+CMD ["/bin/bash", "utilities/transition/start.sh"]
