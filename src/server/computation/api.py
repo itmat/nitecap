@@ -51,6 +51,7 @@ def run(analysis):
         return analysisId
     except Exception as error:
         return f"Failed to send request to perform computations: {error}", 500
+    return analysisId
 
 
 @analysis_blueprint.route("/", methods=["post"])
