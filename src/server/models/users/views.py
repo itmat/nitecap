@@ -19,7 +19,7 @@ ALREADY_ACTIVATED_MESSAGE = "You are already activated.  If you are still unable
 CONFIRMATION_SENT_MESSAGE = "Your confirmation email has been sent.  Click on the link it contains to activate your" \
                             " account. NOTE: please check your spam box, as our emails often end up there."
 CONFIRMATION_TOKEN_EXPIRED = "Your confirmation request is either invalid or expired.  Please reconfirm by attempting" \
-                             "to log in.  You will be re-directed to the resend confirmation page."
+                             " to log in.  You will be re-directed to the resend confirmation page."
 
 @user_blueprint.route('/register', methods=['GET', 'POST'])
 def register_user():
