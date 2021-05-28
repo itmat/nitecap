@@ -42,6 +42,15 @@ def main(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_cycle, repea
     assert data_A.shape[1] == len(timepoints_A)
     assert data_B.shape[1] == len(timepoints_B)
 
+    data_A = data_A.astype(float)
+    data_B = data_B.astype(float)
+
+    # First thing we do is to normalize the medians of the two datasets A and B
+    # otherwise a constant offset between the two makes a dramatic difference
+    A_median = numpy.nanmedian(data_A, axis=1)
+    B_median = numpy.nanmedian(data_B, axis=1)
+    data_B += (A_median - B_median)[:, None]
+
     N_FEATURES = data_A.shape[0]
 
     stat = upside_statistic(data_A, timepoints_A, timepoints_per_cycle, repeated_measures=repeated_measures)
