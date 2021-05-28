@@ -11,19 +11,23 @@ export default function setupLogging(
   environment: Environment,
   task: ecs.TaskDefinition
 ) {
-  let errorLogGroup = new logs.LogGroup(stack, "ServerErrorLogGroup", {
-    retention: logs.RetentionDays.INFINITE,
-  });
 
-  let accessLogGroup = new logs.LogGroup(stack, "ServerAccessLogGroup", {
+  let configuration = {
     retention: logs.RetentionDays.INFINITE,
-  });
+    removalPolicy: environment.production
+      ? cdk.RemovalPolicy.RETAIN
+      : cdk.RemovalPolicy.DESTROY,
+  };
 
-  let applicationLogGroup = new logs.LogGroup(
-    stack,
-    "ServerApplicationLogGroup",
-    { retention: logs.RetentionDays.INFINITE }
-  );
+  let logGroups = {
+    error: new logs.LogGroup(stack, "ServerErrorLogGroup", configuration),
+    access: new logs.LogGroup(stack, "ServerAccessLogGroup", configuration),
+    application: new logs.LogGroup(
+      stack,
+      "ServerApplicationLogGroup",
+      configuration
+    ),
+  };
 
   let loggingContainer = task.addContainer("LoggingContainer", {
     image: ecs.ContainerImage.fromAsset(
@@ -31,9 +35,9 @@ export default function setupLogging(
     ),
     memoryLimitMiB: 256,
     environment: {
-      ERROR_LOG_GROUP_NAME: errorLogGroup.logGroupName,
-      ACCESS_LOG_GROUP_NAME: accessLogGroup.logGroupName,
-      APPLICATION_LOG_GROUP_NAME: applicationLogGroup.logGroupName,
+      ERROR_LOG_GROUP_NAME: logGroups.error.logGroupName,
+      ACCESS_LOG_GROUP_NAME: logGroups.access.logGroupName,
+      APPLICATION_LOG_GROUP_NAME: logGroups.application.logGroupName,
     },
     logging: ecs.LogDriver.awsLogs({ streamPrefix: "LoggingLogs" }),
   });

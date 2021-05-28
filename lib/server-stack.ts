@@ -32,7 +32,7 @@ export type ServerStackProps = cdk.StackProps & {
   computationStateMachine: sfn.StateMachine;
   emailSuppressionList: dynamodb.Table;
   notificationApi: apigateway.CfnApi;
-  domainName: string;
+  subdomainName: string;
   hostedZone: route53.IHostedZone;
   backupPlan: backup.BackupPlan;
   serverBlockDevice: autoscaling.BlockDevice;
@@ -82,7 +82,7 @@ export class ServerStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ["ses:SendEmail"],
         resources: [
-          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.domainName}`,
+          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.subdomainName}`,
           ...environment.email.verifiedRecipients.map(
             (recipient) =>
               `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
@@ -101,7 +101,7 @@ export class ServerStack extends cdk.Stack {
 
     if (props.additionalPermissions)
       for (let statement of props.additionalPermissions)
-        serverRole.addToPolicy(statement)
+        serverRole.addToPolicy(statement);
 
     // Server software
 
@@ -131,7 +131,7 @@ export class ServerStack extends cdk.Stack {
         COMPUTATION_STATE_MACHINE_ARN:
           props.computationStateMachine.stateMachineArn,
         NOTIFICATION_API_ENDPOINT: `wss://${props.notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
-        EMAIL_SENDER: `no-reply@${props.domainName}`,
+        EMAIL_SENDER: `no-reply@${props.subdomainName}`,
         EMAIL_CONFIGURATION_SET_NAME: props.emailConfigurationSetName,
         EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
       },
@@ -211,7 +211,7 @@ export class ServerStack extends cdk.Stack {
         memoryLimitMiB: 1792,
         desiredCount: 1,
         taskDefinition: serverTask,
-        domainName: props.domainName,
+        domainName: props.subdomainName,
         domainZone: props.hostedZone,
         certificate: props.serverCertificate,
         redirectHTTP: true,

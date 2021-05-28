@@ -18,7 +18,7 @@ function normalize(name: string) {
 
 type EmailStackProps = cdk.StackProps & {
   environment: Environment;
-  domainName: string;
+  subdomainName: string;
   hostedZone: route53.IHostedZone;
   emailSuppressionListArn: string;
 };
@@ -30,7 +30,7 @@ export class EmailStack extends cdk.Stack {
     super(scope, id, props);
 
     const environment = props.environment;
-    const { domainName, hostedZone, emailSuppressionListArn } = props;
+    const { subdomainName, hostedZone, emailSuppressionListArn } = props;
 
     // Compliance
 
@@ -83,7 +83,7 @@ export class EmailStack extends cdk.Stack {
     let configurationSet = new ses.CfnConfigurationSet(
       this,
       "ConfigurationSet",
-      { name: `ConfigurationSet-${normalize(domainName)}` }
+      { name: `ConfigurationSet-${normalize(subdomainName)}` }
     );
 
     if (!configurationSet.name) {
@@ -144,7 +144,7 @@ export class EmailStack extends cdk.Stack {
             effect: iam.Effect.ALLOW,
             actions: ["ses:CreateEmailIdentity", "ses:DeleteEmailIdentity"],
             resources: [
-              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${domainName}`,
+              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${subdomainName}`,
             ],
           }),
         ],
@@ -153,7 +153,7 @@ export class EmailStack extends cdk.Stack {
         service: "SESV2",
         action: "createEmailIdentity",
         parameters: {
-          EmailIdentity: domainName,
+          EmailIdentity: subdomainName,
           ConfigurationSetName: this.configurationSetName,
         },
         physicalResourceId: cr.PhysicalResourceId.of(this.stackId),
@@ -162,7 +162,7 @@ export class EmailStack extends cdk.Stack {
         service: "SESV2",
         action: "deleteEmailIdentity",
         parameters: {
-          EmailIdentity: domainName,
+          EmailIdentity: subdomainName,
         },
       },
     });
@@ -176,7 +176,7 @@ export class EmailStack extends cdk.Stack {
       (token, i) =>
         new route53.CnameRecord(this, `DomainKeysIdentifiedMailRecord-${i}`, {
           zone: hostedZone,
-          recordName: `${token}._domainkey.${domainName}`,
+          recordName: `${token}._domainkey.${subdomainName}`,
           domainName: `${token}.dkim.amazonses.com`,
         })
     );

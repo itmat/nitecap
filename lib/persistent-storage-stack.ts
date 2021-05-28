@@ -8,7 +8,7 @@ import { Environment } from "./environment";
 
 type PersistentStorageStackProps = cdk.StackProps & {
   environment: Environment;
-  domainName: string;
+  subdomainName: string;
   backupPlan: backup.BackupPlan;
 };
 
@@ -26,7 +26,7 @@ export class PersistentStorageStack extends cdk.Stack {
 
     const environment = props.environment;
 
-    let allowedCorsOrigins = [`https://${props.domainName}`];
+    let allowedCorsOrigins = [`https://${props.subdomainName}`];
     if (!environment.production)
       allowedCorsOrigins.push("http://localhost:5000");
 

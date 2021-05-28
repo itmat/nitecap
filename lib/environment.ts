@@ -1,10 +1,8 @@
 export type Environment = {
-  domainName: string;
-  hostedZoneAttributes: {
-    zoneName: string;
-    hostedZoneId: string;
-  };
+  account?: string;
+  region?: string;
   production: boolean;
+  subdomainName: string;
   allowedCidrBlocks: string[];
   email: {
     verifiedRecipients: string[];

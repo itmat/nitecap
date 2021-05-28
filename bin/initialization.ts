@@ -1,54 +1,49 @@
 #!/usr/bin/env node
-import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
 import { BackupStack } from "../lib/backup-stack";
 import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
 import { EmailStack } from "../lib/email-stack";
+import { ParameterStack } from "../lib/parameter-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
-import { ParameterStack } from "../lib/parameter-stack";
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
 
-import { Environment } from "../lib/environment";
-import * as env from "./.env.json";
+import environment from "./.env";
 
-const environment: Environment = env;
-
-const app = new cdk.App();
-
-let parameterStack = new ParameterStack(app, "NitecapParameterStack-dev");
-
-let domainStack = new DomainStack(app, "NitecapDomainStack-dev", {
-  environment,
+let app = new cdk.App();
+let stage = new cdk.Stage(app, "NitecapDevelopment", {
+  env: {
+    region: environment.region,
+    account: environment.account,
+  },
 });
 
-let backupStack = new BackupStack(app, "NitecapBackupStack-dev", {
-  environment,
-});
+let parameterStack = new ParameterStack(stage, "ParameterStack");
+let domainStack = new DomainStack(stage, "DomainStack", { environment });
+let backupStack = new BackupStack(stage, "BackupStack", { environment });
 
 let persistentStorageStack = new PersistentStorageStack(
-  app,
-  "NitecapPersistentStorageStack-dev",
+  stage,
+  "PersistentStorageStack",
   {
     environment,
-    domainName: domainStack.domainName,
+    subdomainName: domainStack.subdomainName,
     backupPlan: backupStack.backupPlan,
   }
 );
 
-let emailStack = new EmailStack(app, "NitecapEmailStack-dev", {
+let emailStack = new EmailStack(stage, "EmailStack", {
   environment,
-  domainName: domainStack.domainName,
+  subdomainName: domainStack.subdomainName,
   hostedZone: domainStack.hostedZone,
   emailSuppressionListArn: persistentStorageStack.emailSuppressionList.tableArn,
 });
 
-let computationStack = new ComputationStack(
-  app,
-  "NitecapComputationStack-dev",
-  { environment, spreadsheetBucket: persistentStorageStack.spreadsheetBucket }
-);
+let computationStack = new ComputationStack(stage, "ComputationStack", {
+  environment,
+  spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
+});
 
 let serverStackProps = {
   environment,
@@ -56,7 +51,7 @@ let serverStackProps = {
   emailSuppressionList: persistentStorageStack.emailSuppressionList,
   serverBlockDevice: persistentStorageStack.serverBlockDevice,
   notificationApi: computationStack.notificationApi,
-  domainName: domainStack.domainName,
+  subdomainName: domainStack.subdomainName,
   hostedZone: domainStack.hostedZone,
   backupPlan: backupStack.backupPlan,
   emailConfigurationSetName: emailStack.configurationSetName,
@@ -66,16 +61,12 @@ let serverStackProps = {
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
 
-let transitionStack = new TransitionStack(app, "NitecapTransitionStack-dev", {
-  serverStackProps,
-  snapshotLambdaName: parameterStack.snapshotLambdaName,
-  snapshotIdParameter: parameterStack.serverBlockStorageSnapshotId,
-});
+// let transitionStack = new TransitionStack(app, "TransitionStack", {
+//   serverStackProps,
+//   snapshotLambdaName: parameterStack.snapshotLambdaName,
+//   snapshotIdParameter: parameterStack.serverBlockStorageSnapshotId,
+// });
 
-// let serverStack = new ServerStack(
-//   app,
-//   "NitecapServerStack-dev",
-//   serverStackProps
-// );
+let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
 // serverStack.addDependency(transitionStack);
