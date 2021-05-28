@@ -167,6 +167,9 @@ def db_backup_job():
 
 def visitor_purge_job():
     logger.info('Visitor purge underway.')
+    # TODO: this visitor purge is only in rehearse=True mode
+    # and so it does nothing. It needs to be updated to the new backend code
+    # and then enabled to run for real
     ids = visitor_purge.purge(True, app.config['DATABASE'])
     if ids:
         logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
