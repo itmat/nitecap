@@ -5,16 +5,25 @@ import sys
 import time
 import datetime
 import pathlib
+import shutil
 import re
 
 sys.path.append("/var/www/flask_apps/nitecap")
 
 import app
 from db import db
-import sqlalchemy
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
 from computation.api import ALGORITHMS, run, store_spreadsheet_to_s3
+
+print(f"Updating the permissions on data folders")
+for path in pathlib.Path(os.environ["UPLOAD_FOLDER"]).glob("**"):
+    shutil.chown(path, 1001, 1001)
+for path in pathlib.Path(os.environ["DB_BACKUP_FOLDER"]).glob("**"):
+    shutil.chown(path, 1001, 1001)
+for path in pathlib.Path(os.environ["DATABASE_FOLDER"]).glob("**"):
+    shutil.chown(path, 1001, 1001)
+shutil.chown(os.environ["LOG_FILE"], 1001, 1001)
 
 db.init_app(app.app)
 
@@ -49,7 +58,6 @@ def transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet):
 
         # run(analysis)
         # time.sleep(WAIT_DURATION)
-
 
 with app.app.app_context():
     # Update location of the spreadsheets
