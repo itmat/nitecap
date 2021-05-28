@@ -28,6 +28,7 @@ from models.users.user import User
 from models.shares import Share
 from models.jobs import Job
 from timer_decorator import timeit
+import computation.api
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
@@ -105,7 +106,8 @@ def upload_file():
 
         # Rename the uploaded file and reattach the extension
         extension = Path(upload_file.filename).suffix
-        file_path = os.path.join(directory_path, f"uploaded_spreadsheet{extension}")
+        file_name = f"uploaded_spreadsheet{extension}"
+        file_path = os.path.join(directory_path, file_name)
         upload_file.save(file_path)
 
         # If the mime type validation fails, remove the directory containing the uploaded file from the disk
@@ -125,7 +127,7 @@ def upload_file():
                                       header_row=header_row,
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
-                                      uploaded_file_path=file_path,
+                                      uploaded_file_path=file_name,
                                       spreadsheet_data_path=str(directory_path),
                                       user_id=user_id)
         except NitecapException as ne:
@@ -144,7 +146,6 @@ def upload_file():
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
         spreadsheet.spreadsheet_data_path = spreadsheet_data_path
-        spreadsheet.uploaded_file_path = os.path.join(spreadsheet_data_path, os.path.basename(file_path))
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
 
@@ -152,9 +153,6 @@ def upload_file():
 
     # Display spreadsheet file form
     return render_template('spreadsheets/upload_file.html')
-
-
-from computation.api import store_spreadsheet_to_s3
 
 
 @spreadsheet_blueprint.route('/collect_data/<spreadsheet_id>', methods=['GET', 'POST'])
@@ -204,7 +202,7 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.increment_edit_version()
         spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
-        store_spreadsheet_to_s3(spreadsheet)
+        computation.api.store_spreadsheet_to_s3(spreadsheet)
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))
 
 

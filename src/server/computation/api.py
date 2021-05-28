@@ -140,7 +140,7 @@ def get_analysis_status(user, analysisId):
 def store_spreadsheet_to_s3(spreadsheet):
     data = spreadsheet.get_raw_data().to_csv(header=False, index=False, na_rep="nan")
 
-    with open(spreadsheet.uploaded_file_path, "rb") as original:
+    with open(spreadsheet.get_uploaded_file_path(), "rb") as original:
         s3.Object(
             SPREADSHEET_BUCKET_NAME,
             f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/original",
