@@ -84,9 +84,8 @@ class Spreadsheet(db.Model):
         :param header_row: The how (indexed from 1) where the header info is found (should be a single row)
         :param original_filename: The name of the file originally uploaded.
         :param file_mime_type: The file's mime type (used to distinguish Excel spreadsheets from plain text files)
-        :param uploaded_file_path: Where the uploaded file resides on the server (the filename is a uuid here to avoid
-        any possible name collisions.)
-        :param file_path: Where the file containing the processed version of the spreadsheet resides on the server
+        :param uploaded_file_path: File path to the processed spreadsheet data, relative to spreadsheet_data_path
+        :param file_path: file path to the processed spreadsheet data, relative to spreadsheet_data_path
         (note that this file is a tab delimited plain text file with the extension working.txt
         :param column_labels_str: A comma delimited listing of the column labels used to identify timepoint and id
         columns.
@@ -94,6 +93,8 @@ class Spreadsheet(db.Model):
         :param user_id: The id of the spreadsheet's owner.  Visitors have individual (although more transitory)
         accounts and consequently a user id.
         :param date_uploaded:  The timestamp at which the original spreadsheet was uploaded.
+        :param spreadsheet_data_path: path of the folder containing the spreadsheet data, relative to
+            the app's configured upload folder
         """
         current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
@@ -120,9 +121,7 @@ class Spreadsheet(db.Model):
         only with a new Spreadsheet is being created de novo - when no processed spreadsheet yet exists.
         """
         self.set_df()
-        self.file_path = os.path.join(self.spreadsheet_data_path,
-                                      Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." +
-                                      Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT)
+        self.file_path = Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." + Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT
         self.update_dataframe()
 
     @timeit
@@ -144,9 +143,9 @@ class Spreadsheet(db.Model):
         try:
             if self.file_path:
                 if self.file_path.endswith("txt"):
-                    self.df = pd.read_csv(self.file_path, sep='\t')
+                    self.df = pd.read_csv(self.get_processed_file_path(), sep='\t')
                 else:
-                    self.df = pyarrow.parquet.read_pandas(self.file_path).to_pandas()
+                    self.df = pyarrow.parquet.read_pandas(self.get_processed_file_path()).to_pandas()
             else:
                 current_app.logger.warn(f"WARN: no file_path for processed spreadsheet {self.id} - setting up processed spreadsheet automatically")
                 self.setup_processed_spreadsheet()
@@ -183,7 +182,8 @@ class Spreadsheet(db.Model):
         try:
             # Spreadsheet is an Excel file (initial sheet only is used)
             if self.file_mime_type in constants.EXCEL_MIME_TYPES:
-                self.df = pd.read_excel(self.uploaded_file_path,
+                current_app.logger.info(f"Trying to load excel from {self.get_uploaded_file_path()}")
+                self.df = pd.read_excel(str(self.get_uploaded_file_path()),
                                         header=self.header_row - 1,
                                         index_col=False)
             else:
@@ -191,12 +191,12 @@ class Spreadsheet(db.Model):
                 sep = "\t"
                 if extension.lower() in constants.COMMA_DELIMITED_EXTENSIONS:
                     sep = ","
-                self.df = pd.read_csv(self.uploaded_file_path,
+                self.df = pd.read_csv(self.get_uploaded_file_path(),
                                       sep=sep,
                                       header=self.header_row - 1,
                                       index_col=False)
         except (UnicodeDecodeError, ParserError) as e:
-            print(e)
+            current_app.logger.exception(e)
             raise NitecapException("The file provided could not be parsed.")
 
     def identify_columns(self, column_labels):
@@ -371,13 +371,13 @@ class Spreadsheet(db.Model):
     @timeit
     def update_dataframe(self):
         if self.file_path.endswith("txt"):
-            self.df.to_csv(self.file_path, sep="\t", index=False)
+            self.df.to_csv(self.get_processed_file_path(), sep="\t", index=False)
         else:
             # in order to write out, we always need our non-numeric columns to be type string
             # otherwise parquet gives unpredictable results and errors
             str_columns = [col for col,typ in self.df.dtypes.items() if typ == object]
             df = self.df.astype({col: 'str' for col in str_columns})
-            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(df, preserve_index=False), self.file_path)
+            pyarrow.parquet.write_table(pyarrow.Table.from_pandas(df, preserve_index=False), self.get_processed_file_path())
 
     def has_jtk(self):
         meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
@@ -471,7 +471,7 @@ class Spreadsheet(db.Model):
         its processed equivalent.
         :return: total used diskspace in MB of this spreadsheet object.
         """
-        return round((os.path.getsize(self.uploaded_file_path) + os.path.getsize(self.file_path))/1E6,3)
+        return round((os.path.getsize(self.get_uploaded_file_path()) + os.path.getsize(self.get_processed_file_path()))/1E6,3)
 
     @timeit
     def save_to_db(self):
@@ -545,17 +545,6 @@ class Spreadsheet(db.Model):
         temporary_share_spreadsheet_data_path = os.path.join(user_directory_path,  uuid.uuid4().hex)
         shutil.copytree(spreadsheet.spreadsheet_data_path, temporary_share_spreadsheet_data_path)
 
-        extension = Path(spreadsheet.original_filename).suffix
-        temporary_share_uploaded_file_path = os.path.join(temporary_share_spreadsheet_data_path,
-                                                          Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + extension)
-        if spreadsheet.file_path.endswith("txt"):
-            temporary_share_processed_file_path = os.path.join(temporary_share_spreadsheet_data_path,
-                                                               Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + ".txt")
-        else:
-            temporary_share_processed_file_path = os.path.join(temporary_share_spreadsheet_data_path,
-                                                               Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." +
-                                                               Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT)
-
         # Create the share object - all path reflect the temporary share paths (i.e., paths containing uuid)
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
                                         timepoints=spreadsheet.timepoints,
@@ -564,9 +553,9 @@ class Spreadsheet(db.Model):
                                         header_row=spreadsheet.header_row,
                                         original_filename=spreadsheet.original_filename,
                                         file_mime_type=spreadsheet.file_mime_type,
-                                        uploaded_file_path=temporary_share_uploaded_file_path,
+                                        uploaded_file_path=spreadsheet.uploaded_file_path,
                                         date_uploaded=datetime.datetime.utcnow(),
-                                        file_path=temporary_share_processed_file_path,
+                                        file_path=spreadsheet.file_path,
                                         column_labels_str=spreadsheet.column_labels_str,
                                         categorical_data=spreadsheet.categorical_data,
                                         last_access=None,
@@ -582,11 +571,13 @@ class Spreadsheet(db.Model):
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
         spreadsheet_share.spreadsheet_data_path = spreadsheet_share_data_path
-        spreadsheet_share.uploaded_file_path = os.path.join(spreadsheet_share_data_path,
-                                                            Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + extension)
-        spreadsheet_share.file_path = str(os.path.join(spreadsheet_share_data_path,
-                                                       os.path.basename(temporary_share_processed_file_path)))
         spreadsheet_share.save_to_db()
+
+        # Re-upload to s3. Import here to avoid circular import
+        from computation.api import store_spreadsheet_to_s3
+        spreadsheet_share.init_on_load()
+        store_spreadsheet_to_s3(spreadsheet_share)
+
         return spreadsheet_share
 
     def get_timepoint_labels(self):
@@ -672,14 +663,27 @@ class Spreadsheet(db.Model):
         """
         return Spreadsheet.PROCESSED_SPREADSHEET_FILE_PART + "." + Spreadsheet.PROCESSED_SPREADSHEET_FILE_EXT
 
-    def get_uploaded_spreadsheet_name(self):
+    def get_processed_file_path(self):
         """
-        Helper method to assemble the uploaded spreadsheet name from the component parts of the file name.  The
-        extension will vary with the type of upload.
-        :return: uplodaded spreadsheet name
+        Returns the absolute path to the processed data file, if any, else None
         """
-        ext = os.path.splitext(self.uploaded_file_path)[1]
-        return Spreadsheet.UPLOADED_SPREADSHEET_FILE_PART + ext
+        if self.file_path == '':
+            return None
+        return Path(self.get_spreadsheet_data_folder()) / self.file_path
+
+    def get_uploaded_file_path(self):
+        """
+        Returns the absolute path to the uploaded file, if any, else None
+        """
+        if self.uploaded_file_path == '':
+            return None
+        return Path(self.get_spreadsheet_data_folder()) / self.uploaded_file_path
+
+    def get_spreadsheet_data_folder(self):
+        """
+        Returns the absolute path to the spreadsheet data folder
+        """
+        return Path(os.environ['UPLOAD_FOLDER']) / self.spreadsheet_data_path
 
     def get_categorical_data_labels(self):
         """
@@ -726,7 +730,7 @@ class Spreadsheet(db.Model):
                 if spreadsheet.repeated_measures != repeated_measures:
                     error = f"Attempted comparison of Spreadsheets {primary_id} and {secondary_id} that do not match in whether they are repeated measures."
                     current_app.logger.warn(error)
-                    return jsonify({"error": error}), 500
+                    return error, 500
 
             # Run the actual upside calculation
             upside_p = nitecap.upside.main(spreadsheets[primary].x_values, datasets[primary],

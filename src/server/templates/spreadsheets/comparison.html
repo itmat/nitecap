@@ -1539,7 +1539,10 @@
                 if (!response.ok) {
                     console.error("Failed to start analysis with status", response.status);
 
-                    Vue.set(this.analyses, analysisId, {
+                    // We didn't get an analysis ID in response, so we create a dummy ID
+                    // just for the purposes of recording the failure so we can display "FAILED"
+                    let dummy_analysis_id = "dummy_" + Math.floor(1000*Math.random());
+                    Vue.set(this.analyses, dummy_analysis_id, {
                         algorithm,
                         spreadsheetId,
                         status: "FAILED",
