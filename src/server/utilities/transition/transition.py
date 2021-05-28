@@ -4,6 +4,8 @@ import os
 import sys
 import time
 import datetime
+import pathlib
+import re
 
 sys.path.append("/var/www/flask_apps/nitecap")
 
@@ -51,10 +53,24 @@ def transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet):
 
 with app.app.app_context():
     # Update location of the spreadsheets
-    db.session.update(
-        Spreadsheet,
-        sqlalchemy.values()
-    )
+    print("Updating the file paths of spreadsheets")
+    for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
+        try:
+            # Trim to just the file names
+            if spreadsheet.file_path:
+                spreadsheet.file_path = pathlib.Path(spreadsheet.file_path).name
+            if spreadsheet.uploaded_file_path:
+                spreadsheet.uploaded_file_path = pathlib.Path(spreadsheet.uploaded_file_path).name
+            # Trim the folder path to be relative to the entire folder of uploaded data
+            if spreadsheet.spreadsheet_data_path:
+                _, spreadsheet_data_path_relative = re.match("(.*)(user_.*)", spreadsheet.spreadsheet_data_path).groups()
+                spreadsheet.spreadsheet_data_path = spreadsheet_data_path_relative
+            db.session.add(spreadsheet)
+        except Exception as e:
+            print(f"Error updating spreadsheet in spreadsheet {spreadsheet.id}")
+            print(spreadsheet)
+            raise e
+    db.session.commit()
 
     for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
         if spreadsheet.user.visitor and spreadsheet.user.last_access < OLD_VISITOR_THRESHOLD:
