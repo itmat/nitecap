@@ -587,6 +587,12 @@ class Spreadsheet(db.Model):
         spreadsheet_share.file_path = str(os.path.join(spreadsheet_share_data_path,
                                                        os.path.basename(temporary_share_processed_file_path)))
         spreadsheet_share.save_to_db()
+
+        # Re-upload to s3. Import here to avoid circular import
+        from computation.api import store_spreadsheet_to_s3
+        spreadsheet_share.init_on_load()
+        store_spreadsheet_to_s3(spreadsheet_share)
+
         return spreadsheet_share
 
     def get_timepoint_labels(self):
