@@ -479,6 +479,9 @@ class User(db.Model):
         we can throw away the related user db record and the directory associated with the visitor.
         :param visitor: the visiting user account
         """
+        # Import here to avoid circular imports
+        from computation.api import store_spreadsheet_to_s3
+
         user_directory_path = self.get_user_directory_path()
 
         # Iterate over all spreadsheets belonging to to visitor
@@ -497,6 +500,10 @@ class User(db.Model):
             spreadsheet.file_path = os.path.join(user_spreadsheet_data_path,
                                                  spreadsheet.get_processed_spreadsheet_name())
             spreadsheet.save_to_db()
+
+            # Needs to be re-uploaded to the new user's 'folder'
+            spreadsheet.init_on_load()
+            store_spreadsheet_to_s3(spreadsheet)
 
         # Finally discard the visitor directory path and remove the visitor from the database
         visitor.delete()
