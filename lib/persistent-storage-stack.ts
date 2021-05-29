@@ -9,7 +9,6 @@ import { Environment } from "./environment";
 type PersistentStorageStackProps = cdk.StackProps & {
   environment: Environment;
   subdomainName: string;
-  backupPlan: backup.BackupPlan;
 };
 
 export class PersistentStorageStack extends cdk.Stack {
@@ -79,13 +78,5 @@ export class PersistentStorageStack extends cdk.Stack {
         }
       ),
     };
-
-    // Backup
-
-    props.backupPlan.addSelection("EmailSuppressionListBackup", {
-      resources: [
-        backup.BackupResource.fromDynamoDbTable(this.emailSuppressionList),
-      ],
-    });
   }
 }

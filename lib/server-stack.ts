@@ -1,8 +1,6 @@
 import * as apigateway from "@aws-cdk/aws-apigatewayv2";
 import * as autoscaling from "@aws-cdk/aws-autoscaling";
-import * as autoscaling_hooktargets from "@aws-cdk/aws-autoscaling-hooktargets";
 import * as acm from "@aws-cdk/aws-certificatemanager";
-import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as ec2 from "@aws-cdk/aws-ec2";
@@ -13,8 +11,6 @@ import * as route53 from "@aws-cdk/aws-route53";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
-import * as sns from "@aws-cdk/aws-sns";
-import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 
 import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
@@ -34,7 +30,6 @@ export type ServerStackProps = cdk.StackProps & {
   notificationApi: apigateway.CfnApi;
   subdomainName: string;
   hostedZone: route53.IHostedZone;
-  backupPlan: backup.BackupPlan;
   serverBlockDevice: autoscaling.BlockDevice;
   serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
@@ -55,15 +50,6 @@ export class ServerStack extends cdk.Stack {
     super(scope, id, props);
 
     const environment = props.environment;
-
-    // Alarm topic
-
-    let serverAlarmsTopic = new sns.Topic(this, "ServerAlarmsTopic");
-    environment.email.serverAlarmsRecipients.map((recipient) =>
-      serverAlarmsTopic.addSubscription(
-        new subscriptions.EmailSubscription(recipient)
-      )
-    );
 
     // Server permissions
 
@@ -195,14 +181,6 @@ export class ServerStack extends cdk.Stack {
       )
     );
 
-    props.backupPlan.addSelection("ServerBlockStorageBackup", {
-      resources: [
-        backup.BackupResource.fromArn(
-          `arn:${this.partition}:ec2:${this.region}:${this.account}:volume/${this.containerInstance.volumeId}`
-        ),
-      ],
-    });
-
     this.service = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
@@ -234,31 +212,6 @@ export class ServerStack extends cdk.Stack {
       );
 
       this.service.loadBalancer.addSecurityGroup(serverSecurityGroup);
-    }
-
-    // Alarms
-
-    serverCluster.autoscalingGroup?.addLifecycleHook(
-      "InstanceTerminationLifecycleHook",
-      {
-        lifecycleTransition:
-          autoscaling.LifecycleTransition.INSTANCE_TERMINATING,
-        notificationTarget: new autoscaling_hooktargets.TopicHook(
-          serverAlarmsTopic
-        ),
-      }
-    );
-
-    let outputs = {
-      SpreadsheetBucketName: props.spreadsheetBucket.bucketName,
-      ComputationStateMachineArn: props.computationStateMachine.stateMachineArn,
-      NotificationApiEndpoint: `${props.notificationApi.attrApiEndpoint}/default`,
-      EmailSuppressionListName: props.emailSuppressionList.tableName,
-      ServerSecretKeyArn: props.serverSecretKey.secretArn,
-    };
-
-    for (let [outputName, outputValue] of Object.entries(outputs)) {
-      new cdk.CfnOutput(this, outputName, { value: outputValue });
     }
   }
 }

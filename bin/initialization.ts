@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import * as cdk from "@aws-cdk/core";
-import { BackupStack } from "../lib/backup-stack";
 import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
 import { EmailStack } from "../lib/email-stack";
+import { OperationsStack } from "../lib/operations-stack";
 import { ParameterStack } from "../lib/parameter-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
@@ -21,7 +21,6 @@ let stage = new cdk.Stage(app, "NitecapDevelopment", {
 
 let parameterStack = new ParameterStack(stage, "ParameterStack");
 let domainStack = new DomainStack(stage, "DomainStack", { environment });
-let backupStack = new BackupStack(stage, "BackupStack", { environment });
 
 let persistentStorageStack = new PersistentStorageStack(
   stage,
@@ -29,7 +28,6 @@ let persistentStorageStack = new PersistentStorageStack(
   {
     environment,
     subdomainName: domainStack.subdomainName,
-    backupPlan: backupStack.backupPlan,
   }
 );
 
@@ -53,7 +51,6 @@ let serverStackProps = {
   notificationApi: computationStack.notificationApi,
   subdomainName: domainStack.subdomainName,
   hostedZone: domainStack.hostedZone,
-  backupPlan: backupStack.backupPlan,
   emailConfigurationSetName: emailStack.configurationSetName,
   serverSecretKey: parameterStack.serverSecretKey,
   serverUserPassword: parameterStack.serverUserPassword,
@@ -61,7 +58,7 @@ let serverStackProps = {
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
 
-// let transitionStack = new TransitionStack(app, "TransitionStack", {
+// let transitionStack = new TransitionStack(stage, "TransitionStack", {
 //   serverStackProps,
 //   snapshotLambdaName: parameterStack.snapshotLambdaName,
 //   snapshotIdParameter: parameterStack.serverBlockStorageSnapshotId,
@@ -70,3 +67,13 @@ let serverStackProps = {
 let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
 // serverStack.addDependency(transitionStack);
+
+let stacks = {
+  computationStack,
+  emailStack,
+  parameterStack,
+  persistentStorageStack,
+  serverStack,
+};
+
+new OperationsStack(stage, "OperationsStack", { environment, ...stacks });
