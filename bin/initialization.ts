@@ -4,7 +4,6 @@ import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
 import { EmailStack } from "../lib/email-stack";
 import { OperationsStack } from "../lib/operations-stack";
-import { ParameterStack } from "../lib/parameter-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
@@ -19,7 +18,6 @@ let stage = new cdk.Stage(app, "NitecapDevelopment", {
   },
 });
 
-let parameterStack = new ParameterStack(stage, "ParameterStack");
 let domainStack = new DomainStack(stage, "DomainStack", { environment });
 
 let persistentStorageStack = new PersistentStorageStack(
@@ -52,8 +50,6 @@ let serverStackProps = {
   subdomainName: domainStack.subdomainName,
   hostedZone: domainStack.hostedZone,
   emailConfigurationSetName: emailStack.configurationSetName,
-  serverSecretKey: parameterStack.serverSecretKey,
-  serverUserPassword: parameterStack.serverUserPassword,
   serverCertificate: domainStack.certificate,
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
@@ -66,12 +62,9 @@ let serverStackProps = {
 
 let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
-// serverStack.addDependency(transitionStack);
-
 let stacks = {
   computationStack,
   emailStack,
-  parameterStack,
   persistentStorageStack,
   serverStack,
 };

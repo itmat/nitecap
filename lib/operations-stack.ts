@@ -11,7 +11,6 @@ import { Environment } from "./environment";
 
 import { ComputationStack } from "./computation-stack";
 import { EmailStack } from "./email-stack";
-import { ParameterStack } from "./parameter-stack";
 import { PersistentStorageStack } from "./persistent-storage-stack";
 import { ServerStack } from "./server-stack";
 
@@ -19,7 +18,6 @@ type OperationsStackProps = cdk.StackProps & {
   environment: Environment;
   computationStack: ComputationStack;
   emailStack: EmailStack;
-  parameterStack: ParameterStack;
   persistentStorageStack: PersistentStorageStack;
   serverStack: ServerStack;
 };
@@ -97,17 +95,18 @@ export class OperationsStack extends cdk.Stack {
       )
     );
 
-    let serverAutoScalingGroup = props.serverStack.service.cluster.autoscalingGroup;
+    let serverAutoScalingGroup =
+      props.serverStack.service.cluster.autoscalingGroup;
 
     if (!serverAutoScalingGroup)
-      throw Error("Server autoscaling group is not defined")
+      throw Error("Server autoscaling group is not defined");
 
     new autoscaling.LifecycleHook(this, "InstanceTerminationLifecycleHook", {
       autoScalingGroup: serverAutoScalingGroup,
       lifecycleTransition: autoscaling.LifecycleTransition.INSTANCE_TERMINATING,
       notificationTarget: new autoscaling_hooktargets.TopicHook(
         serverAlarmsTopic
-      )
+      ),
     });
 
     // Outputs
@@ -119,7 +118,7 @@ export class OperationsStack extends cdk.Stack {
       EmailSuppressionListName:
         props.persistentStorageStack.emailSuppressionList.tableName,
       NotificationApiEndpoint: `${props.computationStack.notificationApi.attrApiEndpoint}/default`,
-      ServerSecretKeyArn: props.parameterStack.serverSecretKey.secretArn,
+      ServerSecretKeyArn: props.serverStack.serverSecretKey.secretArn,
       SpreadsheetBucketName:
         props.persistentStorageStack.spreadsheetBucket.bucketName,
     };

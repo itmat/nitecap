@@ -33,8 +33,6 @@ export type ServerStackProps = cdk.StackProps & {
   serverBlockDevice: autoscaling.BlockDevice;
   serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
-  serverSecretKey: secretsmanager.Secret;
-  serverUserPassword: secretsmanager.Secret;
   spreadsheetBucket: s3.Bucket;
   applicationDockerfile?: string;
   additionalPermissions?: iam.PolicyStatement[];
@@ -44,12 +42,21 @@ export type ContainerInstance = { instanceId: string; volumeId: string };
 
 export class ServerStack extends cdk.Stack {
   readonly containerInstance: ContainerInstance;
+  readonly serverSecretKey: secretsmanager.Secret;
   readonly service: ecs_patterns.ApplicationLoadBalancedEc2Service;
 
   constructor(scope: cdk.Construct, id: string, props: ServerStackProps) {
     super(scope, id, props);
 
     const environment = props.environment;
+
+    // Server secrets
+
+    this.serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
+    let serverUserPassword = new secretsmanager.Secret(
+      this,
+      "ServerUserPassword"
+    );
 
     // Server permissions
 
@@ -61,7 +68,7 @@ export class ServerStack extends cdk.Stack {
     props.computationStateMachine.grantRead(serverRole);
     props.computationStateMachine.grantStartExecution(serverRole);
     props.emailSuppressionList.grantReadData(serverRole);
-    props.serverSecretKey.grantRead(serverRole);
+    this.serverSecretKey.grantRead(serverRole);
 
     serverRole.addToPolicy(
       new iam.PolicyStatement({
@@ -102,7 +109,7 @@ export class ServerStack extends cdk.Stack {
       environment: {
         ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
-        SERVER_SECRET_KEY_ARN: props.serverSecretKey.secretArn,
+        SERVER_SECRET_KEY_ARN: this.serverSecretKey.secretArn,
         SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
         COMPUTATION_STATE_MACHINE_ARN:
           props.computationStateMachine.stateMachineArn,
@@ -160,7 +167,7 @@ export class ServerStack extends cdk.Stack {
     );
 
     setupLogging(this, serverCluster, environment);
-    setEc2UserPassword(serverCluster, props.serverUserPassword);
+    setEc2UserPassword(serverCluster, serverUserPassword);
 
     this.containerInstance = describeContainerInstance(this, serverCluster);
 
