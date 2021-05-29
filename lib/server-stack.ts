@@ -77,14 +77,6 @@ export class ServerStack extends cdk.Stack {
       })
     );
 
-    serverRole.addManagedPolicy(
-      iam.ManagedPolicy.fromManagedPolicyArn(
-        this,
-        "LoggingPolicy",
-        "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-      )
-    );
-
     if (props.additionalPermissions)
       for (let statement of props.additionalPermissions)
         serverRole.addToPolicy(statement);
@@ -96,9 +88,7 @@ export class ServerStack extends cdk.Stack {
       volumes: [
         {
           name: "ServerVolume",
-          host: {
-            sourcePath: environment.server.storage.deviceMountPoint,
-          },
+          host: { sourcePath: environment.server.storage.deviceMountPoint },
         },
       ],
     });
@@ -108,7 +98,7 @@ export class ServerStack extends cdk.Stack {
         path.join(__dirname, "../src/server"),
         { file: props.applicationDockerfile }
       ),
-      memoryLimitMiB: 1280,
+      memoryLimitMiB: 1536,
       environment: {
         ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
@@ -142,8 +132,6 @@ export class ServerStack extends cdk.Stack {
       name: UlimitName.NOFILE,
     });
 
-    setupLogging(this, environment, serverTask);
-
     // Server hardware
 
     let serverVpc = new ec2.Vpc(this, "ServerVpc", {
@@ -171,6 +159,7 @@ export class ServerStack extends cdk.Stack {
       serverCluster
     );
 
+    setupLogging(this, serverCluster, environment);
     setEc2UserPassword(serverCluster, props.serverUserPassword);
 
     this.containerInstance = describeContainerInstance(this, serverCluster);
@@ -185,10 +174,9 @@ export class ServerStack extends cdk.Stack {
       this,
       "ServerService",
       {
-        cluster: serverCluster,
-        memoryLimitMiB: 1792,
-        desiredCount: 1,
         taskDefinition: serverTask,
+        desiredCount: 1,
+        cluster: serverCluster,
         domainName: props.subdomainName,
         domainZone: props.hostedZone,
         certificate: props.serverCertificate,

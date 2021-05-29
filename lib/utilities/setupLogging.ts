@@ -1,4 +1,5 @@
 import * as cdk from "@aws-cdk/core";
+import * as iam from "@aws-cdk/aws-iam";
 import * as ecs from "@aws-cdk/aws-ecs";
 import * as logs from "@aws-cdk/aws-logs";
 
@@ -8,10 +9,9 @@ import { Environment } from "../environment";
 
 export default function setupLogging(
   stack: cdk.Stack,
-  environment: Environment,
-  task: ecs.TaskDefinition
+  cluster: ecs.Cluster,
+  environment: Environment
 ) {
-
   let configuration = {
     retention: logs.RetentionDays.INFINITE,
     removalPolicy: environment.production
@@ -29,7 +29,24 @@ export default function setupLogging(
     ),
   };
 
-  let loggingContainer = task.addContainer("LoggingContainer", {
+  let loggingTaks = new ecs.Ec2TaskDefinition(stack, "LoggingTask", {
+    taskRole: new iam.Role(stack, "LoggingRole", {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "CloudWatchAgentServerPolicy"
+        ),
+      ],
+    }),
+    volumes: [
+      {
+        name: "ServerVolume",
+        host: { sourcePath: environment.server.storage.deviceMountPoint },
+      },
+    ],
+  });
+
+  let loggingContainer = loggingTaks.addContainer("LoggingContainer", {
     image: ecs.ContainerImage.fromAsset(
       path.join(__dirname, "../../src/server/utilities/logging")
     ),
@@ -46,5 +63,11 @@ export default function setupLogging(
     sourceVolume: "ServerVolume",
     containerPath: environment.server.storage.containerMountPoint,
     readOnly: true,
+  });
+
+  new ecs.Ec2Service(stack, "LoggingService", {
+    cluster,
+    daemon: true,
+    taskDefinition: loggingTaks,
   });
 }
