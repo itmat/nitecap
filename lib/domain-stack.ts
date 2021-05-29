@@ -24,26 +24,9 @@ export class DomainStack extends cdk.Stack {
     this.domainName = `${domain}.${topLevelDomains.join(".")}`;
     this.subdomainName = props.environment.subdomainName;
 
-    let mainHostedZone = route53.HostedZone.fromLookup(this, "MainHostedZone", {
+    this.hostedZone = route53.HostedZone.fromLookup(this, "HostedZone", {
       domainName: this.domainName,
     });
-
-    if (this.subdomainName === this.domainName)
-      this.hostedZone = mainHostedZone;
-    else {
-      this.hostedZone = new route53.HostedZone(this, "HostedZone", {
-        zoneName: this.subdomainName,
-      });
-
-      if (!this.hostedZone.hostedZoneNameServers)
-        throw Error("Invalid hosted zone");
-
-      new route53.NsRecord(this, "NsRecord", {
-        zone: mainHostedZone,
-        recordName: this.subdomainName,
-        values: this.hostedZone.hostedZoneNameServers,
-      });
-    }
 
     this.certificate = new acm.DnsValidatedCertificate(this, "Certificate", {
       hostedZone: this.hostedZone,
