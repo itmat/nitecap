@@ -13,12 +13,7 @@ import * as path from "path";
 
 import { Environment } from "./environment";
 
-function toPascalCase(name: string) {
-  return name
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join("");
-}
+import toPascalCase from "./utilities/toPascalCase";
 
 type ComputationStackProps = cdk.StackProps & {
   environment: Environment;

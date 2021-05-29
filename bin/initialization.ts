@@ -30,10 +30,10 @@ let persistentStorageStack = new PersistentStorageStack(
 );
 
 let emailStack = new EmailStack(stage, "EmailStack", {
-  environment,
+  domainName: domainStack.domainName,
   subdomainName: domainStack.subdomainName,
   hostedZone: domainStack.hostedZone,
-  emailSuppressionListArn: persistentStorageStack.emailSuppressionList.tableArn,
+  emailSuppressionList: persistentStorageStack.emailSuppressionList,
 });
 
 let computationStack = new ComputationStack(stage, "ComputationStack", {
@@ -47,6 +47,7 @@ let serverStackProps = {
   emailSuppressionList: persistentStorageStack.emailSuppressionList,
   serverBlockDevice: persistentStorageStack.serverBlockDevice,
   notificationApi: computationStack.notificationApi,
+  domainName: domainStack.domainName,
   subdomainName: domainStack.subdomainName,
   hostedZone: domainStack.hostedZone,
   emailConfigurationSetName: emailStack.configurationSetName,
@@ -64,6 +65,7 @@ let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
 let stacks = {
   computationStack,
+  domainStack,
   emailStack,
   persistentStorageStack,
   serverStack,

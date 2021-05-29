@@ -10,12 +10,14 @@ import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 import { Environment } from "./environment";
 
 import { ComputationStack } from "./computation-stack";
+import { DomainStack } from "./domain-stack";
 import { EmailStack } from "./email-stack";
 import { PersistentStorageStack } from "./persistent-storage-stack";
 import { ServerStack } from "./server-stack";
 
 type OperationsStackProps = cdk.StackProps & {
   environment: Environment;
+  domainStack: DomainStack;
   computationStack: ComputationStack;
   emailStack: EmailStack;
   persistentStorageStack: PersistentStorageStack;
@@ -65,9 +67,9 @@ export class OperationsStack extends cdk.Stack {
       "ComputationBackendAlarmsTopic"
     );
 
-    environment.email.computationBackendAlarmsRecipients.map((recipient) =>
-      computationBackendAlarmsTopic.addSubscription(
-        new subscriptions.EmailSubscription(recipient)
+    computationBackendAlarmsTopic.addSubscription(
+      new subscriptions.EmailSubscription(
+        `admins@${props.domainStack.domainName}`
       )
     );
 
@@ -89,9 +91,9 @@ export class OperationsStack extends cdk.Stack {
     );
 
     let serverAlarmsTopic = new sns.Topic(this, "ServerAlarmsTopic");
-    environment.email.serverAlarmsRecipients.map((recipient) =>
-      serverAlarmsTopic.addSubscription(
-        new subscriptions.EmailSubscription(recipient)
+    serverAlarmsTopic.addSubscription(
+      new subscriptions.EmailSubscription(
+        `admins@${props.domainStack.domainName}`
       )
     );
 

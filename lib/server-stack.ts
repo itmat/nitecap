@@ -28,6 +28,7 @@ export type ServerStackProps = cdk.StackProps & {
   computationStateMachine: sfn.StateMachine;
   emailSuppressionList: dynamodb.Table;
   notificationApi: apigateway.CfnApi;
+  domainName: string;
   subdomainName: string;
   hostedZone: route53.IHostedZone;
   serverBlockDevice: autoscaling.BlockDevice;
@@ -75,11 +76,8 @@ export class ServerStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ["ses:SendEmail"],
         resources: [
+          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.domainName}`,
           `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.subdomainName}`,
-          ...environment.email.verifiedRecipients.map(
-            (recipient) =>
-              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
-          ),
         ],
       })
     );

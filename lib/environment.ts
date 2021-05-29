@@ -4,13 +4,6 @@ export type Environment = {
   production: boolean;
   subdomainName: string;
   allowedCidrBlocks: string[];
-  email: {
-    verifiedRecipients: string[];
-    serverAlarmsRecipients: string[];
-    computationBackendAlarmsRecipients: string[];
-    softBouncesRecipients: string[];
-    complaintsRecipients: string[];
-  };
   server: {
     storage: {
       deviceName: string;
