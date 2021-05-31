@@ -516,9 +516,14 @@ class Spreadsheet(db.Model):
         """
         error = None
         error_message = f"The data for spreadsheet {self.id} could not all be successfully expunged."
+
+        spreadsheet_data_path = self.get_spreadsheet_data_folder()
         try:
+            if Path(spreadsheet_data_path).exists():
+                shutil.rmtree(spreadsheet_data_path)
+            else:
+                current_app.logger.info(f"Trying to delete spreadhseet {self.id} but no data folder - skipping")
             self.delete_from_db()
-            shutil.rmtree(self.spreadsheet_data_path)
         except Exception as e:
             current_app.logger.error(error_message, e)
             error = error_message
