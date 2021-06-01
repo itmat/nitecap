@@ -69,6 +69,11 @@ with app.app.app_context():
                 spreadsheet.file_path = pathlib.Path(spreadsheet.file_path).name
             if spreadsheet.uploaded_file_path:
                 spreadsheet.uploaded_file_path = pathlib.Path(spreadsheet.uploaded_file_path).name
+                # A small number of uploaded files were erroneously recorded as being at "uploaded_spreadsheet..txt"
+                # but were actually correctly stored at 'uploaded_spreadsheet.txt" and so we remove the '..' here so
+                # that they can be uploaded correctly
+                if '..' in spreadsheet.uploaded_file_path:
+                    spreadsheet.uploaded_file_path = spreadsheet.uploaded_file_path.replace('..', '.')
             # Trim the folder path to be relative to the entire folder of uploaded data
             if spreadsheet.spreadsheet_data_path:
                 _, spreadsheet_data_path_relative = re.match("(.*)(user_.*)", spreadsheet.spreadsheet_data_path).groups()
