@@ -41,6 +41,19 @@ app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
 #CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
 
+class ReverseProxied:
+    """
+    Force the use of 'https' in urls where appropriate
+    since the reverse proxy will make it look like we are receiving http
+    """
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+    def __call__(self, environ, start_response):
+        if app.config['USE_HTTPS']:
+            environ['wsgi.url_scheme'] = "https"
+        return self.wsgi_app(environ, start_response)
+app.wsgi_app = ReverseProxied(app.wsgi_app)
+
 # Log format for both file and email logging.
 # formatter = logging.Formatter('%(asctime)s \t%(levelname)s\t%(module)s\t%(process)d\t%(thread)d\t%(message)s')
 formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(module)s %(process)d %(thread)d %(message)s')
