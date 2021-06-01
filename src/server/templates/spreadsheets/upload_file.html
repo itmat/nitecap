@@ -50,12 +50,12 @@
 
             <form id="spreadsheet_form">
                 <div class="form-group required">
-                    <label for="header_row">The Spreadsheet Header is on Row:</label>
+                    <label for="header_row">Spreadsheet header row number:</label>
                     <input type="number" id="header_row" name="header_row" class="form-control" value="{{header_row or 1}}"
                         style="width:15rem" required />
                 </div>
                 <div class="form-group required">
-                    <label for="upload_file">Spreadsheet File:</label>
+                    <label for="upload_file">Spreadsheet file:</label>
                     <input type="file" id="upload_file" name="upload_file" required>
                 </div>
                 <button class="btn btn-primary" type="button" id="submit_btn" onclick="javascript: upload();">
@@ -74,7 +74,7 @@
                 <li> Excel, CSV, or tab-separated files supported </li>
                 <li> One row per feature (gene, protein, etc.)</li>
                 <li> One column per sample </li>
-                <li> Columns must be labelled in a header row, on a row you specify</li>
+                <li> Columns must be labelled in a header row, on a row you specify (typically 1)</li>
                 <li> At least one column with ID values for the rows</li>
                 <li> Any number of additional columns </li>
                 <li> (Optional) include time in column headers (such as "CT00", "ZT04", or "12:00")</li>
