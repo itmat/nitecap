@@ -7,10 +7,6 @@ SECRET_KEY_ARN = os.environ["SERVER_SECRET_KEY_ARN"]
 SECRET_VALUE = boto3.client("secretsmanager").get_secret_value(SecretId=SECRET_KEY_ARN)
 os.environ["SECRET_KEY"] = SECRET_VALUE["SecretString"]
 
-# TODO: The feedback is sent using smtplib, change this to SES
-import smtplib
-import sys
-
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
@@ -127,27 +123,6 @@ def gallery():
 @requires_admin
 def dashboard():
     return redirect(url_for('users.display_users'))
-
-@app.route('/send_feeedback', methods=['POST'])
-def send_feedback():
-    json_data = request.get_json()
-    comments = json_data.get('comments', None)
-    if comments:
-        print(comments)
-        email = EmailMessage()
-        email['Subject'] = 'Nitecap Feedback'
-        email['From'] = os.environ.get('EMAIL_SENDER')
-        email['To'] = os.environ.get('EMAIL_SENDER')
-        email.set_content(comments)
-        try:
-            s = smtplib.SMTP(host=os.environ.get('SMTP_SERVER_HOST'), port=25)
-            s.send_message(email)
-            s.quit()
-        except Exception as e:
-            app.logger.error(f"Email delivery failed: {e}")
-            return jsonify({'error': 'Unable to deliver feedback.  Please try again later.'}), 500
-    return '', 204
-
 
 @app.errorhandler(413)
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
