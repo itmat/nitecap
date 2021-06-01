@@ -345,6 +345,7 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
                            user_id=user.id,
+                           user_is_visitor=user.visitor,
                            NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
@@ -352,6 +353,7 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
                            user_id=user.id,
+                           user_is_visitor=user.visitor,
                            NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 
@@ -623,12 +625,16 @@ def consume_share(token):
     # Updates the last-access time
     share.save_to_db()
 
+    # Get the current logged in user, if any
+    user = User.find_by_email(session.get('email', ''))
+
     if all(is_categorical):
         return render_template('spreadsheets/show_mpv_spreadsheet.html',
                            spreadsheet_ids=spreadsheet_ids,
                            config=config,
                            share_token=share.id,
                            user_id=sharing_user.id,
+                           user_is_visitor=user.visitor if user is not None else True,
                            NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
     else:
@@ -637,6 +643,7 @@ def consume_share(token):
                            config=config,
                            share_token=share.id,
                            user_id=sharing_user.id,
+                           user_is_visitor=user.visitor if user is not None else True,
                            NOTIFICATION_API_ENDPOINT=os.environ['NOTIFICATION_API_ENDPOINT'],
                            descriptive_names=[spreadsheet.descriptive_name for spreadsheet in spreadsheets])
 

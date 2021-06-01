@@ -18,6 +18,7 @@
         initial_config = {{ config | tojson }};
 
         user_id = {{user_id| safe}};
+        logged_in = !{{user_is_visitor| tojson}};
 
         initial_config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};
 
@@ -205,6 +206,7 @@
         $('[data-toggle="tooltip"]').tooltip();
 
         vm.share_token = share_token;
+        vm.logged_in = logged_in;
 
         vm.connectToNotificationApi();
     }
@@ -228,11 +230,11 @@
                     Download
                 </button>
 
-                <button v-if="spreadsheets.length === 1" class="btn btn-secondary btn-sm" id='comparison_button' v-on:click="triggerComparisonPopup">
+                <button v-if="spreadsheets.length === 1 && share_token === '' && logged_in" class="btn btn-secondary btn-sm" id='comparison_button' v-on:click="triggerComparisonPopup">
                    Compare
                 </button>
 
-                <a v-if="share_token.length > 0"
+                <a v-if="share_token.length > 0 && logged_in"
                     class="btn btn-secondary btn-sm"
                     v-bind:href="'/spreadsheets/copy_share/'+share_token">
                         Copy to Account
@@ -943,6 +945,7 @@
             },
 
             share_token: '', // If from a share, the token used
+            logged_in: false,
 
             notificationApiConnection: null, // WebSocket connection to listen for analysis results
             analyses: {}, // analysisID -> analyses information map
