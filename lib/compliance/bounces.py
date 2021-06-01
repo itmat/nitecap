@@ -3,10 +3,10 @@ import json
 import os
 
 dynamodb = boto3.resource("dynamodb")
-suppression_list = dynamodb.Table(os.environ["EMAIL_SUPPRESSION_LIST_NAME"])
-
 ses = boto3.client("ses")
-soft_bounces_recipients = json.loads(os.environ["SOFT_BOUNCES_RECIPIENTS"])
+
+suppression_list = dynamodb.Table(os.environ["EMAIL_SUPPRESSION_LIST_NAME"])
+soft_bounces_recipient = os.environ["SOFT_BOUNCES_RECIPIENT"]
 
 
 def handler(event, context):
@@ -20,14 +20,13 @@ def handler(event, context):
             for recipient in message["bounce"]["bouncedRecipients"]:
                 suppression_list.put_item(Item={"email": recipient["emailAddress"]})
         else:
-            for recipient in soft_bounces_recipients:
-                ses.send_email(
-                    Source=recipient,
-                    Destination={
-                        "ToAddresses": [recipient],
-                    },
-                    Message={
-                        "Subject": {"Data": "Bounced e-mail"},
-                        "Body": {"Text": {"Data": json.dumps(message, indent=4)}},
-                    },
-                )
+            ses.send_email(
+                Source=recipient,
+                Destination={
+                    "ToAddresses": [soft_bounces_recipient],
+                },
+                Message={
+                    "Subject": {"Data": "Bounced e-mail"},
+                    "Body": {"Text": {"Data": json.dumps(message, indent=4)}},
+                },
+            )

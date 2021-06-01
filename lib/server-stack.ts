@@ -1,8 +1,6 @@
 import * as apigateway from "@aws-cdk/aws-apigatewayv2";
 import * as autoscaling from "@aws-cdk/aws-autoscaling";
-import * as autoscaling_hooktargets from "@aws-cdk/aws-autoscaling-hooktargets";
 import * as acm from "@aws-cdk/aws-certificatemanager";
-import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as ec2 from "@aws-cdk/aws-ec2";
@@ -13,8 +11,6 @@ import * as route53 from "@aws-cdk/aws-route53";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
-import * as sns from "@aws-cdk/aws-sns";
-import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 
 import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
@@ -33,13 +29,11 @@ export type ServerStackProps = cdk.StackProps & {
   emailSuppressionList: dynamodb.Table;
   notificationApi: apigateway.CfnApi;
   domainName: string;
+  subdomainName: string;
   hostedZone: route53.IHostedZone;
-  backupPlan: backup.BackupPlan;
   serverBlockDevice: autoscaling.BlockDevice;
   serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
-  serverSecretKey: secretsmanager.Secret;
-  serverUserPassword: secretsmanager.Secret;
   spreadsheetBucket: s3.Bucket;
   applicationDockerfile?: string;
   additionalPermissions?: iam.PolicyStatement[];
@@ -49,6 +43,7 @@ export type ContainerInstance = { instanceId: string; volumeId: string };
 
 export class ServerStack extends cdk.Stack {
   readonly containerInstance: ContainerInstance;
+  readonly serverSecretKey: secretsmanager.Secret;
   readonly service: ecs_patterns.ApplicationLoadBalancedEc2Service;
 
   constructor(scope: cdk.Construct, id: string, props: ServerStackProps) {
@@ -56,13 +51,12 @@ export class ServerStack extends cdk.Stack {
 
     const environment = props.environment;
 
-    // Alarm topic
+    // Server secrets
 
-    let serverAlarmsTopic = new sns.Topic(this, "ServerAlarmsTopic");
-    environment.email.serverAlarmsRecipients.map((recipient) =>
-      serverAlarmsTopic.addSubscription(
-        new subscriptions.EmailSubscription(recipient)
-      )
+    this.serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
+    let serverUserPassword = new secretsmanager.Secret(
+      this,
+      "ServerUserPassword"
     );
 
     // Server permissions
@@ -75,7 +69,7 @@ export class ServerStack extends cdk.Stack {
     props.computationStateMachine.grantRead(serverRole);
     props.computationStateMachine.grantStartExecution(serverRole);
     props.emailSuppressionList.grantReadData(serverRole);
-    props.serverSecretKey.grantRead(serverRole);
+    this.serverSecretKey.grantRead(serverRole);
 
     serverRole.addToPolicy(
       new iam.PolicyStatement({
@@ -83,25 +77,14 @@ export class ServerStack extends cdk.Stack {
         actions: ["ses:SendEmail"],
         resources: [
           `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.domainName}`,
-          ...environment.email.verifiedRecipients.map(
-            (recipient) =>
-              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
-          ),
+          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.subdomainName}`,
         ],
       })
     );
 
-    serverRole.addManagedPolicy(
-      iam.ManagedPolicy.fromManagedPolicyArn(
-        this,
-        "LoggingPolicy",
-        "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-      )
-    );
-
     if (props.additionalPermissions)
       for (let statement of props.additionalPermissions)
-        serverRole.addToPolicy(statement)
+        serverRole.addToPolicy(statement);
 
     // Server software
 
@@ -110,9 +93,7 @@ export class ServerStack extends cdk.Stack {
       volumes: [
         {
           name: "ServerVolume",
-          host: {
-            sourcePath: environment.server.storage.deviceMountPoint,
-          },
+          host: { sourcePath: environment.server.storage.deviceMountPoint },
         },
       ],
     });
@@ -122,16 +103,16 @@ export class ServerStack extends cdk.Stack {
         path.join(__dirname, "../src/server"),
         { file: props.applicationDockerfile }
       ),
-      memoryLimitMiB: 1280,
+      memoryLimitMiB: 1536,
       environment: {
         ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
-        SERVER_SECRET_KEY_ARN: props.serverSecretKey.secretArn,
+        SERVER_SECRET_KEY_ARN: this.serverSecretKey.secretArn,
         SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
         COMPUTATION_STATE_MACHINE_ARN:
           props.computationStateMachine.stateMachineArn,
         NOTIFICATION_API_ENDPOINT: `wss://${props.notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
-        EMAIL_SENDER: `no-reply@${props.domainName}`,
+        EMAIL_SENDER: `no-reply@${props.subdomainName}`,
         EMAIL_CONFIGURATION_SET_NAME: props.emailConfigurationSetName,
         EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
       },
@@ -155,8 +136,6 @@ export class ServerStack extends cdk.Stack {
       hardLimit: 1048576,
       name: UlimitName.NOFILE,
     });
-
-    setupLogging(this, environment, serverTask);
 
     // Server hardware
 
@@ -185,7 +164,8 @@ export class ServerStack extends cdk.Stack {
       serverCluster
     );
 
-    setEc2UserPassword(serverCluster, props.serverUserPassword);
+    setupLogging(this, serverCluster, environment);
+    setEc2UserPassword(serverCluster, serverUserPassword);
 
     this.containerInstance = describeContainerInstance(this, serverCluster);
 
@@ -195,23 +175,14 @@ export class ServerStack extends cdk.Stack {
       )
     );
 
-    props.backupPlan.addSelection("ServerBlockStorageBackup", {
-      resources: [
-        backup.BackupResource.fromArn(
-          `arn:${this.partition}:ec2:${this.region}:${this.account}:volume/${this.containerInstance.volumeId}`
-        ),
-      ],
-    });
-
     this.service = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
       {
-        cluster: serverCluster,
-        memoryLimitMiB: 1792,
-        desiredCount: 1,
         taskDefinition: serverTask,
-        domainName: props.domainName,
+        desiredCount: 1,
+        cluster: serverCluster,
+        domainName: props.subdomainName,
         domainZone: props.hostedZone,
         certificate: props.serverCertificate,
         redirectHTTP: true,
@@ -234,31 +205,6 @@ export class ServerStack extends cdk.Stack {
       );
 
       this.service.loadBalancer.addSecurityGroup(serverSecurityGroup);
-    }
-
-    // Alarms
-
-    serverCluster.autoscalingGroup?.addLifecycleHook(
-      "InstanceTerminationLifecycleHook",
-      {
-        lifecycleTransition:
-          autoscaling.LifecycleTransition.INSTANCE_TERMINATING,
-        notificationTarget: new autoscaling_hooktargets.TopicHook(
-          serverAlarmsTopic
-        ),
-      }
-    );
-
-    let outputs = {
-      SpreadsheetBucketName: props.spreadsheetBucket.bucketName,
-      ComputationStateMachineArn: props.computationStateMachine.stateMachineArn,
-      NotificationApiEndpoint: `${props.notificationApi.attrApiEndpoint}/default`,
-      EmailSuppressionListName: props.emailSuppressionList.tableName,
-      ServerSecretKeyArn: props.serverSecretKey.secretArn,
-    };
-
-    for (let [outputName, outputValue] of Object.entries(outputs)) {
-      new cdk.CfnOutput(this, outputName, { value: outputValue });
     }
   }
 }

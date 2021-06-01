@@ -8,8 +8,7 @@ import { Environment } from "./environment";
 
 type PersistentStorageStackProps = cdk.StackProps & {
   environment: Environment;
-  domainName: string;
-  backupPlan: backup.BackupPlan;
+  subdomainName: string;
 };
 
 export class PersistentStorageStack extends cdk.Stack {
@@ -26,7 +25,7 @@ export class PersistentStorageStack extends cdk.Stack {
 
     const environment = props.environment;
 
-    let allowedCorsOrigins = [`https://${props.domainName}`];
+    let allowedCorsOrigins = [`https://${props.subdomainName}`];
     if (!environment.production)
       allowedCorsOrigins.push("http://localhost:5000");
 
@@ -79,13 +78,5 @@ export class PersistentStorageStack extends cdk.Stack {
         }
       ),
     };
-
-    // Backup
-
-    props.backupPlan.addSelection("EmailSuppressionListBackup", {
-      resources: [
-        backup.BackupResource.fromDynamoDbTable(this.emailSuppressionList),
-      ],
-    });
   }
 }

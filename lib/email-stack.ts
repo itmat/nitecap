@@ -10,17 +10,17 @@ import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 
 import * as path from "path";
 
-import { Environment } from "./environment";
+import toPascalCase from "./utilities/toPascalCase";
 
 function normalize(name: string) {
   return name.replace(/\./g, "_");
 }
 
 type EmailStackProps = cdk.StackProps & {
-  environment: Environment;
   domainName: string;
+  subdomainName: string;
   hostedZone: route53.IHostedZone;
-  emailSuppressionListArn: string;
+  emailSuppressionList: dynamodb.Table;
 };
 
 export class EmailStack extends cdk.Stack {
@@ -29,16 +29,7 @@ export class EmailStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: EmailStackProps) {
     super(scope, id, props);
 
-    const environment = props.environment;
-    const { domainName, hostedZone, emailSuppressionListArn } = props;
-
     // Compliance
-
-    let emailSuppressionList = dynamodb.Table.fromTableArn(
-      this,
-      "EmailSuppressionList",
-      emailSuppressionListArn
-    );
 
     let bouncesTopic = new sns.Topic(this, "BouncesTopic");
     let complaintsTopics = new sns.Topic(this, "ComplaintsTopics");
@@ -48,23 +39,20 @@ export class EmailStack extends cdk.Stack {
       handler: "bounces.handler",
       runtime: lambda.Runtime.PYTHON_3_8,
       environment: {
-        SOFT_BOUNCES_RECIPIENTS: JSON.stringify(
-          environment.email.softBouncesRecipients
-        ),
-        EMAIL_SUPPRESSION_LIST_NAME: emailSuppressionList.tableName,
+        SOFT_BOUNCES_RECIPIENT: `admins@${props.domainName}`,
+        EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
       },
     });
 
-    emailSuppressionList.grantWriteData(bouncesLambda);
+    props.emailSuppressionList.grantWriteData(bouncesLambda);
 
     bouncesLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["ses:SendEmail"],
-        resources: environment.email.softBouncesRecipients.map(
-          (recipient) =>
-            `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${recipient}`
-        ),
+        resources: [
+          `arn:${this.partition}:ses:${this.region}:${this.account}:identity/admins@${props.domainName}`,
+        ],
       })
     );
 
@@ -72,10 +60,8 @@ export class EmailStack extends cdk.Stack {
       new subscriptions.LambdaSubscription(bouncesLambda)
     );
 
-    environment.email.complaintsRecipients.map((recipient) =>
-      complaintsTopics.addSubscription(
-        new subscriptions.EmailSubscription(recipient)
-      )
+    complaintsTopics.addSubscription(
+      new subscriptions.EmailSubscription(`admins@${props.domainName}`)
     );
 
     // Configuration
@@ -83,7 +69,7 @@ export class EmailStack extends cdk.Stack {
     let configurationSet = new ses.CfnConfigurationSet(
       this,
       "ConfigurationSet",
-      { name: `ConfigurationSet-${normalize(domainName)}` }
+      { name: `ConfigurationSet-${normalize(props.subdomainName)}` }
     );
 
     if (!configurationSet.name) {
@@ -93,48 +79,44 @@ export class EmailStack extends cdk.Stack {
     this.configurationSetName = configurationSet.name;
 
     let configuration = {
-      Bounce: {
-        eventTypes: ["BOUNCE"],
-        topic: bouncesTopic,
-      },
-      Complaint: {
-        eventTypes: ["COMPLAINT"],
-        topic: complaintsTopics,
-      },
+      bounce: bouncesTopic,
+      complaint: complaintsTopics,
     };
 
     for (let [eventType, destination] of Object.entries(configuration)) {
-      new cr.AwsCustomResource(this, `Email${eventType}Destination`, {
-        policy: {
-          statements: [
-            new iam.PolicyStatement({
-              effect: iam.Effect.ALLOW,
-              actions: ["ses:CreateConfigurationSetEventDestination"],
-              resources: [
-                `arn:${this.partition}:ses:${this.region}:${this.account}:configuration-set/${this.configurationSetName}`,
-              ],
-            }),
-          ],
-        },
-        onUpdate: {
-          service: "SESV2",
-          action: "createConfigurationSetEventDestination",
-          parameters: {
-            ConfigurationSetName: this.configurationSetName,
-            EventDestinationName: `Topic-${destination.topic.node.addr}`,
-            EventDestination: {
-              Enabled: true,
-              MatchingEventTypes: destination.eventTypes,
-              SnsDestination: {
-                TopicArn: destination.topic.topicArn,
+      new cr.AwsCustomResource(
+        this,
+        `Email${toPascalCase(eventType)}Destination`,
+        {
+          policy: {
+            statements: [
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["ses:CreateConfigurationSetEventDestination"],
+                resources: [
+                  `arn:${this.partition}:ses:${this.region}:${this.account}:configuration-set/${this.configurationSetName}`,
+                ],
+              }),
+            ],
+          },
+          onUpdate: {
+            service: "SESV2",
+            action: "createConfigurationSetEventDestination",
+            parameters: {
+              ConfigurationSetName: this.configurationSetName,
+              EventDestinationName: `Topic-${destination.node.addr}`,
+              EventDestination: {
+                Enabled: true,
+                MatchingEventTypes: [eventType.toUpperCase()],
+                SnsDestination: {
+                  TopicArn: destination.topicArn,
+                },
               },
             },
+            physicalResourceId: cr.PhysicalResourceId.of(destination.topicArn),
           },
-          physicalResourceId: cr.PhysicalResourceId.of(
-            destination.topic.topicArn
-          ),
-        },
-      });
+        }
+      );
     }
 
     let emailIdentity = new cr.AwsCustomResource(this, "EmailIdentity", {
@@ -144,7 +126,7 @@ export class EmailStack extends cdk.Stack {
             effect: iam.Effect.ALLOW,
             actions: ["ses:CreateEmailIdentity", "ses:DeleteEmailIdentity"],
             resources: [
-              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${domainName}`,
+              `arn:${this.partition}:ses:${this.region}:${this.account}:identity/${props.subdomainName}`,
             ],
           }),
         ],
@@ -153,7 +135,7 @@ export class EmailStack extends cdk.Stack {
         service: "SESV2",
         action: "createEmailIdentity",
         parameters: {
-          EmailIdentity: domainName,
+          EmailIdentity: props.subdomainName,
           ConfigurationSetName: this.configurationSetName,
         },
         physicalResourceId: cr.PhysicalResourceId.of(this.stackId),
@@ -162,7 +144,7 @@ export class EmailStack extends cdk.Stack {
         service: "SESV2",
         action: "deleteEmailIdentity",
         parameters: {
-          EmailIdentity: domainName,
+          EmailIdentity: props.subdomainName,
         },
       },
     });
@@ -175,8 +157,8 @@ export class EmailStack extends cdk.Stack {
     domainKeysIdentifiedMailTokens.map(
       (token, i) =>
         new route53.CnameRecord(this, `DomainKeysIdentifiedMailRecord-${i}`, {
-          zone: hostedZone,
-          recordName: `${token}._domainkey.${domainName}`,
+          zone: props.hostedZone,
+          recordName: `${token}._domainkey.${props.subdomainName}`,
           domainName: `${token}.dkim.amazonses.com`,
         })
     );
