@@ -11,6 +11,7 @@ import * as route53 from "@aws-cdk/aws-route53";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
+import * as ssm from "@aws-cdk/aws-ssm";
 
 import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
 
@@ -31,7 +32,7 @@ export type ServerStackProps = cdk.StackProps & {
   domainName: string;
   subdomainName: string;
   hostedZone: route53.IHostedZone;
-  serverBlockDevice: autoscaling.BlockDevice;
+  snapshotIdParameter: ssm.StringParameter;
   serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
   spreadsheetBucket: s3.Bucket;
@@ -153,13 +154,23 @@ export class ServerStack extends cdk.Stack {
           ec2.InstanceClass.T3,
           ec2.InstanceSize.MEDIUM
         ),
-        blockDevices: [props.serverBlockDevice],
+        blockDevices: [
+          {
+            deviceName: environment.server.storage.deviceName,
+            volume: autoscaling.BlockDeviceVolume.ebsFromSnapshot(
+              props.snapshotIdParameter.stringValue,
+              {
+                deleteOnTermination: environment.production ? false : true,
+              }
+            ),
+          },
+        ],
       },
       containerInsights: true,
     });
 
     mountEbsVolume(
-      props.serverBlockDevice.deviceName,
+      environment.server.storage.deviceName,
       environment.server.storage.deviceMountPoint,
       serverCluster
     );

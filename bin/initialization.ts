@@ -7,6 +7,7 @@ import { OperationsStack } from "../lib/operations-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
+import { TransitionParameterStack } from "../lib/utilities/transition/parameter-stack";
 
 import environment from "./.env";
 
@@ -45,7 +46,7 @@ let serverStackProps = {
   environment,
   computationStateMachine: computationStack.computationStateMachine,
   emailSuppressionList: persistentStorageStack.emailSuppressionList,
-  serverBlockDevice: persistentStorageStack.serverBlockDevice,
+  snapshotIdParameter: persistentStorageStack.snapshotIdParameter,
   notificationApi: computationStack.notificationApi,
   domainName: domainStack.domainName,
   subdomainName: domainStack.subdomainName,
@@ -55,20 +56,19 @@ let serverStackProps = {
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
 
-// let transitionStack = new TransitionStack(stage, "TransitionStack", {
-//   serverStackProps,
-//   snapshotLambdaName: parameterStack.snapshotLambdaName,
-//   snapshotIdParameter: parameterStack.serverBlockStorageSnapshotId,
-// });
+new TransitionStack(stage, "TransitionStack", {
+  serverStackProps,
+  parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
+});
 
-let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
+// let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
-let stacks = {
-  computationStack,
-  domainStack,
-  emailStack,
-  persistentStorageStack,
-  serverStack,
-};
+// let stacks = {
+//   computationStack,
+//   domainStack,
+//   emailStack,
+//   persistentStorageStack,
+//   serverStack,
+// };
 
-new OperationsStack(stage, "OperationsStack", { environment, ...stacks });
+// new OperationsStack(stage, "OperationsStack", { environment, ...stacks });

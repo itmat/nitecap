@@ -1,8 +1,7 @@
-import * as autoscaling from "@aws-cdk/aws-autoscaling";
-import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as s3 from "@aws-cdk/aws-s3";
+import * as ssm from "@aws-cdk/aws-ssm";
 
 import { Environment } from "./environment";
 
@@ -14,7 +13,7 @@ type PersistentStorageStackProps = cdk.StackProps & {
 export class PersistentStorageStack extends cdk.Stack {
   readonly spreadsheetBucket: s3.Bucket;
   readonly emailSuppressionList: dynamodb.Table;
-  readonly serverBlockDevice: autoscaling.BlockDevice;
+  readonly snapshotIdParameter: ssm.StringParameter;
 
   constructor(
     scope: cdk.Construct,
@@ -69,14 +68,14 @@ export class PersistentStorageStack extends cdk.Stack {
       }
     );
 
-    this.serverBlockDevice = {
-      deviceName: environment.server.storage.deviceName,
-      volume: autoscaling.BlockDeviceVolume.ebsFromSnapshot(
-        environment.server.storage.snapshotId,
-        {
-          deleteOnTermination: environment.production ? false : true,
-        }
-      ),
-    };
+    this.snapshotIdParameter = new ssm.StringParameter(
+      this,
+      "ServerStorageSnapshotIdParameter",
+      {
+        stringValue: environment.production
+          ? "N/A"
+          : environment.server.storage.snapshotId ?? "N/A",
+      }
+    );
   }
 }

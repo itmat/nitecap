@@ -8,7 +8,7 @@ export type Environment = {
     storage: {
       deviceName: string;
       deviceMountPoint: string;
-      snapshotId: string;
+      snapshotId?: string;
       containerMountPoint: string;
     };
     variables: {

@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 import boto3
+import datetime
+import functools
 import os
+import pathlib
+import re
+import shutil
 import sys
 import time
-import datetime
-import pathlib
-import shutil
-import re
 
 sys.path.append("/var/www/flask_apps/nitecap")
+
+print = functools.partial(print, flush=True)
 
 import app
 from db import db
@@ -30,7 +33,7 @@ db.init_app(app.app)
 λ = boto3.client("lambda")
 ssm = boto3.client("ssm")
 
-WAIT_DURATION = 0.25
+WAIT_DURATION = 0.1
 
 OLD_VISITOR_THRESHOLD = datetime.datetime.now() - datetime.timedelta(days=32)
 
@@ -38,11 +41,12 @@ def transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet):
     print(
         f"Transferring spreadsheet {spreadsheet.id} from user {spreadsheet.user.id} to S3"
     )
-    # spreadsheet.init_on_load()
-    # store_spreadsheet_to_s3(spreadsheet)
-    # time.sleep(WAIT_DURATION)
+    spreadsheet.init_on_load()
+    store_spreadsheet_to_s3(spreadsheet)
+    del spreadsheet.df
+    time.sleep(WAIT_DURATION)
 
-    userId = spreadsheet.user.id
+    userId = str(spreadsheet.user.id)
     spreadsheetId = spreadsheet.id
     viewId = spreadsheet.edit_version
 
@@ -69,6 +73,11 @@ with app.app.app_context():
                 spreadsheet.file_path = pathlib.Path(spreadsheet.file_path).name
             if spreadsheet.uploaded_file_path:
                 spreadsheet.uploaded_file_path = pathlib.Path(spreadsheet.uploaded_file_path).name
+                # A small number of uploaded files were erroneously recorded as being at "uploaded_spreadsheet..txt"
+                # but were actually correctly stored at 'uploaded_spreadsheet.txt" and so we remove the '..' here so
+                # that they can be uploaded correctly
+                if '..' in spreadsheet.uploaded_file_path:
+                    spreadsheet.uploaded_file_path = spreadsheet.uploaded_file_path.replace('..', '.')
             # Trim the folder path to be relative to the entire folder of uploaded data
             if spreadsheet.spreadsheet_data_path:
                 _, spreadsheet_data_path_relative = re.match("(.*)(user_.*)", spreadsheet.spreadsheet_data_path).groups()
@@ -78,6 +87,7 @@ with app.app.app_context():
             print(f"Error updating spreadsheet in spreadsheet {spreadsheet.id}")
             print(spreadsheet)
             raise e
+
     db.session.commit()
 
     for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
@@ -86,6 +96,12 @@ with app.app.app_context():
                 f"Deleting spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since user is visitor"
             )
             spreadsheet.delete()
+            continue
+
+        if spreadsheet.is_categorical():
+            print(
+                f"Skipping over spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since this is a categorical spreadsheet"
+            )
             continue
 
         if spreadsheet.column_labels_str is None:
@@ -102,6 +118,8 @@ with app.app.app_context():
             print(f"Deleting visiting user {user.id}!")
             user.delete()
 
+    db.session.commit()
+
 def get_snapshot_lambda_name():
     response = ssm.get_parameter(Name=os.environ["SNAPSHOT_LAMBDA_NAME_PARAMETER"])
     return response["Parameter"]["Value"]
@@ -110,6 +128,7 @@ def get_snapshot_lambda_name():
 while True:
     try:
         λ.invoke(FunctionName=get_snapshot_lambda_name(), InvocationType="Event")
+        print("Invoked the snapshot lambda")
         break
     except (
         λ.exceptions.ResourceNotFoundException,
@@ -117,3 +136,4 @@ while True:
     ):
         print("Waiting for the snapshot lambda to be constructed")
         time.sleep(10)
+        
