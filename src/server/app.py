@@ -7,10 +7,6 @@ SECRET_KEY_ARN = os.environ["SERVER_SECRET_KEY_ARN"]
 SECRET_VALUE = boto3.client("secretsmanager").get_secret_value(SecretId=SECRET_KEY_ARN)
 os.environ["SECRET_KEY"] = SECRET_VALUE["SecretString"]
 
-# TODO: The feedback is sent using smtplib, change this to SES
-import smtplib
-import sys
-
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
@@ -40,6 +36,19 @@ app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
 #CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
+
+class ReverseProxied:
+    """
+    Force the use of 'https' in urls where appropriate
+    since the reverse proxy will make it look like we are receiving http
+    """
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+    def __call__(self, environ, start_response):
+        if app.config['USE_HTTPS']:
+            environ['wsgi.url_scheme'] = "https"
+        return self.wsgi_app(environ, start_response)
+app.wsgi_app = ReverseProxied(app.wsgi_app)
 
 # Log format for both file and email logging.
 # formatter = logging.Formatter('%(asctime)s \t%(levelname)s\t%(module)s\t%(process)d\t%(thread)d\t%(message)s')
@@ -114,27 +123,6 @@ def gallery():
 @requires_admin
 def dashboard():
     return redirect(url_for('users.display_users'))
-
-@app.route('/send_feeedback', methods=['POST'])
-def send_feedback():
-    json_data = request.get_json()
-    comments = json_data.get('comments', None)
-    if comments:
-        print(comments)
-        email = EmailMessage()
-        email['Subject'] = 'Nitecap Feedback'
-        email['From'] = os.environ.get('EMAIL_SENDER')
-        email['To'] = os.environ.get('EMAIL_SENDER')
-        email.set_content(comments)
-        try:
-            s = smtplib.SMTP(host=os.environ.get('SMTP_SERVER_HOST'), port=25)
-            s.send_message(email)
-            s.quit()
-        except Exception as e:
-            app.logger.error(f"Email delivery failed: {e}")
-            return jsonify({'error': 'Unable to deliver feedback.  Please try again later.'}), 500
-    return '', 204
-
 
 @app.errorhandler(413)
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)

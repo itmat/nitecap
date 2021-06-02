@@ -21,6 +21,7 @@ PERMANENT_SESSION_LIFETIME = timedelta(days=31)
 BANNER_CONTENT = os.environ.get('BANNER_CONTENT', '')
 BANNER_VISIBLE = bool(os.environ.get('BANNER_VISIBLE', ''))
 SESSION_COOKIE_SAMESITE='Lax'
+USE_HTTPS = (ENV == 'production')
 
 # For job system
 NUM_JOB_WORKERS = 2
