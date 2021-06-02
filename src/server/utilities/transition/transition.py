@@ -35,7 +35,7 @@ shutil.rmtree("/nitecap_web/dbs")
 shutil.rmtree("/nitecap_web/nitecap")
 shutil.rmtree("/nitecap_web/disk_usage")
 shutil.rmtree("/nitecap_web/backup")
-pathlib.Path("/nitecap_web/nitecap.db.backup").unlink(missing_ok=True)
+pathlib.Path("/nitecap_web/nitecap.db.backup").unlink()
 
 db.init_app(app.app)
 
