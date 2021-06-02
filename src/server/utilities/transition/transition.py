@@ -20,13 +20,22 @@ from models.users.user import User
 from computation.api import ALGORITHMS, run, store_spreadsheet_to_s3
 
 print(f"Updating the permissions on data folders")
-for path in pathlib.Path(os.environ["UPLOAD_FOLDER"]).glob("**"):
+for path in pathlib.Path(os.environ["UPLOAD_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
-for path in pathlib.Path(os.environ["DB_BACKUP_FOLDER"]).glob("**"):
+for path in pathlib.Path(os.environ["DB_BACKUP_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
-for path in pathlib.Path(os.environ["DATABASE_FOLDER"]).glob("**"):
+for path in pathlib.Path(os.environ["DATABASE_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
 shutil.chown(os.environ["LOG_FILE"], 1001, 1001)
+
+print("Cleaning up unneeded files and folders")
+# These assume that the snapshot has been mounted to /nitecap_web/
+shutil.rmtree("/nitecap_web/logs/")
+shutil.rmtree("/nitecap_web/dbs")
+shutil.rmtree("/nitecap_web/nitecap")
+shutil.rmtree("/nitecap_web/disk_usage")
+shutil.rmtree("/nitecap_web/backup")
+pathlib.Path("/nitecap_web/nitecap.db.backup").unlink(missing_ok=True)
 
 db.init_app(app.app)
 

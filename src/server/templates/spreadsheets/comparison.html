@@ -234,17 +234,17 @@
                    Compare
                 </button>
 
-                <a v-if="share_token.length > 0 && logged_in"
+                <a v-if="share_token === '' && logged_in"
                     class="btn btn-secondary btn-sm"
                     v-bind:href="'/spreadsheets/copy_share/'+share_token">
                         Copy to Account
                 </a>
-                <a v-if="spreadsheets.length === 1"
+                <a v-if="spreadsheets.length === 1 && logged_in && share_token === ''"
                     v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
                     <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
                 </a>
 
-                <a id='share_spreadsheet' href="#" v-on:click="onShare">
+                <a v-if="logged_in && share_token === ''" id='share_spreadsheet' href="#" v-on:click="onShare">
                     <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
                 </a>
             </p>
