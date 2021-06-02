@@ -20,11 +20,11 @@ from models.users.user import User
 from computation.api import ALGORITHMS, run, store_spreadsheet_to_s3
 
 print(f"Updating the permissions on data folders")
-for path in pathlib.Path(os.environ["UPLOAD_FOLDER"]).glob("**"):
+for path in pathlib.Path(os.environ["UPLOAD_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
-for path in pathlib.Path(os.environ["DB_BACKUP_FOLDER"]).glob("**"):
+for path in pathlib.Path(os.environ["DB_BACKUP_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
-for path in pathlib.Path(os.environ["DATABASE_FOLDER"]).glob("**"):
+for path in pathlib.Path(os.environ["DATABASE_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
 shutil.chown(os.environ["LOG_FILE"], 1001, 1001)
 
