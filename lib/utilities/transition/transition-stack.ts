@@ -2,16 +2,15 @@ import * as cdk from "@aws-cdk/core";
 import * as cr from "@aws-cdk/custom-resources";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
-import * as ssm from "@aws-cdk/aws-ssm";
 
 import * as path from "path";
 
+import { TransitionParameterStack } from "./parameter-stack";
 import { ServerStack, ServerStackProps } from "../../server-stack";
 
 type TransitionStackProps = cdk.StackProps & {
-  snapshotIdParameter: ssm.StringParameter;
-  snapshotLambdaName: ssm.StringParameter;
   serverStackProps: ServerStackProps;
+  parameters: TransitionParameterStack;
 };
 
 export class TransitionStack extends cdk.Stack {
@@ -20,9 +19,19 @@ export class TransitionStack extends cdk.Stack {
 
     // Server used to make the transition
 
-    let transitionServerProps = props.serverStackProps;
+    let { environment, ...serverStackPropsWithoutEnvironment } =
+      props.serverStackProps;
+
+    let transitionServerProps: ServerStackProps = {
+      environment: JSON.parse(JSON.stringify(environment)),     // deep copy
+      ...serverStackPropsWithoutEnvironment,
+    };
+
+    transitionServerProps.subdomainName = `transition.${props.serverStackProps.subdomainName}`;
+    transitionServerProps.snapshotIdParameter =
+      props.parameters.previousSnapshotIdParameter;
     transitionServerProps.environment.server.variables.SNAPSHOT_LAMBDA_NAME_PARAMETER =
-      props.snapshotLambdaName.parameterName;
+      props.parameters.snapshotLambdaNameParameter.parameterName;
 
     let transitionServerStack = new ServerStack(this, "TransitionServerStack", {
       ...transitionServerProps,
@@ -31,7 +40,9 @@ export class TransitionStack extends cdk.Stack {
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: ["ssm:GetParameter"],
-          resources: [props.snapshotLambdaName.parameterArn],
+          resources: [
+            props.parameters.snapshotLambdaNameParameter.parameterArn,
+          ],
         }),
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
@@ -43,10 +54,10 @@ export class TransitionStack extends cdk.Stack {
 
     // Snapshot taking lambda
 
-    // let transitionWaitConditionHandle = new cdk.CfnWaitConditionHandle(
-    //   this,
-    //   "TransitionWaitConditionHandle"
-    // );
+    let transitionWaitConditionHandle = new cdk.CfnWaitConditionHandle(
+      this,
+      "TransitionWaitConditionHandle"
+    );
 
     let snapshotLambda = new lambda.Function(this, "SnapshotLambda", {
       code: lambda.Code.fromAsset(path.join(__dirname, ".")),
@@ -54,60 +65,41 @@ export class TransitionStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_8,
       timeout: cdk.Duration.minutes(15),
       environment: {
-        SNAPSHOT_ID_PARAMETER_NAME: props.snapshotIdParameter.parameterName,
+        SNAPSHOT_ID_PARAMETER_NAME:
+          props.serverStackProps.snapshotIdParameter.parameterName,
         TRANSITION_SERVER_INSTANCE_ID:
           transitionServerStack.containerInstance.instanceId,
-        TRANSITION_SERVER_CLUSTER_NAME:
-          transitionServerStack.service.cluster.clusterName,
         TRANSITION_SERVER_BLOCK_STORAGE_ID:
           transitionServerStack.containerInstance.volumeId,
-        // WAIT_CONDITION_HANDLE_URL: transitionWaitConditionHandle.ref,
+        WAIT_CONDITION_HANDLE_URL: transitionWaitConditionHandle.ref,
       },
     });
 
-    snapshotLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          "ecs:ListTasks",
-          "ec2:DescribeInstances",
-          "ec2:DescribeVolumes",
-        ],
-        resources: ["*"],
-      })
+    let queryPolicy = new iam.PolicyStatement();
+    queryPolicy.addActions("ec2:DescribeInstances", "ec2:DescribeSnapshots");
+    queryPolicy.addResources("*");
+
+    let terminateInstancePolicy = new iam.PolicyStatement();
+    terminateInstancePolicy.addActions("ec2:TerminateInstances");
+    terminateInstancePolicy.addResources(
+      `arn:${this.partition}:ec2:${this.region}:${this.account}:instance/${transitionServerStack.containerInstance.instanceId}`
     );
 
-    snapshotLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["ecs:StopTask"],
-        resources: [
-          `arn:${this.partition}:ecs:${this.region}:${this.account}:task/${transitionServerStack.service.taskDefinition.taskDefinitionArn}`,
-        ],
-      })
+    let createSnapshotPolicy = new iam.PolicyStatement();
+    createSnapshotPolicy.addActions("ec2:CreateSnapshot");
+    createSnapshotPolicy.addResources(
+      `arn:${this.partition}:ec2:${this.region}::snapshot/*`,
+      `arn:${this.partition}:ec2:${this.region}:${this.account}:volume/${transitionServerStack.containerInstance.volumeId}`
     );
 
-    snapshotLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["ec2:TerminateInstances"],
-        resources: [
-          `arn:${this.partition}:ec2:${this.region}:${this.account}:instance/${transitionServerStack.containerInstance.instanceId}`,
-        ],
-      })
-    );
+    for (let policy of [
+      queryPolicy,
+      terminateInstancePolicy,
+      createSnapshotPolicy,
+    ])
+      snapshotLambda.addToRolePolicy(policy);
 
-    snapshotLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["ec2:CreateSnapshot"],
-        resources: [
-          `arn:${this.partition}:ec2:${this.region}:${this.account}:volume/${transitionServerStack.containerInstance.volumeId}`,
-        ],
-      })
-    );
-
-    props.snapshotIdParameter.grantWrite(snapshotLambda);
+    props.serverStackProps.snapshotIdParameter.grantWrite(snapshotLambda);
 
     let putSnapshotLambdaNameParameter = new cr.AwsCustomResource(
       this,
@@ -118,7 +110,9 @@ export class TransitionStack extends cdk.Stack {
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: ["ssm:PutParameter"],
-              resources: [props.snapshotLambdaName.parameterArn],
+              resources: [
+                props.parameters.snapshotLambdaNameParameter.parameterArn,
+              ],
             }),
           ],
         },
@@ -126,7 +120,7 @@ export class TransitionStack extends cdk.Stack {
           service: "SSM",
           action: "putParameter",
           parameters: {
-            Name: props.snapshotLambdaName.parameterName,
+            Name: props.parameters.snapshotLambdaNameParameter.parameterName,
             Value: snapshotLambda.functionName,
             Overwrite: true,
           },
@@ -137,19 +131,19 @@ export class TransitionStack extends cdk.Stack {
       }
     );
 
-    // let transitionWaitCondition = new cdk.CfnWaitCondition(
-    //   this,
-    //   "TransitionWaitCondition",
-    //   {
-    //     count: 1,
-    //     handle: transitionWaitConditionHandle.ref,
-    //     timeout: "60",
-    //   }
-    // );
+    let transitionWaitCondition = new cdk.CfnWaitCondition(
+      this,
+      "TransitionWaitCondition",
+      {
+        count: 1,
+        handle: transitionWaitConditionHandle.ref,
+        timeout: "43200",
+      }
+    );
 
-    // transitionWaitCondition.addDependsOn(
-    //   putSnapshotLambdaNameParameter.node.defaultChild?.node._actualNode
-    //     .defaultChild as cdk.CfnResource
-    // );
+    transitionWaitCondition.addDependsOn(
+      putSnapshotLambdaNameParameter.node.defaultChild?.node._actualNode
+        .defaultChild as cdk.CfnResource
+    );
   }
 }
