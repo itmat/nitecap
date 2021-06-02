@@ -27,6 +27,7 @@
     "@aws-cdk/aws-apigatewayv2": "^1.105.0",
     "@aws-cdk/aws-backup": "^1.105.0",
     "@aws-cdk/aws-cloudwatch-actions": "^1.105.0",
+    "@aws-cdk/aws-devopsguru": "^1.105.0",
     "@aws-cdk/aws-dynamodb": "^1.105.0",
     "@aws-cdk/aws-ecs-patterns": "^1.105.0",
     "@aws-cdk/aws-s3": "^1.105.0",

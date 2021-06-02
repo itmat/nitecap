@@ -3,6 +3,7 @@ import * as autoscaling_hooktargets from "@aws-cdk/aws-autoscaling-hooktargets";
 import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 import * as cw_actions from "@aws-cdk/aws-cloudwatch-actions";
+import * as devopsguru from "@aws-cdk/aws-devopsguru";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as sns from "@aws-cdk/aws-sns";
 import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
@@ -62,12 +63,9 @@ export class OperationsStack extends cdk.Stack {
 
     // Alarms
 
-    let computationBackendAlarmsTopic = new sns.Topic(
-      this,
-      "ComputationBackendAlarmsTopic"
-    );
+    let systemOperationsTopic = new sns.Topic(this, "SystemOperationsTopic");
 
-    computationBackendAlarmsTopic.addSubscription(
+    systemOperationsTopic.addSubscription(
       new subscriptions.EmailSubscription(
         `admins@${props.domainStack.domainName}`
       )
@@ -87,14 +85,7 @@ export class OperationsStack extends cdk.Stack {
       );
 
     allConcurrentExecutionsAlarm.addAlarmAction(
-      new cw_actions.SnsAction(computationBackendAlarmsTopic)
-    );
-
-    let serverAlarmsTopic = new sns.Topic(this, "ServerAlarmsTopic");
-    serverAlarmsTopic.addSubscription(
-      new subscriptions.EmailSubscription(
-        `admins@${props.domainStack.domainName}`
-      )
+      new cw_actions.SnsAction(systemOperationsTopic)
     );
 
     let serverAutoScalingGroup =
@@ -107,8 +98,30 @@ export class OperationsStack extends cdk.Stack {
       autoScalingGroup: serverAutoScalingGroup,
       lifecycleTransition: autoscaling.LifecycleTransition.INSTANCE_TERMINATING,
       notificationTarget: new autoscaling_hooktargets.TopicHook(
-        serverAlarmsTopic
+        systemOperationsTopic
       ),
+    });
+
+    // Automatic monitoring
+
+    new devopsguru.CfnNotificationChannel(
+      this,
+      "OperationsNotificationChannel",
+      { config: { sns: { topicArn: systemOperationsTopic.topicArn } } }
+    );
+
+    let stacks: cdk.Stack[] = [
+      props.domainStack,
+      props.computationStack,
+      props.emailStack,
+      props.persistentStorageStack,
+      props.serverStack,
+    ];
+
+    new devopsguru.CfnResourceCollection(this, "ResourceCollection", {
+      resourceCollectionFilter: {
+        cloudFormation: { stackNames: stacks.map((stack) => stack.stackName) },
+      },
     });
 
     // Outputs
