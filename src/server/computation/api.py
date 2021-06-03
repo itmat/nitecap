@@ -73,7 +73,7 @@ def submit_analysis(user):
         "viewId": parameters["viewId"],
     }
 
-    if environment != "production":
+    if environment == "development":
         analysis.update(**parameters)
 
     return run(analysis)

@@ -66,10 +66,10 @@ def transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet):
             "viewId": viewId,
         }
 
-        # print(f"Running analysis: {analysis}")
+        print(f"Running analysis: {analysis}")
 
-        # run(analysis)
-        # time.sleep(WAIT_DURATION)
+        run(analysis)
+        time.sleep(WAIT_DURATION)
 
 with app.app.app_context():
     # Update location of the spreadsheets
