@@ -9,3 +9,6 @@ cdk.context.json
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+cypress/screenshots
+cypress/videos
