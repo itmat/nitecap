@@ -35,7 +35,6 @@ shutil.rmtree("/nitecap_web/dbs")
 shutil.rmtree("/nitecap_web/nitecap")
 shutil.rmtree("/nitecap_web/disk_usage")
 shutil.rmtree("/nitecap_web/backup")
-pathlib.Path("/nitecap_web/nitecap.db.backup").unlink(missing_ok=True)
 
 db.init_app(app.app)
 
@@ -67,10 +66,10 @@ def transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet):
             "viewId": viewId,
         }
 
-        # print(f"Running analysis: {analysis}")
+        print(f"Running analysis: {analysis}")
 
-        # run(analysis)
-        # time.sleep(WAIT_DURATION)
+        run(analysis)
+        time.sleep(WAIT_DURATION)
 
 with app.app.app_context():
     # Update location of the spreadsheets
