@@ -1,3 +1,4 @@
+import * as backup from "@aws-cdk/aws-backup";
 import * as cdk from "@aws-cdk/core";
 import * as dynamodb from "@aws-cdk/aws-dynamodb";
 import * as s3 from "@aws-cdk/aws-s3";
@@ -5,12 +6,8 @@ import * as ssm from "@aws-cdk/aws-ssm";
 
 import { Environment } from "./environment";
 
-type PersistentStorageStackProps = cdk.StackProps & {
-  environment: Environment;
-  subdomainName: string;
-};
-
 export class PersistentStorageStack extends cdk.Stack {
+  readonly backupVault: backup.BackupVault;
   readonly spreadsheetBucket: s3.Bucket;
   readonly emailSuppressionList: dynamodb.Table;
   readonly snapshotIdParameter: ssm.StringParameter;
@@ -18,13 +15,13 @@ export class PersistentStorageStack extends cdk.Stack {
   constructor(
     scope: cdk.Construct,
     id: string,
-    props: PersistentStorageStackProps
+    props: cdk.StackProps & { environment: Environment }
   ) {
     super(scope, id, props);
 
     const environment = props.environment;
 
-    let allowedCorsOrigins = [`https://${props.subdomainName}`];
+    let allowedCorsOrigins = [`https://${environment.subdomainName}`];
     if (!environment.production)
       allowedCorsOrigins.push("http://localhost:5000");
 
@@ -71,11 +68,13 @@ export class PersistentStorageStack extends cdk.Stack {
     this.snapshotIdParameter = new ssm.StringParameter(
       this,
       "ServerStorageSnapshotIdParameter",
-      {
-        stringValue: environment.production
-          ? "N/A"
-          : environment.server.storage.snapshotId ?? "N/A",
-      }
+      { stringValue: environment.server.storage.snapshotId ?? "N/A" }
     );
+
+    this.backupVault = new backup.BackupVault(this, "BackupVault", {
+      removalPolicy: environment.production
+        ? cdk.RemovalPolicy.RETAIN
+        : cdk.RemovalPolicy.DESTROY,
+    });
   }
 }

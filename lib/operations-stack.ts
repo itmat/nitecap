@@ -33,16 +33,10 @@ export class OperationsStack extends cdk.Stack {
 
     // Backup
 
-    let backupVault = new backup.BackupVault(this, "BackupVault", {
-      removalPolicy: environment.production
-        ? cdk.RemovalPolicy.RETAIN
-        : cdk.RemovalPolicy.DESTROY,
-    });
-
     let backupPlan = backup.BackupPlan.dailyWeeklyMonthly5YearRetention(
       this,
       `${this.stackName}-BackupPlan`,
-      backupVault
+      props.persistentStorageStack.backupVault
     );
 
     backupPlan.addSelection("EmailSuppressionListBackup", {
