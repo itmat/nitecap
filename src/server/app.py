@@ -59,7 +59,7 @@ logger = logging.getLogger("")
 
 # File logger - rotates for every 1Mb up to 10 files.
 # Applied to the root logger, so this catches all logging
-file_handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
+file_handler = RotatingFileHandler(os.environ["ERROR_LOG_PATH"], maxBytes=1_000_000, backupCount=10)
 file_handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 file_handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
