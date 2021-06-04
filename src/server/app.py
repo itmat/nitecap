@@ -109,11 +109,10 @@ def dashboard():
 @app.errorhandler(413)
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
 def file_too_large(e):
-    app.logger.warning("Too large a file was attempted to be uploaded")
-    app.logger.warning(e)
+    app.logger.warning(e, exc_info=True)
     max_size = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
     errors = [f"Uploaded file was too large. Maximum size is {max_size} MB"]
-    return render_template('spreadsheets/upload_file.html', errors=errors), 413
+    return jsonify({"errors": errors}), 413
 
 
 from models.users.views import user_blueprint
@@ -152,7 +151,6 @@ scheduler = BackgroundScheduler()
 db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
 spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab('5 1 * * *'))
 scheduler.start()
-
 
 if __name__ == '__main__':
     app.logger.info("Starting app")
