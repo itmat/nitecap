@@ -28,6 +28,7 @@ from logging.handlers import RotatingFileHandler, SMTPHandler
 from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
+# main-level logger
 logger = logging.getLogger("")
 
 app = Flask(__name__)
@@ -94,24 +95,23 @@ def create_tables():
 
 @app.route('/', methods=['GET'])
 def home():
-    logger.info("Accessing home")
     return render_template("home.html")
 
 
 @app.route('/faqs', methods=['GET'])
 def faqs():
-    logger.info("Accessing faqs")
+    app.logger.info("Accessing faqs")
     return render_template("faqs.html")
 
 
 @app.route('/about', methods=['GET'])
 def about():
-    logger.info("Accessing about page")
+    app.logger.info("Accessing about page")
     return render_template("about.html")
 
 @app.route('/gallery', methods=['GET'])
 def gallery():
-    logger.info("Accessing gallery")
+    app.logger.info("Accessing gallery")
     # load the gallery shares
     with open("static/json/gallery_shares.json") as gallery_json:
         gallery = json.load(gallery_json)
@@ -147,23 +147,23 @@ from computation.example import computation_test_blueprint
 app.register_blueprint(computation_test_blueprint, url_prefix='/computation')
 
 def db_backup_job():
-    logger.info('Database backup underway.')
+    app.logger.info('Database backup underway.')
     backup.backup(app.config['DATABASE'])
     backup.clean_backups()
-    logger.info('Database backup complete.')
+    app.logger.info('Database backup complete.')
 
 
 def visitor_purge_job():
-    logger.info('Visitor purge underway.')
+    app.logger.info('Visitor purge underway.')
     # TODO: this visitor purge is only in rehearse=True mode
     # and so it does nothing. It needs to be updated to the new backend code
     # and then enabled to run for real
     ids = visitor_purge.purge(True, app.config['DATABASE'])
     if ids:
-        logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
+        app.logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
     else:
-        logger.info(f"No old visitor spreadsheets were found.")
-    logger.info('Visitor spreadsheet purge complete.')
+        app.logger.info(f"No old visitor spreadsheets were found.")
+    app.logger.info('Visitor spreadsheet purge complete.')
 
 
 scheduler = BackgroundScheduler()
