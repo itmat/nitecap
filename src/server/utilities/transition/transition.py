@@ -26,7 +26,7 @@ for path in pathlib.Path(os.environ["DB_BACKUP_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
 for path in pathlib.Path(os.environ["DATABASE_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
-for path in pathlib.Path(os.environ["LOG_DIRECTORY_PATH"]).rglob("*"):
+for path in pathlib.Path(os.environ["LOGS_DIRECTORY_PATH"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
 
 print("Cleaning up unneeded files and folders")
