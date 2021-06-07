@@ -133,8 +133,8 @@ Vue.component("heatmap-plot", {
             let maxInRow = vm.data.map( function(spreadsheet) { return spreadsheet.map(array_max); });
             let minInRow = vm.data.map( function(spreadsheet) { return spreadsheet.map(array_min); });
 
-            let max = Math.max.apply(null, maxInRow.map(array_max));
-            let min = Math.min.apply(null, minInRow.map(array_min));
+            let max = array_max(maxInRow.map(array_max));
+            let min = array_min(minInRow.map(array_min));
             let limit = Math.max(Math.abs(min), Math.abs(max));
 
             let y_vals =  vm.heatmap_labels.map(function (x,i) {return i;});

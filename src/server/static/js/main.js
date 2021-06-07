@@ -210,14 +210,24 @@ function numNaNTimepoints(data, times) {
 
 // Util to compute maximum of an array along its axis
 // Apparently Math.max.apply can fail for large arrays
+let nanmax = function(x,y) {
+    if (Number.isNaN(x)) { return y; }
+    if (Number.isNaN(y)) { return x; }
+    return Math.max(x,y);
+}
+let nanmin = function(x,y) {
+    if (Number.isNaN(x)) { return y; }
+    if (Number.isNaN(y)) { return x; }
+    return Math.min(x,y);
+}
 var array_max = function (array) {
     return array.reduce( function(a,b) {
-        return Math.max(a,b);
+        return nanmax(a,b);
     } );
 };
 var array_min = function (array) {
     return array.reduce( function(a,b) {
-        return Math.min(a,b);
+        return nanmin(a,b);
     } );
 };
 
