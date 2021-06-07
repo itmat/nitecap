@@ -26,7 +26,8 @@ for path in pathlib.Path(os.environ["DB_BACKUP_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
 for path in pathlib.Path(os.environ["DATABASE_FOLDER"]).rglob("*"):
     shutil.chown(path, 1001, 1001)
-shutil.chown(os.environ["LOG_FILE"], 1001, 1001)
+for path in pathlib.Path(os.environ["LOGS_DIRECTORY_PATH"]).rglob("*"):
+    shutil.chown(path, 1001, 1001)
 
 print("Cleaning up unneeded files and folders")
 # These assume that the snapshot has been mounted to /nitecap_web/

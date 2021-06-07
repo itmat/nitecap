@@ -234,7 +234,7 @@
                    Compare
                 </button>
 
-                <a v-if="share_token === '' && logged_in"
+                <a v-if="share_token !== '' && logged_in"
                     class="btn btn-secondary btn-sm"
                     v-bind:href="'/spreadsheets/copy_share/'+share_token">
                         Copy to Account
