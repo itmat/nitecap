@@ -52,6 +52,7 @@ export default function setupLogging(
     ),
     memoryLimitMiB: 256,
     environment: {
+      LOGS_DIRECTORY_PATH: environment.server.variables.LOGS_DIRECTORY_PATH,
       ERROR_LOG_GROUP_NAME: logGroups.error.logGroupName,
       ACCESS_LOG_GROUP_NAME: logGroups.access.logGroupName,
       APPLICATION_LOG_GROUP_NAME: logGroups.application.logGroupName,
