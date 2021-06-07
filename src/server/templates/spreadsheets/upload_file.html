@@ -113,11 +113,9 @@
         let upload_file = upload_files[0];
 
         const xhr = new XMLHttpRequest();
-        const self = this;
         xhr.upload.addEventListener("progress", function(e) {
             if (e.lengthComputable) {
                 const percentage = Math.round(e.loaded / e.total * 100);
-                console.log(percentage);
                 progress_report.textContent = percentage + "%";
             }
         }, false);
@@ -132,7 +130,6 @@
             if (errors.length > 0) {
                 nitecap_error_message.text(errors);
                 nitecap_error.modal();
-                console.log(errors);
                 return;
             }
 
@@ -142,7 +139,7 @@
         };
 
         xhr.onerror = function(e) {
-            nitecap_error_message.text(e.errors);
+            nitecap_error_message.text("Upload failed. Was the file too large? Maximum file size is {{config['MAX_CONTENT_LENGTH'] // (1024*1024)}} MB");
             nitecap_error.modal();
         };
 

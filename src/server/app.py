@@ -28,8 +28,6 @@ from logging.handlers import RotatingFileHandler, SMTPHandler
 from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
-logger = logging.getLogger("")
-
 app = Flask(__name__)
 load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
@@ -50,37 +48,22 @@ class ReverseProxied:
         return self.wsgi_app(environ, start_response)
 app.wsgi_app = ReverseProxied(app.wsgi_app)
 
-# Log format for both file and email logging.
+# Log format
 # formatter = logging.Formatter('%(asctime)s \t%(levelname)s\t%(module)s\t%(process)d\t%(thread)d\t%(message)s')
 formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(module)s %(process)d %(thread)d %(message)s')
 
-# Email logger - assumes the existence of at least 1 admin email.
-# mail_handler = SMTPHandler(
-#     mailhost=os.environ['SMTP_SERVER_HOST'],
-#     fromaddr=os.environ['EMAIL_SENDER'],
-#     toaddrs=app.config['ADMIN_LIST'],
-#     subject='Nitcap Application Issue'
-# )
-# mail_handler.setLevel(logging.WARN)
-# mail_handler.setFormatter(formatter)
-
-# Email warning and errors only for production server
-# if not app.debug:
-#     app.logger.addHandler(mail_handler)
+# Root logger - catches all logging
+# Anything logged by app.logger will also go through Flasks default stream (i.e. stderr) logging
+# (In prod, the stream logging gets redirected to the error log file in the apache conf file apache/nitecap.conf)
+logger = logging.getLogger("")
 
 # File logger - rotates for every 1Mb up to 10 files.
-file_handler = RotatingFileHandler(os.environ["LOG_FILE"], maxBytes=1_000_000, backupCount=10)
+# Applied to the root logger, so this catches all logging
+file_handler = RotatingFileHandler(os.environ["LOG_DIRECTORY_PATH"]+"/error.log", maxBytes=1_000_000, backupCount=10)
 file_handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 file_handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 logger.addHandler(file_handler)
-
-# Catch exceptions and log them
-@app.errorhandler(Exception)
-def handle_exception(e):
-    app.logger.error("Exception received:")
-    app.logger.error(e)
-    raise e
 
 @app.errorhandler(404)
 def handle_404(e):
@@ -94,24 +77,23 @@ def create_tables():
 
 @app.route('/', methods=['GET'])
 def home():
-    logger.info("Accessing home")
     return render_template("home.html")
 
 
 @app.route('/faqs', methods=['GET'])
 def faqs():
-    logger.info("Accessing faqs")
+    app.logger.info("Accessing faqs")
     return render_template("faqs.html")
 
 
 @app.route('/about', methods=['GET'])
 def about():
-    logger.info("Accessing about page")
+    app.logger.info("Accessing about page")
     return render_template("about.html")
 
 @app.route('/gallery', methods=['GET'])
 def gallery():
-    logger.info("Accessing gallery")
+    app.logger.info("Accessing gallery")
     # load the gallery shares
     with open("static/json/gallery_shares.json") as gallery_json:
         gallery = json.load(gallery_json)
@@ -127,11 +109,10 @@ def dashboard():
 @app.errorhandler(413)
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
 def file_too_large(e):
-    app.logger.warning("Too large a file was attempted to be uploaded")
-    app.logger.warning(e)
+    app.logger.warning(e, exc_info=True)
     max_size = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
     errors = [f"Uploaded file was too large. Maximum size is {max_size} MB"]
-    return render_template('spreadsheets/upload_file.html', errors=errors), 413
+    return jsonify({"errors": errors}), 413
 
 
 from models.users.views import user_blueprint
@@ -147,23 +128,23 @@ from computation.example import computation_test_blueprint
 app.register_blueprint(computation_test_blueprint, url_prefix='/computation')
 
 def db_backup_job():
-    logger.info('Database backup underway.')
+    app.logger.info('Database backup underway.')
     backup.backup(app.config['DATABASE'])
     backup.clean_backups()
-    logger.info('Database backup complete.')
+    app.logger.info('Database backup complete.')
 
 
 def visitor_purge_job():
-    logger.info('Visitor purge underway.')
+    app.logger.info('Visitor purge underway.')
     # TODO: this visitor purge is only in rehearse=True mode
     # and so it does nothing. It needs to be updated to the new backend code
     # and then enabled to run for real
     ids = visitor_purge.purge(True, app.config['DATABASE'])
     if ids:
-        logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
+        app.logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
     else:
-        logger.info(f"No old visitor spreadsheets were found.")
-    logger.info('Visitor spreadsheet purge complete.')
+        app.logger.info(f"No old visitor spreadsheets were found.")
+    app.logger.info('Visitor spreadsheet purge complete.')
 
 
 scheduler = BackgroundScheduler()
@@ -171,8 +152,7 @@ db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
 spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab('5 1 * * *'))
 scheduler.start()
 
-
 if __name__ == '__main__':
-    print("Starting app")
+    app.logger.info("Starting app")
     db.init_app(app)
     app.run(host='0.0.0.0')

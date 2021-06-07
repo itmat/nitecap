@@ -2,6 +2,7 @@
 mkdir -p /nitecap_web/uploads
 mkdir -p /nitecap_web/db_backup
 mkdir -p /nitecap_web/db
+mkdir -p /nitecap_web/log
 touch /nitecap_web/log
 chown www-data:www-data /nitecap_web /nitecap_web/uploads /nitecap_web/db_backup /nitecap_web/db /nitecap_web/log
 
