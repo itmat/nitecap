@@ -24,10 +24,7 @@ let domainStack = new DomainStack(stage, "DomainStack", { environment });
 let persistentStorageStack = new PersistentStorageStack(
   stage,
   "PersistentStorageStack",
-  {
-    environment,
-    subdomainName: domainStack.subdomainName,
-  }
+  { environment }
 );
 
 let emailStack = new EmailStack(stage, "EmailStack", {
@@ -56,12 +53,12 @@ let serverStackProps = {
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
 
-new TransitionStack(stage, "TransitionStack", {
-  serverStackProps,
-  parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
-});
+// new TransitionStack(stage, "TransitionStack", {
+//   serverStackProps,
+//   parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
+// });
 
-// let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
+let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
 // let stacks = {
 //   computationStack,
