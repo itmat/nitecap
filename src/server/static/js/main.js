@@ -96,7 +96,6 @@ function computeZScores(ordering) {
             }, 0);
 
             var mean = sum / num_reps;
-            if (num_reps === 0) { mean = 0; }
 
             var variance = row.reduce( function(x,y) {
                 if (isNaN(y) || y === null) {return x;}
@@ -106,8 +105,11 @@ function computeZScores(ordering) {
             var std = Math.sqrt(variance);
 
             var z_scores = row.map( function(x,i) {
+                if (x === null) { return NaN; }
                 return (x - mean) / std;
             } );
+
+            if (num_reps === 0) { z_scores = NaN; }
 
             return z_scores;
         } );
