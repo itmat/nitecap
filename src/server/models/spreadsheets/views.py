@@ -291,7 +291,7 @@ def access_not_permitted(endpoint, user, spreadsheet_id):
     current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
                             .substitute(user_id=user.id, endpoint=endpoint, spreadsheet_id=spreadsheet_id))
     if user.is_visitor():
-        return render_template(url_for('.upload_file'))
+        return redirect(url_for('.upload_file'))
     return redirect(url_for('.display_spreadsheets'))
 
 
