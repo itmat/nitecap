@@ -299,7 +299,6 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
     group_cats = pandas.Series(numpy.concatenate((groups_A, groups_B)), dtype="category")
     groups = pandas.get_dummies(group_cats).values.T
     dataset = [0 for _ in groups_A] + [1 for _ in groups_B]
-    intercept = [1 for _ in dataset]
     interaction = numpy.array(dataset)*groups
 
     # Run three models, one is the full interaction time-and-dataset model
@@ -307,9 +306,20 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
     # and the base model is just time
     # comparing full to restricted gives the interaction p-value
     # comparing restricted to base gives the main-effect p-value between the two datasets
-    full_model = numpy.vstack( (groups, dataset, interaction, intercept) )
-    restricted_model = numpy.vstack( (groups, dataset, intercept) )
-    base_model = numpy.vstack( (groups, intercept) )
+    full_model = numpy.vstack( (groups, interaction) )
+
+    # Restriction matrices
+    interaction_restrictions = numpy.hstack((
+        numpy.zeros((len(interaction)-1, len(groups))),
+        # matrix giving successive differences, so all interaction terms are equal, like:
+        # 1 -1  0
+        # 0  1 -1
+        (numpy.identity(len(interaction)) - numpy.diag( numpy.ones(len(interaction)-1), 1))[:-1,:], 
+    ))
+    main_effect_restriction = numpy.hstack((
+        numpy.zeros((1, len(groups))),
+        numpy.ones((1, len(interaction))), # Average of all the interaction terms
+    ))
 
     combined_datasets = numpy.concatenate((data_A, data_B), axis=1)
 
@@ -322,14 +332,12 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
             main_effect_p_values[i] = float("NaN")
             continue
         full_fit = sm.OLS(combined_datasets[i], full_model.T, missing='drop').fit()
-        restricted_fit = sm.OLS(combined_datasets[i], restricted_model.T, missing='drop').fit()
-        base_fit = sm.OLS(combined_datasets[i], base_model.T, missing='drop').fit()
 
-        f, p, df = full_fit.compare_f_test(restricted_fit)
-        interaction_p_values[i] = p
+        restricted_test = full_fit.f_test(interaction_restrictions)
+        interaction_p_values[i] = restricted_test.pvalue
 
-        f, p, df = restricted_fit.compare_f_test(base_fit)
-        main_effect_p_values[i] = p
+        main_effect_test = full_fit.f_test(main_effect_restriction)
+        main_effect_p_values[i] = main_effect_test.pvalue
 
     return interaction_p_values, main_effect_p_values
 
