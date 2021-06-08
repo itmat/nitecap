@@ -317,6 +317,10 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
     interaction_p_values = numpy.empty(combined_datasets.shape[0])
     main_effect_p_values = numpy.empty(combined_datasets.shape[0])
     for i in range(combined_datasets.shape[0]):
+        if numpy.isnan(combined_datasets[i]).all():
+            interaction_p_values[i] = float("NaN")
+            main_effect_p_values[i] = float("NaN")
+            continue
         full_fit = sm.OLS(combined_datasets[i], full_model.T, missing='drop').fit()
         restricted_fit = sm.OLS(combined_datasets[i], restricted_model.T, missing='drop').fit()
         base_fit = sm.OLS(combined_datasets[i], base_model.T, missing='drop').fit()
