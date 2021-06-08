@@ -479,7 +479,7 @@ def get_mpv_spreadsheets(user=None):
     return dumps(spreadsheet_values)
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
-@requires_login
+@requires_account
 def display_spreadsheets(user=None):
     """
     Standard endpoint - takes the logged in user to a listing of his/her spreadsheets.  The decorator assures that only
