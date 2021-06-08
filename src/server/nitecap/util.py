@@ -1,6 +1,7 @@
 import numpy
 import scipy.stats
 import statsmodels.api as sm
+import pandas
 from numpy import cos, sin
 
 def BH_FDR(ps):
@@ -295,7 +296,8 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
     assert data_A.shape[0] == data_B.shape[0]
 
     # Condition variables for the concatenated datasets
-    groups = sm.tools.categorical(numpy.concatenate((groups_A, groups_B)), drop=True).T
+    group_cats = pandas.Series(numpy.concatenate((groups_A, groups_B)), dtype="category")
+    groups = pandas.get_dummies(group_cats).values.T
     dataset = [0 for _ in groups_A] + [1 for _ in groups_B]
     intercept = [1 for _ in dataset]
     interaction = numpy.array(dataset)*groups
