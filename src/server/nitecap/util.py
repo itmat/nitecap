@@ -415,6 +415,12 @@ def cosinor_analysis(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_
         N = N_A + N_B
         DoF = N - 6
 
+        if DoF < 1:
+            # Skip row - too many missing values
+            p_amplitude[i] = float("NaN")
+            p_phase[i] = float("NaN")
+            continue
+
         # For each feature, perform Least-Squares fits
 
         res_A = sm.OLS(data_A[i], predictor_A, missing='drop').fit()
