@@ -1,8 +1,5 @@
 import environment from "./.env";
 
-const addWhitespace = (result) =>
-  `\n                                                        ${result}\n                                                    `;
-
 describe("Standard visitors workflow", () => {
   it("loads a spreadsheet and computes ARSER p-value", () => {
     cy.visit(environment.baseUrl);
@@ -28,7 +25,7 @@ describe("Standard visitors workflow", () => {
       .contains("100%", { timeout: 20000 });
     cy.contains("tr>td", "ARS")
       .next()
-      .should("have.text", addWhitespace("p: 4.4e-10"));
+      .should("contain.text", "p: 4.4e-10");
   });
 
   it("loads a spreadsheet, displays the computation results, and generates a heat map", () => {
@@ -61,7 +58,7 @@ describe("Standard visitors workflow", () => {
     ])
       cy.contains("tr>td", algorithm)
         .next()
-        .should("have.text", addWhitespace(result));
+        .should("contain.text", result);
 
     cy.contains("span", "Number of selected rows").find("input").type("0");
     cy.contains("a", "Heatmap").click();
@@ -69,6 +66,6 @@ describe("Standard visitors workflow", () => {
     cy.get("[class^='heatmaplayer']")
       .find("image")
       .invoke("attr", "href")
-      .should("eq", environment.pcaPlotBase64Image);
+      .should("eq", environment.heatmapBase64Image);
   });
 });
