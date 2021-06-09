@@ -291,7 +291,7 @@ def access_not_permitted(endpoint, user, spreadsheet_id):
     current_app.logger.warn(IMPROPER_ACCESS_TEMPLATE
                             .substitute(user_id=user.id, endpoint=endpoint, spreadsheet_id=spreadsheet_id))
     if user.is_visitor():
-        return render_template(url_for('.upload_file'))
+        return redirect(url_for('.upload_file'))
     return redirect(url_for('.display_spreadsheets'))
 
 
@@ -479,7 +479,7 @@ def get_mpv_spreadsheets(user=None):
     return dumps(spreadsheet_values)
 
 @spreadsheet_blueprint.route('/display_spreadsheets', methods=['GET'])
-@requires_login
+@requires_account
 def display_spreadsheets(user=None):
     """
     Standard endpoint - takes the logged in user to a listing of his/her spreadsheets.  The decorator assures that only

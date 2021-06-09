@@ -1,6 +1,7 @@
 import numpy
 import scipy.stats
 import statsmodels.api as sm
+import pandas
 from numpy import cos, sin
 
 def BH_FDR(ps):
@@ -295,9 +296,9 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
     assert data_A.shape[0] == data_B.shape[0]
 
     # Condition variables for the concatenated datasets
-    groups = sm.tools.categorical(numpy.concatenate((groups_A, groups_B)), drop=True).T
+    group_cats = pandas.Series(numpy.concatenate((groups_A, groups_B)), dtype="category")
+    groups = pandas.get_dummies(group_cats).values.T
     dataset = [0 for _ in groups_A] + [1 for _ in groups_B]
-    intercept = [1 for _ in dataset]
     interaction = numpy.array(dataset)*groups
 
     # Run three models, one is the full interaction time-and-dataset model
@@ -305,9 +306,20 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
     # and the base model is just time
     # comparing full to restricted gives the interaction p-value
     # comparing restricted to base gives the main-effect p-value between the two datasets
-    full_model = numpy.vstack( (groups, dataset, interaction, intercept) )
-    restricted_model = numpy.vstack( (groups, dataset, intercept) )
-    base_model = numpy.vstack( (groups, intercept) )
+    full_model = numpy.vstack( (groups, interaction) )
+
+    # Restriction matrices
+    interaction_restrictions = numpy.hstack((
+        numpy.zeros((len(interaction)-1, len(groups))),
+        # matrix giving successive differences, so all interaction terms are equal, like:
+        # 1 -1  0
+        # 0  1 -1
+        (numpy.identity(len(interaction)) - numpy.diag( numpy.ones(len(interaction)-1), 1))[:-1,:], 
+    ))
+    main_effect_restriction = numpy.hstack((
+        numpy.zeros((1, len(groups))),
+        numpy.ones((1, len(interaction))), # Average of all the interaction terms
+    ))
 
     combined_datasets = numpy.concatenate((data_A, data_B), axis=1)
 
@@ -315,15 +327,17 @@ def two_way_anova(groups_A, data_A, groups_B, data_B):
     interaction_p_values = numpy.empty(combined_datasets.shape[0])
     main_effect_p_values = numpy.empty(combined_datasets.shape[0])
     for i in range(combined_datasets.shape[0]):
+        if numpy.isnan(combined_datasets[i]).all():
+            interaction_p_values[i] = float("NaN")
+            main_effect_p_values[i] = float("NaN")
+            continue
         full_fit = sm.OLS(combined_datasets[i], full_model.T, missing='drop').fit()
-        restricted_fit = sm.OLS(combined_datasets[i], restricted_model.T, missing='drop').fit()
-        base_fit = sm.OLS(combined_datasets[i], base_model.T, missing='drop').fit()
 
-        f, p, df = full_fit.compare_f_test(restricted_fit)
-        interaction_p_values[i] = p
+        restricted_test = full_fit.f_test(interaction_restrictions)
+        interaction_p_values[i] = restricted_test.pvalue
 
-        f, p, df = restricted_fit.compare_f_test(base_fit)
-        main_effect_p_values[i] = p
+        main_effect_test = full_fit.f_test(main_effect_restriction)
+        main_effect_p_values[i] = main_effect_test.pvalue
 
     return interaction_p_values, main_effect_p_values
 
@@ -400,6 +414,12 @@ def cosinor_analysis(timepoints_A, data_A, timepoints_B, data_B, timepoints_per_
         N_B = numpy.isfinite(data_B[i]).sum()
         N = N_A + N_B
         DoF = N - 6
+
+        if DoF < 1:
+            # Skip row - too many missing values
+            p_amplitude[i] = float("NaN")
+            p_phase[i] = float("NaN")
+            continue
 
         # For each feature, perform Least-Squares fits
 
