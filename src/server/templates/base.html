@@ -79,6 +79,7 @@
                         </div>
                     </li>
                 -->
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}">Home</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('spreadsheets.upload_file') }}">Load Data</a></li>
 
                 {% if 'email' in session and session['email'] %}
