@@ -244,7 +244,7 @@
                     <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
                 </a>
 
-                <a v-if="logged_in && share_token === ''" id='share_spreadsheet' href="#" v-on:click="onShare">
+                <a v-if="share_token === ''" id='share_spreadsheet' href="#" v-on:click="onShare">
                     <i class="fas fa-share-square" data-toggle="tooltip" data-placement="top" title="Share"></i>
                 </a>
             </p>
@@ -1306,6 +1306,11 @@
             },
 
             onShare: function() {
+                if (!app.logged_in) {
+                    nitecap_error_message.text("You must log in or register an account to create a shareable URL.");
+                    nitecap_error.modal();
+                }
+
                 // Open Modal to share the spreadsheet
                 let vm = this;
                 $.ajax({
