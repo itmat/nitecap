@@ -389,12 +389,12 @@ class Spreadsheet(db.Model):
         amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data, timepoints, self.timepoints, cycle_length=self.timepoints)
 
         try:
-            anova_p = nitecap.util.anova(data, timepoints, self.timepoints)
-            anova_q = nitecap.util.BH_FDR(anova_p)
+            self.df["anova_p"] = nitecap.util.anova(data, timepoints, self.timepoints)
+            self.df["anova_q"] = nitecap.util.BH_FDR(self.df.anova_p)
         except ValueError:
             # Can't run anova (eg: no replicates)
-            anova_p = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
-            anova_q = numpy.full(shape=data_formatted.shape[2], fill_value=float('nan'))
+            self.df["anova_p"] = float('nan')
+            self.df["anova_q"] = float('nan')
 
         cosinor_X, cosinor_p = nitecap.cosinor.fit(data, timepoints, self.timepoints, T=self.timepoints)
 
@@ -408,8 +408,6 @@ class Spreadsheet(db.Model):
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
         self.df["total_delta"] = td
-        self.df["anova_p"] = anova_p
-        self.df["anova_q"] = anova_q
         self.df = self.df.sort_values(by="total_delta")
         self.update_dataframe()
 
