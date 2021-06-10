@@ -38,11 +38,27 @@
     <script src="{{ url_for('static', filename='js/main.js') }}?v=10"></script>
 </head>
 <body>
-<div class="container-fluid">
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="{{url_for('home')}}">
-            <img src="{{ url_for('static', filename='images/nitecap_logo.svg') }}" alt="NITECAP logo" height="100px">
-        </a>
+
+<div class="container-fluid bg-light border-bottom">
+    <div class="pt-3 px-3" style="display:flex; justify-content:space-between">
+        <div>
+            <a href="http://www.med.upenn.edu/">
+                <img src="https://www.med.upenn.edu/images/psom_logo_blue.svg"
+                        alt="Perelman School of Medicine at the University of Pennsylvania"
+                        width="213" height="60">
+            </a>
+            <a href="http://www.itmat.upenn.edu" class="mx-3">
+                <img src="{{ url_for('static', filename='images/itmat_logo.svg') }}" alt="ITMAT logo" height=60px>
+            </a>
+        </div>
+        <div> <!-- right-side part of header -->
+            <a class="" href="{{url_for('home')}}">
+                <img src="{{ url_for('static', filename='images/nitecap_logo.svg') }}" alt="NITECAP logo" height="60px">
+            </a>
+        </div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light pt-0">
         <button class="navbar-toggler" type="button"
                 data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -82,11 +98,6 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('users.update_profile') }}">Profile for {{ session['email'] }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
                 {% endif %}
-                <li class="nav-item">
-                    <a class="nav-link" href="http://www.itmat.upenn.edu">
-                        <img src="{{ url_for('static', filename='images/itmat_logo.svg') }}" alt="ITMAT logo" height=75px>
-                    </a>
-                </li>
             </ul>
         </div>
     </nav>
