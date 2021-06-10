@@ -254,3 +254,32 @@ div.required label:after {
     content: " *";
     color: red;
 }
+
+.user-guide figure {
+    border-style:  solid;
+    border-width: 1px;
+    border-color: #aaa;
+
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+    border-radius: .5rem;
+    margin: 0.5rem;
+    padding: 0.5rem;
+}
+
+
+/* User guide */
+.sidenav {
+    height: 100%;
+    background-color: #f8f9fa;
+}
+
+.sticky {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    padding-top: 2em;
+}
+
+.sidenav ul {
+    list-style-type: none;
+}
