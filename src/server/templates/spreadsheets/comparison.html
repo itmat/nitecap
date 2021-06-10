@@ -239,7 +239,7 @@
                     v-bind:href="'/spreadsheets/copy_share/'+share_token">
                         Copy to Account
                 </a>
-                <a v-if="spreadsheets.length === 1 && logged_in && share_token === ''"
+                <a v-if="spreadsheets.length === 1 && share_token === ''"
                     v-bind:href="'/spreadsheets/collect_data/'+spreadsheets[0].spreadsheet_id">
                     <i class="fas fa-edit" data-toggle="tooltip" data-placement="top" title="Edit"></i>
                 </a>
