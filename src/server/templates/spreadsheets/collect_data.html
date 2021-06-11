@@ -45,11 +45,21 @@
         let defaults = columns.map( function (x) { return "Ignore"; } );
 
         function updateLabels() {
-            let guessed_labels = guessColumnLabels(columns, num_timepoints.val(), timepoints.val(), defaults);
-            let options = getLabelOptions(num_timepoints.val(), timepoints.val());
+            if (num_timepoints.val() && timepoints.val()) {
+                // First validate the values
+                if (24 % timepoints.val() !== 0) {
+                    nitecap_error_message.text(
+                        "The chosen values of " + timepoints.val() + " timepoints per cycle is unusual for 24 hour cycles. Before proceeding, please double check the value. (Note: do not count duplicate timepoints that are in different cycles, such as 0:00 and 24:00.)"
+                    );
+                    nitecap_error.modal();
+                }
 
-            setScrollbars();
-            populate_selects(options, guessed_labels);
+                let guessed_labels = guessColumnLabels(columns, num_timepoints.val(), timepoints.val(), defaults);
+                let options = getLabelOptions(num_timepoints.val(), timepoints.val());
+
+                setScrollbars();
+                populate_selects(options, guessed_labels);
+            }
         }
 
         function populate_selects(options, defaults) {
