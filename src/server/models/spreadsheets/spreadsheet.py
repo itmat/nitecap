@@ -307,6 +307,20 @@ class Spreadsheet(db.Model):
         ids = list(self.get_ids())
         return [item for item, count in collections.Counter(ids).items() if count == 1]
 
+    def has_metadata(self):
+        ''' Returns whether the spreadsheet metadata has been filled in '''
+        if self.is_categorical():
+            return (
+                self.categorical_data is not '' and
+                self.column_labels_str is not ''
+            )
+        else:
+            return (
+                self.column_labels_str is not '' and
+                self.timepoints is not None and
+                self.num_timepoints is not None
+            )
+
     @timeit
     def compute_nitecap(self):
         # Runs NITECAP on the data but just to order the features

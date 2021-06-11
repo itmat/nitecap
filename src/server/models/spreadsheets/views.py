@@ -331,6 +331,10 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
             return access_not_permitted(show_spreadsheet.__name__, user, spreadsheet_id)
         spreadsheets.append(spreadsheet)
 
+        if not spreadsheet.has_metadata():
+            flash("Spreadsheet cannot be viewed until the metadata has been collected.")
+            return redirect(url_for(".collect_data", spreadsheet_id=spreadsheet_id, errors=errors))
+
     is_categorical = [spreadsheet.is_categorical() for spreadsheet in spreadsheets]
     if any(is_categorical) and not all(is_categorical):
         flash("Spreadsheets must all be categorical or all time-series.")
