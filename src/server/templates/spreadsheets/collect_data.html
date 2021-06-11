@@ -141,16 +141,42 @@
         <div class="col-6">
             <div class="form-group required">
                 <label for="descriptive_name">Enter descriptive name for the spreadsheet data:</label>
+                <a id="statsHelp" class="text-primary help-pointer"
+                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                    title="Descriptive Name"
+                    data-content="Give your dataset a name (default: the file name).
+                                  This will be displayed by your data.">
+                    <i class="fas fa-info-circle"></i>
+                </a>
                 <input type="text" id="descriptive_name" name="descriptive_name" class="form-control"
                     value="{{spreadsheet.descriptive_name or ''}}" />
             </div>
             <div class="form-group required">
                 <label for="num_timepoints">Number of total timepoints (include all cycles, if more than one):</label>
+                <a id="statsHelp" class="text-primary help-pointer"
+                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                    title="Number of Timepoints"
+                    data-content="Enter the number of distinct timepoints measured in your study.
+                                  Include timepoints from all days (or cycles) measured, if more than one.
+                                  If there are multiple replicates at one timepoint, count the timepoint only once.
+                                  For example, if you collected some samples every four hours from 0 to 44 hours,
+                                  then enter 12.">
+                    <i class="fas fa-info-circle"></i>
+                </a>
                 <input type="number" id="num_timepoints" name="num_timepoints" class="form-control" style="width:10rem"
                     value="{{spreadsheet.num_timepoints or ''}}" required />
             </div>
             <div class="form-group required">
                 <label for="timepoints">Number of timepoints per cycle:</label>
+                <a id="statsHelp" class="text-primary help-pointer"
+                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                    title="Number of timepoints per cycle"
+                    data-content="Enter the number of timepoints measured in your study per day (or cycle).
+                                  If there are multiple replicates at one timepoint, count the timepoint only once.
+                                  For example, if you collected some samples every four hours from 0 to 44 hours,
+                                  then enter 6.">
+                    <i class="fas fa-info-circle"></i>
+                </a>
                 <input type="number" id="timepoints" name="timepoints" class="form-control" style="width:10rem"
                     value="{{spreadsheet.timepoints or ''}}" required />
             </div>
@@ -165,23 +191,13 @@
                     </label>
                 </div>
             -->
-            <p>
-                Shown are the first 10 rows of your data. Please indicate those columns that represent ids and timepoints.
-                Use the same label from the droplist for each replicate. All columns not representing timepoints
-                or ids should be set to 'Ignore'. Additional columns may be selected as 'Stat' to mark values that you wish
-                to view, filter by, or sort by for your spreadsheet, for example the p-values of an analysis you have already run.
-                See instructions on the right.
-            </p>
         </div>
 
         <div class="col-6 border border-secondary rounded">
             <h2>Instructions:</h2>
             <ul>
-                <li> Give spreadsheet a descriptive name or use the default (file name)</li>
-                <li> Enter the total number of timepoints at which time was collected. Count distinct timepoints and include equivalent timepoints from different cycles (for example, 0:00 and 24:00 are distinct). One timepoint may or may not have multiple replicates.</li>
-                <li> Enter number of timepoints measured per cycle </li>
-                <li> For example, if data was collected at times 0, 4, 8, 12, 16, 20, and 24 then the total number of timepoints is 7 and the number of timepoints per cycle is 6.</li>
-                <li> Then mark column types: </li>
+                <li> Enter study design information to the left. </li>
+                <li> Use the table below to specify column types: </li>
                 <ul>
                     <li> Choose 'ID' for one or more columns that label the row. </li>
                     <li> Choose 'Stat' for any columns that contained per-row data that you want to view, sort, or filter using Nitecap (for example, a p-value from a method not provided by Nitecap). </li>
