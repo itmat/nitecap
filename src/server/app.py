@@ -33,6 +33,7 @@ load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
+app.jinja_env.globals['ENV'] = app.config['ENV']
 #CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
 
 class ReverseProxied:
