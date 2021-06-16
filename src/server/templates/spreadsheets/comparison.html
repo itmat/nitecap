@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block head %}
+    <meta name="description" content="{{' '.join(descriptive_names)}} - Nitecap spreadsheet of circadian data">
+    <title>{{' '.join(descriptive_names)}} - Nitecap</title>
+{% endblock %}
+
 {% block content %}
 
 {% if ENV == 'development' %}
