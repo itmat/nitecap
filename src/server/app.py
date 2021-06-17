@@ -154,7 +154,8 @@ def visitor_purge_job():
 
 scheduler = BackgroundScheduler()
 db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
-spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab('5 1 * * *'))
+# Don't run the visitor purge until we update it
+#spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab('5 1 * * *'))
 scheduler.start()
 
 if __name__ == '__main__':
