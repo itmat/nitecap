@@ -642,7 +642,7 @@
                 <div class="form-group">
                     <label for="share_url">Copy this URL and offer it to anyone with whom you'd like to share your
                         spreadsheet data:</label>
-                    <textarea id="share_url" class="form-control" rows="6"></textarea>
+                    <textarea id="share_url" class="form-control" rows="6">{{generated_share_url}}</textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -958,6 +958,7 @@
             },
 
             share_token: '', // If from a share, the token used
+            generated_share_url: '', // If we create a share token, store it here
             logged_in: false,
 
             notificationApiConnection: null, // WebSocket connection to listen for analysis results
@@ -1327,8 +1328,7 @@
                     contentType: "application/json",
                     type: 'POST',
                     success: function (response) {
-                        let url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
-                        $("#share_url").val(url);
+                        vm.generated_share_url = "{{url_for('spreadsheets.share', _external=True)}}/" + response['share'];
                         $('#share_popup').modal()
                     },
                     error: function (request) {
