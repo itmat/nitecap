@@ -33,7 +33,6 @@ export type ServerStackProps = cdk.StackProps & {
   subdomainName: string;
   hostedZone: route53.IHostedZone;
   snapshotIdParameter: ssm.StringParameter;
-  serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
   spreadsheetBucket: s3.Bucket;
   applicationDockerfile?: string;
@@ -186,6 +185,11 @@ export class ServerStack extends cdk.Stack {
       )
     );
 
+    let serverCertificate = new acm.DnsValidatedCertificate(this, "Certificate", {
+      hostedZone: props.hostedZone,
+      domainName: props.subdomainName,
+    });
+
     this.service = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
@@ -195,7 +199,7 @@ export class ServerStack extends cdk.Stack {
         cluster: serverCluster,
         domainName: props.subdomainName,
         domainZone: props.hostedZone,
-        certificate: props.serverCertificate,
+        certificate: serverCertificate,
         redirectHTTP: true,
         openListener: environment.production ? true : false,
       }

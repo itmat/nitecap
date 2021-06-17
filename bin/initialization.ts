@@ -49,7 +49,6 @@ let serverStackProps = {
   subdomainName: domainStack.subdomainName,
   hostedZone: domainStack.hostedZone,
   emailConfigurationSetName: emailStack.configurationSetName,
-  serverCertificate: domainStack.certificate,
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
 
