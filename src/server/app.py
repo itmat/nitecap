@@ -58,9 +58,9 @@ formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(module)s %(pro
 # (In prod, the stream logging gets redirected to the error log file in the apache conf file apache/nitecap.conf)
 logger = logging.getLogger("")
 
-# File logger - rotates for every 1Mb up to 10 files.
+# File logger - rotates for every 5 MB up to 10 files.
 # Applied to the root logger, so this catches all logging
-file_handler = RotatingFileHandler(os.environ["LOGS_DIRECTORY_PATH"]+"/application.log", maxBytes=1_000_000, backupCount=10)
+file_handler = RotatingFileHandler(os.environ["LOGS_DIRECTORY_PATH"]+"/application.log", maxBytes=5_000_000, backupCount=10)
 file_handler.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
 file_handler.setFormatter(formatter)
 logger.setLevel(os.environ.get('LOG_LEVEL', logging.WARN))
