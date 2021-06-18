@@ -1,10 +1,13 @@
 import collections
 import itertools
 import math
+import logging
 
 import numpy
 from . import util
 from . import upside
+
+logger = logging.getLogger(__name__)
 
 try:
     import pyximport
@@ -19,9 +22,9 @@ try:
         timepoint_permutations = timepoint_permutations.astype('int32')
         total_delta_pyx.sum_abs_differences(data, timepoints, timepoint_permutations, timepoints_per_cycle, out)
 except ImportError as e:
-    print("Encountered error while attempting to import cython module.")
-    print("Defaulting to slower python-based implementation.")
-    print(e)
+    logger.warning("Encountered error while attempting to import cython module.")
+    logger.warning("Defaulting to slower python-based implementation.")
+    logger.warning(e)
     def sum_abs_differences(data, timepoints_, timepoint_permutations, timepoints_per_cycle, out, contains_nans=True):
         ''' python implementation of sum_abs_differences '''
         N_FEATURES, N_SAMPLES = data.shape

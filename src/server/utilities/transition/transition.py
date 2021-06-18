@@ -44,7 +44,7 @@ ssm = boto3.client("ssm")
 
 WAIT_DURATION = 0.1
 
-OLD_VISITOR_THRESHOLD = datetime.datetime.now() - datetime.timedelta(days=32)
+INACTIVE_ACCOUNT_THRESHOLD = datetime.datetime.now() - datetime.timedelta(days=32)
 
 def transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet):
     print(
@@ -100,7 +100,7 @@ with app.app.app_context():
     db.session.commit()
 
     for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
-        if spreadsheet.user.visitor and spreadsheet.user.last_access < OLD_VISITOR_THRESHOLD:
+        if spreadsheet.user.visitor and spreadsheet.user.last_access < INACTIVE_ACCOUNT_THRESHOLD:
             print(
                 f"Deleting spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since user is visitor"
             )
@@ -122,10 +122,26 @@ with app.app.app_context():
         transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet)
 
     # Now clean up visiting users too
+    deleted_users = 0
     for user in db.session.query(User).order_by(User.id):
-        if user.visitor and user.last_access < OLD_VISITOR_THRESHOLD:
+        if user.visitor and user.last_access < INACTIVE_ACCOUNT_THRESHOLD:
             print(f"Deleting visiting user {user.id}!")
             user.delete()
+            deleted_users += 1
+
+    # And remove users who never activated their account
+    # who have no spreadsheets (except possibly the example shared spreadsheet
+    # that used to be added to any account that clicked it)
+    for user in db.session.query(User).order_by(User.id):
+        if (not user.activated
+            and user.last_access < INACTIVE_ACCOUNT_THRESHOLD
+            and len([spreadsheet for spreadsheet in user.spreadsheet if not spreadsheet.descriptive_name.contains("Nitecap Example Data")]) == 0):
+
+            print(f"Deleting never-activated users {user.id}")
+            user.delete()
+            deleted_users += 1
+
+    print(f"Deleted a total of {deleted_users} users")
 
     db.session.commit()
 
