@@ -103,7 +103,7 @@ export class ServerStack extends cdk.Stack {
         path.join(__dirname, "../src/server"),
         { file: props.applicationDockerfile }
       ),
-      memoryLimitMiB: 1536,
+      memoryLimitMiB: 3584,
       environment: {
         ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
@@ -150,8 +150,8 @@ export class ServerStack extends cdk.Stack {
       capacity: {
         maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.T3,
-          ec2.InstanceSize.MEDIUM
+          ec2.InstanceClass.C5,
+          ec2.InstanceSize.XLARGE
         ),
         blockDevices: [
           {
