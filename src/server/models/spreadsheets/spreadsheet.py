@@ -187,7 +187,7 @@ class Spreadsheet(db.Model):
                                         header=self.header_row - 1,
                                         index_col=False)
             else:
-                extension = Path(self.original_filename).suffix
+                extension = Spreadsheet.get_file_extension(self.original_filename)
                 sep = "\t"
                 if extension.lower() in constants.COMMA_DELIMITED_EXTENSIONS:
                     sep = ","
@@ -796,6 +796,22 @@ class Spreadsheet(db.Model):
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(comp_data), file_path)
 
             current_app.logger.info(f"Computed upside values and saved them to file {file_path}")
+
+    @staticmethod
+    def get_file_extension(filename):
+        ''' Checks if a filename has a suffix matching our allowed extensions and if so, return that.
+        Returns None if no valid extension found
+
+        In particular, this returns 'txt.gz' for those files and not .gz like a '''
+
+        name = str(filename).lower()
+        matches = [ext for ext in constants.ALLOWED_EXTENSIONS
+                    if name.endswith(ext)]
+
+        if matches:
+            return matches[0]
+        else:
+            return None
 
 column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
                         re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
