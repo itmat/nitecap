@@ -42,8 +42,6 @@ services:
     image: namshi/smtp
     environment:
       - DISABLE_IPV6=1
-      - GMAIL_USER=${GMAIL_USER}
-      - GMAIL_PASSWORD=${GMAIL_PASSWORD}
     ports:
       - 25:25
 volumes:
