@@ -2,7 +2,9 @@ import os
 import time
 import sqlite3
 import shutil
+import logging
 
+logger = logging.getLogger(__name__)
 def backup(dbfile):
     db_backup_folder = os.environ['DB_BACKUP_FOLDER']
     if not os.path.isdir(db_backup_folder):
@@ -19,14 +21,14 @@ def backup(dbfile):
 
     # Make new backup file
     shutil.copyfile(dbfile, backup_file)
-    print(f"Creating {backup_file}...")
+    logger.info(f"Creating {backup_file}...")
 
     # Unlock database
     connection.rollback()
 
 def clean_backups():
 
-    print("Cleaning up old backups")
+    logger.info("Cleaning up old backups")
     db_backup_folder = os.environ['DB_BACKUP_FOLDER']
     db_backup_limit = os.environ['DB_BACKUP_LIMIT']
 
@@ -35,4 +37,4 @@ def clean_backups():
         if os.stat(backup_file).st_ctime < (time.time() - int(db_backup_limit) * 86_400):
             if os.path.isfile(backup_file):
                 os.remove(backup_file)
-                print(f"Deleting {backup_file}...")
+                logger.info(f"Deleting {backup_file}...")
