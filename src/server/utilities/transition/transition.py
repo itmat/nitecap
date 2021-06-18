@@ -99,28 +99,6 @@ with app.app.app_context():
 
     db.session.commit()
 
-    for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
-        if spreadsheet.user.visitor and spreadsheet.user.last_access < INACTIVE_ACCOUNT_THRESHOLD:
-            print(
-                f"Deleting spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since user is visitor"
-            )
-            spreadsheet.delete()
-            continue
-
-        if spreadsheet.is_categorical():
-            print(
-                f"Skipping over spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since this is a categorical spreadsheet"
-            )
-            continue
-
-        if spreadsheet.column_labels_str is None:
-            print(
-                f"Skipping over spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since it doesn't have column labels string"
-            )
-            continue
-
-        transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet)
-
     # Now clean up visiting users too
     deleted_users = 0
     for user in db.session.query(User).order_by(User.id):
@@ -142,6 +120,29 @@ with app.app.app_context():
             deleted_users += 1
 
     print(f"Deleted a total of {deleted_users} users")
+    db.session.commit()
+
+    for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
+        if spreadsheet.user.visitor and spreadsheet.user.last_access < INACTIVE_ACCOUNT_THRESHOLD:
+            print(
+                f"Deleting spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since user is visitor"
+            )
+            spreadsheet.delete()
+            continue
+
+        if spreadsheet.is_categorical():
+            print(
+                f"Skipping over spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since this is a categorical spreadsheet"
+            )
+            continue
+
+        if spreadsheet.column_labels_str is None:
+            print(
+                f"Skipping over spreadsheet {spreadsheet.id} from user {spreadsheet.user_id} since it doesn't have column labels string"
+            )
+            continue
+
+        transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet)
 
     db.session.commit()
 

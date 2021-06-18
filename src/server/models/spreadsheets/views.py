@@ -106,7 +106,6 @@ def upload_file():
 
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
-        current_app.logger.error(f"Extension found: {extension}")
         file_name = f"uploaded_spreadsheet{extension}"
         file_path = os.path.join(directory_path, file_name)
         upload_file.save(file_path)
