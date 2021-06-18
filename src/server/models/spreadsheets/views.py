@@ -105,7 +105,8 @@ def upload_file():
         directory_path.mkdir(parents=True, exist_ok=True)
 
         # Rename the uploaded file and reattach the extension
-        extension = Path(upload_file.filename).suffix
+        extension = Spreadsheet.get_file_extension(upload_file.filename)
+        current_app.logger.error(f"Extension found: {extension}")
         file_name = f"uploaded_spreadsheet{extension}"
         file_path = os.path.join(directory_path, file_name)
         upload_file.save(file_path)
@@ -243,8 +244,8 @@ def allowed_file(filename):
     :param filename: uploaded file filename
     :return: True if the suffix is allowed and false otherwise
     """
-    extension = Path(filename).suffix
-    return extension.lower() in constants.ALLOWED_EXTENSIONS
+    extension = Spreadsheet.get_file_extension(filename)
+    return extension is not None
 
 
 @timeit
@@ -1095,7 +1096,7 @@ def upload_mpv_file():
         directory_path.mkdir(parents=True, exist_ok=True)
 
         # Rename the uploaded file and reattach the extension
-        extension = Path(upload_file.filename).suffix
+        extension = Spreadsheet.get_file_extension(upload_file.filename)
         file_path = os.path.join(directory_path, f"uploaded_spreadsheet{extension}")
         upload_file.save(file_path)
 
