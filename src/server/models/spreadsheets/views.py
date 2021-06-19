@@ -718,7 +718,7 @@ def copy_share(token, user=None):
         if shared_spreadsheet:
             shared_spreadsheet_ids.append(shared_spreadsheet.id)
         else:
-            errors.append("The spreadsheet could not be copied to ues account.")
+            errors.append("The spreadsheet could not be copied to user account.")
             return render_template('spreadsheets/upload_file.html', errors=errors)
 
     # Show the copied spreadsheets
