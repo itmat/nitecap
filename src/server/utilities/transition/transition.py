@@ -42,7 +42,7 @@ db.init_app(app.app)
 λ = boto3.client("lambda")
 ssm = boto3.client("ssm")
 
-WAIT_DURATION = 0.1
+WAIT_DURATION = 0.05
 
 INACTIVE_ACCOUNT_THRESHOLD = datetime.datetime.now() - datetime.timedelta(days=32)
 
@@ -143,7 +143,6 @@ with app.app.app_context():
             continue
 
         transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet)
-
     db.session.commit()
 
 def get_snapshot_lambda_name():
@@ -162,4 +161,3 @@ while True:
     ):
         print("Waiting for the snapshot lambda to be constructed")
         time.sleep(10)
-        

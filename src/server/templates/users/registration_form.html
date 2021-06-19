@@ -3,6 +3,7 @@
 {% block head %}
     <meta name="description" content="Explore, analyze, and share high-throughput omics circadian datasets through an easy-to-use web interface.">
     <title> Register Account - Nitecap</title>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 {% endblock %}
 
 {% block content %}
@@ -53,6 +54,8 @@
             <input type="number" id="text-question" name="test_question" class="form-control" value="" maxlength=10 style="width:10rem" aria-describedby="test-question-help" required />
             <p id="test-question-help"> Answer this to confirm you are a human. </p>
         </div>
+
+        <div class="g-recaptcha" data-sitekey="{{recaptcha_site_key}}"></div>
 
         <button type="submit" class="btn btn-primary">Register</button>
     </form>

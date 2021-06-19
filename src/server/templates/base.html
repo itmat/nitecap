@@ -98,9 +98,6 @@
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.register_user') }}">Register</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.login_user', next=request.path ) }}">Login</a></li>
                 {% else %}
-                    {% if session['email'] in config.ADMIN_LIST and not session['visitor'] %}
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    {% endif %}
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('users.update_profile') }}">Profile for {{ session['email'] }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{url_for('users.logout_user') }}">Logout</a></li>
                 {% endif %}
@@ -153,9 +150,9 @@
               </div>
               <div class="col-lg-6 text-muted text-right">
                   Contact us:
-                  <a href="mailto:admin@nitecap.org">
+                  <a href="mailto:admins@nitecap.org">
                       <i class="fa fa-envelope" aria-hidden="true"></i>
-                      <small>admin@nitecap.org</small>
+                      <small>admins@nitecap.org</small>
                   </a>
               </div>
           </div>

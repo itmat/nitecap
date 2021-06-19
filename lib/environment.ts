@@ -12,6 +12,7 @@ export type Environment = {
       containerMountPoint: string;
     };
     variables: {
+      LOGS_DIRECTORY_PATH: string;
       [key: string]: string;
     };
   };

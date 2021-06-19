@@ -1,4 +1,6 @@
 import json
+import os
+import requests
 
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, jsonify
 
@@ -31,12 +33,15 @@ def register_user():
     errors noted.
     """
 
+    recaptcha_site_key=os.environ['RECAPTCHA_SITE_KEY']
+
     if request.method == 'POST':
         errors = []
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
         test_question = request.form['test_question']
+        recaptcha_response = request.form['g-recaptcha-response']
         if not email:
             errors.append("Email is required.")
         if not password:
@@ -44,11 +49,18 @@ def register_user():
         if test_question.strip() != "24":
             errors.append("Incorrect answer to the test question. Please retry. (Hint: it's 24.)")
 
+        recaptcha_verification = requests.post("https://www.google.com/recaptcha/api/siteverify",
+            data={"secret": os.environ["RECAPTCHA_SECRET_KEY"], "response": recaptcha_response}).json()
+
+        if not recaptcha_verification["success"]:
+            errors.append("Invalid CAPTCHA. Please retry.")
+
         if errors:
             # Display errors, can't find username
             return render_template('users/registration_form.html',
                                    username=username, email=email,
-                                   errors=errors)
+                                   errors=errors,
+                                   recaptcha_site_key=recaptcha_site_key)
 
         user, errors, status = User.register_user(username, email, password)
 
@@ -57,7 +69,8 @@ def register_user():
         if errors:
             return render_template('users/registration_form.html',
                                    username=username, email=email,
-                                   errors=errors)
+                                   errors=errors,
+                                   recaptcha_site_key=recaptcha_site_key)
 
         # User already registered but not activated.  May have ignored or not received confirmation email.
         # Invited user to check email or resend the confirmation email.
@@ -80,7 +93,7 @@ def register_user():
     else:
 
         # User requests registration form.
-        return render_template('users/registration_form.html')
+        return render_template('users/registration_form.html', recaptcha_site_key=recaptcha_site_key)
 
 
 @user_blueprint.route('/login', methods=['GET', 'POST'])

@@ -33,7 +33,6 @@ export type ServerStackProps = cdk.StackProps & {
   subdomainName: string;
   hostedZone: route53.IHostedZone;
   snapshotIdParameter: ssm.StringParameter;
-  serverCertificate: acm.Certificate;
   emailConfigurationSetName: string;
   spreadsheetBucket: s3.Bucket;
   applicationDockerfile?: string;
@@ -104,7 +103,7 @@ export class ServerStack extends cdk.Stack {
         path.join(__dirname, "../src/server"),
         { file: props.applicationDockerfile }
       ),
-      memoryLimitMiB: 1536,
+      memoryLimitMiB: 3584,
       environment: {
         ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
@@ -151,8 +150,8 @@ export class ServerStack extends cdk.Stack {
       capacity: {
         maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.T3,
-          ec2.InstanceSize.MEDIUM
+          ec2.InstanceClass.C5,
+          ec2.InstanceSize.XLARGE
         ),
         blockDevices: [
           {
@@ -186,6 +185,11 @@ export class ServerStack extends cdk.Stack {
       )
     );
 
+    let serverCertificate = new acm.DnsValidatedCertificate(this, "Certificate", {
+      hostedZone: props.hostedZone,
+      domainName: props.subdomainName,
+    });
+
     this.service = new ecs_patterns.ApplicationLoadBalancedEc2Service(
       this,
       "ServerService",
@@ -195,7 +199,7 @@ export class ServerStack extends cdk.Stack {
         cluster: serverCluster,
         domainName: props.subdomainName,
         domainZone: props.hostedZone,
-        certificate: props.serverCertificate,
+        certificate: serverCertificate,
         redirectHTTP: true,
         openListener: environment.production ? true : false,
       }
