@@ -311,12 +311,12 @@ class Spreadsheet(db.Model):
         ''' Returns whether the spreadsheet metadata has been filled in '''
         if self.is_categorical():
             return (
-                self.categorical_data is not '' and
-                self.column_labels_str is not ''
+                self.categorical_data != '' and
+                self.column_labels_str != ''
             )
         else:
             return (
-                self.column_labels_str is not '' and
+                self.column_labels_str != '' and
                 self.timepoints is not None and
                 self.num_timepoints is not None
             )
