@@ -53,7 +53,7 @@ class Spreadsheet(db.Model):
     spreadsheet_data_path = db.Column(db.String(250))
     categorical_data = db.Column(db.String(5000))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    user = db.relationship("User")
+    user = db.relationship("User", back_populates="spreadsheet")
     edit_version = db.Column(db.Integer, default=0)
 
     ID_COLUMN = "ID"

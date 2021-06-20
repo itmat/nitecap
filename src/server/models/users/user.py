@@ -41,7 +41,7 @@ class User(db.Model):
 
     USER_DIRECTORY_NAME_TEMPLATE = Template('user_$user_id')
 
-    spreadsheet = db.relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan")
+    spreadsheet = db.relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan", back_populates="user")
 
     @property
     def spreadsheets(self):
