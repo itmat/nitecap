@@ -3,6 +3,7 @@ Vue.component('pca-plot', {
         return {
             PCA_WIDTH: 800,
             PCA_HEIGHT: 800,
+            FONT_SIZE: 16,
             PCA_SYMBOL: "M 0,-15 A 15,15 0 0,1 15,0 L 0,0 Z M 15,0 A 15,15 0 0,1 -15,0 A 15,15 0 0,1 0,-15 L 0,-10 A 10,10 0 0,0 -10,0 A 10,10 0 0,0 10,0",
 
             config: {
@@ -187,6 +188,9 @@ Vue.component('pca-plot', {
                     let layout = {
                         height: vm.PCA_HEIGHT,
                         width: vm.PCA_WIDTH,
+                        font: {
+                            size: vm.FONT_SIZE,
+                        },
                         xaxis: {
                             title: "PC1 (" + toFixed(explained_variance[0]*100,1) + "%)"
                         },

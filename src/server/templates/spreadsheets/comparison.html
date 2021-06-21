@@ -16,6 +16,7 @@
 <script>
 
     VERSION = 35;
+    FONT_SIZE = 16;
     $(document).ready(function () {
         // Handles to the error-handling modal
         nitecap_error = $("#error-modal");
@@ -1251,6 +1252,9 @@
                     hovermode: 'closest',
                     title: app.labels[app.sort_order[app.config.selected_row]],
                     legend: { orientation: 'h', y: -0.25 },
+                    font: {
+                        size: FONT_SIZE,
+                    },
                     xaxis: {
                         ticktext: plot_x_labels,
                         tickvals: plot_x_label_values,

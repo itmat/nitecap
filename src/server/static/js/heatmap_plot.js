@@ -1,6 +1,7 @@
 Vue.component("heatmap-plot", { 
     data: function () {
         return {
+            FONT_SIZE: 16,
             cutoff: 0,
             rendered: false,
             data: [],
@@ -168,6 +169,9 @@ Vue.component("heatmap-plot", {
                     r: 5,
                     b: 175,
                     t: 50
+                },
+                font: {
+                    size: FONT_SIZE,
                 },
                 pad: 4,
                 yaxis: {
