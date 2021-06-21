@@ -99,16 +99,9 @@ Vue.component("heatmap-plot", {
                         } );
                     });
 
-                    let rep_counts = [];
                     vm.x_values = x_sort_order.map( function(x_sort_order_, idx) {
                         return x_sort_order_.map( function(i) {
-                            let time = times[idx][i];
-                            if (rep_counts[time] === undefined) {
-                                rep_counts[time] = 0;
-                            }
-                            rep_counts[time] += 1;
-
-                            return vm.timepoint_labels[idx][time] + " Rep " + rep_counts[time];
+                            return vm.timepoint_labels[idx][time];
                         });
                     });
                 } else {
@@ -117,14 +110,8 @@ Vue.component("heatmap-plot", {
                     vm.x_values = vm.spreadsheets.map( function(spreadsheet, idx) {
                         let rep_counts = [];
                         return spreadsheet.x_values.map( function(time) {
-                            if (rep_counts[time] === undefined) {
-                                rep_counts[time] = 0;
-                            }
-                            rep_counts[time] += 1;
-                            let day = Math.floor(time / spreadsheet.timepoints_per_cycle) + 1;
-                            let time_of_day = time % spreadsheet.timepoints_per_cycle + 1;
 
-                            return vm.day_and_time_labels[idx][time] + " Rep " + rep_counts[time];
+                            return vm.day_and_time_labels[idx][time];
                         });
                     });
                 }
@@ -149,7 +136,7 @@ Vue.component("heatmap-plot", {
                     };
                 }
                 return {
-                    x: vm.x_values[idx],
+                    x: vm.x_values[idx].map(function (x,i) { return i; }),
                     y: y_vals,
                     z: vm.data[idx],
                     type: 'heatmap',
@@ -186,6 +173,14 @@ Vue.component("heatmap-plot", {
                     columns: vm.spreadsheets.length,
                 },
             };
+            vm.spreadsheets.forEach(function(spreadsheet, idx) {
+                let idx_suffix = (idx>0) ? (idx+1) : '';
+                heatmap_layout['xaxis'+idx_suffix] = {
+                    tickmode: 'array',
+                    tickvals: vm.x_values[idx].map(function (x,i) { return i; }),
+                    ticktext: vm.x_values[idx],
+                };
+            });
 
             Plotly.newPlot('heatmap', heatmap_values, heatmap_layout, heatmap_options);
 
