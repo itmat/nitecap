@@ -31,6 +31,9 @@ EMAIL_CONFIGURATION_SET_NAME = os.environ["EMAIL_CONFIGURATION_SET_NAME"]
 
 class User(db.Model):
     __tablename__ = "users"
+    __table_args__ = {
+        "sqlite_autoincrement": True
+    }
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), nullable=False, unique=True)
     email = db.Column(db.String(150), nullable=False, unique=True)

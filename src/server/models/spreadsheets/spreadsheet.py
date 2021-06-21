@@ -35,6 +35,9 @@ MAX_JTK_COLUMNS = 85
 
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
+    __table_args__ = {
+        "sqlite_autoincrement": True
+    }
     id = db.Column(db.Integer, primary_key=True)
     descriptive_name = db.Column(db.String(250), nullable=False)
     num_timepoints = db.Column(db.Integer)
