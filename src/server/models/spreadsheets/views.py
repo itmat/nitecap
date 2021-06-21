@@ -978,7 +978,7 @@ def rename(user=None):
     return jsonify({'name': spreadsheet.descriptive_name})
 
 @spreadsheet_blueprint.route('/bulk_delete', methods=['POST'])
-@requires_login
+@requires_account
 def bulk_delete(user=None):
     """
     AJAX endpoint - deletes the database table entry and the files associated with each of the
