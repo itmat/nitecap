@@ -1276,7 +1276,7 @@
 
 
             selectRow: function(row) {
-                this.config.selected_row = row;
+                this.config.selected_row = Math.min(Math.max(row, 0), this.labels.length-1);
             },
 
             onRowChange: function () {
