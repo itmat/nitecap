@@ -220,7 +220,7 @@ Vue.component('pca-plot', {
             });
         },
 
-        downloadPCA: function() {
+        downloadPCA: function(format) {
             // NOTE: we cannot use Plotly.downloadImage() since we have modified the plot
             // after its creation and the downloadImage() won't reflect those changes
             // So instead we just directly grab its SVG structure by toSVG() and then download that
@@ -229,20 +229,38 @@ Vue.component('pca-plot', {
             let pca_plot = document.getElementById('pca_plot');
             let svg_data = Plotly.Snapshot.toSVG(pca_plot, {format: 'svg'});
 
-            // Create a URL for it
-            let blob = new Blob([svg_data]);
-            let url = URL.createObjectURL(blob);
+            let svg_blob = new Blob([svg_data], {type: "image/svg+xml; charset=utf-8"});
+            let url = URL.createObjectURL(svg_blob);
 
-            // Trigger downloading of the URL by making an <a href ...> to it and clicking it
-            let anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = "pca.svg";
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
+            function triggerDownload(url, filename) {
+                // Trigger downloading of the URL by making an <a href ...> to it and clicking it
+                let anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = filename;
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
 
-            // Cleanup after 60s, they've presumably successfully downloaded the small svg
-            setTimeout(function () { URL.revokeObjectURL(url) }, 60000);
+                // Cleanup after 60s, they've presumably successfully downloaded the small image
+                setTimeout(function () { URL.revokeObjectURL(url) }, 60000);
+            }
+
+            if (format === 'png') {
+                let canvas = document.createElement("canvas");
+                let bbox = pca_plot.getBoundingClientRect();
+                canvas.width = bbox.width;
+                canvas.height = bbox.height;
+                let image = new Image();
+                image.onload = function () {
+                    canvas.getContext("2d").drawImage(image, 0, 0);
+                    URL.revokeObjectURL(url);
+                    url = canvas.toDataURL("image/png").replace("image/png", "image/octet_stream");
+                    triggerDownload(url, "pca.png");
+                }
+                image.src = url;
+            } else {
+                triggerDownload(url, "pca.svg");
+            }
         },
     },
 
@@ -279,7 +297,15 @@ Vue.component('pca-plot', {
                     <span class="slider"></span>
                 </label>
 
-                <button id="download_pca" class="btn btn-primary" v-on:click="downloadPCA">Download PCA</button>
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" id="downloadPCAPlotbutton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Download PCA
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="downloadPCAPlotButton">
+                        <button class="dropdown-item" v-on:click="downloadPCA('png')">PNG</button>
+                        <button class="dropdown-item" v-on:click="downloadPCA('svg')">SVG</button>
+                    </div>
+                </div>
             </span>
         </div>`,
 });
