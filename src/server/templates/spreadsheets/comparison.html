@@ -297,7 +297,15 @@
             <div class='col-auto'>
                 <span id="scatter_plot" style="width:625px;height:525px;vertical-align: top"></span>
                 <div class='p-1 float-right'>
-                    <button class="btn btn-primary btn-sm" v-on:click="downloadPlot">Download Plot</button>
+                    <div class="dropdown">
+                        <button class="btn btn-primary btn-sm dropdown-toggle" id="downloadPlotbutton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Download Plot
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="downloadPlotButton">
+                            <button class="dropdown-item" v-on:click="downloadPlot('png')">PNG</button>
+                            <button class="dropdown-item" v-on:click="downloadPlot('svg')">SVG</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class='p-1 float-right'>
@@ -1261,9 +1269,9 @@
                 }
             },
 
-            downloadPlot: function() {
+            downloadPlot: function(format) {
                 let gd = document.getElementById('scatter_plot');
-                Plotly.downloadImage(gd, {format: 'svg', filename: 'plot_' + (app.config.selected_row+1)});
+                Plotly.downloadImage(gd, {format: format, filename: 'plot_' + (app.config.selected_row+1)});
             },
 
 
