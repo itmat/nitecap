@@ -15,6 +15,7 @@ print = functools.partial(print, flush=True)
 
 import app
 from db import db
+from sqlalchemy.sql import text
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
 from computation.api import ALGORITHMS, run, store_spreadsheet_to_s3
@@ -73,6 +74,90 @@ def transfer_spreadsheet_to_S3_and_run_analyses(spreadsheet):
         time.sleep(WAIT_DURATION)
 
 with app.app.app_context():
+
+    # First update the table schemas
+    # SQLite can't modify existing tables, so we have to make copies
+    # We add the autoincrement functionality to the indexes
+    # and this also drops old, unused columns from spreadsheets
+    update_tables = ("""
+        PRAGMA foreign_keys=off;
+
+        BEGIN TRANSACTION;
+
+        CREATE TABLE users2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(150) NOT NULL,
+            email VARCHAR(150) NOT NULL,
+            password VARCHAR(100) NOT NULL,
+            last_access DATETIME,
+            visitor BOOLEAN,
+            activated BOOLEAN NOT NULL,
+            UNIQUE (username),
+            UNIQUE (email)
+        );
+        INSERT INTO users2
+            SELECT *
+            FROM users;
+        DROP TABLE users;
+        ALTER TABLE users2 RENAME TO users;
+
+        CREATE TABLE spreadsheets2 (
+            id  INTEGER PRIMARY KEY AUTOINCREMENT,
+            descriptive_name VARCHAR(250) NOT NULL,
+            num_timepoints INTEGER,
+            timepoints INTEGER,
+            repeated_measures BOOLEAN NOT NULL,
+            header_row INTEGER NOT NULL,
+            original_filename VARCHAR(250) NOT NULL,
+            file_mime_type VARCHAR(250) NOT NULL,
+            file_path VARCHAR(250),
+            uploaded_file_path VARCHAR(250) NOT NULL,
+            date_uploaded DATETIME NOT NULL,
+            column_labels_str VARCHAR(2500),
+            last_access DATETIME NOT NULL,
+            ids_unique BOOLEAN NOT NULL,
+            note VARCHAR(5000),
+            spreadsheet_data_path VARCHAR(250),
+            categorical_data VARCHAR(5000),
+            user_id INTEGER NOT NULL,
+            edit_version INTEGER,
+            FOREIGN KEY(user_id) REFERENCES users (id)
+        );
+        INSERT INTO spreadsheets2
+            SELECT
+                id,
+                descriptive_name,
+                num_timepoints,
+                timepoints,
+                repeated_measures,
+                header_row,
+                original_filename,
+                file_mime_type,
+                file_path,
+                uploaded_file_path,
+                date_uploaded,
+                column_labels_str,
+                last_access,
+                ids_unique,
+                note,
+                spreadsheet_data_path,
+                categorical_data,
+                user_id,
+                edit_version
+            FROM spreadsheets;
+        DROP TABLE spreadsheets;
+        ALTER TABLE spreadsheets2 RENAME TO spreadsheets;
+
+        COMMIT;
+        PRAGMA foreign_keys=on;
+    """)
+
+    # Run the update_tables SQL code, command-by-command
+    for command in update_tables.split(";"):
+        if len(command.strip()) > 0:
+            db.session.execute(text(command))
+    db.session.commit()
+
     # Update location of the spreadsheets
     print("Updating the file paths of spreadsheets")
     for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
