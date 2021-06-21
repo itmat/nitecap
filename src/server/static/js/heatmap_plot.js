@@ -207,9 +207,9 @@ Vue.component("heatmap-plot", {
             vm.rendered = true;
         },
 
-        downloadHeatmap: function() {
+        downloadHeatmap: function(format) {
             let gd = document.getElementById('heatmap');
-            Plotly.downloadImage(gd, {format: 'svg', filename: 'heatmap_' + (this.selected_rows.length)});
+            Plotly.downloadImage(gd, {format: format, filename: 'heatmap_' + (this.selected_rows.length)});
         },
     },
 
@@ -241,8 +241,14 @@ Vue.component("heatmap-plot", {
                         <label class="form-check-label" for="heatmap_show_labels">Show row labels</label>
                     </div>
                 </div>
-                <span>
-                    <button id="download_heatmap" class="btn btn-primary" v-on:click="downloadHeatmap">Download Heatmap</button>
+                <span class="dropdown">
+                    <button class="btn btn-primary btn-sm dropdown-toggle" id="download_heatmap" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Download Plot
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="download_heatmap">
+                        <button class="dropdown-item" v-on:click="downloadHeatmap('png')">PNG</button>
+                        <button class="dropdown-item" v-on:click="downloadHeatmap('svg')">SVG</button>
+                    </div>
                 </span>
                 <span>Number of items in heatmap: {{heatmap_labels.length}}</span>
             </div> 
