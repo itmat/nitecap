@@ -20,7 +20,6 @@ RUN groupmod -g 1001 www-data \
 # Install the python packages we use
 ADD requirements.txt .
 RUN pip --no-cache-dir install -r requirements.txt
-RUN mkdir /var/www/flask_apps/logs
 
 WORKDIR /var/www/flask_apps/nitecap
 COPY --chown=www-data . .
@@ -34,4 +33,3 @@ RUN a2dissite 000-default.conf \
  && echo "Listen 5000" >> /etc/apache2/ports.conf
 
 CMD ["/bin/bash", "start_server.sh"]
-

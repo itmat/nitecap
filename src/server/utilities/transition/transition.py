@@ -43,7 +43,7 @@ db.init_app(app.app)
 λ = boto3.client("lambda")
 ssm = boto3.client("ssm")
 
-WAIT_DURATION = 0.05
+WAIT_DURATION = 0.01
 
 INACTIVE_ACCOUNT_THRESHOLD = datetime.datetime.now() - datetime.timedelta(days=32)
 
@@ -152,6 +152,7 @@ with app.app.app_context():
         PRAGMA foreign_keys=on;
     """)
 
+    print("Updating the tables")
     # Run the update_tables SQL code, command-by-command
     for command in update_tables.split(";"):
         if len(command.strip()) > 0:

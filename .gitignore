@@ -10,5 +10,6 @@ cdk.context.json
 .cdk.staging
 cdk.out
 
+cypress/downloads
 cypress/screenshots
 cypress/videos
