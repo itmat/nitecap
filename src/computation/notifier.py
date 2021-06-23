@@ -23,12 +23,15 @@ def send_notification_via_websockets(context):
         )
 
         for connection in user_connections["Items"]:
-            api.post_to_connection(
-                Data=json.dumps(
-                    {"analysisId": context["analysisId"], **message}
-                ).encode(),
-                ConnectionId=connection["connectionId"]["S"],
-            )
+            try:
+                api.post_to_connection(
+                    Data=json.dumps(
+                        {"analysisId": context["analysisId"], **message}
+                    ).encode(),
+                    ConnectionId=connection["connectionId"]["S"],
+                )
+            except api.exceptions.GoneException:
+                continue
 
     return send_notification
 
