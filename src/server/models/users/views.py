@@ -40,14 +40,11 @@ def register_user():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        test_question = request.form['test_question']
         recaptcha_response = request.form['g-recaptcha-response']
         if not email:
             errors.append("Email is required.")
         if not password:
             errors.append("Password is required.")
-        if test_question.strip() != "24":
-            errors.append("Incorrect answer to the test question. Please retry. (Hint: it's 24.)")
 
         recaptcha_verification = requests.post("https://www.google.com/recaptcha/api/siteverify",
             data={"secret": os.environ["RECAPTCHA_SECRET_KEY"], "response": recaptcha_response}).json()
@@ -181,6 +178,8 @@ def request_password_reset():
     is not associated with any current account.
     """
 
+    recaptcha_site_key=os.environ['RECAPTCHA_SITE_KEY']
+
     # Should be no need for a password reset if the user is already logged in and is not a visitor.
     if 'email' in session and session['email']:
         user = User.find_by_email(session['email'])
@@ -194,7 +193,15 @@ def request_password_reset():
         # The email input is required
         email = request.form['email']
         if not email:
-            return render_template('users/request_reset_form.html', errors="You must provide your email.")
+            return render_template('users/request_reset_form.html', errors=["You must provide your email."], recaptcha_site_key=recaptcha_site_key)
+
+        # Verify reCAPTCHA
+        recaptcha_response = request.form['g-recaptcha-response']
+        recaptcha_verification = requests.post("https://www.google.com/recaptcha/api/siteverify",
+            data={"secret": os.environ["RECAPTCHA_SECRET_KEY"], "response": recaptcha_response}).json()
+
+        if not recaptcha_verification["success"]:
+            return render_template('users/request_reset_form.html', errors=["Invalid CAPTCHA. Please retry."], recaptcha_site_key=recaptcha_site_key)
 
         # The email provided must be associated with an existing account.
         user = User.find_by_email(email)
@@ -213,7 +220,7 @@ def request_password_reset():
         return redirect(url_for('.login_user'))
 
     # User requests password reset request form
-    return render_template('users/request_reset_form.html')
+    return render_template('users/request_reset_form.html', recaptcha_site_key=recaptcha_site_key)
 
 
 @user_blueprint.route('/reset_password/<string:token>', methods=['GET', 'POST'])
@@ -362,10 +369,21 @@ def resend_confirmation():
     user's email is returned as a hidden form field.
     """
 
+    recaptcha_site_key=os.environ['RECAPTCHA_SITE_KEY']
+
     if request.method == 'POST':
 
         email = request.form['email']
         user = User.find_by_email(email)
+
+        # Verify reCAPTCHA
+        recaptcha_response = request.form['g-recaptcha-response']
+        recaptcha_verification = requests.post("https://www.google.com/recaptcha/api/siteverify",
+            data={"secret": os.environ["RECAPTCHA_SECRET_KEY"], "response": recaptcha_response}).json()
+
+        if not recaptcha_verification["success"]:
+            return render_template('users/resend_confirmation_form.html', email=email, recaptcha_site_key=recaptcha_site_key)
+
 
         # Bogus request - possibly a hacker exploring
         if not user:
@@ -389,4 +407,4 @@ def resend_confirmation():
         return redirect(url_for('spreadsheets.upload_file'))
 
     email = request.args['email']
-    return render_template('users/resend_confirmation_form.html', email=email)
+    return render_template('users/resend_confirmation_form.html', email=email, recaptcha_site_key=recaptcha_site_key)
