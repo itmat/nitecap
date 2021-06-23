@@ -280,8 +280,12 @@ def update_profile(user=None):
     if request.method == 'POST':
 
         username = request.form['username']
-        email = request.form['email']
         password = request.form['password']
+        # Disabled email-changing functionality since it would necessitate
+        # verifying the new email, which we don't do
+        #email = request.form['email']
+        email = None # no email change
+
         user.update_user_profile(username, email, password)
         if email:
             session['email'] = email
