@@ -1,6 +1,6 @@
 FROM public.ecr.aws/lambda/python:latest
 
-ENV R_VERSION=4.0.5
+ENV R_VERSION=4.1.0
 RUN yum -y install bzip2-devel curl-devel gcc gcc-c++ gcc-gfortran gzip make pcre2-devel tar wget which xz-devel zlib-devel \
   && wget http://cran.rstudio.com/src/base/R-4/R-${R_VERSION}.tar.gz \
   && tar xvf R-${R_VERSION}.tar.gz \
