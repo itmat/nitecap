@@ -3,7 +3,7 @@ import * as cdk from "@aws-cdk/core";
 import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
 import { EmailStack } from "../lib/email-stack";
-import { OperationsStack } from "../lib/operations-stack";
+import { OperationStack } from "../lib/operation-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
@@ -67,4 +67,4 @@ let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 //   serverStack,
 // };
 
-// new OperationsStack(stage, "OperationsStack", { environment, ...stacks });
+// new OperationStack(stage, "OperationStack", { environment, ...stacks });

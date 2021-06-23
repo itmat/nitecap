@@ -16,7 +16,7 @@ import { EmailStack } from "./email-stack";
 import { PersistentStorageStack } from "./persistent-storage-stack";
 import { ServerStack } from "./server-stack";
 
-type OperationsStackProps = cdk.StackProps & {
+type OperationStackProps = cdk.StackProps & {
   environment: Environment;
   domainStack: DomainStack;
   computationStack: ComputationStack;
@@ -25,8 +25,8 @@ type OperationsStackProps = cdk.StackProps & {
   serverStack: ServerStack;
 };
 
-export class OperationsStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props: OperationsStackProps) {
+export class OperationStack extends cdk.Stack {
+  constructor(scope: cdk.Construct, id: string, props: OperationStackProps) {
     super(scope, id, props);
 
     const environment = props.environment;
