@@ -277,6 +277,7 @@ class User(db.Model):
                     },
                     ConfigurationSetName=EMAIL_CONFIGURATION_SET_NAME,
                 )
+                current_app.logger.info(f"Email sent: {self.email}")
             except Exception as exception:
                 current_app.logger.error(f"Email delivery failed: {exception}")
                 self.delete_from_db()
