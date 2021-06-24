@@ -36,7 +36,7 @@ def handler(event, context):
     print("Creating snapshot")
 
     snapshot_id = ec2.create_snapshot(
-        Description="Transformed Nitecap data volume snapshot",
+        Description="Nitecap data volume after transition",
         VolumeId=transition_server_block_storage_id,
     )["SnapshotId"]
 

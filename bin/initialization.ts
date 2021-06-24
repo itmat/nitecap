@@ -12,7 +12,7 @@ import { TransitionParameterStack } from "../lib/utilities/transition/parameter-
 import environment from "./.env";
 
 let app = new cdk.App();
-let stage = new cdk.Stage(app, "NitecapDevelopment", {
+let stage = new cdk.Stage(app, "NitecapProduction", {
   env: {
     region: environment.region,
     account: environment.account,
@@ -59,12 +59,12 @@ let serverStackProps = {
 
 let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
-// let stacks = {
-//   computationStack,
-//   domainStack,
-//   emailStack,
-//   persistentStorageStack,
-//   serverStack,
-// };
+let stacks = {
+  computationStack,
+  domainStack,
+  emailStack,
+  persistentStorageStack,
+  serverStack,
+};
 
-// new OperationStack(stage, "OperationStack", { environment, ...stacks });
+new OperationStack(stage, "OperationStack", { environment, ...stacks });
