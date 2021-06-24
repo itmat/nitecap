@@ -597,8 +597,9 @@ class Spreadsheet(db.Model):
 
         # Re-upload to s3. Import here to avoid circular import
         from computation.api import store_spreadsheet_to_s3
-        spreadsheet_share.init_on_load()
-        store_spreadsheet_to_s3(spreadsheet_share)
+        if spreadsheet.has_metadata():
+            spreadsheet_share.init_on_load()
+            store_spreadsheet_to_s3(spreadsheet_share)
 
         return spreadsheet_share
 

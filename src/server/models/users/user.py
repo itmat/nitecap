@@ -247,7 +247,6 @@ class User(db.Model):
             s.quit()
         except Exception as e:
             current_app.logger.error(f"Email delivery failed: {e}")
-            self.delete_from_db()
             error = True
         return error
 
@@ -280,7 +279,6 @@ class User(db.Model):
                 current_app.logger.info(f"Email sent: {self.email}")
             except Exception as exception:
                 current_app.logger.error(f"Email delivery failed: {exception}")
-                self.delete_from_db()
                 error = True
         else:
             error = True
@@ -508,8 +506,9 @@ class User(db.Model):
             spreadsheet.save_to_db()
 
             # Needs to be re-uploaded to the new user's 'folder'
-            spreadsheet.init_on_load()
-            store_spreadsheet_to_s3(spreadsheet)
+            if spreadsheet.has_metadata():
+                spreadsheet.init_on_load()
+                store_spreadsheet_to_s3(spreadsheet)
 
         # Finally discard the visitor directory path and remove the visitor from the database
         visitor.delete()
