@@ -439,7 +439,7 @@ def get_mpv_spreadsheets(user=None):
     if not spreadsheet_ids:
         return jsonify({"error": MISSING_SPREADSHEET_MESSAGE}), 400
 
-    current_app.logger.info(f"Fetching MPV spreadsheets {', '.join(spreadsheet_ids)} for user {user.username}")
+    current_app.logger.info(f"Getting spreadsheets {spreadsheet_ids} (MPV) for user {user.username}")
 
     spreadsheets = []
     for spreadsheet_id in spreadsheet_ids:
@@ -477,6 +477,8 @@ def get_mpv_spreadsheets(user=None):
                      visitor=user.is_visitor(),
                      column_headers=spreadsheet.get_data_columns(),
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
+                     id_col_labels=list(spreadsheet.get_id_columns(label=True)),
+                     ids=df.iloc[:,spreadsheet.get_id_columns()].T,
                     )
         spreadsheet_values.append(values)
 
