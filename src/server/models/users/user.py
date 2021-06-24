@@ -506,8 +506,9 @@ class User(db.Model):
             spreadsheet.save_to_db()
 
             # Needs to be re-uploaded to the new user's 'folder'
-            spreadsheet.init_on_load()
-            store_spreadsheet_to_s3(spreadsheet)
+            if spreadsheet.has_metadata():
+                spreadsheet.init_on_load()
+                store_spreadsheet_to_s3(spreadsheet)
 
         # Finally discard the visitor directory path and remove the visitor from the database
         visitor.delete()
