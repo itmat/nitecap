@@ -407,6 +407,11 @@
         });
     });
 
+    window.onbeforeunload = function() {
+        // Return the compare button to its original state
+        compare_button.html('Compare');
+    };
+
 </script>
 
 <div class="page-header">
