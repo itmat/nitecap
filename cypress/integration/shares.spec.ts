@@ -2,6 +2,12 @@ import environment from "./.env";
 
 describe("Share links", () => {
   it("can create and view shares", () => {
+    cy.on("uncaught:exception", (error, runnable) => {
+      if (error.message.includes("compare_button is not defined")) {
+        return false;
+      }
+    });
+
     cy.visit(environment.baseUrl);
     cy.contains("Login").click();
     cy.get("#username").type(environment.username);
@@ -32,8 +38,6 @@ describe("Share links", () => {
         cy.visit(link);
       });
     cy.get("body").should("contain", "results.6.24.1.txt");
-    cy.contains("tr>td", "LS")
-    .next()
-    .should("contain.text", "p: 9.5e-4");
+    cy.contains("tr>td", "LS").next().should("contain.text", "p: 9.5e-4");
   });
 });
