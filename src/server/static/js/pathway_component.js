@@ -181,16 +181,18 @@ Vue.component( 'pathway-analysis', {
             // Prepare and download 1 pathway result
             let vm = this;
             let pathway = this.shown_pathways[i];
+            let foreground = new Set(vm.last_ran_state.foreground);
+            let background = new Set(vm.last_ran_state.background);
             let results = [
                 ["pathway",  pathway.pathway],
                 ["pathway_name",  pathway.name],
                 ["pathway_url",  pathway.url],
                 ["pathway_size",  pathway.feature_ids.size],
-                ["foreground_size",  this.last_run_state.foreground.size],
-                ["background_size",  this.last_runn_state.background.size],
+                ["foreground_size",  foreground.size],
+                ["background_size",  background.size],
                 ["pathway",  Array.from(pathway.feature_ids)],
-                ["foreground",  Array.from(this.last_run_state.foreground)],
-                ["intersection",  Array.from(pathway.feature_ids).filter(function(x) { return vm.last_run_state.foreground.has(x);})],
+                ["foreground",  Array.from(this.last_ran_state.foreground)],
+                ["intersection",  Array.from(pathway.feature_ids).filter(function(x) { return foreground.has(x);})],
             ];
             // Generate tab-separated file containing the info
             let result_tsv = results.map(function (entries) {
@@ -330,15 +332,15 @@ Vue.component( 'pathway-analysis', {
         let vm = this;
         vm.worker = new Worker('/static/js/pathway_worker.js');
         vm.worker.onmessage = function(message) {
-            vm.last_run_state = vm.running_state;
+            vm.last_ran_state = vm.running_state;
 
             let results = message.data.results;
             results.forEach( function (result) {
                 let pathway = vm.running_state.pathways.get(result.pathway);
                 Object.assign(result, pathway);
                 Object.assign(result, {
-                    background_size: vm.last_run_state.background.size,
-                    selected_set_size: vm.last_run_state.foreground.size,
+                    background_size: vm.last_ran_state.background.length,
+                    selected_set_size: vm.last_ran_state.foreground.length,
                     pathway_size: pathway.feature_ids.size,
                 });
                 if (result.name === undefined) {
@@ -348,7 +350,6 @@ Vue.component( 'pathway-analysis', {
             });
             Object.freeze(results);
             vm.results = results;
-            vm.last_ran_state = vm.running_state;
             vm.running_state = null;
 
             vm.worker_busy = false;
