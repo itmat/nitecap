@@ -18,7 +18,7 @@ s3 = boto3.resource("s3")
 s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
 sfn = boto3.client("stepfunctions")
 
-ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"]
+ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova", "rain"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 

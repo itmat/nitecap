@@ -5,7 +5,7 @@ from flask import Blueprint
 
 from models.users.decorators import requires_account
 
-ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova"]
+ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova", "rain"]
 NOTIFICATION_API_ENDPOINT = os.environ["NOTIFICATION_API_ENDPOINT"]
 
 template = {}

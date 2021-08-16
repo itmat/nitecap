@@ -152,6 +152,7 @@
             vm.runAnalysis(spreadsheet, "jtk");
             vm.runAnalysis(spreadsheet, "cosinor");
             vm.runAnalysis(spreadsheet, "one_way_anova");
+            vm.runAnalysis(spreadsheet, "rain");
         });
 
 
@@ -819,6 +820,14 @@
          per_spreadsheet: true,
          num_spreadsheets: 'any',
          algorithm_name: "one_way_anova"},
+
+         rain: {name: "RAIN",
+         value: {p: "rain_p",
+                 q: "rain_q"},
+         description: "RAIN...",
+        per_spreadsheet: true,
+        num_spreadsheets:'any'},
+
         damping: {name: "Damping",
          value: {p: "upside_p",
                  q: "upside_q"},
@@ -1554,6 +1563,9 @@
                 } else if(analysis.algorithm == "one_way_anova") {
                     spreadsheet.anova_p = Object.freeze(analysis.p);
                     spreadsheet.anova_q = Object.freeze(analysis.q);
+                } else if(analysis.algorithm == "rain") {
+                    spreadsheet.rain_p = Object.freeze(analysis.p);
+                    spreadsheet.rain_q = Object.freeze(analysis.q);
                 } else {
                     console.error("Unknown algorithm results found:", analysis.algorithm, analysis);
                 }
