@@ -217,6 +217,8 @@
         vm.share_token = share_token;
         vm.logged_in = logged_in;
 
+        vm.stats.index = spreadsheets[0].ids.map( (x,i) => i);
+
         vm.connectToNotificationApi();
     }
 </script>
@@ -356,6 +358,7 @@
                         Stats: sort by
                         <select class="form-select form-select-sm" aria-label="Sorting method"
                             v-model="config.sort_by.stat_id">
+                            <option value="none" key="none"> None </option>
                             <option v-for="(stat, stat_id) in useable_stats"
                                 v-bind:value="stat_id"
                                 v-bind:key="stat_id">
@@ -780,95 +783,142 @@
     };
 
     let stats_table = {
-        nitecap: {name: "Nitecap",
-         value: {p: "nitecap_p",
-                 q: "nitecap_q"},
-          description: "Nitecap significance of rhythmicity for dataset.",
-         per_spreadsheet: true,
-         num_spreadsheets:'any',
-         sort_value:'total_delta',
-         secondary_sort_value:'nitecap_q'},
-        jtk: {name: "JTK",
-         value: {p: "jtk_p",
-                 q: "jtk_q"},
-         description: "JTK_cycle significance of rhythmicity for dataset. Computed by meta2d.",
-        per_spreadsheet: true,
-        num_spreadsheets:'any'},
-        ars: {name: "ARS",
-         value: {p: "ars_p",
-                 q: "ars_q"},
-         description: "ARSER significance of rhythmicity for dataset. Requires multiple cycles with a single replicate each in order to run.",
-        per_spreadsheet: true,
-        num_spreadsheets:'any',
-        algorithm_name: "arser"},
-        ls: {name: "LS",
-         value: {p: "ls_p",
-                 q: "ls_q"},
-         description: "Lomb-Scargle significance of rhythmicity for dataset.",
-        per_spreadsheet: true,
-        num_spreadsheets:'any'},
-        cosinor: {name: "Cosinor",
-         value: {p: "cosinor_p",
-                 q: "cosinor_q"},
-         description: "Cosinor significance of rhythmicity for dataset.",
-         per_spreadsheet: true,
-         num_spreadsheets:'any'},
-        anova: {name: "ANOVA",
-         value: {p: "anova_p",
-                 q: "anova_q"},
-         description: "1-Way ANOVA on primary dataset. Tests whether the means of the timepoints are equal. Requires either multiple replicates or more than one cycle.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'any',
-         algorithm_name: "one_way_anova"},
+        none: {
+            name: "none",
+            value: "index",
+            description: "No sorting",
+            per_spreadsheet: false,
+            num_spreadsheets: 'any',
+        },
+        jtk: {
+            name: "JTK",
+            value: {
+                p: "jtk_p",
+                q: "jtk_q"
+            },
+            description: "JTK_cycle significance of rhythmicity for dataset. Computed by meta2d.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
+        ars: {
+            name: "ARS",
+            value: {
+                p: "ars_p",
+                q: "ars_q"
+            },
+            description: "ARSER significance of rhythmicity for dataset. Requires multiple cycles with a single replicate each in order to run.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any',
+            algorithm_name: "arser"
+        },
+        ls: {
+            name: "LS",
+            value: {
+                p: "ls_p",
+                q: "ls_q"
+            },
+            description: "Lomb-Scargle significance of rhythmicity for dataset.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
+        cosinor: {
+            name: "Cosinor",
+            value: {
+                p: "cosinor_p",
+                q: "cosinor_q"
+            },
+            description: "Cosinor significance of rhythmicity for dataset.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
+        anova: {
+            name: "ANOVA",
+            value: {
+                p: "anova_p",
+                q: "anova_q"
+            },
+            description: "1-Way ANOVA on primary dataset. Tests whether the means of the timepoints are equal. Requires either multiple replicates or more than one cycle.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any',
+            algorithm_name: "one_way_anova"
+        },
 
-         rain: {name: "RAIN",
-         value: {p: "rain_p",
-                 q: "rain_q"},
-         description: "RAIN...",
-        per_spreadsheet: true,
-        num_spreadsheets:'any'},
+        rain: {
+            name: "RAIN",
+            value: {
+                p: "rain_p",
+                q: "rain_q"
+            },
+            description: "RAIN...",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
 
-        damping: {name: "Damping",
-         value: {p: "upside_p",
-                 q: "upside_q"},
-         description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'multi'},
-        two_way_anova: {name: "Two-way ANOVA",
-         value: {p: "two_way_anova_p",
-                 q: "two_way_anova_q"},
-         description: "Two-way ANOVA test for difference in timepoint-effects across datasets. Tests whether there is a difference in the 'shape' of the curve between the two datasets, disregarding any mean-value difference.",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        main_effect_diff: {name: "Main Effect Diff",
-         value: {p: "main_effect_p",
-                 q: "main_effect_q"},
-         description: "Main effect test of difference between the two datasets in the two-way ANOVA. Tests whether the grand mean (averaged over all timepoints) are the  in both datasetss",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        phase_difference: {name: "Phase Difference",
-         value: {p: "phase_p",
-                 q: "phase_q"},
-         description: "Test for equality of phase between datasets through cosinor analysis (least squares fit). See FAQ. Requires both datasets to have significant rhythmicity (i.e. it won't be significant if one is non-rhythmic since phase cannot be determined).",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        amplitude_difference: {name: "Amplitude Difference",
-         value: {p: "amplitude_p",
-                 q: "amplitude_q"},
-         description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit).",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        amplitude: {name: "Amplitude",
-         value: "amplitude",
-         description: "Amplitude of the variation.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'any',
-         sort_direction: -1},
-        peak_time: {name: "Peak-time",
-         value: "peak_time",
-         description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'any'},
+        damping: {
+            name: "Damping",
+            value: {
+                p: "upside_p",
+                q: "upside_q"
+            },
+            description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'multi'
+        },
+        two_way_anova: {
+            name: "Two-way ANOVA",
+            value: {
+                p: "two_way_anova_p",
+                q: "two_way_anova_q"
+            },
+            description: "Two-way ANOVA test for difference in timepoint-effects across datasets. Tests whether there is a difference in the 'shape' of the curve between the two datasets, disregarding any mean-value difference.",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        main_effect_diff: {
+            name: "Main Effect Diff",
+            value: {
+                p: "main_effect_p",
+                q: "main_effect_q"
+            },
+            description: "Main effect test of difference between the two datasets in the two-way ANOVA. Tests whether the grand mean (averaged over all timepoints) are the  in both datasetss",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        phase_difference: {
+            name: "Phase Difference",
+            value: {
+                p: "phase_p",
+                q: "phase_q"
+            },
+            description: "Test for equality of phase between datasets through cosinor analysis (least squares fit). See FAQ. Requires both datasets to have significant rhythmicity (i.e. it won't be significant if one is non-rhythmic since phase cannot be determined).",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        amplitude_difference: {
+            name: "Amplitude Difference",
+            value: {
+                p: "amplitude_p",
+                q: "amplitude_q"
+            },
+            description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit).",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        amplitude: {
+            name: "Amplitude",
+            value: "amplitude",
+            description: "Amplitude of the variation.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any',
+            sort_direction: -1
+        },
+        peak_time: {
+            name: "Peak-time",
+            value: "peak_time",
+            description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
     };
 
     let filter_data_list_base = [
@@ -931,7 +981,7 @@
                 spreadsheet_ids: [],
                 original_spreadsheet_ids: [],
                 selected_row: 0,
-                sort_by: {stat_id: 'nitecap', spreadsheet_num: 0},
+                sort_by: {stat_id: "none", spreadsheet_num: 0},
                 filters: [],
                 hide_filtered_rows: false,
                 plot: {
@@ -947,6 +997,7 @@
             stats_table: stats_table,
 
             stats: {
+                index: null,
                 amplitude_p: null,
                 amplitude_q: null,
                 phase_p: null,
@@ -1462,14 +1513,6 @@
                                 columns.set(stat.value.q, restrict(vm.stats[stat.value.q]));
                             }
                         }
-
-                        // TODO: right now we're not including these. Only really loses 'total_delta' from nitecap
-                        //if (stat.sort_value !== undefined) {
-                        //    column_list.push(stat.sort_value)
-                        //}
-                        //if (stat.secondary_sort_value !== undefined) {
-                        //    column_list.push(stat.secondary_sort_value)
-                        //}
                     }
                 }
 
@@ -1752,75 +1795,51 @@
 
             sort_function: function () {
                 // We sort by the value specified in config.sort_by
-                // We also have a 'secondary sort value' which is used purely as a null/not-null check
-                // So if secondary sort value is null then we will sort the value to the end as if the main value were null
-                // This solves the problem where q-values are null and being sorted to the front of the list particulary
-                // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
-
                 // display_value is the value array that should be monotonic in the sort order
-                // which are convenient for the user to look at.
-                // In particular, Nitecap sorts by the nitecap statistic but users want to see the q-value
-                // and other methods sort by p-value but users want q-value
+                // which are convenient for the user to look at, i.e. q-values if available
                 let vm = this;
                 let variable = null;
-                let secondary_variable = null;
                 let display_variable = null;
 
-                if (this.sort_by.stat.sort_value !== undefined) {
-                    variable = this.sort_by.stat.sort_value;
-                    if (this.sort_by.stat.secondary_sort_value !== undefined) {
-                        secondary_variable = this.sort_by.stat.secondary_sort_value;
-                    } else {
-                        secondary_variable = variable;
-                    }
-                    display_variable = secondary_variable;
-                } else if (typeof this.sort_by.stat.value === 'string') {
+                // Handle what type of variable this is:
+                // 2: string identifying a stat to use - use that stat
+                // 3: p/q pair, use p's but print q's
+                if (typeof this.sort_by.stat.value === 'string') {
                     variable = this.sort_by.stat.value;
-                    secondary_variable = variable;
                     display_variable = variable;
                 } else {
                     variable = this.sort_by.stat.value.p;
-                    secondary_variable = this.sort_by.stat.value.q;
-                    display_variable = secondary_variable;
+                    display_variable = this.sort_by.stat.value.q;
                 }
 
-                let sort_direction = 1;
-                if (this.sort_by.stat.sort_direction !== undefined) {
-                    sort_direction = this.sort_by.stat.sort_direction;
-                }
-
+                // Figure out what spreadsheet (if any) to pull data from
                 let value = null;
-                let secondary_value = null;
                 let display_value = null;
                 if (vm.sort_by.stat.per_spreadsheet) {
                     if (vm.spreadsheets.length > 0) {
                         value = vm.spreadsheets[vm.sort_by.spreadsheet_num][variable];
-                        secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_variable];
                         display_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][display_variable];
                     }
                 } else {
                     value = vm.stats[variable];
-                    secondary_value = vm.stats[secondary_variable];
                     display_value = vm.stats[display_variable];
                 }
 
-                if (display_value !== null && vm.spreadsheets.length > 0) {
-                    display_value = display_value.map( function(x,i) {
-                        return secondary_value[i] && display_value[i];
-                    });
+                let sort_direction = 1;
+                if (this.sort_by.stat && this.sort_by.stat.sort_direction !== undefined) {
+                    sort_direction = this.sort_by.stat.sort_direction;
                 }
 
-
                 let sorter = function (i,j) {
-                    let a = secondary_value[i] && value[i];
-                    let b = secondary_value[j] && value[j];
+                    let a = value[i];
+                    let b = value[j];
                     return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
                                    b ? b * sort_direction : b,
                                    i, j);
                 };
 
-                if ((value === null) || (secondary_value === null)) {
-                    // Don't sort, the values we are sorting by haven't loaded yet
+                if (value === null) {
+                    // Don't sort at all - eg: data hasn't loaded yet or we aren't sorting at all
                     // display_value will just be the index
                     sorter = function(i,j) { return i - j; };
                     display_value = app.labels.map(function(x,i) {return i+1;});
@@ -1847,6 +1866,10 @@
             },
 
             label_q: function () {
+                if (this.sort_by.stat === null) {
+                    // No stat selected
+                    return null;
+                }
                 let value = this.sort_by.stat.value;
 
                 if (typeof value === 'string') {
@@ -1934,6 +1957,8 @@
                 let vm = this;
                 let stats = {};
                 for (key in this.stats_table) {
+                    if (key === 'none') { continue; }
+
                     let stat = this.stats_table[key]
                     if ((stat.num_spreadsheets == 'multi')
                             && (vm.spreadsheets.length < 2)) {
