@@ -613,33 +613,41 @@ class Spreadsheet(db.Model):
         ''' Take inner join of multiple spreadsheets
 
         returns a list of the joined dataframes as well as the appropriate index
+        and a list of the row numbers that the joined rows originally came from
         '''
         if len(spreadsheets) == 1:
             # For just a lone spreadsheet, we use all of its rows regardless of
             # the IDs and so for example they don't need to be unique
             dfs = [spreadsheets[0].df]
             combined_index = pd.Index(spreadsheets[0].get_ids())
+            row_numbers = [spreadsheets[0].df.index.to_list()]
         else:
             # For more than 1, we take only unique IDs and do an inner join over all the spreadsheets
             # that way they all have the same rows
             combined_index = None
             dfs = []
+            rows_list = []
             for spreadsheet in spreadsheets:
                 index = pd.Index(spreadsheet.get_ids())
+                index_to_rows = pd.Series(spreadsheet.df.index, index=index)
                 df = spreadsheet.df.set_index(index)
                 df = df[~index.duplicated()]
+                index_to_rows = index_to_rows[~index.duplicated()]
+                df = spreadsheet.df.set_index(index)
                 dfs.append(df)
 
                 if combined_index is None:
                     combined_index = df.index
-                    continue
+                else:
+                    combined_index = combined_index.intersection(df.index)
 
-                combined_index = combined_index.intersection(df.index)
+                rows_list.append(index_to_rows)
 
             # Select only the parts of the data in common to all
             dfs = [df.loc[combined_index] for df in dfs]
+            row_numbers = [rows.loc[combined_index] for rows in rows_list]
 
-        return dfs, combined_index
+        return dfs, combined_index, row_numbers
 
     @staticmethod
     def check_for_timepoint_consistency(spreadsheets):
@@ -735,7 +743,7 @@ class Spreadsheet(db.Model):
     def compute_comparison(user, spreadsheets):
         for spreadsheet in spreadsheets:
             spreadsheet.init_on_load()
-        dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+        dfs, combined_index, row_numbers = Spreadsheet.join_spreadsheets(spreadsheets)
 
         anova_p = None
         main_effect_p = None
