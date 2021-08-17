@@ -29,8 +29,6 @@ import copy
 import nitecap
 from timer_decorator import timeit
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p",]
-CATEGORICAL_DATA_COLUMNS = ["anova_p", "anova_q"]
 MAX_JTK_COLUMNS = 85
 
 class Spreadsheet(db.Model):
@@ -326,37 +324,9 @@ class Spreadsheet(db.Model):
 
     @timeit
     def compute_nitecap(self):
-        # Runs NITECAP on the data but just to order the features
-
         data = self.get_raw_data().values
 
-        # We don't filter any rows out for now
-        # however this could be used to use only a subset of rows
-        filtered_out = numpy.full(data.shape[0], fill_value=False)
-
-        # Seed the computation so that results are reproducible
-        numpy.random.seed(1)
-
         timepoints = numpy.array(self.x_values)
-
-        # Main nitecap computation
-        td, perm_td = nitecap.nitecap_statistics(data, timepoints, self.timepoints,
-                                                 repeated_measures=self.repeated_measures,
-                                                 N_PERMS=1000)
-
-        # Apply q-value computation but just for the features surviving filtering
-        good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
-        good_q, good_p = nitecap.FDR(good_td, good_perm_td)
-
-        q = numpy.empty(td.shape)
-        q[~filtered_out] = good_q
-        q[filtered_out] = float("NaN")
-
-        # Compute p-values for ALL features not just the un-filtered ones
-        p = nitecap.util.permutation_ps(td, perm_td)
-
-        self.df["nitecap_p"] = p
-        self.df["nitecap_q"] = q
 
         # Other statistics
         # TODO: should users be able to choose their cycle length?
@@ -365,7 +335,6 @@ class Spreadsheet(db.Model):
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
-        self.df["total_delta"] = td
         self.update_dataframe()
 
     @timeit
@@ -395,19 +364,6 @@ class Spreadsheet(db.Model):
             str_columns = [col for col,typ in self.df.dtypes.items() if typ == object]
             df = self.df.astype({col: 'str' for col in str_columns})
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(df, preserve_index=False), self.get_processed_file_path())
-
-    def has_jtk(self):
-        meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
-        if any((c not in self.df.columns) for c in meta2d_cols):
-            if self.get_raw_data().shape[1] > MAX_JTK_COLUMNS:
-                # Can't compute JTK when there are too many columns
-                # it takes too long and will fail
-                for col in meta2d_cols:
-                    self.df[col] = float("NaN")
-                return True
-            else:
-                return False
-        return True
 
     def increment_edit_version(self):
         ''' Trigger re-computations of anything that needs to be re-computed
@@ -824,8 +780,3 @@ class Spreadsheet(db.Model):
             return matches[0]
         else:
             return None
-
-column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
-                        re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
-                        re.compile(r"ZT(\d+)"), re.compile(r"zt(\d+)"),
-                        re.compile(r"(\d+)ZT"), re.compile(r"(\d+)zt")]
