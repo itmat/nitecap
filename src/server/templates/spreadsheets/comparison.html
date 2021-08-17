@@ -542,58 +542,68 @@
             <div class="tab-content card-body" id="toolTabContent">
                 <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
                     <div class="col-auto">
-                        <div id="filter_list">
-                            <div v-for="(filter, index) in editing_filters" class="row"
-                                :key="filter.id">
-                                <div class='col form-inline filter_item'>
-                                    <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
-                                         v-bind:aria-label="'Lower bound for filter ' + index"
-                                         v-model="filter.lower_bound"
-                                         type="number" step="any">
-                                    </input>
+                        <div class="row">
+                            <div id="filter_list">
+                                <div v-for="(filter, index) in editing_filters" class="row"
+                                    :key="filter.id">
+                                    <div class='col form-inline filter_item'>
+                                        <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
+                                            v-bind:aria-label="'Lower bound for filter ' + index"
+                                            v-model="filter.lower_bound"
+                                            type="number" step="any">
+                                        </input>
 
-                                    &le;
+                                        &le;
 
-                                    <select class="form-control form-control-sm m-1 filter_value_selector"
-                                            v-bind:aria-label="'Filter selector for filter ' + index"
-                                            v-model="filter.variable">
-                                        <option v-for="filter_data in filter_data_list"
-                                                v-bind:value="filter_data.key">
-                                                {{filter_data.name}}
-                                        </option>
-                                    </select>
+                                        <select class="form-control form-control-sm m-1 filter_value_selector"
+                                                v-bind:aria-label="'Filter selector for filter ' + index"
+                                                v-model="filter.variable">
+                                            <option v-for="filter_data in filter_data_list"
+                                                    v-bind:value="filter_data.key">
+                                                    {{filter_data.name}}
+                                            </option>
+                                        </select>
 
-                                    &le;
+                                        &le;
 
-                                    <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
-                                         v-bind:aria-label="'Upper bound for filter ' + index"
-                                         v-model="filter.upper_bound"
-                                         type="number" step="any">
-                                    </input>
+                                        <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
+                                            v-bind:aria-label="'Upper bound for filter ' + index"
+                                            v-model="filter.upper_bound"
+                                            type="number" step="any">
+                                        </input>
 
-                                    <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
-                                            v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
-                                        <span class="far fa-minus-square"> </span>
-                                    </button>
+                                        <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
+                                                v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
+                                            <span class="far fa-minus-square"> </span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+                            <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
+                            <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
+                                v-on:click="addFilter">
+                                <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
+                            </button>
+                            <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
+                                v-on:click="resetFilters">
+                                <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                            </button>
+                            <a id="filtersHelp" class="text-primary help-pointer ml-3"
+                            data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                            title="Filter Help"
+                            data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
                         </div>
-                        <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
-                        <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
-                            v-on:click="addFilter">
-                            <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                        </button>
-                        <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
-                            v-on:click="resetFilters">
-                            <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
-                        </button>
-                        <a id="filtersHelp" class="text-primary help-pointer ml-3"
-                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                           title="Filter Help"
-                           data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
-                            <i class="fas fa-info-circle"></i>
-                        </a>
-                        <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
+                        <div class="row my-2">
+                            <button id="rerun_qvalues" type="button" class="btn btn-primary" v-on:click="rerunQValues">Rerun q-values</button>
+                            <a id="rerunQHelp" class="text-primary help-pointer ml-3"
+                            data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                            title="Rerun q-values help"
+                            data-content="Use this if you wish to exclude filtered out rows from q-values computation, for example after filtering out low-expressed genes. Note that this should only be used after filtering for basic features like mean/max values or missing timepoints. Filtering by any circadian statistic and then applying q-values is generally unsound and leads to highly excessive false positives.">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -1058,6 +1068,40 @@
                 // config.filters are the ones we actually filter on
                 // needs to be deep copy so we json-ify it and back
                 this.config.filters = JSON.parse(JSON.stringify(this.editing_filters));
+            },
+
+            rerunQValues: function() {
+                let vm = this;
+                // Remove the filtered out objects from use in the q-value computations
+                for (key in vm.useable_stats) {
+                    let stat = vm.useable_stats[key];
+                    if (typeof stat.value === "object") {
+                        // Has both p and q values
+                        // Update q from p
+
+                        if (stat.per_spreadsheet) {
+                            for(spreadsheet of vm.spreadsheets) {
+                                let p = spreadsheet[stat.value.p].map(function(p,i) {
+                                    if (vm.filtered[i]) {
+                                        return NaN;
+                                    }
+                                    return p;
+                                });
+                                Vue.set(spreadsheet, stat.value.q,  BH_FDR(p));
+                                console.log("Updating spreadsheet ", stat.value.q);
+                            }
+                        } else {
+                            let p = vm.stats[stat.value.p].map(function(p,i) {
+                                if (vm.filtered[i]) {
+                                    return NaN;
+                                }
+                                return p;
+                            });
+                            Vue.set(vm.stats, stat.value.q,  BH_FDR(p));
+                            console.log("Updating ", stat.value.q);
+                        }
+                    }
+                }
             },
 
             redrawPlot: function() {

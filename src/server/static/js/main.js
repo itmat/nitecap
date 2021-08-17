@@ -45,6 +45,7 @@ var formatNum = function(num, digits) {
 }
 var toFixed = function(num, i) {
     // Call num.toFixed unless num is undefined (eg: null)
+    if (isNaN(num)) { return 'N/A'; }
     if (typeof num === 'number') {
         return num.toFixed(i);
     }
@@ -339,7 +340,7 @@ function rankArray(array, direction) {
 
     let sort_order =  array.map( function(x,i) {return i;} );
     sort_order = sort_order.sort(function(i,j) {
-        return direction*(array[i] - array[j]);
+        return compare(direction*array[i], direction*array[j], i, j);
     });
 
     let ranks = new Array(array.lengths);
@@ -347,6 +348,42 @@ function rankArray(array, direction) {
         ranks[i] = j;
     });
     return ranks;
+}
+
+// Like numpy.argsort, returns array whose ith element is the index of
+// the item that will be at position i after sorting
+function argsort(array){
+    let indexes = array.map( (x,i) => i );
+    let sorter = function(i,j) {
+        return compare(array[i], array[j], i, j);
+    };
+    return indexes.sort(sorter);
+}
+
+// Util to compute Benjamini-Hochberg q-value corrections from a list of p-values
+function BH_FDR(pvalues) {
+    let sort_order = argsort(pvalues);
+    let rank = rankArray(pvalues);
+
+    let N = 0; // Number of non-nan p-values
+    pvalues.forEach( function(p) {
+        if (!isNaN(p)) { N += 1; }
+    });
+
+    let adjusted = pvalues.map( function(p,i) {
+        return p * N / (rank[i] + 1);
+    });
+
+    // Make monotone, skipping NaNs
+    let min = 1;
+    sort_order.slice().reverse().forEach(function(i) {
+        let p = adjusted[i];
+        if (isNaN(p)) { return p; }
+        min = Math.min(p, min);
+        adjusted[i] = min;
+    });
+
+    return adjusted;
 }
 
 // Util to pad a string with copies of a character
