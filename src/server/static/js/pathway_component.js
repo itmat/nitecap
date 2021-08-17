@@ -117,6 +117,7 @@ Vue.component( 'pathway-analysis', {
                 num_pathways_shown: 10,
                 top_pathway_shown: 0,
                 remove_unannotated: true, // Background to only include genes in at least one pathway
+                remove_filtered_from_background: true, // Background to only include genes that are not filtered out
                 selected_id_column: 0,
             },
             loading_resources: false,
@@ -297,10 +298,18 @@ Vue.component( 'pathway-analysis', {
 
         background: function() {
             let vm = this;
-            return vm.background_rows.map( function(i) {
-                // Convert id to string if necessary
-                return ''+vm.ids[vm.config.selected_id_column][i];
-            });
+            if (vm.config.remove_filtered_from_background) {
+                // Use just the IDs that are in the filtered background list
+                return vm.background_rows.map( function(i) {
+                    // Convert id to string if necessary
+                    return ''+vm.ids[vm.config.selected_id_column][i];
+                });
+            } else {
+                // Use all available IDs
+                return vm.ids[vm.config.selected_id_column].map(function(id) {
+                    return '' + id;
+                });
+            }
 
         },
 
@@ -442,7 +451,7 @@ Vue.component( 'pathway-analysis', {
                 <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-1"
                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                    title="Pathway Analysis Help"
-                   data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background. If updating continuously, any change to the selected gene set will automatically recompute pathways. If removing unannotated genes, any genes will be dropped from the analysis if they appear in no pathways.">
+                   data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. If updating continuously, any change to the selected gene set will automatically recompute pathways. If removing unannotated genes, any genes will be dropped from the analysis (including from the background set) if they appear in no pathways. If removing filtered genes from background, then genes removed by any applied filters will be removed from the background set as well as the foreground set (always are removed from foreground).">
                     <i class="fas fa-info-circle"></i>
                 </a>
             </div>
@@ -454,6 +463,8 @@ Vue.component( 'pathway-analysis', {
                         <label class="form-check-label" for="run_continuously">Update continuously</label>
                         <input class="form-check-input ml-2" id="remove_unannotated" type="checkbox" v-model="config.remove_unannotated">
                         <label class="form-check-label" for="remove_unannotated">Remove unannotated genes</label>
+                        <input class="form-check-input ml-2" id="remove_filtered_from_background" type="checkbox" v-model="config.remove_filtered_from_background">
+                        <label class="form-check-label" for="remove_filtered_from_background">Remove filtered genes from background</label>
                     </div>
                 </div>
             </div>
