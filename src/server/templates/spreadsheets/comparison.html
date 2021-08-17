@@ -217,7 +217,7 @@
         vm.share_token = share_token;
         vm.logged_in = logged_in;
 
-        vm.stats.index = spreadsheets[0].ids.map( (x,i) => i);
+        vm.stats.index = Object.freeze(spreadsheets[0].ids.map( (x,i) => i));
 
         vm.connectToNotificationApi();
     }
