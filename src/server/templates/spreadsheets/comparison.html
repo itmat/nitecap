@@ -916,14 +916,6 @@
             per_spreadsheet: false,
             num_spreadsheets: 'multi'
         },
-        //amplitude: {
-        //    name: "Amplitude",
-        //    value: "amplitude",
-        //    description: "Amplitude of the variation.",
-        //    per_spreadsheet: true,
-        //    num_spreadsheets: 'any',
-        //    sort_direction: -1
-        //},
         lag: {
             name: "JTK lag",
             value: "jtk_lag",
@@ -934,9 +926,17 @@
         period: {
             name: "JTK period",
             value: "jtk_period",
-            description: "Detected period length, by JTK_CYCLE. Assumes a nearly circadian period of around 24 hours.",
+            description: "Detected period length, as calculated by JTK_CYCLE. Assumes a nearly circadian period of around 24 hours.",
             per_spreadsheet: true,
             num_spreadsheets: 'any'
+        },
+        amplitude: {
+            name: "JTK amplitude",
+            value: "jtk_amplitude",
+            description: "Amplitude of the oscillation, as calculated by JTK_CYCLE.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any',
+            sort_direction: -1
         },
     };
 
@@ -1642,13 +1642,13 @@
                 console.log("Obtained results of ", analysis.name, " for spreadsheet ", analysis.spreadsheetId);
                 if(analysis.name == "Cosinor") {
                     spreadsheet.cosinor_p = Object.freeze(reorder(analysis.p));
-                    spreadsheet.cosinor_q = Object.freeze(vm.ps_to_qs(analysis.q));
+                    spreadsheet.cosinor_q = Object.freeze(vm.ps_to_qs(spreadsheet.cosinor_q));
                     spreadsheet.cosinor_x0 = Object.freeze(reorder(analysis.x.map( row => row[0])));
                     spreadsheet.cosinor_x1 = Object.freeze(reorder(analysis.x.map( row => row[1])));
                     spreadsheet.cosinor_x2 = Object.freeze(reorder(analysis.x.map( row => row[2])));
                 } else if(analysis.name == "LS") {
                     spreadsheet.ls_p = Object.freeze(reorder(analysis.p));
-                    spreadsheet.ls_q = Object.freeze(vm.ps_to_qs(analysis.q));
+                    spreadsheet.ls_q = Object.freeze(vm.ps_to_qs(spreadsheet.ls_p));
                 } else if(analysis.name == "ARS") {
                     spreadsheet.ars_p = Object.freeze(reorder(analysis.p));
                     spreadsheet.ars_q = Object.freeze(vm.ps_to_qs(analysis.q));
@@ -1664,6 +1664,7 @@
                 } else if(analysis.name == "Wave properties") {
                     spreadsheet.jtk_lag = Object.freeze(reorder(analysis.lag));
                     spreadsheet.jtk_period = Object.freeze(reorder(analysis.period));
+                    spreadsheet.jtk_amplitude = Object.freeze(reorder(analysis.amplitude));
                 } else {
                     console.error("Unknown analysis results found:", analysis.name, analysis);
                 }
