@@ -5,7 +5,7 @@ from multiprocessing.connection import wait
 from notifier import notifier
 
 
-def run(job, algorithm, data, parameters):
+def run(job, algorithm, data, parameters, options):
     two_percent = job["size"] // 50 or 1
 
     def data_slice():
@@ -20,7 +20,7 @@ def run(job, algorithm, data, parameters):
             yield data[i]
 
     try:
-        result = algorithm(data_slice(), *parameters)
+        result = algorithm(data_slice(), *parameters, **options)
     except Exception as exception:
         result = exception
 
@@ -29,7 +29,7 @@ def run(job, algorithm, data, parameters):
 
 
 def parallel_compute(
-    algorithm, data, *parameters, send_notification, number_of_processors=6
+    algorithm, data, *parameters, send_notification, number_of_processors=6, **options
 ):
     if isinstance(data, tuple):
         data = MultipleSpreadsheet(data)
@@ -74,7 +74,7 @@ def parallel_compute(
     # Start jobs
     running = {}
     for job in jobs:
-        process = Process(target=run, args=(job, algorithm, data, parameters))
+        process = Process(target=run, args=(job, algorithm, data, parameters, options))
         job["process"] = process
         running[job["parent_connection"]] = job
         process.start()

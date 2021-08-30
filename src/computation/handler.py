@@ -73,7 +73,12 @@ def handler(event, context):
 
     parameters = (data, sample_collection_times)
 
-    if algorithm == "cosinor":
+    if algorithm == "jtk" and event["computeWaveProperties"]:
+        amplitude, lag, period = parallel(
+            compute(algorithm), *parameters, send_notification=send_notification, compute_wave_properties=True
+        )
+        results = json.dumps({"amplitude": amplitude, "lag": lag, "period": period}, ignore_nan=True)
+    elif algorithm == "cosinor":
         x, p = parallel(
             compute(algorithm), *parameters, send_notification=send_notification
         )

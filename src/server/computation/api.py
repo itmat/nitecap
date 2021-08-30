@@ -66,11 +66,16 @@ def submit_analysis(user):
     ]:
         raise KeyError
 
+    compute_wave_properties = parameters.get("computeWaveProperties", False)
+    if not isinstance(compute_wave_properties, bool):
+        raise ValueError
+
     analysis = {
         "userId": str(user.id),
         "algorithm": parameters["algorithm"],
         "spreadsheetId": parameters["spreadsheetId"],
         "viewId": parameters["viewId"],
+        "computeWaveProperties": compute_wave_properties
     }
 
     if environment == "development":

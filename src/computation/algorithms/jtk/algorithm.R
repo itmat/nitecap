@@ -257,7 +257,7 @@
 	}
 	####-----------------------------
 	#### jtkx: integration of jtkstat and jtkdist for repeated use
-	jtkx <- function(z, ampci=FALSE, conf=0.8) {      ###v3.1 'ampci=TRUE' for calculating amplitude confidence
+	jtkx <- function(z, ampci=FALSE, conf=0.8, compute_wave_properties=FALSE) {      ###v3.1 'ampci=TRUE' for calculating amplitude confidence
 	  
 	  JTK.CJTK  <- jtkstat(z)                         ###transfer calculated values from 'jtkstat' to 'JTK.CJTK'; calculate p and S for all (period,phase) combos
 	  pvals <- lapply(JTK.CJTK,function(cjtk) {
@@ -266,9 +266,13 @@
 	  padj <- p.adjust(unlist(pvals),"bonf")          # Bonferroni adjusted two-tailed p-values
 	  JTK.ADJP <- min(padj)                           ### non-global variables in package environment; global minimum adjusted p-value
 
-#########################
-    return(JTK.ADJP)
-#########################
+##################################################
+
+	  if (!compute_wave_properties) {
+    	return(JTK.ADJP)
+	  }
+
+##################################################
 
 	  padj <- split(padj,JTK.PERFACTOR)
 	  minpadj <- sapply(padj,min)                     # minimum adjusted p-value for each period

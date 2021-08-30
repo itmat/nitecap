@@ -147,12 +147,13 @@
 
         spreadsheets.forEach(function(spreadsheet) {
             Vue.set(spreadsheet, "analyses", {});
-            vm.runAnalysis(spreadsheet, "ls");
-            vm.runAnalysis(spreadsheet, "arser");
-            vm.runAnalysis(spreadsheet, "jtk");
-            vm.runAnalysis(spreadsheet, "cosinor");
-            vm.runAnalysis(spreadsheet, "one_way_anova");
-            vm.runAnalysis(spreadsheet, "rain");
+            vm.runAnalysis("LS", spreadsheet, "ls");
+            vm.runAnalysis("ARS", spreadsheet, "arser");
+            vm.runAnalysis("JTK", spreadsheet, "jtk");
+            vm.runAnalysis("Cosinor", spreadsheet, "cosinor");
+            vm.runAnalysis("ANOVA", spreadsheet, "one_way_anova");
+            vm.runAnalysis("RAIN", spreadsheet, "rain");
+            vm.runAnalysis("Wave properties", spreadsheet, "jtk", {"computeWaveProperties": true});
         });
 
 
@@ -825,6 +826,13 @@
          value: {p: "rain_p",
                  q: "rain_q"},
          description: "RAIN...",
+        per_spreadsheet: true,
+        num_spreadsheets:'any'},
+
+        wave_properties: {name: "Wave properties",
+         value: {p: "lag",
+                 q: "period"},
+         description: "Wave properties...",
         per_spreadsheet: true,
         num_spreadsheets:'any'},
 
@@ -1544,41 +1552,44 @@
 
                 // Load the values
                 let spreadsheet = app.spreadsheets_by_id[analysis.spreadsheetId];
-                console.log("Obtained results of ", analysis.algorithm, " for spreadsheet ", analysis.spreadsheetId);
-                if(analysis.algorithm == "cosinor") {
+                console.log("Obtained results of ", analysis.name, " for spreadsheet ", analysis.spreadsheetId);
+                if(analysis.name == "Cosinor") {
                     spreadsheet.cosinor_p = Object.freeze(analysis.p);
                     spreadsheet.cosinor_q = Object.freeze(analysis.q);
                     spreadsheet.cosinor_x0 = Object.freeze(analysis.x.map( row => row[0]));
                     spreadsheet.cosinor_x1 = Object.freeze(analysis.x.map( row => row[1]));
                     spreadsheet.cosinor_x2 = Object.freeze(analysis.x.map( row => row[2]));
-                } else if(analysis.algorithm == "ls") {
+                } else if(analysis.name == "LS") {
                     spreadsheet.ls_p = Object.freeze(analysis.p);
                     spreadsheet.ls_q = Object.freeze(analysis.q);
-                } else if(analysis.algorithm == "arser") {
+                } else if(analysis.name == "ARS") {
                     spreadsheet.ars_p = Object.freeze(analysis.p);
                     spreadsheet.ars_q = Object.freeze(analysis.q);
-                } else if(analysis.algorithm == "jtk") {
+                } else if(analysis.name == "JTK") {
                     spreadsheet.jtk_p = Object.freeze(analysis.p);
                     spreadsheet.jtk_q = Object.freeze(analysis.q);
-                } else if(analysis.algorithm == "one_way_anova") {
+                } else if(analysis.name == "ANOVA") {
                     spreadsheet.anova_p = Object.freeze(analysis.p);
                     spreadsheet.anova_q = Object.freeze(analysis.q);
-                } else if(analysis.algorithm == "rain") {
+                } else if(analysis.name == "RAIN") {
                     spreadsheet.rain_p = Object.freeze(analysis.p);
                     spreadsheet.rain_q = Object.freeze(analysis.q);
+                } else if(analysis.name == "Wave properties") {
+                    spreadsheet.lag = Object.freeze(analysis.lag);
+                    spreadsheet.period = Object.freeze(analysis.period);
                 } else {
-                    console.error("Unknown algorithm results found:", analysis.algorithm, analysis);
+                    console.error("Unknown analysis results found:", analysis.name, analysis);
                 }
             },
 
-            runAnalysis: async function (spreadsheet, algorithm) {
+            runAnalysis: async function (name, spreadsheet, algorithm, options) {
                 let spreadsheetId = spreadsheet.spreadsheet_id;
                 let viewId = spreadsheet.view_id;
 
                 let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": share_token },
-                    body: JSON.stringify({ algorithm, spreadsheetId, viewId, version: VERSION, share_token: share_token}),
+                    body: JSON.stringify({ algorithm, spreadsheetId, viewId, share_token: share_token, ...options, version: VERSION}),
                 });
 
                 if (!response.ok) {
@@ -1588,6 +1599,7 @@
                     // just for the purposes of recording the failure so we can display "FAILED"
                     let dummy_analysis_id = "dummy_" + Math.floor(1000*Math.random());
                     Vue.set(this.analyses, dummy_analysis_id, {
+                        name,
                         algorithm,
                         spreadsheetId,
                         status: "FAILED",
@@ -1611,6 +1623,7 @@
                 //   console.error("Mismatch in analysis ID calculation");
 
                 Vue.set(this.analyses, analysisId, {
+                    name,
                     algorithm,
                     spreadsheetId,
                     status: "PENDING",
@@ -1683,7 +1696,7 @@
                     let spreadsheet_id = spreadsheet.spreadsheet_id;
                     // Find the appropriate analysis (if any) and format display based off that
                     for (let [id, analysis] of Object.entries(this.analyses)) {
-                        if ((analysis.algorithm == algorithm) && (analysis.spreadsheetId == spreadsheet_id)) {
+                        if ((analysis.name === stat.name) && (analysis.spreadsheetId === spreadsheet_id)) {
                             if (analysis.status === "RUNNING") {
                                 return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
                             } else if (analysis.status === "COMPLETED") {
