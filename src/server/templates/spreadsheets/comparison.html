@@ -218,6 +218,8 @@
         vm.share_token = share_token;
         vm.logged_in = logged_in;
 
+        vm.stats.index = Object.freeze(spreadsheets[0].ids.map( (x,i) => i));
+
         vm.connectToNotificationApi();
     }
 </script>
@@ -357,6 +359,7 @@
                         Stats: sort by
                         <select class="form-select form-select-sm" aria-label="Sorting method"
                             v-model="config.sort_by.stat_id">
+                            <option value="none" key="none"> None </option>
                             <option v-for="(stat, stat_id) in useable_stats"
                                 v-bind:value="stat_id"
                                 v-bind:key="stat_id">
@@ -540,58 +543,69 @@
             <div class="tab-content card-body" id="toolTabContent">
                 <div class="tab-pane fade show active" id="filters" role="tabpanel" aria-labelledby="filters-tab" v-on:keyup.enter="applyFilters">
                     <div class="col-auto">
-                        <div id="filter_list">
-                            <div v-for="(filter, index) in editing_filters" class="row"
-                                :key="filter.id">
-                                <div class='col form-inline filter_item'>
-                                    <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
-                                         v-bind:aria-label="'Lower bound for filter ' + index"
-                                         v-model="filter.lower_bound"
-                                         type="number" step="any">
-                                    </input>
+                        <div class="row">
+                            <div id="filter_list">
+                                <div v-for="(filter, index) in editing_filters" class="row"
+                                    :key="filter.id">
+                                    <div class='col form-inline filter_item'>
+                                        <input class="form-control form-control-sm m-1 filter-lower-bound" style="width: 85px"
+                                            v-bind:aria-label="'Lower bound for filter ' + index"
+                                            v-model="filter.lower_bound"
+                                            type="number" step="any">
+                                        </input>
 
-                                    &le;
+                                        &le;
 
-                                    <select class="form-control form-control-sm m-1 filter_value_selector"
-                                            v-bind:aria-label="'Filter selector for filter ' + index"
-                                            v-model="filter.variable">
-                                        <option v-for="filter_data in filter_data_list"
-                                                v-bind:value="filter_data.key">
-                                                {{filter_data.name}}
-                                        </option>
-                                    </select>
+                                        <select class="form-control form-control-sm m-1 filter_value_selector"
+                                                v-bind:aria-label="'Filter selector for filter ' + index"
+                                                v-model="filter.variable">
+                                            <option v-for="filter_data in filter_data_list"
+                                                    v-bind:value="filter_data.key">
+                                                    {{filter_data.name}}
+                                            </option>
+                                        </select>
 
-                                    &le;
+                                        &le;
 
-                                    <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
-                                         v-bind:aria-label="'Upper bound for filter ' + index"
-                                         v-model="filter.upper_bound"
-                                         type="number" step="any">
-                                    </input>
+                                        <input class="form-control form-control-sm m-1 filter-upper-bound" style="width: 85px"
+                                            v-bind:aria-label="'Upper bound for filter ' + index"
+                                            v-model="filter.upper_bound"
+                                            type="number" step="any">
+                                        </input>
 
-                                    <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
-                                            v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
-                                        <span class="far fa-minus-square"> </span>
-                                    </button>
+                                        <button class="btn btn-default" v-bind:aria-label="'Remove filter ' + index" title="Remove filter"
+                                                v-on:click="editing_filters = editing_filters.filter(function(x,j) {return j !== index;})">
+                                            <span class="far fa-minus-square"> </span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+                            <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
+                            <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
+                                v-on:click="addFilter">
+                                <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
+                            </button>
+                            <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
+                                v-on:click="resetFilters">
+                                <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
+                            </button>
+                            <a id="filtersHelp" class="text-primary help-pointer ml-3"
+                            data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                            title="Filter Help"
+                            data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
                         </div>
-                        <button id="applyFilters" type="button" class="btn btn-primary" v-on:click="applyFilters">Apply filters</button>
-                        <button id="add_filter_button" class="btn btn-default" aria-label="Add filter"
-                            v-on:click="addFilter">
-                            <span class="far fa-plus-square" title="Add filter" data-toggle="tooltip" data-placement="top"></span>
-                        </button>
-                        <button id="reset_filters_button" class="btn btn-default" aria-label="Reset filters"
-                            v-on:click="resetFilters">
-                            <span class="fas fa-undo" title="Reset filters" data-toggle="tooltip" data-placement="top"></span>
-                        </button>
-                        <a id="filtersHelp" class="text-primary help-pointer ml-3"
-                           data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                           title="Filter Help"
-                           data-content="Keep only rows matching the criteria provided. Rerunning the q-values computes q-values using only the unfiltered genes. This is statistically invalid to do if filtering on most criteria (eg: if filtering p-values or q-values, one should not rerun the q-values). Instead, only rerun q-values when filtering exclusively on time-unaware criteria (such as max value).">
-                            <i class="fas fa-info-circle"></i>
-                        </a>
-                        <!--<button id="rerun_qvalues" type="button" class="btn btn-primary mb-4">Rerun q-values</button>-->
+                        <div class="row my-2">
+                            <input class="form-check-input" id="q_values_exclude_filtered_option" type="checkbox" v-model="config.q_values_exclude_filtered">
+                            <label class="form-check-label" for="q_values_excluded_filtered_option">Recompute q-values excluding filtered genes</label>
+                            <a id="rerunQHelp" class="text-primary help-pointer ml-3"
+                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                title="Rerun q-values help"
+                                data-content="Use this if you wish to exclude filtered out rows from q-values computation, for example after filtering out low-expressed genes. Note that this should only be used after filtering for basic features like mean/max values or missing timepoints. Filtering by any circadian statistic and then applying q-values is generally unsound and leads to highly excessive false positives.">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -781,102 +795,149 @@
     };
 
     let stats_table = {
-        nitecap: {name: "Nitecap",
-         value: {p: "nitecap_p",
-                 q: "nitecap_q"},
-          description: "Nitecap significance of rhythmicity for dataset.",
-         per_spreadsheet: true,
-         num_spreadsheets:'any',
-         sort_value:'total_delta',
-         secondary_sort_value:'nitecap_q'},
-        jtk: {name: "JTK",
-         value: {p: "jtk_p",
-                 q: "jtk_q"},
-         description: "JTK_cycle significance of rhythmicity for dataset. Computed by meta2d.",
-        per_spreadsheet: true,
-        num_spreadsheets:'any'},
-        ars: {name: "ARS",
-         value: {p: "ars_p",
-                 q: "ars_q"},
-         description: "ARSER significance of rhythmicity for dataset. Requires multiple cycles with a single replicate each in order to run.",
-        per_spreadsheet: true,
-        num_spreadsheets:'any',
-        algorithm_name: "arser"},
-        ls: {name: "LS",
-         value: {p: "ls_p",
-                 q: "ls_q"},
-         description: "Lomb-Scargle significance of rhythmicity for dataset.",
-        per_spreadsheet: true,
-        num_spreadsheets:'any'},
-        cosinor: {name: "Cosinor",
-         value: {p: "cosinor_p",
-                 q: "cosinor_q"},
-         description: "Cosinor significance of rhythmicity for dataset.",
-         per_spreadsheet: true,
-         num_spreadsheets:'any'},
-        anova: {name: "ANOVA",
-         value: {p: "anova_p",
-                 q: "anova_q"},
-         description: "1-Way ANOVA on primary dataset. Tests whether the means of the timepoints are equal. Requires either multiple replicates or more than one cycle.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'any',
-         algorithm_name: "one_way_anova"},
+        none: {
+            name: "none",
+            value: "index",
+            description: "No sorting",
+            per_spreadsheet: false,
+            num_spreadsheets: 'any',
+        },
+        jtk: {
+            name: "JTK",
+            value: {
+                p: "jtk_p",
+                q: "jtk_q"
+            },
+            description: "JTK_cycle significance of rhythmicity for dataset. Computed by meta2d.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
+        ars: {
+            name: "ARS",
+            value: {
+                p: "ars_p",
+                q: "ars_q"
+            },
+            description: "ARSER significance of rhythmicity for dataset. Requires multiple cycles with a single replicate each in order to run.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any',
+            algorithm_name: "arser"
+        },
+        ls: {
+            name: "LS",
+            value: {
+                p: "ls_p",
+                q: "ls_q"
+            },
+            description: "Lomb-Scargle significance of rhythmicity for dataset.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
+        cosinor: {
+            name: "Cosinor",
+            value: {
+                p: "cosinor_p",
+                q: "cosinor_q"
+            },
+            description: "Cosinor significance of rhythmicity for dataset.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
+        anova: {
+            name: "ANOVA",
+            value: {
+                p: "anova_p",
+                q: "anova_q"
+            },
+            description: "1-Way ANOVA on primary dataset. Tests whether the means of the timepoints are equal. Requires either multiple replicates or more than one cycle.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any',
+            algorithm_name: "one_way_anova"
+        },
 
-         rain: {name: "RAIN",
-         value: {p: "rain_p",
-                 q: "rain_q"},
-         description: "RAIN...",
-        per_spreadsheet: true,
-        num_spreadsheets:'any'},
+        rain: {
+            name: "RAIN",
+            value: {
+                p: "rain_p",
+                q: "rain_q"
+            },
+            description: "RAIN...",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
 
-        wave_properties: {name: "Wave properties",
-         value: {p: "lag",
-                 q: "period"},
-         description: "Wave properties...",
-        per_spreadsheet: true,
-        num_spreadsheets:'any'},
-
-        damping: {name: "Damping",
-         value: {p: "upside_p",
-                 q: "upside_q"},
-         description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'multi'},
-        two_way_anova: {name: "Two-way ANOVA",
-         value: {p: "two_way_anova_p",
-                 q: "two_way_anova_q"},
-         description: "Two-way ANOVA test for difference in timepoint-effects across datasets. Tests whether there is a difference in the 'shape' of the curve between the two datasets, disregarding any mean-value difference.",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        main_effect_diff: {name: "Main Effect Diff",
-         value: {p: "main_effect_p",
-                 q: "main_effect_q"},
-         description: "Main effect test of difference between the two datasets in the two-way ANOVA. Tests whether the grand mean (averaged over all timepoints) are the  in both datasetss",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        phase_difference: {name: "Phase Difference",
-         value: {p: "phase_p",
-                 q: "phase_q"},
-         description: "Test for equality of phase between datasets through cosinor analysis (least squares fit). See FAQ. Requires both datasets to have significant rhythmicity (i.e. it won't be significant if one is non-rhythmic since phase cannot be determined).",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        amplitude_difference: {name: "Amplitude Difference",
-         value: {p: "amplitude_p",
-                 q: "amplitude_q"},
-         description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit).",
-         per_spreadsheet: false,
-         num_spreadsheets: 'multi'},
-        amplitude: {name: "Amplitude",
-         value: "amplitude",
-         description: "Amplitude of the variation.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'any',
-         sort_direction: -1},
-        peak_time: {name: "Peak-time",
-         value: "peak_time",
-         description: "Time the peak value occurs at. The units are the numbers of the timepoints, i.e. 3.5 means half-way between timepoint 3 and timepoint 4.",
-         per_spreadsheet: true,
-         num_spreadsheets: 'any'},
+        damping: {
+            name: "Damping",
+            value: {
+                p: "upside_p",
+                q: "upside_q"
+            },
+            description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'multi'
+        },
+        two_way_anova: {
+            name: "Two-way ANOVA",
+            value: {
+                p: "two_way_anova_p",
+                q: "two_way_anova_q"
+            },
+            description: "Two-way ANOVA test for difference in timepoint-effects across datasets. Tests whether there is a difference in the 'shape' of the curve between the two datasets, disregarding any mean-value difference.",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        main_effect_diff: {
+            name: "Main Effect Diff",
+            value: {
+                p: "main_effect_p",
+                q: "main_effect_q"
+            },
+            description: "Main effect test of difference between the two datasets in the two-way ANOVA. Tests whether the grand mean (averaged over all timepoints) are the  in both datasetss",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        phase_difference: {
+            name: "Phase Difference",
+            value: {
+                p: "phase_p",
+                q: "phase_q"
+            },
+            description: "Test for equality of phase between datasets through cosinor analysis (least squares fit). See FAQ. Requires both datasets to have significant rhythmicity (i.e. it won't be significant if one is non-rhythmic since phase cannot be determined).",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        amplitude_difference: {
+            name: "Amplitude Difference",
+            value: {
+                p: "amplitude_p",
+                q: "amplitude_q"
+            },
+            description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit).",
+            per_spreadsheet: false,
+            num_spreadsheets: 'multi'
+        },
+        //amplitude: {
+        //    name: "Amplitude",
+        //    value: "amplitude",
+        //    description: "Amplitude of the variation.",
+        //    per_spreadsheet: true,
+        //    num_spreadsheets: 'any',
+        //    sort_direction: -1
+        //},
+        lag: {
+            name: "JTK lag",
+            value: "jtk_lag",
+            description: "Time the peak value occurs at, as calculated by JTK_CYCLE. Assumes circadian period of 24 hours.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
+        period: {
+            name: "JTK period",
+            value: "jtk_period",
+            description: "Detected period length, by JTK_CYCLE. Assumes a nearly circadian period of around 24 hours.",
+            per_spreadsheet: true,
+            num_spreadsheets: 'any'
+        },
     };
 
     let filter_data_list_base = [
@@ -939,8 +1000,9 @@
                 spreadsheet_ids: [],
                 original_spreadsheet_ids: [],
                 selected_row: 0,
-                sort_by: {stat_id: 'nitecap', spreadsheet_num: 0},
+                sort_by: {stat_id: "none", spreadsheet_num: 0},
                 filters: [],
+                q_values_exclude_filtered: false,
                 hide_filtered_rows: false,
                 plot: {
                     fold_days: false,
@@ -955,6 +1017,7 @@
             stats_table: stats_table,
 
             stats: {
+                index: null,
                 amplitude_p: null,
                 amplitude_q: null,
                 phase_p: null,
@@ -1015,6 +1078,37 @@
                 // config.filters are the ones we actually filter on
                 // needs to be deep copy so we json-ify it and back
                 this.config.filters = JSON.parse(JSON.stringify(this.editing_filters));
+
+                if (this.config.q_values_exclude_filtered) {
+                    this.rerunQValues();
+                }
+            },
+
+            rerunQValues: function() {
+                let vm = this;
+                // Remove the filtered out objects from use in the q-value computations
+                for (key in vm.useable_stats) {
+                    let stat = vm.useable_stats[key];
+                    if (typeof stat.value === "object") {
+                        // Has both p and q values
+                        // Update q from p
+
+                        if (stat.per_spreadsheet) {
+                            for(spreadsheet of vm.spreadsheets) {
+                                let p = spreadsheet[stat.value.p];
+                                Vue.set(spreadsheet, stat.value.q,  vm.ps_to_qs(p));
+                                console.log("Updating spreadsheet ", stat.value.q);
+                            }
+                        } else {
+                            let p = vm.stats[stat.value.p];
+                            Vue.set(vm.stats, stat.value.q,  vm.ps_to_qs(p));
+                            console.log("Updating ", stat.value.q);
+                        }
+                    }
+                }
+
+                // Set the config values of having used these filters for q-values
+                // vm.config.q_value_filters = true;
             },
 
             redrawPlot: function() {
@@ -1470,14 +1564,6 @@
                                 columns.set(stat.value.q, restrict(vm.stats[stat.value.q]));
                             }
                         }
-
-                        // TODO: right now we're not including these. Only really loses 'total_delta' from nitecap
-                        //if (stat.sort_value !== undefined) {
-                        //    column_list.push(stat.sort_value)
-                        //}
-                        //if (stat.secondary_sort_value !== undefined) {
-                        //    column_list.push(stat.secondary_sort_value)
-                        //}
                     }
                 }
 
@@ -1535,6 +1621,7 @@
             },
 
             fetchAnalysisResults: async function (analysisId) {
+                let vm = this;
                 let url_response = await fetch(`/analysis/${analysisId}/results/url`,{
                     headers: { "Authorization": share_token },
                 });
@@ -1554,29 +1641,29 @@
                 let spreadsheet = app.spreadsheets_by_id[analysis.spreadsheetId];
                 console.log("Obtained results of ", analysis.name, " for spreadsheet ", analysis.spreadsheetId);
                 if(analysis.name == "Cosinor") {
-                    spreadsheet.cosinor_p = Object.freeze(analysis.p);
-                    spreadsheet.cosinor_q = Object.freeze(analysis.q);
-                    spreadsheet.cosinor_x0 = Object.freeze(analysis.x.map( row => row[0]));
-                    spreadsheet.cosinor_x1 = Object.freeze(analysis.x.map( row => row[1]));
-                    spreadsheet.cosinor_x2 = Object.freeze(analysis.x.map( row => row[2]));
+                    spreadsheet.cosinor_p = Object.freeze(reorder(analysis.p));
+                    spreadsheet.cosinor_q = Object.freeze(vm.ps_to_qs(analysis.q));
+                    spreadsheet.cosinor_x0 = Object.freeze(reorder(analysis.x.map( row => row[0])));
+                    spreadsheet.cosinor_x1 = Object.freeze(reorder(analysis.x.map( row => row[1])));
+                    spreadsheet.cosinor_x2 = Object.freeze(reorder(analysis.x.map( row => row[2])));
                 } else if(analysis.name == "LS") {
-                    spreadsheet.ls_p = Object.freeze(analysis.p);
-                    spreadsheet.ls_q = Object.freeze(analysis.q);
+                    spreadsheet.ls_p = Object.freeze(reorder(analysis.p));
+                    spreadsheet.ls_q = Object.freeze(vm.ps_to_qs(analysis.q));
                 } else if(analysis.name == "ARS") {
-                    spreadsheet.ars_p = Object.freeze(analysis.p);
-                    spreadsheet.ars_q = Object.freeze(analysis.q);
+                    spreadsheet.ars_p = Object.freeze(reorder(analysis.p));
+                    spreadsheet.ars_q = Object.freeze(vm.ps_to_qs(analysis.q));
                 } else if(analysis.name == "JTK") {
-                    spreadsheet.jtk_p = Object.freeze(analysis.p);
-                    spreadsheet.jtk_q = Object.freeze(analysis.q);
+                    spreadsheet.jtk_p = Object.freeze(reorder(analysis.p));
+                    spreadsheet.jtk_q = Object.freeze(vm.ps_to_qs(analysis.q));
                 } else if(analysis.name == "ANOVA") {
-                    spreadsheet.anova_p = Object.freeze(analysis.p);
-                    spreadsheet.anova_q = Object.freeze(analysis.q);
+                    spreadsheet.anova_p = Object.freeze(reorder(analysis.p));
+                    spreadsheet.anova_q = Object.freeze(vm.ps_to_qs(analysis.q));
                 } else if(analysis.name == "RAIN") {
-                    spreadsheet.rain_p = Object.freeze(analysis.p);
-                    spreadsheet.rain_q = Object.freeze(analysis.q);
+                    spreadsheet.rain_p = Object.freeze(reorder(analysis.p));
+                    spreadsheet.rain_q = Object.freeze(vm.ps_to_qs(analysis.q));
                 } else if(analysis.name == "Wave properties") {
-                    spreadsheet.lag = Object.freeze(analysis.lag);
-                    spreadsheet.period = Object.freeze(analysis.period);
+                    spreadsheet.jtk_lag = Object.freeze(reorder(analysis.lag));
+                    spreadsheet.jtk_period = Object.freeze(reorder(analysis.period));
                 } else {
                     console.error("Unknown analysis results found:", analysis.name, analysis);
                 }
@@ -1710,6 +1797,19 @@
                 }
                 return "Unknown";
             },
+
+            ps_to_qs: function(ps) {
+                // Given a list of p-values, compute q-values
+                let vm = this;
+                if (vm.config.q_values_exclude_filtered) {
+                    ps = ps.map(function(p,i) {
+                        if (vm.filtered[i]) { return NaN; }
+                        return p;
+                    });
+                }
+
+                return BH_FDR(ps);
+            },
         },
 
         computed: {
@@ -1761,75 +1861,51 @@
 
             sort_function: function () {
                 // We sort by the value specified in config.sort_by
-                // We also have a 'secondary sort value' which is used purely as a null/not-null check
-                // So if secondary sort value is null then we will sort the value to the end as if the main value were null
-                // This solves the problem where q-values are null and being sorted to the front of the list particulary
-                // from filters re-running q-values (which nulls them if filtered) and then being viewed without that filter
-
                 // display_value is the value array that should be monotonic in the sort order
-                // which are convenient for the user to look at.
-                // In particular, Nitecap sorts by the nitecap statistic but users want to see the q-value
-                // and other methods sort by p-value but users want q-value
+                // which are convenient for the user to look at, i.e. q-values if available
                 let vm = this;
                 let variable = null;
-                let secondary_variable = null;
                 let display_variable = null;
 
-                if (this.sort_by.stat.sort_value !== undefined) {
-                    variable = this.sort_by.stat.sort_value;
-                    if (this.sort_by.stat.secondary_sort_value !== undefined) {
-                        secondary_variable = this.sort_by.stat.secondary_sort_value;
-                    } else {
-                        secondary_variable = variable;
-                    }
-                    display_variable = secondary_variable;
-                } else if (typeof this.sort_by.stat.value === 'string') {
+                // Handle what type of variable this is:
+                // 2: string identifying a stat to use - use that stat
+                // 3: p/q pair, use p's but print q's
+                if (typeof this.sort_by.stat.value === 'string') {
                     variable = this.sort_by.stat.value;
-                    secondary_variable = variable;
                     display_variable = variable;
                 } else {
                     variable = this.sort_by.stat.value.p;
-                    secondary_variable = this.sort_by.stat.value.q;
-                    display_variable = secondary_variable;
+                    display_variable = this.sort_by.stat.value.q;
                 }
 
-                let sort_direction = 1;
-                if (this.sort_by.stat.sort_direction !== undefined) {
-                    sort_direction = this.sort_by.stat.sort_direction;
-                }
-
+                // Figure out what spreadsheet (if any) to pull data from
                 let value = null;
-                let secondary_value = null;
                 let display_value = null;
                 if (vm.sort_by.stat.per_spreadsheet) {
                     if (vm.spreadsheets.length > 0) {
                         value = vm.spreadsheets[vm.sort_by.spreadsheet_num][variable];
-                        secondary_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][secondary_variable];
                         display_value = vm.spreadsheets[vm.sort_by.spreadsheet_num][display_variable];
                     }
                 } else {
                     value = vm.stats[variable];
-                    secondary_value = vm.stats[secondary_variable];
                     display_value = vm.stats[display_variable];
                 }
 
-                if (display_value !== null && vm.spreadsheets.length > 0) {
-                    display_value = display_value.map( function(x,i) {
-                        return secondary_value[i] && display_value[i];
-                    });
+                let sort_direction = 1;
+                if (this.sort_by.stat && this.sort_by.stat.sort_direction !== undefined) {
+                    sort_direction = this.sort_by.stat.sort_direction;
                 }
 
-
                 let sorter = function (i,j) {
-                    let a = secondary_value[i] && value[i];
-                    let b = secondary_value[j] && value[j];
+                    let a = value[i];
+                    let b = value[j];
                     return compare(a ? a * sort_direction : a, // multiply by +/- 1 but not if null
                                    b ? b * sort_direction : b,
                                    i, j);
                 };
 
-                if ((value === null) || (secondary_value === null)) {
-                    // Don't sort, the values we are sorting by haven't loaded yet
+                if (value === null) {
+                    // Don't sort at all - eg: data hasn't loaded yet or we aren't sorting at all
                     // display_value will just be the index
                     sorter = function(i,j) { return i - j; };
                     display_value = app.labels.map(function(x,i) {return i+1;});
@@ -1856,6 +1932,10 @@
             },
 
             label_q: function () {
+                if (this.sort_by.stat === null) {
+                    // No stat selected
+                    return null;
+                }
                 let value = this.sort_by.stat.value;
 
                 if (typeof value === 'string') {
@@ -1943,6 +2023,8 @@
                 let vm = this;
                 let stats = {};
                 for (key in this.stats_table) {
+                    if (key === 'none') { continue; }
+
                     let stat = this.stats_table[key]
                     if ((stat.num_spreadsheets == 'multi')
                             && (vm.spreadsheets.length < 2)) {
@@ -2175,6 +2257,8 @@
                 handler: "redrawPlot",
                 deep: true
             },
+
+            "config.q_values_exclude_filtered": "rerunQValues"
         },
 
         beforeUnmount: function () {

@@ -117,6 +117,7 @@ Vue.component( 'pathway-analysis', {
                 num_pathways_shown: 10,
                 top_pathway_shown: 0,
                 remove_unannotated: true, // Background to only include genes in at least one pathway
+                remove_filtered_from_background: true, // Background to only include genes that are not filtered out
                 selected_id_column: 0,
             },
             loading_resources: false,
@@ -181,16 +182,18 @@ Vue.component( 'pathway-analysis', {
             // Prepare and download 1 pathway result
             let vm = this;
             let pathway = this.shown_pathways[i];
+            let foreground = new Set(vm.last_ran_state.foreground);
+            let background = new Set(vm.last_ran_state.background);
             let results = [
                 ["pathway",  pathway.pathway],
                 ["pathway_name",  pathway.name],
                 ["pathway_url",  pathway.url],
                 ["pathway_size",  pathway.feature_ids.size],
-                ["foreground_size",  this.last_run_state.foreground.size],
-                ["background_size",  this.last_runn_state.background.size],
+                ["foreground_size",  foreground.size],
+                ["background_size",  background.size],
                 ["pathway",  Array.from(pathway.feature_ids)],
-                ["foreground",  Array.from(this.last_run_state.foreground)],
-                ["intersection",  Array.from(pathway.feature_ids).filter(function(x) { return vm.last_run_state.foreground.has(x);})],
+                ["foreground",  Array.from(this.last_ran_state.foreground)],
+                ["intersection",  Array.from(pathway.feature_ids).filter(function(x) { return foreground.has(x);})],
             ];
             // Generate tab-separated file containing the info
             let result_tsv = results.map(function (entries) {
@@ -295,10 +298,18 @@ Vue.component( 'pathway-analysis', {
 
         background: function() {
             let vm = this;
-            return vm.background_rows.map( function(i) {
-                // Convert id to string if necessary
-                return ''+vm.ids[vm.config.selected_id_column][i];
-            });
+            if (vm.config.remove_filtered_from_background) {
+                // Use just the IDs that are in the filtered background list
+                return vm.background_rows.map( function(i) {
+                    // Convert id to string if necessary
+                    return ''+vm.ids[vm.config.selected_id_column][i];
+                });
+            } else {
+                // Use all available IDs
+                return vm.ids[vm.config.selected_id_column].map(function(id) {
+                    return '' + id;
+                });
+            }
 
         },
 
@@ -330,15 +341,15 @@ Vue.component( 'pathway-analysis', {
         let vm = this;
         vm.worker = new Worker('/static/js/pathway_worker.js');
         vm.worker.onmessage = function(message) {
-            vm.last_run_state = vm.running_state;
+            vm.last_ran_state = vm.running_state;
 
             let results = message.data.results;
             results.forEach( function (result) {
                 let pathway = vm.running_state.pathways.get(result.pathway);
                 Object.assign(result, pathway);
                 Object.assign(result, {
-                    background_size: vm.last_run_state.background.size,
-                    selected_set_size: vm.last_run_state.foreground.size,
+                    background_size: vm.last_ran_state.background.length,
+                    selected_set_size: vm.last_ran_state.foreground.length,
                     pathway_size: pathway.feature_ids.size,
                 });
                 if (result.name === undefined) {
@@ -348,7 +359,6 @@ Vue.component( 'pathway-analysis', {
             });
             Object.freeze(results);
             vm.results = results;
-            vm.last_ran_state = vm.running_state;
             vm.running_state = null;
 
             vm.worker_busy = false;
@@ -441,7 +451,7 @@ Vue.component( 'pathway-analysis', {
                 <a id="PathwayAnalysisHelp" class="text-primary help-pointer ml-1"
                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
                    title="Pathway Analysis Help"
-                   data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. Filtered genes are removed from the background. If updating continuously, any change to the selected gene set will automatically recompute pathways. If removing unannotated genes, any genes will be dropped from the analysis if they appear in no pathways.">
+                   data-content="Run pathway analysis using the genes selected above. Choose a dataset of pathways first. If updating continuously, any change to the selected gene set will automatically recompute pathways. If removing unannotated genes, any genes will be dropped from the analysis (including from the background set) if they appear in no pathways. If removing filtered genes from background, then genes removed by any applied filters will be removed from the background set as well as the foreground set (always are removed from foreground).">
                     <i class="fas fa-info-circle"></i>
                 </a>
             </div>
@@ -453,6 +463,8 @@ Vue.component( 'pathway-analysis', {
                         <label class="form-check-label" for="run_continuously">Update continuously</label>
                         <input class="form-check-input ml-2" id="remove_unannotated" type="checkbox" v-model="config.remove_unannotated">
                         <label class="form-check-label" for="remove_unannotated">Remove unannotated genes</label>
+                        <input class="form-check-input ml-2" id="remove_filtered_from_background" type="checkbox" v-model="config.remove_filtered_from_background">
+                        <label class="form-check-label" for="remove_filtered_from_background">Remove filtered genes from background</label>
                     </div>
                 </div>
             </div>

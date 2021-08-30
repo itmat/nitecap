@@ -21,7 +21,7 @@ from itsdangerous import JSONWebSignatureSerializer as Serializer
 import constants
 import nitecap
 from exceptions import NitecapException
-from models.spreadsheets.spreadsheet import Spreadsheet, NITECAP_DATA_COLUMNS
+from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
     ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
 from models.users.user import User
@@ -385,18 +385,15 @@ def get_spreadsheets(user=None):
 
         spreadsheets.append(spreadsheet)
 
-    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+    dfs, combined_index, row_numbers = Spreadsheet.join_spreadsheets(spreadsheets)
 
     # Gather all values except for the actual numerical data
     # Which is handled separately
     spreadsheet_values = []
-    for spreadsheet, df in zip(spreadsheets, dfs):
+    for spreadsheet, df, rows in zip(spreadsheets, dfs, row_numbers):
         values = dict(
                      data=df[spreadsheet.get_data_columns()],
                      x_values=spreadsheet.x_values,
-                     nitecap_q=df.nitecap_q,
-                     nitecap_p=df.nitecap_p,
-                     total_delta=df.total_delta,
                      amplitude=df.amplitude,
                      peak_time=df.peak_time,
                      labels=combined_index.to_list(),
@@ -424,6 +421,7 @@ def get_spreadsheets(user=None):
                      cosinor_x1=None,
                      cosinor_x2=None,
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
+                     row_numbers=rows, # The row numbers of the raw data being used; important for comparisons since not all rows are used
                     )
         spreadsheet_values.append(values)
 
@@ -452,12 +450,12 @@ def get_mpv_spreadsheets(user=None):
 
         spreadsheets.append(spreadsheet)
 
-    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+    dfs, combined_index, row_numbers = Spreadsheet.join_spreadsheets(spreadsheets)
 
     # Gather all values except for the actual numerical data
     # Which is handled separately
     spreadsheet_values = []
-    for spreadsheet, df in zip(spreadsheets, dfs):
+    for spreadsheet, df, rows in zip(spreadsheets, dfs, row_numbers):
         column_labels = spreadsheet.column_labels
 
         x_label_values = [i for i,label in enumerate(spreadsheet.possible_assignments)]
@@ -479,6 +477,7 @@ def get_mpv_spreadsheets(user=None):
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                      id_col_labels=list(spreadsheet.get_id_columns(label=True)),
                      ids=df.iloc[:,spreadsheet.get_id_columns()].T,
+                     row_numbers=rows,
                     )
         spreadsheet_values.append(values)
 
@@ -755,7 +754,7 @@ def get_upside(user=None):
         spreadsheet.init_on_load()
         spreadsheets.append(spreadsheet)
 
-    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+    dfs, combined_index, row_numbers = Spreadsheet.join_spreadsheets(spreadsheets)
 
     anova_p = None
     anova_q = None
@@ -834,7 +833,7 @@ def run_pca(user=None):
         spreadsheets.append(spreadsheet)
 
     # Inner join of the spreadsheets so that they match indexes
-    dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+    dfs, combined_index, row_numbers = Spreadsheet.join_spreadsheets(spreadsheets)
 
     datasets = [df.iloc[selected_genes][spreadsheet.get_data_columns()].values for df,spreadsheet in zip(dfs, spreadsheets)]
 

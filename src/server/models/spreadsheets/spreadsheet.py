@@ -29,8 +29,6 @@ import copy
 import nitecap
 from timer_decorator import timeit
 
-NITECAP_DATA_COLUMNS = ["amplitude", "total_delta", "nitecap_q", "peak_time", "trough_time", "nitecap_p",]
-CATEGORICAL_DATA_COLUMNS = ["anova_p", "anova_q"]
 MAX_JTK_COLUMNS = 85
 
 class Spreadsheet(db.Model):
@@ -326,37 +324,9 @@ class Spreadsheet(db.Model):
 
     @timeit
     def compute_nitecap(self):
-        # Runs NITECAP on the data but just to order the features
-
         data = self.get_raw_data().values
 
-        # We don't filter any rows out for now
-        # however this could be used to use only a subset of rows
-        filtered_out = numpy.full(data.shape[0], fill_value=False)
-
-        # Seed the computation so that results are reproducible
-        numpy.random.seed(1)
-
         timepoints = numpy.array(self.x_values)
-
-        # Main nitecap computation
-        td, perm_td = nitecap.nitecap_statistics(data, timepoints, self.timepoints,
-                                                 repeated_measures=self.repeated_measures,
-                                                 N_PERMS=1000)
-
-        # Apply q-value computation but just for the features surviving filtering
-        good_td, good_perm_td = td[~filtered_out], perm_td[:,~filtered_out]
-        good_q, good_p = nitecap.FDR(good_td, good_perm_td)
-
-        q = numpy.empty(td.shape)
-        q[~filtered_out] = good_q
-        q[filtered_out] = float("NaN")
-
-        # Compute p-values for ALL features not just the un-filtered ones
-        p = nitecap.util.permutation_ps(td, perm_td)
-
-        self.df["nitecap_p"] = p
-        self.df["nitecap_q"] = q
 
         # Other statistics
         # TODO: should users be able to choose their cycle length?
@@ -365,7 +335,6 @@ class Spreadsheet(db.Model):
         self.df["amplitude"] = amplitude
         self.df["peak_time"] = peak_time
         self.df["trough_time"] = trough_time
-        self.df["total_delta"] = td
         self.update_dataframe()
 
     @timeit
@@ -395,19 +364,6 @@ class Spreadsheet(db.Model):
             str_columns = [col for col,typ in self.df.dtypes.items() if typ == object]
             df = self.df.astype({col: 'str' for col in str_columns})
             pyarrow.parquet.write_table(pyarrow.Table.from_pandas(df, preserve_index=False), self.get_processed_file_path())
-
-    def has_jtk(self):
-        meta2d_cols = ['jtk_p', 'jtk_q', 'ars_p', 'ars_q', 'ls_p', 'ls_q']
-        if any((c not in self.df.columns) for c in meta2d_cols):
-            if self.get_raw_data().shape[1] > MAX_JTK_COLUMNS:
-                # Can't compute JTK when there are too many columns
-                # it takes too long and will fail
-                for col in meta2d_cols:
-                    self.df[col] = float("NaN")
-                return True
-            else:
-                return False
-        return True
 
     def increment_edit_version(self):
         ''' Trigger re-computations of anything that needs to be re-computed
@@ -613,33 +569,41 @@ class Spreadsheet(db.Model):
         ''' Take inner join of multiple spreadsheets
 
         returns a list of the joined dataframes as well as the appropriate index
+        and a list of the row numbers that the joined rows originally came from
         '''
         if len(spreadsheets) == 1:
             # For just a lone spreadsheet, we use all of its rows regardless of
             # the IDs and so for example they don't need to be unique
             dfs = [spreadsheets[0].df]
             combined_index = pd.Index(spreadsheets[0].get_ids())
+            row_numbers = [spreadsheets[0].df.index.to_list()]
         else:
             # For more than 1, we take only unique IDs and do an inner join over all the spreadsheets
             # that way they all have the same rows
             combined_index = None
             dfs = []
+            rows_list = []
             for spreadsheet in spreadsheets:
                 index = pd.Index(spreadsheet.get_ids())
+                index_to_rows = pd.Series(spreadsheet.df.index, index=index)
                 df = spreadsheet.df.set_index(index)
                 df = df[~index.duplicated()]
+                index_to_rows = index_to_rows[~index.duplicated()]
+                df = spreadsheet.df.set_index(index)
                 dfs.append(df)
 
                 if combined_index is None:
                     combined_index = df.index
-                    continue
+                else:
+                    combined_index = combined_index.intersection(df.index)
 
-                combined_index = combined_index.intersection(df.index)
+                rows_list.append(index_to_rows)
 
             # Select only the parts of the data in common to all
             dfs = [df.loc[combined_index] for df in dfs]
+            row_numbers = [rows.loc[combined_index] for rows in rows_list]
 
-        return dfs, combined_index
+        return dfs, combined_index, row_numbers
 
     @staticmethod
     def check_for_timepoint_consistency(spreadsheets):
@@ -735,7 +699,7 @@ class Spreadsheet(db.Model):
     def compute_comparison(user, spreadsheets):
         for spreadsheet in spreadsheets:
             spreadsheet.init_on_load()
-        dfs, combined_index = Spreadsheet.join_spreadsheets(spreadsheets)
+        dfs, combined_index, row_numbers = Spreadsheet.join_spreadsheets(spreadsheets)
 
         anova_p = None
         main_effect_p = None
@@ -816,8 +780,3 @@ class Spreadsheet(db.Model):
             return matches[0]
         else:
             return None
-
-column_label_formats = [re.compile(r"CT(\d+)"), re.compile(r"ct(\d)"),
-                        re.compile(r"(\d+)CT"), re.compile(r"(\d)ct"),
-                        re.compile(r"ZT(\d+)"), re.compile(r"zt(\d+)"),
-                        re.compile(r"(\d+)ZT"), re.compile(r"(\d+)zt")]
