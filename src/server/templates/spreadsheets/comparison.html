@@ -1803,6 +1803,7 @@
             ps_to_qs: function(ps) {
                 // Given a list of p-values, compute q-values
                 let vm = this;
+                if (ps === null) { return null; }
                 if (vm.config.q_values_exclude_filtered) {
                     ps = ps.map(function(p,i) {
                         if (vm.filtered[i]) { return NaN; }
