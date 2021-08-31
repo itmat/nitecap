@@ -13,14 +13,11 @@
         let button = $("#submit_btn");
         button.prop('disabled', false);
         button.html('Submit');
-        form.submit(function (e) {
-            e.preventDefault();
-            button.prop('disabled', true);
-            button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
-                        "</span>Loading...");
-            e.currentTarget.submit();
+        window.addEventListener("pageshow", function(event) {
+            button.prop('disabled', false);
+            button.html('Submit');
         });
-    });
+    })
 </script>
 
     <div class="page-header">
@@ -155,6 +152,12 @@
         form.append("upload_file", upload_file, upload_file.name);
         xhr.send(form);
         progress_report.textContent = '0%';
+
+        let button = $("#submit_btn");
+        button.prop('disabled', true);
+        button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                    "</span>Loading...");
+
     }
 </script>
 {% endblock %}

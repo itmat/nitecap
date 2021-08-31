@@ -22,7 +22,7 @@
         // List of elements
         let nitecap_form = $('form');
         let nitecap_table = $('form table');
-        let submit_button = $("form button");
+        let submit_button = $("#submit-button");
         let nitecap_error = $("#error-modal");
         let nitecap_error_message = $("#error-modal-message");
 
@@ -98,6 +98,9 @@
 
         // Form Submitted
         nitecap_form.on('submit', function (e) {
+            submit_button.prop('disabled', true);
+            submit_button.html("<span class='spinner-border spinner-border-sm text-light mr-2' role='status' aria-hidden='true'>" +
+                                    "</span>Processing...");
 
             // Build the parameter list for the AJAX call.
             let spreadsheet_id = {{ spreadsheet.id }};
@@ -116,6 +119,13 @@
                 nitecap_error.modal();
                 e.preventDefault();
             }
+        });
+
+        window.addEventListener("pageshow", function(event) {
+            // Reset things incase the user goes back to this page
+            submit_button.prop("disabled", false);
+            submit_button.html("Submit");
+            nitecap_error_message.text("");
         });
 
         setScrollbars();
@@ -257,7 +267,7 @@
             </table>
         </div>
     </div>
-    <button type="submit" class="btn btn-primary">Submit</button>
+    <button type="submit" class="btn btn-primary" id="submit-button">Submit</button>
 </form>
 
 {% endblock %}
