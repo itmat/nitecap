@@ -367,10 +367,11 @@ function BH_FDR(pvalues) {
 
     let N = 0; // Number of non-nan p-values
     pvalues.forEach( function(p) {
-        if (!isNaN(p)) { N += 1; }
+        if (!isNaN(p) && p !== null) { N += 1; }
     });
 
     let adjusted = pvalues.map( function(p,i) {
+        if (isNaN(p) || p === null) { return NaN; }
         return p * N / (rank[i] + 1);
     });
 
@@ -378,9 +379,10 @@ function BH_FDR(pvalues) {
     let min = 1;
     sort_order.slice().reverse().forEach(function(i) {
         let p = adjusted[i];
-        if (isNaN(p)) { return p; }
-        min = Math.min(p, min);
-        adjusted[i] = min;
+        if (!isNaN(p) && p !== null) {
+            min = Math.min(p, min);
+            adjusted[i] = min;
+        }
     });
 
     return adjusted;
