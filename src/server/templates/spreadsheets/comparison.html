@@ -810,7 +810,8 @@
             },
             description: "JTK_cycle significance of rhythmicity for dataset. Computed by meta2d.",
             per_spreadsheet: true,
-            num_spreadsheets: 'any'
+            num_spreadsheets: 'any',
+            analysis_name: 'JTK',
         },
         ars: {
             name: "ARS",
@@ -821,7 +822,8 @@
             description: "ARSER significance of rhythmicity for dataset. Requires multiple cycles with a single replicate each in order to run.",
             per_spreadsheet: true,
             num_spreadsheets: 'any',
-            algorithm_name: "arser"
+            algorithm_name: "arser",
+            analysis_name: 'ARS',
         },
         ls: {
             name: "LS",
@@ -831,7 +833,8 @@
             },
             description: "Lomb-Scargle significance of rhythmicity for dataset.",
             per_spreadsheet: true,
-            num_spreadsheets: 'any'
+            num_spreadsheets: 'any',
+            analysis_name: 'LS',
         },
         cosinor: {
             name: "Cosinor",
@@ -841,7 +844,8 @@
             },
             description: "Cosinor significance of rhythmicity for dataset.",
             per_spreadsheet: true,
-            num_spreadsheets: 'any'
+            num_spreadsheets: 'any',
+            analysis_name: 'Cosinor',
         },
         anova: {
             name: "ANOVA",
@@ -852,7 +856,8 @@
             description: "1-Way ANOVA on primary dataset. Tests whether the means of the timepoints are equal. Requires either multiple replicates or more than one cycle.",
             per_spreadsheet: true,
             num_spreadsheets: 'any',
-            algorithm_name: "one_way_anova"
+            algorithm_name: "one_way_anova",
+            analysis_name: 'ANOVA',
         },
 
         rain: {
@@ -863,7 +868,8 @@
             },
             description: "RAIN...",
             per_spreadsheet: true,
-            num_spreadsheets: 'any'
+            num_spreadsheets: 'any',
+            analysis_name: 'RAIN',
         },
 
         damping: {
@@ -921,14 +927,16 @@
             value: "jtk_lag",
             description: "Time the peak value occurs at, as calculated by JTK_CYCLE. Assumes circadian period of 24 hours.",
             per_spreadsheet: true,
-            num_spreadsheets: 'any'
+            num_spreadsheets: 'any',
+            analysis_name: 'Wave properties',
         },
         period: {
             name: "JTK period",
             value: "jtk_period",
             description: "Detected period length, as calculated by JTK_CYCLE. Assumes a nearly circadian period of around 24 hours.",
             per_spreadsheet: true,
-            num_spreadsheets: 'any'
+            num_spreadsheets: 'any',
+            analysis_name: 'Wave properties',
         },
         amplitude: {
             name: "JTK amplitude",
@@ -936,7 +944,8 @@
             description: "Amplitude of the oscillation, as calculated by JTK_CYCLE.",
             per_spreadsheet: true,
             num_spreadsheets: 'any',
-            sort_direction: -1
+            sort_direction: -1,
+            analysis_name: 'Wave properties',
         },
     };
 
@@ -1798,7 +1807,7 @@
                     let spreadsheet_id = spreadsheet.spreadsheet_id;
                     // Find the appropriate analysis (if any) and format display based off that
                     for (let [id, analysis] of Object.entries(this.analyses)) {
-                        if ((analysis.name === stat.name) && (analysis.spreadsheetId === spreadsheet_id)) {
+                        if ((analysis.name === stat.analysis_name) && (analysis.spreadsheetId === spreadsheet_id)) {
                             if (analysis.status === "RUNNING") {
                                 return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
                             } else if (analysis.status === "COMPLETED") {

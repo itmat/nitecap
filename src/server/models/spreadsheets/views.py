@@ -393,8 +393,6 @@ def get_spreadsheets(user=None):
         values = dict(
                      data=df[spreadsheet.get_data_columns()],
                      x_values=spreadsheet.x_values,
-                     amplitude=df.amplitude,
-                     peak_time=df.peak_time,
                      labels=combined_index.to_list(),
                      descriptive_name=spreadsheet.descriptive_name,
                      timepoints_per_cycle=spreadsheet.timepoints,
@@ -419,6 +417,9 @@ def get_spreadsheets(user=None):
                      cosinor_x0=None,
                      cosinor_x1=None,
                      cosinor_x2=None,
+                     jtk_lag=None,
+                     jtk_period=None,
+                     jtk_amplitude=None,
                      stat_values=spreadsheet.get_stat_values().to_dict(orient='series'),
                      row_numbers=rows, # The row numbers of the raw data being used; important for comparisons since not all rows are used
                     )
