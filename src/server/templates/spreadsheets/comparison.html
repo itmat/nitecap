@@ -1643,7 +1643,7 @@
                 console.log("Obtained results of ", analysis.name, " for spreadsheet ", analysis.spreadsheetId);
                 if(analysis.name == "Cosinor") {
                     spreadsheet.cosinor_p = Object.freeze(reorder(analysis.p));
-                    spreadsheet.cosinor_q = Object.freeze(vm.ps_to_qs(spreadsheet.cosinor_q));
+                    spreadsheet.cosinor_q = Object.freeze(vm.ps_to_qs(spreadsheet.cosinor_p));
                     spreadsheet.cosinor_x0 = Object.freeze(reorder(analysis.x.map( row => row[0])));
                     spreadsheet.cosinor_x1 = Object.freeze(reorder(analysis.x.map( row => row[1])));
                     spreadsheet.cosinor_x2 = Object.freeze(reorder(analysis.x.map( row => row[2])));
@@ -1652,16 +1652,16 @@
                     spreadsheet.ls_q = Object.freeze(vm.ps_to_qs(spreadsheet.ls_p));
                 } else if(analysis.name == "ARS") {
                     spreadsheet.ars_p = Object.freeze(reorder(analysis.p));
-                    spreadsheet.ars_q = Object.freeze(vm.ps_to_qs(analysis.q));
+                    spreadsheet.ars_q = Object.freeze(vm.ps_to_qs(spreadsheet.ars_p));
                 } else if(analysis.name == "JTK") {
                     spreadsheet.jtk_p = Object.freeze(reorder(analysis.p));
-                    spreadsheet.jtk_q = Object.freeze(vm.ps_to_qs(analysis.q));
+                    spreadsheet.jtk_q = Object.freeze(vm.ps_to_qs(spreadsheet.jtk_p));
                 } else if(analysis.name == "ANOVA") {
                     spreadsheet.anova_p = Object.freeze(reorder(analysis.p));
-                    spreadsheet.anova_q = Object.freeze(vm.ps_to_qs(analysis.q));
+                    spreadsheet.anova_q = Object.freeze(vm.ps_to_qs(spreadsheet.anova_p));
                 } else if(analysis.name == "RAIN") {
                     spreadsheet.rain_p = Object.freeze(reorder(analysis.p));
-                    spreadsheet.rain_q = Object.freeze(vm.ps_to_qs(analysis.q));
+                    spreadsheet.rain_q = Object.freeze(vm.ps_to_qs(spreadsheet.rain_p));
                 } else if(analysis.name == "Wave properties") {
                     spreadsheet.jtk_lag = Object.freeze(reorder(analysis.lag));
                     spreadsheet.jtk_period = Object.freeze(reorder(analysis.period));
