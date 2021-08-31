@@ -1789,7 +1789,7 @@
                             if (analysis.status === "RUNNING") {
                                 return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
                             } else if (analysis.status === "COMPLETED") {
-                                return "100%";
+                                return "COMPLETE";
                             }
                             else {
                                 return analysis.status;
