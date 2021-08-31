@@ -200,7 +200,6 @@ def collect_data(spreadsheet_id, user=None):
 
         # Trigger recomputations as necessary
         spreadsheet.increment_edit_version()
-        spreadsheet.compute_nitecap()
         spreadsheet.save_to_db()
         computation.api.store_spreadsheet_to_s3(spreadsheet)
         return redirect(url_for('.show_spreadsheet', spreadsheet_id=spreadsheet.id))

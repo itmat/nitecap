@@ -323,21 +323,6 @@ class Spreadsheet(db.Model):
             )
 
     @timeit
-    def compute_nitecap(self):
-        data = self.get_raw_data().values
-
-        timepoints = numpy.array(self.x_values)
-
-        # Other statistics
-        # TODO: should users be able to choose their cycle length?
-        amplitude, peak_time, trough_time = nitecap.descriptive_statistics(data, timepoints, self.timepoints, cycle_length=self.timepoints)
-
-        self.df["amplitude"] = amplitude
-        self.df["peak_time"] = peak_time
-        self.df["trough_time"] = trough_time
-        self.update_dataframe()
-
-    @timeit
     def compute_categorical(self):
         # Runs ANOVA-style computations on the data
         data = self.get_raw_data()
