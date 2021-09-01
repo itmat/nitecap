@@ -19,7 +19,6 @@ from sklearn.decomposition import PCA
 from itsdangerous import JSONWebSignatureSerializer as Serializer
 
 import constants
-import nitecap
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
