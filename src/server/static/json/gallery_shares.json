@@ -1,18 +1,31 @@
 [
     {
         "name": "Mouse Liver in Bmal1 KO and WT",
-        "description": "RNA-Seq of mouse (C57BL/6) liver under dark-dark conditions in either a Bmal1 clock-knockout model (either post-natal or pre-natal) and wildtype. Post-natal knocks and pre-natal were performed.",
+        "description": "RNA-Seq of mouse (C57BL/6) liver in either a Bmal1 clock-knockout model (either post-natal or pre-natal) and wildtype. Post-natal knock-out was sequenced under constant-darkness conditions. Prenatal knock-out was sequenced under 12-hour light-dark cycles.",
         "geo": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE70497",
         "cite": "https://pubmed.ncbi.nlm.nih.gov/26843191/",
         "entries": [
             {"name": "WT vs Post-natal KO",
              "share": "https://nitecap.org/spreadsheets/share/yeAJS-gTKrPt00o-6n4GTQ-EynbHyQ1xQl-Faij7j_keXQHUOqDxV69ZeWz_1YlyAIhjjrIrQDyRr4zWfm_v5ijS8I8giXIX-yUV",
-             "description": "Wild-type and post-natal knockout mice"
+             "description": "Wild-type and post-natal knockout mice (dark-dark)"
              },
             {"name": "WT vs Pre-natal KO",
              "share": "https://nitecap.org/spreadsheets/share/iVLodE7wQ2Br8D2KGmAbdd4p7cqvCvVxoNltpI2lj92gHoHUulPHyJ6EKspxKKxHPfChRZ75bViVtdgeBNUXES_hbMxz_R7AsIrx",
-             "description": "Wild-type and pre-natal knockout mice"
+             "description": "Wild-type and pre-natal knockout mice (light-dark)"
              }
+        ]
+    },
+    {
+        "name": "Mouse Liver with Adipocyte-specific Bmal1 KO",
+        "description": "RNA-Seq of mouse (C57BL/6) liver under dark-dark conditions in either wild-type mice or mice with a Bmal1 adipocyte-specific clock KO.",
+        "geo": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE115264",
+        "cite": "",
+        "entries": [
+            {"name": "WT vs KO",
+            "share": "https://nitecap.org/spreadsheets/share/36lzsJF-jW2yU6iEhBZsfYX7119_dO1Qze-2odDiPc3MtBflIW_FrnuUzpx3j1wQ_YIwz18hA5dbtoMLAm3F7DP9xBp6IwcBiDgZ",
+            "description": "Mouse Liver RNA-seq under adipocyte-specific clock knock-out"
+            }
+
         ]
     },
     {
