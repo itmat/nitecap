@@ -33,10 +33,21 @@ Vue.component("heatmap-plot", {
 
             vm.cutoff = vm.selected_rows.length;
 
+            if (vm.spreadsheets[vm.sort_by_spreadsheet].jtk_lag == null) {
+                let error_message = "Error: Heatmap generated before JTK Lag value was complete. Ordering the heatmap requires phase values, so the computation must finish first.";
+
+                let nitecap_error = $("#error-modal");
+                let nitecap_error_message = $("#error-modal-message")
+                nitecap_error_message.text(error_message);
+                nitecap_error.modal();
+                return;
+            }
+
+
             let phase_sorted_order = vm.selected_rows.sort( function (i,j) {
                 return compare(
-                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_time[i],
-                            vm.spreadsheets[vm.sort_by_spreadsheet].peak_time[j],
+                            vm.spreadsheets[vm.sort_by_spreadsheet].jtk_lag[i],
+                            vm.spreadsheets[vm.sort_by_spreadsheet].jtk_lag[j],
                             i,j);
             } );
 
