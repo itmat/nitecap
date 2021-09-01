@@ -597,14 +597,16 @@
                             </a>
                         </div>
                         <div class="row my-2">
-                            <input class="form-check-input" id="q_values_exclude_filtered_option" type="checkbox" v-model="config.q_values_exclude_filtered">
-                            <label class="form-check-label" for="q_values_excluded_filtered_option">Recompute q-values excluding filtered genes</label>
-                            <a id="rerunQHelp" class="text-primary help-pointer ml-3"
-                                data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
-                                title="Rerun q-values help"
-                                data-content="Use this if you wish to exclude filtered out rows from q-values computation, for example after filtering out low-expressed genes. Note that this should only be used after filtering for basic features like mean/max values or missing timepoints. Filtering by any circadian statistic and then applying q-values is generally unsound and leads to highly excessive false positives.">
-                                <i class="fas fa-info-circle"></i>
-                            </a>
+                            <div class="form-check">
+                                <input class="form-check-input" id="q_values_exclude_filtered_option" type="checkbox" v-model="config.q_values_exclude_filtered">
+                                <label class="form-check-label" for="q_values_excluded_filtered_option">Recompute q-values excluding filtered genes</label>
+                                <a id="rerunQHelp" class="text-primary help-pointer ml-3"
+                                    data-container="body" data-toggle="popover" data-placement="top" data-trigger="click"
+                                    title="Rerun q-values help"
+                                    data-content="Use this if you wish to exclude filtered out rows from q-values computation, for example after filtering out low-expressed genes. Note that this should only be used after filtering for basic features like mean/max values or missing timepoints. Filtering by any circadian statistic and then applying q-values is generally unsound and leads to highly excessive false positives.">
+                                    <i class="fas fa-info-circle"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
