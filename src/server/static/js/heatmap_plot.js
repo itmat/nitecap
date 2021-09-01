@@ -111,8 +111,9 @@ Vue.component("heatmap-plot", {
                     });
 
                     vm.x_values = x_sort_order.map( function(x_sort_order_, idx) {
+                        let times_ = times[idx];
                         return x_sort_order_.map( function(i) {
-                            return vm.timepoint_labels[idx][time];
+                            return vm.timepoint_labels[idx][times_[i]];
                         });
                     });
                 } else {
