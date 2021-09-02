@@ -506,7 +506,10 @@ class Spreadsheet(db.Model):
         # Create temporary paths for the share spreadsheet data directory and its included uploaded and processed
         # files and copy over the original spreadsheet data directory.
         temporary_share_spreadsheet_data_path = os.path.join(user_directory_path,  uuid.uuid4().hex)
-        shutil.copytree(spreadsheet.spreadsheet_data_path, temporary_share_spreadsheet_data_path)
+        shutil.copytree(
+            spreadsheet.get_spreadsheet_data_folder(),
+            Path(os.environ["UPLOAD_FOLDER"])/temporary_share_spreadsheet_data_path,
+        )
 
         # Create the share object - all path reflect the temporary share paths (i.e., paths containing uuid)
         spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
