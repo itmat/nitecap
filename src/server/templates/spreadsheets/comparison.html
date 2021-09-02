@@ -1881,9 +1881,16 @@
             },
 
             sort_by: function() {
+                let stat_id = this.config.sort_by.stat_id;
+                if (this.stats_table[stat_id] === undefined) {
+                    // Stat not in table - eg: due to share of a now-removed stat
+                    // We'll default to no sorting.
+                    console.warn("Current sort method ", stat_id, " is not available. Defaulting to no sorting");
+                    stat_id = "none"
+                }
                 return {
-                    stat: this.stats_table[this.config.sort_by.stat_id],
-                    stat_id: this.config.sort_by.stat_id,
+                    stat: this.stats_table[stat_id],
+                    stat_id: stat_id,
                     spreadsheet_num: this.config.sort_by.spreadsheet_num,
                 };
             },
