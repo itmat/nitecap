@@ -6,6 +6,7 @@ import { EmailStack } from "../lib/email-stack";
 import { OperationStack } from "../lib/operation-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
+import { SynchronizationStack } from "../lib/utilities/synchronization/synchronization-stack";
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
 import { TransitionParameterStack } from "../lib/utilities/transition/parameter-stack";
 
@@ -56,6 +57,12 @@ let serverStackProps = {
 //   serverStackProps,
 //   parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
 // });
+
+// new SynchronizationStack(
+//   stage,
+//   "SynchronizationStack",
+//   { serverStackProps }
+// );
 
 let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
