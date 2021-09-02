@@ -22,7 +22,7 @@ describe("Standard visitors workflow", () => {
       .next()
       .contains("Unknown")
       .contains("PENDING")
-      .contains("100%", { timeout: 20000 });
+      .contains("COMPLETE", { timeout: 20000 });
     cy.contains("tr>td", "ARS")
       .next()
       .should("contain.text", "p: 4.4e-10");
@@ -47,13 +47,14 @@ describe("Standard visitors workflow", () => {
     cy.get("body").should("contain", "Spreadsheet Rows");
 
     for (let [algorithm, result] of [
-      ["Nitecap", "p: 0.025"],
-      ["JTK", "p: 0.058"],
-      ["LS", "p: 0.115"],
-      ["Cosinor", "p: 0.002"],
-      ["ANOVA", "p: 0.252"],
-      ["Amplitude", "5.927"],
-      ["Peak-time", "4.667"],
+      ["JTK", "p: 1.1e-8"],
+      ["LS", "p: 0.008"],
+      ["Cosinor", "p: 2.0e-8"],
+      ["ANOVA", "p: 5.4e-6"],
+      ["RAIN", "p: 1.7e-8"],
+      ["JTK amplitude", "3.456"],
+      ["JTK lag", "3.000"],
+      ["JTK period", "24.000"],
       ["ARS", "p: N/A"],
     ])
       cy.contains("tr>td", algorithm)
