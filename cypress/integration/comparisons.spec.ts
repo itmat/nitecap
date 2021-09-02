@@ -38,7 +38,7 @@ describe("Comparisons", () => {
 
     // Wait until computation is complete
     cy.contains("tr>td", "Two-way ANOVA").next().as("Result");
-    cy.get("@Result", { timeout: 15000 }).should("contain.text", "p: 1.000");
+    cy.get("@Result", { timeout: 15000 }).should("contain.text", "p: 7.5e-4");
 
     cy.contains("span", "Number of selected rows")
       .find("input")
@@ -46,11 +46,10 @@ describe("Comparisons", () => {
       .blur();
 
     for (let [algorithm, result] of [
-      ["Two-way ANOVA", "p: 2.2e-4"],
-      ["Main Effect Diff", "p: 0.836"],
-      ["Phase Difference", "p: 0.929"],
-      ["Amplitude Difference", "p: 1.1e-7"],
-      ["Damping", "p: 0.005"],
+      ["Two-way ANOVA", "p: 1.000"],
+      ["Main Effect Diff", "p: 0.502"],
+      ["Phase Difference", "p: 0.998"],
+      ["Amplitude Difference", "p: 0.952"]
     ]) {
       cy.contains("tr>td", algorithm).next().should("contain.text", result);
     }
