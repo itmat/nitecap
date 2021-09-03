@@ -1652,7 +1652,7 @@
 
                 // Load the values
                 let spreadsheet = app.spreadsheets_by_id[analysis.spreadsheetId];
-                let reorder = function (list) { return list.map( (x,i) => list[spreadsheet.row_numbers[i]] ); }
+                let reorder = function(list) { return spreadsheet.row_numbers.map( (idx) => list[idx] ); };
                 console.log("Obtained results of ", analysis.name, " for spreadsheet ", analysis.spreadsheetId);
                 if(analysis.name == "Cosinor") {
                     spreadsheet.cosinor_p = Object.freeze(reorder(analysis.p));

@@ -577,15 +577,13 @@ class Spreadsheet(db.Model):
                 df = spreadsheet.df.set_index(index)
                 df = df[~index.duplicated()]
                 index_to_rows = index_to_rows[~index.duplicated()]
-                df = spreadsheet.df.set_index(index)
                 dfs.append(df)
+                rows_list.append(index_to_rows)
 
                 if combined_index is None:
                     combined_index = df.index
                 else:
                     combined_index = combined_index.intersection(df.index)
-
-                rows_list.append(index_to_rows)
 
             # Select only the parts of the data in common to all
             dfs = [df.loc[combined_index] for df in dfs]

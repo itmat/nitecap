@@ -210,6 +210,17 @@
             Se the cutoff to 0.1, and you will be given the top gene for which the q-value is less than 0.1.
         </p>
 
+        <h2 id="pvaluesnote">Note on p-values</h2>
+
+        <p>
+            Users of Nitecap should be cautioned against <q>p-hacking</q>.
+            Nitecap presents many different methods producing p-values testing rhythmicity or differential rhythmicity and makes re-running downstream analyses quick.
+            This opens the door to the investigator making choices strategically (or subconciously) to get the desired results regardless of what the data shows.
+            Investigators should be cautious about using any results that depend highly upon the chosen method or cutoff.
+            The most reliable results are often those that give similar results under different choices, and investigators should use the multiple analyses methods provided by Nitecap to check for consistency.
+            Note that since all computed p-values for a specific gene or other feature are computed from the same set of underlying data, they should not be considered as independent.
+        </p>
+
         <h2 id="filters"> Filters </h2>
         
         <p>
@@ -516,6 +527,7 @@
                         <li> <a href="#profile-plot">Profile Plot</a> </li>
                         <li> <a href="#slider-bar">Slider Bar</a> </li>
                     </ul>
+                    <li> <a href="#pvaluesnote">Note on p-values</a> </li>
                     <li> <a href="#filters">Filters</a> </li>
                     <li> <a href="#pathways">Pathways</a> </li>
                     <li> <a href="#heatmap">Heatmap</a> </li>
