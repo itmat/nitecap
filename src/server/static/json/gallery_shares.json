@@ -6,7 +6,7 @@
         "cite": "https://pubmed.ncbi.nlm.nih.gov/26843191/",
         "entries": [
             {"name": "WT vs Post-natal KO",
-             "share": "https://nitecap.org/spreadsheets/share/USM0R6poCiQ3AQUWiE42AvrJhkt9XtwX1c_f7rtb-BF9tHRIIJgvg9F9IpzeLXrMl6HieYqrxX5MFt4dRz5q8oVdh3T32D0yew9o",
+             "share": "https://nitecap.org/spreadsheets/share/g3dj9B--vOTBxhj3AEz4jGpehmiheihM9DVQldwVWZb-PCheyla904D-JSzfzeuX_t-BUSLqMvGcdlUN15LYv9W5ZvVKtpMC9Uj6",
              "description": "Wild-type and post-natal knockout mice (dark-dark)"
              },
             {"name": "WT vs Pre-natal KO",
@@ -45,6 +45,9 @@
             "description": "Heart"},
             {"name": "Liver",
             "share":"https://nitecap.org/spreadsheets/share/QhVo_vwn6ePvj6L64vRDHouIrxdCii6DjvrykODNU3BSnIGr7RHH4-AkyO5gM8ld7flEcallw0l5cbma0PqSR0RD3WaXXWkwdvEI",
+            "description":"Liver"},
+            {"name": "Liver Metabolomics",
+            "share":"https://nitecap.org/spreadsheets/share/YByn9TYjOjtrtO4FzJmgoEyQuBgQ0gfKEIHJ7-qact_QyYlEj6Wj4AiToRg-2TxyQ70RL29wfShP1bwbspm-QKDpU2IMTBSAmyru",
             "description":"Liver"}
         ]
     },
