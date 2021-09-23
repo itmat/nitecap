@@ -2,12 +2,6 @@ import environment from "./.env";
 
 describe("Share links", () => {
   it("can create and view shares", () => {
-    cy.on("uncaught:exception", (error, runnable) => {
-      if (error.message.includes("compare_button is not defined")) {
-        return false;
-      }
-    });
-
     cy.visit(environment.baseUrl);
     cy.contains("Login").click();
     cy.get("#username").type(environment.username);
