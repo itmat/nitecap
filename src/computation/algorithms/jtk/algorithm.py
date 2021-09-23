@@ -8,11 +8,11 @@ START_PERIOD = 20
 END_PERIOD = 28
 
 
-def jtk(data, timepoints, compute_wave_properties=False):
+def jtk(data, sample_collection_times, compute_wave_properties=False):
     with open(Path(__file__).parent / "algorithm.R") as algorithm:
         JTK = STAP(algorithm.read(), "JTK")
 
-    JTK.initialize(R.FloatVector(timepoints), minper=START_PERIOD, maxper=END_PERIOD)
+    JTK.initialize(R.FloatVector(sample_collection_times), minper=START_PERIOD, maxper=END_PERIOD)
 
     if compute_wave_properties:
         amplitude, lag, period = [], [], []
