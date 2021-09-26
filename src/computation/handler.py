@@ -15,29 +15,6 @@ s3 = boto3.resource("s3")
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
 
-def bh(P):
-    """Benjamini-Hochberg FDR control"""
-
-    P = np.array(P)
-    (indices_of_finite_values,) = np.where(np.isfinite(P))
-
-    p = P[indices_of_finite_values]
-
-    sort_order = np.argsort(p)
-
-    q = np.empty(p.size)
-    q[sort_order] = p[sort_order] * p.size / np.arange(1, p.size + 1)
-
-    running_minimum = 1
-    for i in reversed(sort_order):
-        q[i] = running_minimum = min(q[i], running_minimum)
-
-    Q = np.full(P.size, np.nan)
-    Q.put(indices_of_finite_values, q)
-
-    return Q
-
-
 def handler(event, context):
     analysisId, userId, spreadsheetId, viewId, algorithm = itemgetter(
         "analysisId", "userId", "spreadsheetId", "viewId", "algorithm"
@@ -82,14 +59,12 @@ def handler(event, context):
         x, p = parallel(
             compute(algorithm), *parameters, send_notification=send_notification
         )
-        q = bh(p).tolist()
-        results = json.dumps({"x": x, "p": p, "q": q}, ignore_nan=True)
+        results = json.dumps({"x": x, "p": p}, ignore_nan=True)
     else:
         p = parallel(
             compute(algorithm), *parameters, send_notification=send_notification
         )
-        q = bh(p).tolist()
-        results = json.dumps({"p": p, "q": q}, ignore_nan=True)
+        results = json.dumps({"p": p}, ignore_nan=True)
 
     s3.Object(
         SPREADSHEET_BUCKET_NAME, f"{userId}/analyses/{analysisId}/results"
