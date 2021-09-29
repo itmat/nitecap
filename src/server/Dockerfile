@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN groupmod -g 1001 www-data \
   && usermod -u 1001 -g 1001 www-data \
   && apt-get update \
+  && apt-get -y upgrade \
   && apt-get install -y apt-utils \
   && apt-get install -y libmagic-dev \
   && apt-get install -y apache2 \
