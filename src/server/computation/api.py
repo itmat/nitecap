@@ -75,7 +75,7 @@ def submit_analysis(user):
         "algorithm": parameters["algorithm"],
         "spreadsheetId": parameters["spreadsheetId"],
         "viewId": parameters["viewId"],
-        "computeWaveProperties": compute_wave_properties
+        "computeWaveProperties": compute_wave_properties,
     }
 
     if environment == "development":
@@ -162,6 +162,7 @@ def store_spreadsheet_to_s3(spreadsheet):
 
     metadata = {
         "cycle_length": cycle_length,
+        "index": spreadsheet.get_ids(),
         "sample_collection_times": [
             t * cycle_length / spreadsheet.timepoints for t in spreadsheet.x_values
         ],
