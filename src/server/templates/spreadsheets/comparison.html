@@ -1692,7 +1692,9 @@
                 let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": share_token },
-                    body: JSON.stringify({ algorithm, spreadsheetId, viewId, share_token: share_token, ...options, version: VERSION}),
+                    body: JSON.stringify({ 
+                        algorithm, spreadsheets: [{ spreadsheetId, viewId }], share_token: share_token, ...options, version: VERSION
+                    }),
                 });
 
                 if (!response.ok) {

@@ -23,4 +23,4 @@ def get_analysis_parameters(userId, analysisId):
 def get_spreadsheets_associated_with_analysis(userId, analysisId):
     parameters = json.loads(get_analysis_parameters(userId, analysisId))
 
-    return [parameters["spreadsheetId"]]
+    return parameters["spreadsheets"]

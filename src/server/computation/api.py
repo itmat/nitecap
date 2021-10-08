@@ -7,6 +7,7 @@ import numpy as np
 from flask import Blueprint, request
 from hashlib import sha256
 from io import BytesIO
+from operator import itemgetter
 
 from botocore.client import Config
 from botocore.exceptions import ClientError
@@ -61,9 +62,13 @@ def submit_analysis(user):
 
     if parameters["algorithm"] not in ALGORITHMS:
         raise NotImplementedError
-    if parameters["spreadsheetId"] not in [
-        spreadsheet.id for spreadsheet in user.spreadsheets
-    ]:
+
+    if any(
+        spreadsheetId not in (spreadsheet.id for spreadsheet in user.spreadsheets)
+        for spreadsheetId in map(
+            itemgetter("spreadsheetId"), parameters["spreadsheets"]
+        )
+    ):
         raise KeyError
 
     compute_wave_properties = parameters.get("computeWaveProperties", False)
@@ -73,8 +78,7 @@ def submit_analysis(user):
     analysis = {
         "userId": str(user.id),
         "algorithm": parameters["algorithm"],
-        "spreadsheetId": parameters["spreadsheetId"],
-        "viewId": parameters["viewId"],
+        "spreadsheets": parameters["spreadsheets"],
         "computeWaveProperties": compute_wave_properties,
     }
 

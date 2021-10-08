@@ -39,11 +39,12 @@ def load_spreadsheet(userId, spreadsheetId, viewId):
 
 
 def handler(event, context):
-    analysisId, userId, spreadsheetId, viewId, algorithm = itemgetter(
-        "analysisId", "userId", "spreadsheetId", "viewId", "algorithm"
+    analysisId, userId, algorithm, spreadsheets = itemgetter(
+        "analysisId", "userId", "algorithm", "spreadsheets"
     )(event)
 
-    data, metadata = load_spreadsheet(userId, spreadsheetId, viewId)
+    spreadsheet = spreadsheets[0]
+    data, metadata = load_spreadsheet(userId, **spreadsheet)
 
     sample_collection_times = np.array(metadata["sample_collection_times"])
 
