@@ -15,11 +15,7 @@ s3 = boto3.resource("s3")
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
 
-def handler(event, context):
-    analysisId, userId, spreadsheetId, viewId, algorithm = itemgetter(
-        "analysisId", "userId", "spreadsheetId", "viewId", "algorithm"
-    )(event)
-
+def load_spreadsheet(userId, spreadsheetId, viewId):
     spreadsheet = BytesIO()
     s3.Object(
         SPREADSHEET_BUCKET_NAME,
@@ -38,6 +34,17 @@ def handler(event, context):
     metadata = json.load(metadata)
 
     data = np.loadtxt(spreadsheet, delimiter=",")
+
+    return data, metadata
+
+
+def handler(event, context):
+    analysisId, userId, spreadsheetId, viewId, algorithm = itemgetter(
+        "analysisId", "userId", "spreadsheetId", "viewId", "algorithm"
+    )(event)
+
+    data, metadata = load_spreadsheet(userId, spreadsheetId, viewId)
+
     sample_collection_times = np.array(metadata["sample_collection_times"])
 
     # Sort by time
