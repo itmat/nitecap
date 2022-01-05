@@ -13,3 +13,5 @@ cdk.out
 cypress/downloads
 cypress/screenshots
 cypress/videos
+
+.devcontainer/credentials/*
