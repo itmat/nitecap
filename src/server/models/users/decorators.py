@@ -145,6 +145,9 @@ def ajax_requires_account_or_share(func):
             if set(spreadsheet_ids).issubset(shared_spreadsheet_ids):
                 # Spreadsheets match, grant the access under the sharing user's account
                 kwargs['user'] = sharing_user
+            else:
+                return jsonify({"error": "The URL you received does not work.  It may have been mangled in transit.  Please request "
+                              "another share"}), 401
         else:
             # No share, verify actual user
             if 'email' not in session.keys() or session['email'] is None:
