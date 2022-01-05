@@ -1,5 +1,5 @@
-import * as ecs from "@aws-cdk/aws-ecs";
-import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 
 export default function setEc2UserPassword(
   cluster: ecs.Cluster,

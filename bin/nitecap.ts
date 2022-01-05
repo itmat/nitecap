@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import * as cdk from "@aws-cdk/core";
+import * as cdk from "aws-cdk-lib";
 import { ComputationStack } from "../lib/computation-stack";
 import { DomainStack } from "../lib/domain-stack";
 import { EmailStack } from "../lib/email-stack";
@@ -10,7 +10,7 @@ import { SynchronizationStack } from "../lib/utilities/synchronization/synchroni
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
 import { TransitionParameterStack } from "../lib/utilities/transition/parameter-stack";
 
-import environment from "./.env";
+import environment from "./development.env";
 
 let app = new cdk.App();
 let stage = new cdk.Stage(app, "NitecapDevelopment", {

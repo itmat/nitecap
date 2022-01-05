@@ -1,9 +1,10 @@
-import * as backup from "@aws-cdk/aws-backup";
-import * as cdk from "@aws-cdk/core";
-import * as dynamodb from "@aws-cdk/aws-dynamodb";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as ssm from "@aws-cdk/aws-ssm";
+import * as backup from "aws-cdk-lib/aws-backup";
+import * as cdk from "aws-cdk-lib";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as ssm from "aws-cdk-lib/aws-ssm";
 
+import { Construct } from "constructs";
 import { Environment } from "./environment";
 
 export class PersistentStorageStack extends cdk.Stack {
@@ -13,7 +14,7 @@ export class PersistentStorageStack extends cdk.Stack {
   readonly snapshotIdParameter: ssm.StringParameter;
 
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     props: cdk.StackProps & { environment: Environment }
   ) {

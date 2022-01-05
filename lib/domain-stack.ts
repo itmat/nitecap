@@ -1,8 +1,10 @@
-import * as cdk from "@aws-cdk/core";
-import * as route53 from "@aws-cdk/aws-route53";
+import * as cdk from "aws-cdk-lib";
+import * as route53 from "aws-cdk-lib/aws-route53";
+
+import { Construct } from "constructs";
+import { Environment } from "./environment";
 
 import { parseDomain, ParseResultType } from "parse-domain";
-import { Environment } from "./environment";
 
 type DomainStackProps = cdk.StackProps & { environment: Environment };
 
@@ -11,7 +13,7 @@ export class DomainStack extends cdk.Stack {
   readonly subdomainName: string;
   readonly hostedZone: route53.IHostedZone;
 
-  constructor(scope: cdk.Construct, id: string, props: DomainStackProps) {
+  constructor(scope: Construct, id: string, props: DomainStackProps) {
     super(scope, id, props);
 
     let parseResult = parseDomain(props.environment.subdomainName);

@@ -1,7 +1,7 @@
-import * as cdk from "@aws-cdk/core";
-import * as iam from "@aws-cdk/aws-iam";
-import * as ecs from "@aws-cdk/aws-ecs";
-import * as logs from "@aws-cdk/aws-logs";
+import * as cdk from "aws-cdk-lib";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as logs from "aws-cdk-lib/aws-logs";
 
 import * as path from "path";
 
