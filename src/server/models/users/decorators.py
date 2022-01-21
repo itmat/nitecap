@@ -1,5 +1,6 @@
 import json
 from functools import wraps
+from operator import itemgetter
 
 from flask import session, request, url_for, flash, current_app, jsonify
 from werkzeug.utils import redirect
@@ -120,10 +121,14 @@ def ajax_requires_account_or_share(func):
                 # TODO: Refactor needed so that error handling is taken care of
                 user_id = Share.find_by_id(share_token).user_id
                 analysis_id = request.view_args['analysisId']
-                spreadsheet_ids = get_spreadsheets_associated_with_analysis(user_id, analysis_id)
+                spreadsheet_ids = map(itemgetter('spreadsheetId'), get_spreadsheets_associated_with_analysis(user_id, analysis_id))
         else:
             data = json.loads(request.data)
-            spreadsheet_ids = data['spreadsheet_ids'] if 'spreadsheet_ids' in data else [data['spreadsheetId']]
+            if 'spreadsheet_ids' in data:
+                spreadsheet_ids = data['spreadsheet_ids']
+            else:
+                spreadsheet_ids = map(itemgetter('spreadsheetId'), data['spreadsheets'])
+
             share_token = data.get("share_token", '')
 
         if share_token != '':

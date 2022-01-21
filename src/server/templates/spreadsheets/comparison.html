@@ -147,13 +147,13 @@
 
         spreadsheets.forEach(function(spreadsheet) {
             Vue.set(spreadsheet, "analyses", {});
-            vm.runAnalysis("LS", spreadsheet, "ls");
-            vm.runAnalysis("ARS", spreadsheet, "arser");
-            vm.runAnalysis("JTK", spreadsheet, "jtk");
-            vm.runAnalysis("Cosinor", spreadsheet, "cosinor");
-            vm.runAnalysis("ANOVA", spreadsheet, "one_way_anova");
-            vm.runAnalysis("RAIN", spreadsheet, "rain");
-            vm.runAnalysis("Wave properties", spreadsheet, "jtk", {"computeWaveProperties": true});
+            vm.runAnalysis("LS", [spreadsheet], "ls");
+            vm.runAnalysis("ARS", [spreadsheet], "arser");
+            vm.runAnalysis("JTK", [spreadsheet], "jtk");
+            vm.runAnalysis("Cosinor", [spreadsheet], "cosinor");
+            vm.runAnalysis("ANOVA", [spreadsheet], "one_way_anova");
+            vm.runAnalysis("RAIN", [spreadsheet], "rain");
+            vm.runAnalysis("Wave properties", [spreadsheet], "jtk", {"computeWaveProperties": true});
         });
 
 
@@ -1651,9 +1651,10 @@
                 Vue.set(this.analyses, analysisId, analysis);
 
                 // Load the values
-                let spreadsheet = app.spreadsheets_by_id[analysis.spreadsheetId];
+                let spreadsheet = analysis.spreadsheets[0];
+                
                 let reorder = function(list) { return spreadsheet.row_numbers.map( (idx) => list[idx] ); };
-                console.log("Obtained results of ", analysis.name, " for spreadsheet ", analysis.spreadsheetId);
+                console.log("Obtained results of ", analysis.name, " for spreadsheet ", spreadsheet.spreadsheet_id);
                 if(analysis.name == "Cosinor") {
                     spreadsheet.cosinor_p = Object.freeze(reorder(analysis.p));
                     spreadsheet.cosinor_q = Object.freeze(vm.ps_to_qs(spreadsheet.cosinor_p));
@@ -1684,15 +1685,18 @@
                 }
             },
 
-            runAnalysis: async function (name, spreadsheet, algorithm, options) {
+            runAnalysis: async function (name, spreadsheets, algorithm, options) {
                 let vm = this;
-                let spreadsheetId = spreadsheet.spreadsheet_id;
-                let viewId = spreadsheet.view_id;
 
                 let response = await fetch("/analysis/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": share_token },
-                    body: JSON.stringify({ algorithm, spreadsheetId, viewId, share_token: share_token, ...options, version: VERSION}),
+                    body: JSON.stringify({ algorithm, ...options, share_token, version: VERSION,
+                        spreadsheets: spreadsheets.map(spreadsheet => ({ 
+                            spreadsheetId: spreadsheet.spreadsheet_id,
+                            viewId: spreadsheet.view_id
+                        })),
+                    }),
                 });
 
                 if (!response.ok) {
@@ -1704,7 +1708,7 @@
                     Vue.set(this.analyses, dummy_analysis_id, {
                         name,
                         algorithm,
-                        spreadsheetId,
+                        spreadsheets,
                         status: "FAILED",
                         startTime: performance.now(),
                         progress: null,
@@ -1718,7 +1722,7 @@
                 // // Check analysis id
                 // let parameters = JSON.stringify({
                 //   algorithm,
-                //   spreadsheetId,
+                //   spreadsheets,
                 //   userId: this.userId,
                 // });
 
@@ -1728,7 +1732,7 @@
                 Vue.set(this.analyses, analysisId, {
                     name,
                     algorithm,
-                    spreadsheetId,
+                    spreadsheets,
                     status: "PENDING",
                     startTime: performance.now(),
                     progress: null,
@@ -1766,7 +1770,7 @@
             processNotification: async function (event) {
                 message = JSON.parse(event.data);
 
-                let { analysisId, spreadsheetId, ...analysisUpdate } = message;
+                let { analysisId, ...analysisUpdate } = message;
                 let analysis = this.analyses[analysisId];
 
                 // There are several explanations for the situation when the analysis is not in our analyses collection:
@@ -1781,8 +1785,10 @@
                     analysis = await response.json();
                 }
 
-                // Skip if this update is for analysis of another spreadsheet
-                if (this.spreadsheets_by_id[analysis.spreadsheetId] === undefined) {
+                // Skip if this update is for analysis of another spreadsheets
+                let spreadsheets_ids = analysis.spreadsheets.map(spreadsheet => spreadsheet.spreadsheet_id)
+
+                if (JSON.stringify(spreadsheets_ids) != JSON.stringify(this.config.spreadsheet_ids)) {
                     console.log("Received data from wrong spreadsheet, ignoring", analysis);
                     return;
                 }
@@ -1811,7 +1817,7 @@
                     let spreadsheet_id = spreadsheet.spreadsheet_id;
                     // Find the appropriate analysis (if any) and format display based off that
                     for (let [id, analysis] of Object.entries(this.analyses)) {
-                        if ((analysis.name === stat.analysis_name) && (analysis.spreadsheetId === spreadsheet_id)) {
+                        if ((analysis.name === stat.analysis_name) && (analysis.spreadsheets[0].spreadsheet_id === spreadsheet_id)) {
                             if (analysis.status === "RUNNING") {
                                 return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
                             } else if (analysis.status === "COMPLETED") {

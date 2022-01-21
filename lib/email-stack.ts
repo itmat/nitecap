@@ -1,14 +1,16 @@
-import * as cdk from "@aws-cdk/core";
-import * as cr from "@aws-cdk/custom-resources";
-import * as dynamodb from "@aws-cdk/aws-dynamodb";
-import * as lambda from "@aws-cdk/aws-lambda";
-import * as iam from "@aws-cdk/aws-iam";
-import * as route53 from "@aws-cdk/aws-route53";
-import * as ses from "@aws-cdk/aws-ses";
-import * as sns from "@aws-cdk/aws-sns";
-import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
+import * as cdk from "aws-cdk-lib";
+import * as cr from "aws-cdk-lib/custom-resources";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as route53 from "aws-cdk-lib/aws-route53";
+import * as ses from "aws-cdk-lib/aws-ses";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 
 import * as path from "path";
+
+import { Construct } from "constructs";
 
 import toPascalCase from "./utilities/toPascalCase";
 
@@ -26,7 +28,7 @@ type EmailStackProps = cdk.StackProps & {
 export class EmailStack extends cdk.Stack {
   readonly configurationSetName: string;
 
-  constructor(scope: cdk.Construct, id: string, props: EmailStackProps) {
+  constructor(scope: Construct, id: string, props: EmailStackProps) {
     super(scope, id, props);
 
     // Compliance

@@ -1,9 +1,11 @@
-import * as cdk from "@aws-cdk/core";
-import * as cr from "@aws-cdk/custom-resources";
-import * as iam from "@aws-cdk/aws-iam";
-import * as lambda from "@aws-cdk/aws-lambda";
+import * as cdk from "aws-cdk-lib/core";
+import * as cr from "aws-cdk-lib/custom-resources";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 
 import * as path from "path";
+
+import { Construct } from "constructs";
 
 import { TransitionParameterStack } from "./parameter-stack";
 import { ServerStack, ServerStackProps } from "../../server-stack";
@@ -14,7 +16,7 @@ type TransitionStackProps = cdk.StackProps & {
 };
 
 export class TransitionStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props: TransitionStackProps) {
+  constructor(scope: Construct, id: string, props: TransitionStackProps) {
     super(scope, id, props);
 
     // Server used to make the transition
@@ -142,7 +144,7 @@ export class TransitionStack extends cdk.Stack {
     );
 
     transitionWaitCondition.addDependsOn(
-      putSnapshotLambdaNameParameter.node.defaultChild?.node._actualNode
+      putSnapshotLambdaNameParameter.node.defaultChild?.node._actualNode      // TODO: fix this
         .defaultChild as cdk.CfnResource
     );
   }

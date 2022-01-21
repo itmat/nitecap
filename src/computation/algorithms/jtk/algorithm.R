@@ -269,7 +269,7 @@
 ##################################################
 
 	  if (!compute_wave_properties) {
-    	return(JTK.ADJP)
+    	return(c(JTK.ADJP, NaN, NaN, NaN))
 	  }
 
 ##################################################

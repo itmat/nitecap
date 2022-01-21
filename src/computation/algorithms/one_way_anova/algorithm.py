@@ -4,15 +4,18 @@ from scipy.stats import f_oneway
 from collections import defaultdict
 
 
-def remove_missing_values(y, timepoints):
+def remove_missing_values(y, sample_collection_times):
     indices_of_finite_values_of_y = np.isfinite(y)
-    return y[indices_of_finite_values_of_y], timepoints[indices_of_finite_values_of_y]
+    return (
+        y[indices_of_finite_values_of_y],
+        sample_collection_times[indices_of_finite_values_of_y],
+    )
 
 
-def one_way_anova(data, timepoints, cycle_length=24):
+def one_way_anova(data, sample_collection_times, cycle_length=24):
     p = []
     for y in data:
-        y, t = remove_missing_values(y, timepoints)
+        y, t = remove_missing_values(y, sample_collection_times)
 
         groups = defaultdict(list)
         for t_mod_cycle_length, value in zip(t % cycle_length, y):

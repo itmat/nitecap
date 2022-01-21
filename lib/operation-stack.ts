@@ -1,13 +1,14 @@
-import * as autoscaling from "@aws-cdk/aws-autoscaling";
-import * as autoscaling_hooktargets from "@aws-cdk/aws-autoscaling-hooktargets";
-import * as backup from "@aws-cdk/aws-backup";
-import * as cdk from "@aws-cdk/core";
-import * as cw_actions from "@aws-cdk/aws-cloudwatch-actions";
-import * as devopsguru from "@aws-cdk/aws-devopsguru";
-import * as lambda from "@aws-cdk/aws-lambda";
-import * as sns from "@aws-cdk/aws-sns";
-import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
+import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
+import * as autoscaling_hooktargets from "aws-cdk-lib/aws-autoscaling-hooktargets";
+import * as backup from "aws-cdk-lib/aws-backup";
+import * as cdk from "aws-cdk-lib";
+import * as cw_actions from "aws-cdk-lib/aws-cloudwatch-actions";
+import * as devopsguru from "aws-cdk-lib/aws-devopsguru";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 
+import { Construct } from "constructs";
 import { Environment } from "./environment";
 
 import { ComputationStack } from "./computation-stack";
@@ -26,7 +27,7 @@ type OperationStackProps = cdk.StackProps & {
 };
 
 export class OperationStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props: OperationStackProps) {
+  constructor(scope: Construct, id: string, props: OperationStackProps) {
     super(scope, id, props);
 
     const environment = props.environment;

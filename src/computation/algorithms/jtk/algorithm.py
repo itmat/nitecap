@@ -8,35 +8,28 @@ START_PERIOD = 20
 END_PERIOD = 28
 
 
-def jtk(data, timepoints, compute_wave_properties=False):
+def jtk(data, sample_collection_times, compute_wave_properties=False):
     with open(Path(__file__).parent / "algorithm.R") as algorithm:
         JTK = STAP(algorithm.read(), "JTK")
 
-    JTK.initialize(R.FloatVector(timepoints), minper=START_PERIOD, maxper=END_PERIOD)
+    JTK.initialize(
+        R.FloatVector(sample_collection_times), minper=START_PERIOD, maxper=END_PERIOD
+    )
+
+    p, period, lag, amplitude = [], [], [], []
+
+    for y in data:
+        if all(np.isnan(y)):
+            for property in (p, period, lag, amplitude):
+                property.append(np.nan)
+        else:
+            wave_properties = JTK.jtkx(
+                R.FloatVector(y), compute_wave_properties=compute_wave_properties
+            )
+            for property, value in zip((p, period, lag, amplitude), wave_properties):
+                property.append(value)
 
     if compute_wave_properties:
-        amplitude, lag, period = [], [], []
-        for y in data:
-            if all(np.isnan(y)):
-                amplitude.append(np.nan)
-                lag.append(np.nan)
-                period.append(np.nan)
-            else:
-                wave_properties = JTK.jtkx(
-                    R.FloatVector(y), compute_wave_properties=True
-                )
-                amplitude.append(wave_properties[3])
-                lag.append(wave_properties[2])
-                period.append(wave_properties[1])
-
-        return amplitude, lag, period
-
+        return period, lag, amplitude
     else:
-        p = []
-        for y in data:
-            if all(np.isnan(y)):
-                p.append(np.nan)
-            else:
-                p.append(JTK.jtkx(R.FloatVector(y))[0])
-
         return [p]

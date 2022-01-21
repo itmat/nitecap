@@ -1,7 +1,7 @@
-import * as cdk from "@aws-cdk/core";
-import * as cr from "@aws-cdk/custom-resources";
-import * as ecs from "@aws-cdk/aws-ecs";
-import * as iam from "@aws-cdk/aws-iam";
+import * as cdk from "aws-cdk-lib";
+import * as cr from "aws-cdk-lib/custom-resources";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 export default function describeContainerInstance(
   stack: cdk.Stack,
@@ -58,7 +58,7 @@ export default function describeContainerInstance(
           containerInstances: [containerInstanceArn],
         },
         physicalResourceId: cr.PhysicalResourceId.of(containerInstanceArn),
-        outputPath: "containerInstances.0.ec2InstanceId",
+        outputPaths: ["containerInstances.0.ec2InstanceId"],
       },
     }
   );
@@ -88,8 +88,8 @@ export default function describeContainerInstance(
           InstanceIds: [containerInstanceId],
         },
         physicalResourceId: cr.PhysicalResourceId.of(containerInstanceArn),
-        outputPath:
-          "Reservations.0.Instances.0.BlockDeviceMappings.1.Ebs.VolumeId",
+        outputPaths:
+          ["Reservations.0.Instances.0.BlockDeviceMappings.1.Ebs.VolumeId"],
       },
     }
   );

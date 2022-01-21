@@ -5,19 +5,22 @@ MINIMUM_PERIOD = 20
 MAXIMUM_PERIOD = 28
 
 
-def remove_missing_values(y, timepoints):
+def remove_missing_values(y, sample_collection_times):
     indices_of_finite_values_of_y = np.isfinite(y)
-    return y[indices_of_finite_values_of_y], timepoints[indices_of_finite_values_of_y]
+    return (
+        y[indices_of_finite_values_of_y],
+        sample_collection_times[indices_of_finite_values_of_y],
+    )
 
 
-def ls(data, timepoints):
+def ls(data, sample_collection_times):
     test_frequencies = np.linspace(
-        1 / MAXIMUM_PERIOD, 1 / MINIMUM_PERIOD, 4 * timepoints.size
+        1 / MAXIMUM_PERIOD, 1 / MINIMUM_PERIOD, 4 * sample_collection_times.size
     )
 
     p = []
     for y in data:
-        y, t = remove_missing_values(y, timepoints)
+        y, t = remove_missing_values(y, sample_collection_times)
 
         if np.var(y) == 0 or t.size == 0:
             p.append(1.0)  # check if this makes sense

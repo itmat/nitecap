@@ -2,17 +2,17 @@ import boto3
 import os
 import simplejson as json
 
-import numpy as np
-
-from flask import Blueprint, request
 from hashlib import sha256
 from io import BytesIO
+
+from flask import Blueprint, request
 
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
 from computation.utils import get_analysis_parameters
 from models.users.decorators import ajax_requires_account_or_share
+from models.spreadsheets.spreadsheet import Spreadsheet
 
 s3 = boto3.resource("s3")
 s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
@@ -61,10 +61,16 @@ def submit_analysis(user):
 
     if parameters["algorithm"] not in ALGORITHMS:
         raise NotImplementedError
-    if parameters["spreadsheetId"] not in [
-        spreadsheet.id for spreadsheet in user.spreadsheets
-    ]:
-        raise KeyError
+
+    user_spreadsheets = (spreadsheet.id for spreadsheet in user.spreadsheets)
+
+    for spreadsheet in parameters["spreadsheets"]:
+        if spreadsheet["spreadsheetId"] not in user_spreadsheets:
+            raise KeyError
+
+        currentViewId = Spreadsheet.find_by_id(spreadsheet["spreadsheetId"]).edit_version
+        if not 0 <= spreadsheet["viewId"] <= currentViewId:
+            raise KeyError
 
     compute_wave_properties = parameters.get("computeWaveProperties", False)
     if not isinstance(compute_wave_properties, bool):
@@ -73,9 +79,8 @@ def submit_analysis(user):
     analysis = {
         "userId": str(user.id),
         "algorithm": parameters["algorithm"],
-        "spreadsheetId": parameters["spreadsheetId"],
-        "viewId": parameters["viewId"],
-        "computeWaveProperties": compute_wave_properties
+        "spreadsheets": parameters["spreadsheets"],
+        "computeWaveProperties": compute_wave_properties,
     }
 
     if environment == "development":
@@ -162,6 +167,7 @@ def store_spreadsheet_to_s3(spreadsheet):
 
     metadata = {
         "cycle_length": cycle_length,
+        "index": spreadsheet.get_ids(),
         "sample_collection_times": [
             t * cycle_length / spreadsheet.timepoints for t in spreadsheet.x_values
         ],

@@ -1,16 +1,17 @@
-import * as apigateway from "@aws-cdk/aws-apigatewayv2";
-import * as cdk from "@aws-cdk/core";
-import * as dynamodb from "@aws-cdk/aws-dynamodb";
-import * as iam from "@aws-cdk/aws-iam";
-import * as lambda from "@aws-cdk/aws-lambda";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as sfn from "@aws-cdk/aws-stepfunctions";
-import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
+import * as apigateway from "aws-cdk-lib/aws-apigatewayv2";
+import * as cdk from "aws-cdk-lib";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as sfn from "aws-cdk-lib/aws-stepfunctions";
+import * as tasks from "aws-cdk-lib/aws-stepfunctions-tasks";
 
-import { CfnAccount as ApiGatewayCfnAccount } from "@aws-cdk/aws-apigateway";
+import { CfnAccount as ApiGatewayCfnAccount } from "aws-cdk-lib/aws-apigateway";
 
 import * as path from "path";
 
+import { Construct } from "constructs";
 import { Environment } from "./environment";
 
 import toPascalCase from "./utilities/toPascalCase";
@@ -24,7 +25,7 @@ export class ComputationStack extends cdk.Stack {
   readonly computationStateMachine: sfn.StateMachine;
   readonly notificationApi: apigateway.CfnApi;
 
-  constructor(scope: cdk.Construct, id: string, props: ComputationStackProps) {
+  constructor(scope: Construct, id: string, props: ComputationStackProps) {
     super(scope, id, props);
 
     const environment = props.environment;

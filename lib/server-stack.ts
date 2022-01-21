@@ -1,19 +1,20 @@
-import * as apigateway from "@aws-cdk/aws-apigatewayv2";
-import * as autoscaling from "@aws-cdk/aws-autoscaling";
-import * as acm from "@aws-cdk/aws-certificatemanager";
-import * as cdk from "@aws-cdk/core";
-import * as dynamodb from "@aws-cdk/aws-dynamodb";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as ecs from "@aws-cdk/aws-ecs";
-import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
-import * as iam from "@aws-cdk/aws-iam";
-import * as route53 from "@aws-cdk/aws-route53";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as secretsmanager from "@aws-cdk/aws-secretsmanager";
-import * as sfn from "@aws-cdk/aws-stepfunctions";
-import * as ssm from "@aws-cdk/aws-ssm";
+import * as apigateway from "aws-cdk-lib/aws-apigatewayv2";
+import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as cdk from "aws-cdk-lib";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as route53 from "aws-cdk-lib/aws-route53";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as sfn from "aws-cdk-lib/aws-stepfunctions";
+import * as ssm from "aws-cdk-lib/aws-ssm";
 
-import { UlimitName } from "@aws-cdk/aws-ecs/lib/container-definition";
+import { Construct } from "constructs";
+import { UlimitName } from "aws-cdk-lib/aws-ecs";
 
 import * as path from "path";
 
@@ -46,7 +47,7 @@ export class ServerStack extends cdk.Stack {
   readonly serverSecretKey: secretsmanager.Secret;
   readonly service: ecs_patterns.ApplicationLoadBalancedEc2Service;
 
-  constructor(scope: cdk.Construct, id: string, props: ServerStackProps) {
+  constructor(scope: Construct, id: string, props: ServerStackProps) {
     super(scope, id, props);
 
     const environment = props.environment;

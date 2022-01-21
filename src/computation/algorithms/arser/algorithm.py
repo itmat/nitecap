@@ -16,14 +16,16 @@ NUMBER_OF_FREQUENCIES_AT_WHICH_TO_ESTIMATE_THE_SPECTRAL_DENSITY = 500
 spec_ar = R.r["spec.ar"]
 
 
-def valid_input(y, timepoints):
+def valid_input(y, sample_collection_times):
     # No missing values
     if any(np.isnan(y)):
         return False
 
     # Only one replicate per timepoint
-    if len(timepoints) != len(set(timepoints)):
+    if len(sample_collection_times) != len(set(sample_collection_times)):
         return False
+
+    timepoints = sample_collection_times
 
     # Evenly spaced time series
     Δt = timepoints[1] - timepoints[0]
@@ -34,14 +36,16 @@ def valid_input(y, timepoints):
     return True
 
 
-def arser(data, timepoints):
+def arser(data, sample_collection_times):
     autoregressive_model_parameters_estimation_methods = ["yule-walker", "mle", "burg"]
 
     p = []
     for y in data:
-        if not valid_input(y, timepoints):
+        if not valid_input(y, sample_collection_times):
             p.append(np.nan)
             continue
+
+        timepoints = sample_collection_times
 
         y = detrend(y, type="linear")
 

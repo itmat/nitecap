@@ -1,12 +1,14 @@
-import * as cdk from "@aws-cdk/core";
-import * as iam from "@aws-cdk/aws-iam";
+import * as cdk from "aws-cdk-lib";
+import * as iam from "aws-cdk-lib/aws-iam";
+
+import { Construct } from "constructs";
 
 import { ServerStack, ServerStackProps } from "../../server-stack";
 import { sourceBucketName } from "./.env";
 
 export class SynchronizationStack extends cdk.Stack {
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     props: cdk.StackProps & { serverStackProps: ServerStackProps }
   ) {

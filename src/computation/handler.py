@@ -15,34 +15,7 @@ s3 = boto3.resource("s3")
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
 
-def bh(P):
-    """Benjamini-Hochberg FDR control"""
-
-    P = np.array(P)
-    (indices_of_finite_values,) = np.where(np.isfinite(P))
-
-    p = P[indices_of_finite_values]
-
-    sort_order = np.argsort(p)
-
-    q = np.empty(p.size)
-    q[sort_order] = p[sort_order] * p.size / np.arange(1, p.size + 1)
-
-    running_minimum = 1
-    for i in reversed(sort_order):
-        q[i] = running_minimum = min(q[i], running_minimum)
-
-    Q = np.full(P.size, np.nan)
-    Q.put(indices_of_finite_values, q)
-
-    return Q
-
-
-def handler(event, context):
-    analysisId, userId, spreadsheetId, viewId, algorithm = itemgetter(
-        "analysisId", "userId", "spreadsheetId", "viewId", "algorithm"
-    )(event)
-
+def load_spreadsheet(userId, spreadsheetId, viewId):
     spreadsheet = BytesIO()
     s3.Object(
         SPREADSHEET_BUCKET_NAME,
@@ -61,6 +34,18 @@ def handler(event, context):
     metadata = json.load(metadata)
 
     data = np.loadtxt(spreadsheet, delimiter=",")
+
+    return data, metadata
+
+
+def handler(event, context):
+    analysisId, userId, algorithm, spreadsheets = itemgetter(
+        "analysisId", "userId", "algorithm", "spreadsheets"
+    )(event)
+
+    spreadsheet = spreadsheets[0]
+    data, metadata = load_spreadsheet(userId, **spreadsheet)
+
     sample_collection_times = np.array(metadata["sample_collection_times"])
 
     # Sort by time
@@ -74,22 +59,20 @@ def handler(event, context):
     parameters = (data, sample_collection_times)
 
     if algorithm == "jtk" and event["computeWaveProperties"]:
-        amplitude, lag, period = parallel(
+        period, lag, amplitude = parallel(
             compute(algorithm), *parameters, send_notification=send_notification, compute_wave_properties=True
         )
-        results = json.dumps({"amplitude": amplitude, "lag": lag, "period": period}, ignore_nan=True)
+        results = json.dumps({"period": period, "lag": lag, "amplitude": amplitude}, ignore_nan=True)
     elif algorithm == "cosinor":
         x, p = parallel(
             compute(algorithm), *parameters, send_notification=send_notification
         )
-        q = bh(p).tolist()
-        results = json.dumps({"x": x, "p": p, "q": q}, ignore_nan=True)
+        results = json.dumps({"x": x, "p": p}, ignore_nan=True)
     else:
         p = parallel(
             compute(algorithm), *parameters, send_notification=send_notification
         )
-        q = bh(p).tolist()
-        results = json.dumps({"p": p, "q": q}, ignore_nan=True)
+        results = json.dumps({"p": p}, ignore_nan=True)
 
     s3.Object(
         SPREADSHEET_BUCKET_NAME, f"{userId}/analyses/{analysisId}/results"
