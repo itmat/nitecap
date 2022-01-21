@@ -74,4 +74,4 @@ let stacks = {
   serverStack,
 };
 
-new OperationStack(stage, "OperationStack", { environment, ...stacks });
+//new OperationStack(stage, "OperationStack", { environment, ...stacks });

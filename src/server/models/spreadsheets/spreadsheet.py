@@ -287,7 +287,7 @@ class Spreadsheet(db.Model):
         """
         Find all the columns in the spreadsheet's dataframe noted as id columns and concatenate the contents
         of those columns into a numpy series
-        :return: a numpy series containing the complete id for each data row.
+        :return: a list containing the complete id for each data row.
         """
         if not args:
             id_indices = self.get_id_columns()
@@ -301,11 +301,11 @@ class Spreadsheet(db.Model):
         # Concatenate the id columns using pandas.Series.str.cat() function
         # convert to type string first since otherwise blank entries will result in float('NaN')
         first_id = id_indices[0]
-        concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ')
+        concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ').tolist()
         return concats
 
     def find_unique_ids(self):
-        ids = list(self.get_ids())
+        ids = self.get_ids()
         return [item for item, count in collections.Counter(ids).items() if count == 1]
 
     def has_metadata(self):
