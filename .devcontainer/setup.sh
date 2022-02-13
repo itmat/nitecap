@@ -2,17 +2,9 @@ CREDENTIALS_DIRECTORY=$PWD/.devcontainer/credentials
 
 mkdir -p $CREDENTIALS_DIRECTORY
 
-SSH_DIRECTORY=$CREDENTIALS_DIRECTORY/.ssh
 AWS_DIRECTORY=$CREDENTIALS_DIRECTORY/.aws
 
-rm -rf ~/.ssh
-ln -s $SSH_DIRECTORY ~/.ssh
 ln -s $AWS_DIRECTORY ~/.aws
-
-if [ ! -d $SSH_DIRECTORY ]; then
-    mkdir $SSH_DIRECTORY
-    ssh-keygen -q -t rsa -b 4096 -N "" -f $SSH_DIRECTORY/barrel
-fi
 
 if [ ! -d $AWS_DIRECTORY ]; then
     read -p "AWS Access Key ID: " AWS_ACCESS_KEY_ID
