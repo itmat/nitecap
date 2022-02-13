@@ -178,13 +178,13 @@ export class ServerStack extends cdk.Stack {
     setupLogging(this, serverCluster, environment);
     setEc2UserPassword(serverCluster, serverUserPassword);
 
-    this.containerInstance = describeContainerInstance(this, serverCluster);
+    //this.containerInstance = describeContainerInstance(this, serverCluster);
 
-    serverTask.addPlacementConstraint(
-      ecs.PlacementConstraint.memberOf(
-        `ec2InstanceId == '${this.containerInstance.instanceId}'`
-      )
-    );
+    //serverTask.addPlacementConstraint(
+    //  ecs.PlacementConstraint.memberOf(
+    //    `ec2InstanceId == '${this.containerInstance.instanceId}'`
+    //  )
+    //);
 
     let serverCertificate = new acm.DnsValidatedCertificate(this, "Certificate", {
       hostedZone: props.hostedZone,
