@@ -3,7 +3,7 @@ import environment from "./.env";
 describe("Comparisons", () => {
   it("compares two conditions", () => {
     cy.visit(environment.baseUrl);
-    cy.contains("Load new spreadsheet").click();
+    cy.contains("Load your data").click();
     cy.get("input[type='file']").attachFile("comparison/case.8.9.4.txt");
     cy.contains("Submit").click();
     cy.get("body").should("contain", "Collect Data");

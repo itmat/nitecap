@@ -3,7 +3,7 @@ import environment from "./.env";
 describe("Standard visitors workflow", () => {
   it("loads a spreadsheet and computes ARSER p-value", () => {
     cy.visit(environment.baseUrl);
-    cy.contains("Load new spreadsheet").click();
+    cy.contains("Load your data").click();
     cy.get("input[type='file']").attachFile("results.6.24.1.txt");
     cy.contains("Submit").click();
     cy.get("body").should("contain", "Collect Data");
@@ -30,7 +30,7 @@ describe("Standard visitors workflow", () => {
 
   it("loads a spreadsheet, displays the computation results, and generates a heat map", () => {
     cy.visit(environment.baseUrl);
-    cy.contains("Load new spreadsheet").click();
+    cy.contains("Load your data").click();
     cy.get("input[type='file']").attachFile("raw.8.9.2.txt");
     cy.contains("Submit").click();
     cy.get("body").should("contain", "Collect Data");
