@@ -20,7 +20,7 @@ import * as path from "path";
 
 import mountEbsVolume from "./utilities/mountEbsVolume";
 import describeContainerInstance from "./utilities/describeContainerInstance";
-import setEc2UserPassword from "./utilities/setEc2UserPassword";
+import serviceIpRange from "./utilities/serviceIpRange";
 import setupLogging from "./utilities/setupLogging";
 
 import { Environment } from "./environment";
@@ -55,10 +55,6 @@ export class ServerStack extends cdk.Stack {
     // Server secrets
 
     this.serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
-    let serverUserPassword = new secretsmanager.Secret(
-      this,
-      "ServerUserPassword"
-    );
 
     // Server permissions
 
@@ -104,7 +100,7 @@ export class ServerStack extends cdk.Stack {
         path.join(__dirname, "../src/server"),
         { file: props.applicationDockerfile }
       ),
-      memoryLimitMiB: 3584,
+      memoryLimitMiB: 3328,
       environment: {
         ...environment.server.variables,
         AWS_DEFAULT_REGION: this.region,
@@ -151,8 +147,12 @@ export class ServerStack extends cdk.Stack {
       capacity: {
         maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.C5,
-          ec2.InstanceSize.XLARGE
+          ec2.InstanceClass.C6I,
+          ec2.InstanceSize.LARGE
+        ),
+        machineImage: ecs.EcsOptimizedImage.amazonLinux2(
+          ecs.AmiHardwareType.STANDARD,
+          { cachedInContext: true }
         ),
         blockDevices: [
           {
@@ -169,26 +169,31 @@ export class ServerStack extends cdk.Stack {
       containerInsights: true,
     });
 
-    mountEbsVolume(
-      environment.server.storage.deviceName,
-      environment.server.storage.deviceMountPoint,
-      serverCluster
+    serverCluster.connections.allowFrom(
+      ec2.Peer.ipv4(serviceIpRange("EC2_INSTANCE_CONNECT", this.region)),
+      ec2.Port.tcp(22)
     );
 
+    serverCluster.autoscalingGroup?.addUserData(
+      "yum install -y ec2-instance-connect"
+    );
+
+    let { deviceName, deviceMountPoint } = environment.server.storage;
+    mountEbsVolume(deviceName, deviceMountPoint, serverCluster);
+
     setupLogging(this, serverCluster, environment);
-    setEc2UserPassword(serverCluster, serverUserPassword);
 
-    //this.containerInstance = describeContainerInstance(this, serverCluster);
+    this.containerInstance = describeContainerInstance(this, serverCluster);
 
-    //serverTask.addPlacementConstraint(
-    //  ecs.PlacementConstraint.memberOf(
-    //    `ec2InstanceId == '${this.containerInstance.instanceId}'`
-    //  )
-    //);
+    serverTask.addPlacementConstraint(
+      ecs.PlacementConstraint.memberOf(
+        `ec2InstanceId == '${this.containerInstance.instanceId}'`
+      )
+    );
 
     let serverCertificate = new acm.DnsValidatedCertificate(this, "Certificate", {
-      hostedZone: props.hostedZone,
-      domainName: props.subdomainName,
+        hostedZone: props.hostedZone,
+        domainName: props.subdomainName,
     });
 
     this.service = new ecs_patterns.ApplicationLoadBalancedEc2Service(
@@ -203,6 +208,7 @@ export class ServerStack extends cdk.Stack {
         certificate: serverCertificate,
         redirectHTTP: true,
         openListener: environment.production ? true : false,
+        minHealthyPercent: 0,
       }
     );
 
@@ -222,5 +228,7 @@ export class ServerStack extends cdk.Stack {
 
       this.service.loadBalancer.addSecurityGroup(serverSecurityGroup);
     }
+
+    this.service.targetGroup.setAttribute("deregistration_delay.timeout_seconds", "0");
   }
 }
