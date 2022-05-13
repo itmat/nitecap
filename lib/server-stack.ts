@@ -192,8 +192,8 @@ export class ServerStack extends cdk.Stack {
     );
 
     let serverCertificate = new acm.DnsValidatedCertificate(this, "Certificate", {
-        hostedZone: props.hostedZone,
-        domainName: props.subdomainName,
+      hostedZone: props.hostedZone,
+      domainName: props.subdomainName,
     });
 
     this.service = new ecs_patterns.ApplicationLoadBalancedEc2Service(

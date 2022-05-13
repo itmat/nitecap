@@ -13,7 +13,7 @@
   "devDependencies": {
     "@types/jest": "^26.0.10",
     "@types/node": "10.17.27",
-    "aws-cdk": "2.18.0",
+    "aws-cdk": "2.24.0",
     "cypress": "^9.2.0",
     "cypress-file-upload": "^5.0.8",
     "jest": "^26.4.2",
@@ -22,7 +22,7 @@
     "typescript": "~3.9.7"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.18.0",
+    "aws-cdk-lib": "2.24.0",
     "constructs": "^10.0.0",
     "parse-domain": "^4.1.0",
     "source-map-support": "^0.5.16"
