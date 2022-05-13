@@ -1,4 +1,5 @@
 export type Environment = {
+  name: string,
   account?: string;
   region?: string;
   production: boolean;

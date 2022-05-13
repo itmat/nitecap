@@ -10,10 +10,10 @@ import { SynchronizationStack } from "../lib/utilities/synchronization/synchroni
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
 import { TransitionParameterStack } from "../lib/utilities/transition/parameter-stack";
 
-import environment from "./development.env";
+import environment from "./.env";
 
 let app = new cdk.App();
-let stage = new cdk.Stage(app, "NitecapDevelopment", {
+let stage = new cdk.Stage(app, environment.name, {
   env: {
     region: environment.region,
     account: environment.account,
