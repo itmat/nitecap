@@ -35,7 +35,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 COPY src/server/requirements.txt .
 
 RUN pip install -r requirements.txt                                                                                                 \
- && pip install rpy2
+ && pip install ipykernel statsmodels rpy2
 
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/R/lib/
 
