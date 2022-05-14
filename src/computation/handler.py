@@ -4,6 +4,7 @@ import boto3
 import numpy as np
 import simplejson as json
 
+from dataclasses import dataclass
 from io import BytesIO
 from operator import itemgetter
 
@@ -14,15 +15,20 @@ from notifier import send_notification_via_websockets
 s3 = boto3.resource("s3")
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
+@dataclass
+class Spreadsheet:
+    data: np.ndarray
+    metadata: dict
+
 
 def load_spreadsheet(userId, spreadsheetId, viewId):
-    spreadsheet = BytesIO()
+    data = BytesIO()
     s3.Object(
         SPREADSHEET_BUCKET_NAME,
         f"{userId}/spreadsheets/{spreadsheetId}/views/{viewId}/data",
-    ).download_fileobj(spreadsheet)
+    ).download_fileobj(data)
 
-    spreadsheet.seek(0)
+    data.seek(0)
 
     metadata = BytesIO()
     s3.Object(
@@ -33,30 +39,40 @@ def load_spreadsheet(userId, spreadsheetId, viewId):
     metadata.seek(0)
     metadata = json.load(metadata)
 
-    data = np.loadtxt(spreadsheet, delimiter=",")
+    data = np.loadtxt(data, delimiter=",")
+    metadata["sample_collection_times"] = np.array(metadata["sample_collection_times"])
 
-    return data, metadata
+    return Spreadsheet(data, metadata)
+
+
+def sort_by_time(spreadsheet):
+    spreadsheet.data = spreadsheet.data[:, spreadsheet.metadata["sample_collection_times"].argsort()]
+    spreadsheet.metadata["sample_collection_times"].sort()
+
+    return spreadsheet
 
 
 def handler(event, context):
-    analysisId, userId, algorithm, spreadsheets = itemgetter(
-        "analysisId", "userId", "algorithm", "spreadsheets"
+    analysisId, userId, algorithm = itemgetter(
+        "analysisId", "userId", "algorithm"
     )(event)
 
-    spreadsheet = spreadsheets[0]
-    data, metadata = load_spreadsheet(userId, **spreadsheet)
-
-    sample_collection_times = np.array(metadata["sample_collection_times"])
-
-    # Sort by time
-    data[:, sample_collection_times.argsort()]
-    sample_collection_times.sort()
+    spreadsheets = [
+        sort_by_time(load_spreadsheet(userId, **spreadsheet))
+        for spreadsheet in event["spreadsheets"]
+    ]
 
     send_notification = send_notification_via_websockets(
         {"userId": userId, "analysisId": analysisId}
     )
 
-    parameters = (data, sample_collection_times)
+    if algorithm in ["two_way_anova"]:
+        raise NotImplementedError
+    else:
+        spreadsheet = spreadsheets.pop()
+        sample_collection_times = spreadsheet.metadata["sample_collection_times"]
+
+        parameters = (spreadsheet.data, sample_collection_times)
 
     if algorithm == "jtk" and event["computeWaveProperties"]:
         period, lag, amplitude = parallel(
