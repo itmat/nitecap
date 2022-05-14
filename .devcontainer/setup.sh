@@ -23,6 +23,7 @@ if [ ! -d $AWS_DIRECTORY ]; then
 fi
 
 npm install
+npx cypress install
 
 echo 'export PATH=$PATH:'$PWD'/node_modules/aws-cdk/bin' >> ~/.bashrc
 echo 'export PYTHONPATH='$PWD'/src/computation:'$PWD'/src/server' >> ~/.bashrc
