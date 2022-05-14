@@ -25,3 +25,4 @@ fi
 npm install
 
 echo 'export PATH=$PATH:'$PWD'/node_modules/aws-cdk/bin' >> ~/.bashrc
+echo 'export PYTHONPATH='$PWD'/src/computation:'$PWD'/src/server' >> ~/.bashrc

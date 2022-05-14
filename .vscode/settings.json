@@ -1,6 +1,4 @@
 {
   "python.formatting.provider": "black",
-  "terminal.integrated.env.linux": {
-    "PYTHONPATH": "/workspaces/src/server"
-  }
+  "jupyter.notebookFileRoot": "${workspaceFolder}/src/computation"
 }
