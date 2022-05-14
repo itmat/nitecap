@@ -31,15 +31,15 @@ def rain(data, sample_collection_times, cycle_length=24):
 
     p = []
     while batch := list(islice(data, BATCH_SIZE)):
-        y = R.r.matrix(np.array(batch).T, nrow=len(sample_collection_times), ncol=len(batch))
+        y = np.array(batch).T
         p.extend(
             RAIN.rain(
                 y,
                 period=cycle_length,
                 deltat=Δt,
-                measure_sequence=R.FloatVector(measure_sequence),
-                na_rm=True,
-            ).pVal
+                measure_sequence=measure_sequence,
+                na_rm=bool(np.isnan(y).any()),
+            ).rx2("pVal")
         )
 
     return [p]
