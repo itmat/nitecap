@@ -118,23 +118,5 @@ export class OperationStack extends cdk.Stack {
         cloudFormation: { stackNames: stacks.map((stack) => stack.stackName) },
       },
     });
-
-    // Outputs
-
-    let outputs = {
-      ComputationStateMachineArn:
-        props.computationStack.computationStateMachine.stateMachineArn,
-      EmailConfigurationSetName: props.emailStack.configurationSetName,
-      EmailSuppressionListName:
-        props.persistentStorageStack.emailSuppressionList.tableName,
-      NotificationApiEndpoint: `${props.computationStack.notificationApi.attrApiEndpoint}/default`,
-      ServerSecretKeyArn: props.serverStack.serverSecretKey.secretArn,
-      SpreadsheetBucketName:
-        props.persistentStorageStack.spreadsheetBucket.bucketName,
-    };
-
-    for (let [outputName, outputValue] of Object.entries(outputs)) {
-      new cdk.CfnOutput(this, outputName, { value: outputValue });
-    }
   }
 }

@@ -95,24 +95,26 @@ export class ServerStack extends cdk.Stack {
       ],
     });
 
+    let serverEnvironmentVariables = {
+      ...environment.server.variables,
+      AWS_DEFAULT_REGION: this.region,
+      SERVER_SECRET_KEY_ARN: this.serverSecretKey.secretArn,
+      SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
+      COMPUTATION_STATE_MACHINE_ARN:
+        props.computationStateMachine.stateMachineArn,
+      NOTIFICATION_API_ENDPOINT: `wss://${props.notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
+      EMAIL_SENDER: `no-reply@${props.subdomainName}`,
+      EMAIL_CONFIGURATION_SET_NAME: props.emailConfigurationSetName,
+      EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
+    }
+
     let serverContainer = serverTask.addContainer("ServerContainer", {
       image: ecs.ContainerImage.fromAsset(
         path.join(__dirname, "../src/server"),
         { file: props.applicationDockerfile }
       ),
       memoryLimitMiB: 3328,
-      environment: {
-        ...environment.server.variables,
-        AWS_DEFAULT_REGION: this.region,
-        SERVER_SECRET_KEY_ARN: this.serverSecretKey.secretArn,
-        SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
-        COMPUTATION_STATE_MACHINE_ARN:
-          props.computationStateMachine.stateMachineArn,
-        NOTIFICATION_API_ENDPOINT: `wss://${props.notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
-        EMAIL_SENDER: `no-reply@${props.subdomainName}`,
-        EMAIL_CONFIGURATION_SET_NAME: props.emailConfigurationSetName,
-        EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
-      },
+      environment: serverEnvironmentVariables,
       portMappings: [
         {
           containerPort: 5000,
@@ -230,5 +232,11 @@ export class ServerStack extends cdk.Stack {
     }
 
     this.service.targetGroup.setAttribute("deregistration_delay.timeout_seconds", "0");
+
+    for (let [variableName, variableValue] of Object.entries(
+      serverEnvironmentVariables
+    )) {
+      new cdk.CfnOutput(this, variableName, { value: variableValue });
+    }
   }
 }
