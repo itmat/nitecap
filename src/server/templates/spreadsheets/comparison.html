@@ -145,6 +145,12 @@
             vm.editing_filters.push(Object.assign({},filter));
         });
 
+        // For testing comparison algorithms
+        // let test_spreadsheet_pair = [
+        //     {spreadsheet_id: 4, view_id: 1},
+        //     {spreadsheet_id: 5, view_id: 1}
+        // ]
+
         spreadsheets.forEach(function(spreadsheet) {
             Vue.set(spreadsheet, "analyses", {});
             vm.runAnalysis("LS", [spreadsheet], "ls");
@@ -154,6 +160,9 @@
             vm.runAnalysis("ANOVA", [spreadsheet], "one_way_anova");
             vm.runAnalysis("RAIN", [spreadsheet], "rain");
             vm.runAnalysis("Wave properties", [spreadsheet], "jtk", {"computeWaveProperties": true});
+            // For testing comparison algorithms
+            // vm.runAnalysis("Two-way ANOVA", test_spreadsheet_pair, "two_way_anova");
+            // vm.runAnalysis("Differential rhytmicity cosinor", test_spreadsheet_pair, "differential_cosinor");
         });
 
 

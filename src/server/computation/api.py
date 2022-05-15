@@ -18,7 +18,7 @@ s3 = boto3.resource("s3")
 s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
 sfn = boto3.client("stepfunctions")
 
-ALGORITHMS = ["cosinor", "ls", "arser", "jtk", "one_way_anova", "rain"]
+ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
@@ -62,7 +62,7 @@ def submit_analysis(user):
     if parameters["algorithm"] not in ALGORITHMS:
         raise NotImplementedError
 
-    user_spreadsheets = (spreadsheet.id for spreadsheet in user.spreadsheets)
+    user_spreadsheets = [spreadsheet.id for spreadsheet in user.spreadsheets]
 
     for spreadsheet in parameters["spreadsheets"]:
         if spreadsheet["spreadsheetId"] not in user_spreadsheets:
@@ -83,7 +83,7 @@ def submit_analysis(user):
         "computeWaveProperties": compute_wave_properties,
     }
 
-    if environment == "development":
+    if environment == "development" or environment == "DEV":
         analysis.update(**parameters)
 
     return run(analysis)

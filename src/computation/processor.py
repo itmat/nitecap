@@ -3,6 +3,7 @@ from multiprocessing import Pipe, Process
 from multiprocessing.connection import wait
 
 from notifier import notifier
+from numpy import ndarray
 
 
 def run(job, algorithm, data, parameters, options):
@@ -31,7 +32,7 @@ def run(job, algorithm, data, parameters, options):
 def parallel_compute(
     algorithm, data, *parameters, send_notification, number_of_processors=6, **options
 ):
-    if isinstance(data, tuple):
+    if not isinstance(data, ndarray):
         data = MultipleSpreadsheet(data)
 
     workload_size = len(data)
