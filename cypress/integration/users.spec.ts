@@ -1,4 +1,4 @@
-import environment from "./.env";
+import environment from "../.env";
 
 describe("Standard users workflow", () => {
   it("signs the user in", () => {

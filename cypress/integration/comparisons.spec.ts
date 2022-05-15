@@ -1,4 +1,4 @@
-import environment from "./.env";
+import environment from "../.env";
 
 describe("Comparisons", () => {
   it("compares two conditions", () => {

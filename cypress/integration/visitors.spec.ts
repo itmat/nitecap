@@ -1,4 +1,4 @@
-import environment from "./.env";
+import environment from "../.env";
 
 describe("Standard visitors workflow", () => {
   it("loads a spreadsheet and computes ARSER p-value", () => {

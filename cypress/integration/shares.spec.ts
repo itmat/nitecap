@@ -1,4 +1,4 @@
-import environment from "./.env";
+import environment from "../.env";
 
 describe("Share links", () => {
   it("can create and view shares", () => {
