@@ -64,9 +64,12 @@ describe("Standard visitors workflow", () => {
     cy.contains("span", "Number of selected rows").find("input").type("0");
     cy.contains("a", "Heatmap").click();
     cy.contains("button", "Generate Heatmap").click();
-    cy.get("[class^='heatmaplayer']")
-      .find("image")
-      .invoke("attr", "href")
-      .should("eq", environment.heatmapBase64Image);
+
+    cy.fixture("heatmap.png").then((heatmap) => {
+      cy.get("[class^='heatmaplayer']")
+        .find("image")
+        .invoke("attr", "href")
+        .should("eq", "data:image/png;base64," + heatmap);
+    });
   });
 });
