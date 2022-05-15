@@ -1,0 +1,1 @@
+from .algorithm import two_way_anova as algorithm
