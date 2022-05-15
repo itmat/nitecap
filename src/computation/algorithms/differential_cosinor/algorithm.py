@@ -153,7 +153,7 @@ def differential_cosinor(data, sample_collection_times, cycle_length=24):
         timepoints = sorted(set(collection_times))
         Δt = float(timepoints[1] - timepoints[0])
 
-        groups.append(((collection_times % cycle_length) / Δt).astype(int))
+        groups.append(numpy.round((collection_times % cycle_length) / Δt).astype(int))
 
     p_amplitude = []
     p_phase = []
@@ -162,7 +162,7 @@ def differential_cosinor(data, sample_collection_times, cycle_length=24):
         amplitude_p_value, phase_p_value = cosinor_analysis(
             groups[0], numpy.array([data_A]),
             groups[1], numpy.array([data_B]),
-            timepoints_per_cycle=int(cycle_length / Δt),
+            timepoints_per_cycle=round(cycle_length / Δt),
         )
 
         p_amplitude.append(amplitude_p_value)

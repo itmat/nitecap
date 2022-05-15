@@ -79,7 +79,7 @@ def two_way_anova(data, sample_collection_times, cycle_length=24):
         timepoints = sorted(set(collection_times))
         Δt = float(timepoints[1] - timepoints[0])
 
-        groups.append(((collection_times % cycle_length) / Δt).astype(int))
+        groups.append(numpy.round((collection_times % cycle_length) / Δt).astype(int))
 
     p_interaction = []
     p_main_effect = []

@@ -85,7 +85,7 @@ def arser(data, sample_collection_times):
 
 def estimate_cycling_periods(y, timepoints, parameters_estimation_method, smoothing):
     Δt = timepoints[1] - timepoints[0]
-    autoregressive_model_order = int(24 // Δt)
+    autoregressive_model_order = round(24 // Δt)
     if autoregressive_model_order == timepoints.size:
         autoregressive_model_order = timepoints.size // 2
 

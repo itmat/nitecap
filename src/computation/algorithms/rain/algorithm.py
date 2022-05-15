@@ -23,7 +23,7 @@ def rain(data, sample_collection_times, cycle_length=24):
     Δt = float(timepoints[1] - timepoints[0])
 
     number_of_timepoints = len(timepoints)
-    sample_collection_times_indices = (sample_collection_times / Δt).astype(int)
+    sample_collection_times_indices = np.round(sample_collection_times / Δt).astype(int)
 
     measure_sequence = np.zeros(number_of_timepoints)
     for sample_collection_times_index in sample_collection_times_indices:
