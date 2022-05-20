@@ -2,6 +2,11 @@
 import boto3
 import os
 
+from dotenv import load_dotenv, find_dotenv
+
+# Load from .env file if present (for local development)
+load_dotenv(find_dotenv(usecwd=True))
+
 # Retrieve the secret key
 SECRET_KEY_ARN = os.environ["SERVER_SECRET_KEY_ARN"]
 SECRET_VALUE = boto3.client("secretsmanager").get_secret_value(SecretId=SECRET_KEY_ARN)
@@ -10,7 +15,6 @@ os.environ["SECRET_KEY"] = SECRET_VALUE["SecretString"]
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
-from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import werkzeug
 import json
@@ -29,7 +33,6 @@ from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
 app = Flask(__name__)
-load_dotenv(find_dotenv(usecwd=True))
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
