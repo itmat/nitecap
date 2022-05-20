@@ -160,66 +160,13 @@
             vm.runAnalysis("ANOVA", [spreadsheet], "one_way_anova");
             vm.runAnalysis("RAIN", [spreadsheet], "rain");
             vm.runAnalysis("Wave properties", [spreadsheet], "jtk", {"computeWaveProperties": true});
-            // For testing comparison algorithms
-            // vm.runAnalysis("Two-way ANOVA", test_spreadsheet_pair, "two_way_anova");
-            // vm.runAnalysis("Differential rhytmicity cosinor", test_spreadsheet_pair, "differential_cosinor");
         });
 
 
-        // Load the Upside values
-        if (spreadsheets.length > 1) {
-            function upside() {
-                $.ajax({
-                    url: "/spreadsheets/get_upside",
-                    data: JSON.stringify({'spreadsheet_ids': initial_config.original_spreadsheet_ids, 'share_token':share_token}),
-                    dataType: 'text json',
-                    contentType: 'application/json',
-                    type: 'POST',
-                    success: function(response) {
-                        if ((response.status == 'waiting') || (response.status == 'running')) {
-                            // Must requery the status after a bit
-                            setTimeout(upside, 5*1000);
-                            return;
-                        }
-
-                        // See VUE PERF NOTE
-                        // Make all arrays non-traversed by Vue for performance
-                        Object.keys(response).forEach(function(key) {
-                            Object.preventExtensions(response[key]);
-                        });
-
-                        upside_p = response['upside_p'];
-                        upside_q = response['upside_q'];
-
-                        initial_config.original_spreadsheet_ids.forEach(function(spreadsheet_id, idx) {
-                            let spreadsheet = vm.spreadsheets_by_id[spreadsheet_id];
-                            Object.preventExtensions(upside_p[idx]); // See VUE PERF NOTE
-                            Object.preventExtensions(upside_q[idx]); // these aren't covered by above since are one level deeper
-                            spreadsheet.upside_p = upside_p[idx];
-                            spreadsheet.upside_q = upside_q[idx];
-                        });
-
-                        // Load stats that are per-comparison not per-spreadsheet
-                        app.stats.two_way_anova_p = response['two_way_anova_p'];
-                        app.stats.two_way_anova_q = response['two_way_anova_q'];
-                        app.stats.main_effect_p = response['main_effect_p'];
-                        app.stats.main_effect_q = response['main_effect_q'];
-                        app.stats.phase_p = response['phase_p'];
-                        app.stats.phase_q = response['phase_q'];
-                        app.stats.amplitude_p = response['amplitude_p'];
-                        app.stats.amplitude_q = response['amplitude_q'];
-                    },
-
-                    error: function(error) {
-                        console.log("Error loading upside values");
-                        console.log(error);
-
-                        nitecap_error_message.text("Error loading comparison statistics");
-                        nitecap_error.modal();
-                    }
-                });
-            }
-            upside();
+        // Load the Comparison (Upside, two-way anova, cosinor) values
+        if (spreadsheets.length == 2) {
+            vm.runAnalysis("Two-way ANOVA", spreadsheets, "two_way_anova");
+            vm.runAnalysis("Differential rhytmicity cosinor", spreadsheets, "differential_cosinor");
         }
 
         $('[data-toggle="tooltip"]').tooltip();
@@ -885,16 +832,17 @@
             analysis_name: 'RAIN',
         },
 
-        damping: {
-            name: "Damping",
-            value: {
-                p: "upside_p",
-                q: "upside_q"
-            },
-            description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
-            per_spreadsheet: true,
-            num_spreadsheets: 'multi'
-        },
+        // TODO: re-enable this once it's available on the backend
+        //damping: {
+        //    name: "Damping",
+        //    value: {
+        //        p: "upside_p",
+        //        q: "upside_q"
+        //    },
+        //    description: "Damping analysis giving significance of a decrease in variation in the secondary dataset compared to the first.",
+        //    per_spreadsheet: true,
+        //    num_spreadsheets: 'multi'
+        //},
         two_way_anova: {
             name: "Two-way ANOVA",
             value: {
@@ -1663,6 +1611,7 @@
                 let spreadsheet = analysis.spreadsheets[0];
                 
                 let reorder = function(list) { return spreadsheet.row_numbers.map( (idx) => list[idx] ); };
+                let reorder_from_join = function(list, by) { return spreadsheet.row_numbers.map( (idx) => list[by.indexOf(idx)] ); };
                 console.log("Obtained results of ", analysis.name, " for spreadsheet ", spreadsheet.spreadsheet_id);
                 if(analysis.name == "Cosinor") {
                     spreadsheet.cosinor_p = Object.freeze(reorder(analysis.p));
@@ -1689,6 +1638,17 @@
                     spreadsheet.jtk_lag = Object.freeze(reorder(analysis.lag));
                     spreadsheet.jtk_period = Object.freeze(reorder(analysis.period));
                     spreadsheet.jtk_amplitude = Object.freeze(reorder(analysis.amplitude));
+                } else if(analysis.name == "Two-way ANOVA") {
+                    app.stats.two_way_anova_p = Object.freeze(reorder_from_join(analysis.p_interaction, analysis.indexes[0]));
+                    app.stats.two_way_anova_q = Object.freeze(vm.ps_to_qs(app.stats.two_way_anova_p));
+                    app.stats.main_effect_p = Object.freeze(reorder_from_join(analysis.p_main_effect, analysis.indexes[0]));
+                    app.stats.main_effect_q = Object.freeze(vm.ps_to_qs(app.stats.main_effect_p));
+                } else if(analysis.name == "Differential rhytmicity cosinor") {
+                    app.stats.two_way_anova_p = 
+                    app.stats.phase_p = Object.freeze(reorder_from_join(analysis.p_phase, analysis.indexes[0]));
+                    app.stats.phase_q = Object.freeze(vm.ps_to_qs(app.stats.phase_p));
+                    app.stats.amplitude_p = Object.freeze(reorder_from_join(analysis.p_amplitude, analysis.indexes[0]));
+                    app.stats.amplitude_q = Object.freeze(vm.ps_to_qs(app.stats.amplitude_p));
                 } else {
                     console.error("Unknown analysis results found:", analysis.name, analysis);
                 }
