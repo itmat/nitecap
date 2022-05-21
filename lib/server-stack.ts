@@ -149,7 +149,7 @@ export class ServerStack extends cdk.Stack {
       capacity: {
         maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.C6I,
+          ec2.InstanceClass.C6A,
           ec2.InstanceSize.LARGE
         ),
         machineImage: ecs.EcsOptimizedImage.amazonLinux2(
