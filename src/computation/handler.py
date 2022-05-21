@@ -41,7 +41,7 @@ def load_spreadsheet(userId, spreadsheetId, viewId):
     metadata.seek(0)
     metadata = json.load(metadata)
 
-    data = np.loadtxt(data, delimiter=",")
+    data = np.loadtxt(data, delimiter=",", ndmin=2)
     metadata["sample_collection_times"] = np.array(metadata["sample_collection_times"])
 
     return Spreadsheet(data, metadata)
