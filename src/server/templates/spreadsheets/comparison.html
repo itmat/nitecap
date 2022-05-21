@@ -851,7 +851,8 @@
             },
             description: "Two-way ANOVA test for difference in timepoint-effects across datasets. Tests whether there is a difference in the 'shape' of the curve between the two datasets, disregarding any mean-value difference.",
             per_spreadsheet: false,
-            num_spreadsheets: 'multi'
+            num_spreadsheets: 'multi',
+            analysis_name: 'Two-way ANOVA',
         },
         main_effect_diff: {
             name: "Main Effect Diff",
@@ -861,7 +862,8 @@
             },
             description: "Main effect test of difference between the two datasets in the two-way ANOVA. Tests whether the grand mean (averaged over all timepoints) are the  in both datasetss",
             per_spreadsheet: false,
-            num_spreadsheets: 'multi'
+            num_spreadsheets: 'multi',
+            analysis_name: 'Two-way ANOVA',
         },
         phase_difference: {
             name: "Phase Difference",
@@ -871,7 +873,8 @@
             },
             description: "Test for equality of phase between datasets through cosinor analysis (least squares fit). See FAQ. Requires both datasets to have significant rhythmicity (i.e. it won't be significant if one is non-rhythmic since phase cannot be determined).",
             per_spreadsheet: false,
-            num_spreadsheets: 'multi'
+            num_spreadsheets: 'multi',
+            analysis_name: "Differential rhytmicity cosinor",
         },
         amplitude_difference: {
             name: "Amplitude Difference",
@@ -881,7 +884,8 @@
             },
             description: "Test for equality of amplitudes between datasets through cosinor analysis (least squares fit).",
             per_spreadsheet: false,
-            num_spreadsheets: 'multi'
+            num_spreadsheets: 'multi',
+            analysis_name: "Differential rhytmicity cosinor",
         },
         lag: {
             name: "JTK lag",
@@ -1777,9 +1781,18 @@
                 let stat = this.stats_table[stat_id];
                 let algorithm = stat.algorithm_name || stat_id;
                 if (stat.num_spreadsheets == "multi") {
-                    // For now these are not run by 'analyses'
-                    // TODO: update this when we put comparison stats into analyses
-                    return "loading";
+                    for (let [id, analysis] of Object.entries(this.analyses)) {
+                        if ((analysis.name === stat.analysis_name)) {
+                            if (analysis.status === "RUNNING") {
+                                return (100*(analysis.progress.value / analysis.progress.max)).toFixed(0) + "%";
+                            } else if (analysis.status === "COMPLETED") {
+                                return "COMPLETE";
+                            }
+                            else {
+                                return analysis.status;
+                            }
+                        }
+                    }
                 } else {
                     let spreadsheet = this.spreadsheets[spreadsheet_num];
                     let spreadsheet_id = spreadsheet.spreadsheet_id;

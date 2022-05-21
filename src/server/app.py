@@ -125,7 +125,6 @@ from computation.api import analysis_blueprint
 app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
 
 if os.environ["ENV"] == "DEV":
-    # TODO: should this be removed now?
     from computation.example import computation_test_blueprint
     app.register_blueprint(computation_test_blueprint, url_prefix='/computation')
 
