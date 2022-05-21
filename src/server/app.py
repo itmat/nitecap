@@ -2,11 +2,6 @@
 import boto3
 import os
 
-# Retrieve the secret key
-SECRET_KEY_ARN = os.environ["SERVER_SECRET_KEY_ARN"]
-SECRET_VALUE = boto3.client("secretsmanager").get_secret_value(SecretId=SECRET_KEY_ARN)
-os.environ["SECRET_KEY"] = SECRET_VALUE["SecretString"]
-
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
