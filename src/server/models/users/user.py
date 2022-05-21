@@ -2,6 +2,7 @@ import boto3
 import datetime
 import pathlib
 import random
+import requests
 import shutil
 import smtplib
 import string
@@ -250,6 +251,16 @@ class User(db.Model):
             error = True
         return error
 
+    def email_is_in_supression_list(self) -> bool:
+        return "Item" in suppression_list.get_item(Key={"email": self.email})
+
+    def email_is_in_spam_list(self) -> bool:
+        response = requests.request(
+            "GET", f"https://api.stopforumspam.org/api?email[]={self.email}"
+        )
+
+        return "<appears>yes</appears>" in response.text
+
     def send_email(self, subject, sender, content):
         """
         Sends an email to the user.
@@ -260,10 +271,10 @@ class User(db.Model):
         """
         error = False
 
-        # First check if the email is in the suppression list
-        try:
-            suppression_list.get_item(Key={"email": self.email})["Item"]
-        except KeyError:
+        if self.email_is_in_supression_list() or self.email_is_in_spam_list():
+            current_app.logger.info(f"Email in suppression or spam list: {self.email}")
+            error = True
+        else:
             try:
                 ses.send_email(
                     Source=sender,
@@ -280,8 +291,6 @@ class User(db.Model):
             except Exception as exception:
                 current_app.logger.error(f"Email delivery failed: {exception}")
                 error = True
-        else:
-            error = True
             
         return error
 
