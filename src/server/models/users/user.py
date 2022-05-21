@@ -4,7 +4,6 @@ import pathlib
 import random
 import requests
 import shutil
-import smtplib
 import string
 from string import Template
 from flask import url_for, request
@@ -222,34 +221,6 @@ class User(db.Model):
             errors.append("A password reset email could not be sent at this time.  "
                           "Please request a password reset later or notify us of the problem.")
         return errors
-
-    def send_email_via_smtp(self, subject, sender, content):
-        """
-        Sends an email to the user.  Note that the host and port indicate a local SMTP service (like sendmail) and a
-        insecure connection.  The assumption is that sendmail will be configured to relay the email via ssl.
-        :param subject: The email subject line
-        :param sender: The address of the sender (input via an environmental variable)
-        :param content: The email body.
-        :return: Any problem with delivery is noted with an error flag.
-        """
-        error = False
-        email = EmailMessage()
-        email['Subject'] = subject
-        email['From'] = sender
-        email['To'] = self.email
-        email.set_content(content)
-
-        # If sendmail fails for any reason, we drop the user from the db so that the user may re-register.
-        try:
-            s = smtplib.SMTP(host=os.environ.get('SMTP_SERVER_HOST'), port=25)
-            # s.starttls()
-            # s.login('you@gmail.com', 'password')
-            s.send_message(email)
-            s.quit()
-        except Exception as e:
-            current_app.logger.error(f"Email delivery failed: {e}")
-            error = True
-        return error
 
     def email_is_in_supression_list(self) -> bool:
         return "Item" in suppression_list.get_item(Key={"email": self.email})

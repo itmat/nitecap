@@ -2,8 +2,6 @@
 import boto3
 import os
 
-from email.message import EmailMessage
-
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, render_template, request, redirect, url_for, jsonify
@@ -19,7 +17,7 @@ import visitor_purge
 import logging
 import os
 from momentjs import momentjs
-from logging.handlers import RotatingFileHandler, SMTPHandler
+from logging.handlers import RotatingFileHandler
 from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
