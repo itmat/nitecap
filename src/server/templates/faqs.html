@@ -62,34 +62,6 @@
 
 
         <div class="card">
-            <div class="card-header" id="headingOne">
-                <h5 class="mb-0">
-                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne"
-                            aria-expanded="true" aria-controls="collapseOne">
-                    Why aren't p-values from Nitecap in the same order as q-values?
-                    </button>
-                </h5>
-            </div>
-            <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#faq_list">
-                <div class="card-body">
-                    <p>
-                        Typical q-values are calculated by a p-value correction, such as Benjamini-Hochberg, and so p-values and q-values are always in the same order.
-                        Instead, Nitecap orders all hypotheses by a statistic, "total delta," and q-values are in the same order as this statistic.
-                        The Nitecap p-value of a hypothesis is not used in this ordering and so it is typical to see p-values in a different order.
-                        The q-values should be treated as the more meaningful value when analyzing datasets with Nitecap.
-                    </p>
-
-                    <p>
-                        Nitecap avoids Benjamini-Hochberg correction since it is a permutation-based method that has limited ability to produce extremely low p-values.
-                        For example, a dataset with 6 timepoints over one cycle has a minimum p-value of about 0.008.
-                        With a dataset containing tens of thousands of measurements, Benjamini-Hochberg correction usually leaves little at a significant q-value.
-                        The q-values produced by Nitecap are able to be more significant by considering the exact test statistic rather than merely the p-value.
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
             <div class="card-header" id="headingTwo">
                 <h5 class="mb-0">
                     <button class="btn btn-link" data-toggle="collapse" data-target="#collapseTwo"
