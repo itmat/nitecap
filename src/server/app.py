@@ -24,7 +24,11 @@ from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
 app = Flask(__name__)
-load_dotenv(find_dotenv(usecwd=True))
+
+# Load from .env file if present (for local development)
+dotenv_path = find_dotenv()
+load_dotenv(dotenv_path)
+
 app.config.from_object('config_default')
 app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
