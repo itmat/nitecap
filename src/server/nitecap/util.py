@@ -4,6 +4,8 @@ import statsmodels.api as sm
 import pandas
 from numpy import cos, sin
 
+// TODO: remove this file once we migrate UPSIDE to the computation backend
+
 def BH_FDR(ps):
     ''' Benjamini-Hochberg FDR control
 
