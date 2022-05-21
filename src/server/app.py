@@ -28,7 +28,6 @@ dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
 
 app.config.from_object('config_default')
-app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
 app.jinja_env.globals['ENV'] = app.config['ENV']
 #CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
