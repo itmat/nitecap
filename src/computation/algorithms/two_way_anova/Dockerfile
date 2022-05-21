@@ -1,4 +1,4 @@
 FROM public.ecr.aws/lambda/python:latest
-RUN pip install -U pip && pip install simplejson statsmodels
+RUN pip install --no-cache-dir simplejson statsmodels
 COPY . ./
 CMD ["handler.handler"]

@@ -1,4 +1,4 @@
 FROM public.ecr.aws/lambda/python:latest
-RUN pip install -U pip && pip install simplejson numpy
+RUN pip install --no-cache-dir simplejson numpy
 COPY . ./
 CMD ["handler.handler"]
