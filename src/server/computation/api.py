@@ -154,14 +154,7 @@ def store_spreadsheet_to_s3(spreadsheet):
         s3.Object(
             SPREADSHEET_BUCKET_NAME,
             f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/original",
-        ).upload_fileobj(
-            original,
-            ExtraArgs={
-                "Metadata": {
-                    "Filename": spreadsheet.original_filename,
-                }
-            },
-        )
+        ).upload_fileobj(original)
 
     cycle_length = 24
 
@@ -171,6 +164,7 @@ def store_spreadsheet_to_s3(spreadsheet):
         "sample_collection_times": [
             t * cycle_length / spreadsheet.timepoints for t in spreadsheet.x_values
         ],
+        "submitted_file_name": spreadsheet.original_filename,
     }
 
     viewId = spreadsheet.edit_version
