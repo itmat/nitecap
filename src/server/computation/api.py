@@ -83,7 +83,7 @@ def submit_analysis(user):
         "computeWaveProperties": compute_wave_properties,
     }
 
-    if environment == "development" or environment == "DEV":
+    if environment == "DEV":
         analysis.update(**parameters)
 
     return run(analysis)
