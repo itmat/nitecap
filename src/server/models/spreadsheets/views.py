@@ -21,8 +21,7 @@ from itsdangerous import JSONWebSignatureSerializer as Serializer
 import constants
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
-    ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
+from models.users.decorators import requires_account, ajax_requires_login, ajax_requires_account, ajax_requires_account_or_share
 from models.users.user import User
 from models.shares import Share
 from models.jobs import Job
@@ -1006,41 +1005,6 @@ def bulk_delete(user=None):
             errors.append(error)
         spreadsheet_removed_ids.append(spreadsheet_id)
     return jsonify({'spreadsheet_removed_ids': spreadsheet_removed_ids, 'errors': errors})
-
-
-@spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
-@requires_admin
-def display_visitor_spreadsheets():
-    """
-    Standard endpoint - lists the spreadsheets belonging to visiting users.  Administrative function only.
-    """
-    users = User.find_visitors()
-    return render_template('spreadsheets/display_visitor_spreadsheets.html', users=users)
-
-
-@spreadsheet_blueprint.route('/delete_visitor_spreadsheets', methods=['POST'])
-@ajax_requires_admin
-def delete_visitor_spreadsheets():
-    """
-    AJAX endpoint - deletes the database table entry and the files associated with each of the
-    spreadsheets whose ids are provided via a json object { spreadsheet_list: [spreadsheet ids].  That the
-    spreadsheet belongs to a visiting user, is checked before removal and only those belonging to the visiting user
-    are removed.  If removal is incomplete, the error is noted but removals of other spreadsheets continue.  If any
-    problem occurred for any removal a 500 status code will be returned along with an error message.  Administrative
-    function only.
-    :return: json object - { errors: [error msgs] } with a status code of 500 if errors occurred and 200 otherwise.
-    """
-    errors = []
-    spreadsheet_ids = json.loads(request.data).get('spreadsheet_list', None)
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
-        if spreadsheet and spreadsheet.user.visitor:
-            error = spreadsheet.delete()
-            if error:
-                errors.append(error)
-    status_code = 500 if errors else 200
-    return jsonify({'errors': errors}), status_code
-
 
 @spreadsheet_blueprint.route('/upload_mpv_file', methods=['GET', 'POST'])
 def upload_mpv_file():

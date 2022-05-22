@@ -22,7 +22,6 @@ import os
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
 from pythonjsonlogger import jsonlogger
-from models.users.decorators import requires_admin, ajax_requires_admin
 
 app = Flask(__name__)
 app.config.from_object('config_default')
@@ -98,12 +97,6 @@ def gallery():
 @app.route('/user_guide', methods=['GET'])
 def user_guide():
     return render_template("user_guide.html")
-
-
-@app.route('/dashboard', methods=['GET'])
-@requires_admin
-def dashboard():
-    return redirect(url_for('users.display_users'))
 
 @app.errorhandler(413)
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
