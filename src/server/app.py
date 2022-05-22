@@ -15,7 +15,6 @@ load_dotenv(Path(__file__).parent / ".env")
 
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
-import visitor_purge
 import logging
 import os
 from momentjs import momentjs
@@ -114,23 +113,7 @@ app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 from computation.api import analysis_blueprint
 app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
 
-
-def visitor_purge_job():
-    app.logger.info('Visitor purge underway.')
-    # TODO: this visitor purge is only in rehearse=True mode
-    # and so it does nothing. It needs to be updated to the new backend code
-    # and then enabled to run for real
-    ids = visitor_purge.purge(True, app.config['DATABASE'])
-    if ids:
-        app.logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
-    else:
-        app.logger.info(f"No old visitor spreadsheets were found.")
-    app.logger.info('Visitor spreadsheet purge complete.')
-
-
 scheduler = BackgroundScheduler()
-# Don't run the visitor purge until we update it
-#spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab('5 1 * * *'))
 scheduler.start()
 
 if __name__ == '__main__':
