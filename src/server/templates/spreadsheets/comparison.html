@@ -1644,7 +1644,6 @@
                     app.stats.main_effect_p = Object.freeze(reorder_from_join(analysis.p_main_effect, analysis.indexes[0]));
                     app.stats.main_effect_q = Object.freeze(vm.ps_to_qs(app.stats.main_effect_p));
                 } else if(analysis.name == "Differential rhytmicity cosinor") {
-                    app.stats.two_way_anova_p = 
                     app.stats.phase_p = Object.freeze(reorder_from_join(analysis.p_phase, analysis.indexes[0]));
                     app.stats.phase_q = Object.freeze(vm.ps_to_qs(app.stats.phase_p));
                     app.stats.amplitude_p = Object.freeze(reorder_from_join(analysis.p_amplitude, analysis.indexes[0]));
