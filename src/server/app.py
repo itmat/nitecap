@@ -15,7 +15,6 @@ load_dotenv(Path(__file__).parent / ".env")
 
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
-import backup
 import visitor_purge
 import logging
 import os
@@ -116,13 +115,6 @@ from computation.api import analysis_blueprint
 app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
 
 
-def db_backup_job():
-    app.logger.info('Database backup underway.')
-    backup.backup(app.config['DATABASE'])
-    backup.clean_backups()
-    app.logger.info('Database backup complete.')
-
-
 def visitor_purge_job():
     app.logger.info('Visitor purge underway.')
     # TODO: this visitor purge is only in rehearse=True mode
@@ -137,7 +129,6 @@ def visitor_purge_job():
 
 
 scheduler = BackgroundScheduler()
-db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
 # Don't run the visitor purge until we update it
 #spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab('5 1 * * *'))
 scheduler.start()
