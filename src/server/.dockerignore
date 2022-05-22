@@ -1,0 +1,6 @@
+.dockerignore
+.env
+.env_example
+.gitignore
+pathway_analysis
+Dockerfile
