@@ -1,14 +1,17 @@
 #!/usr/bin/env python
-import boto3
 import os
 
 from apscheduler.triggers.cron import CronTrigger
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
+from pathlib import Path
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import werkzeug
 import json
 # Uncomment to allow CORS
 #from flask_cors import CORS
+
+# Load from .env file if present (for local development)
+load_dotenv(Path(__file__).parent / ".env")
 
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -22,11 +25,6 @@ from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
 app = Flask(__name__)
-
-# Load from .env file if present (for local development)
-dotenv_path = find_dotenv()
-load_dotenv(dotenv_path)
-
 app.config.from_object('config_default')
 app.jinja_env.globals['momentjs'] = momentjs
 app.jinja_env.globals['ENV'] = app.config['ENV']

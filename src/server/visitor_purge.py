@@ -4,7 +4,8 @@ import shutil
 import sqlite3
 import logging
 
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ def purge(rehearse, db):
 
 
 if __name__ == '__main__':
-    load_dotenv(find_dotenv(usecwd=True))
+    load_dotenv(Path(__file__).parent / ".env")
     DATABASE_FILE = os.environ['DATABASE_FILE']
     DATABASE_FOLDER = os.environ.get('DATABASE_FOLDER', '')
     if DATABASE_FOLDER:
