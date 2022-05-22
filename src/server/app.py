@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import os
 
-from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 from pathlib import Path
 from flask import Flask, render_template, request, redirect, url_for, jsonify
@@ -14,7 +13,6 @@ import json
 load_dotenv(Path(__file__).parent / ".env")
 
 from db import db
-from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 import os
 from momentjs import momentjs
@@ -112,9 +110,6 @@ app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 from computation.api import analysis_blueprint
 app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
-
-scheduler = BackgroundScheduler()
-scheduler.start()
 
 if __name__ == '__main__':
     app.logger.info("Starting app")
