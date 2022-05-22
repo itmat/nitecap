@@ -178,7 +178,7 @@ export class ComputationStack extends cdk.Stack {
 
     // Computation engine
 
-    let ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain"];
+    let ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain", "upside"];
 
     let computationLambdas = new Map<string, lambda.DockerImageFunction>();
     for (let algorithm of ALGORITHMS) {

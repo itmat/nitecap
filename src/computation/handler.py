@@ -88,19 +88,24 @@ def handler(event, context):
             sample_collection_times
         )
 
-        if algorithm == "two_way_anova":
-            p_interaction, p_main_effect = parallel(
-                compute(algorithm), *parameters, send_notification=send_notification
-            )
-
-            results = json.dumps({"indexes": indexes, "p_interaction": p_interaction, "p_main_effect": p_main_effect}, ignore_nan=True)
-
         if algorithm == "differential_cosinor":
             p_amplitude, p_phase = parallel(
                 compute(algorithm), *parameters, send_notification=send_notification
             )
 
             results = json.dumps({"indexes": indexes, "p_amplitude": p_amplitude, "p_phase": p_phase}, ignore_nan=True)
+        elif algorithm == "two_way_anova":
+            p_interaction, p_main_effect = parallel(
+                compute(algorithm), *parameters, send_notification=send_notification
+            )
+
+            results = json.dumps({"indexes": indexes, "p_interaction": p_interaction, "p_main_effect": p_main_effect}, ignore_nan=True)
+        else:
+            p = parallel(
+                compute(algorithm), *parameters, send_notification=send_notification
+            )
+
+            results = json.dumps({"indexes": indexes, "p": p}, ignore_nan=True)
     else:
         spreadsheet = spreadsheets.pop()
         sample_collection_times = spreadsheet.metadata["sample_collection_times"]
