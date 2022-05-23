@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-import boto3
 import os
 
+<<<<<<< HEAD
 from dotenv import load_dotenv, find_dotenv
 
 # Load from .env file if present (for local development)
@@ -15,11 +15,19 @@ os.environ["SECRET_KEY"] = SECRET_VALUE["SecretString"]
 from email.message import EmailMessage
 
 from apscheduler.triggers.cron import CronTrigger
+=======
+from apscheduler.triggers.cron import CronTrigger
+from dotenv import load_dotenv
+from pathlib import Path
+>>>>>>> origin/develop
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import werkzeug
 import json
 # Uncomment to allow CORS
 #from flask_cors import CORS
+
+# Load from .env file if present (for local development)
+load_dotenv(Path(__file__).parent / ".env")
 
 from db import db
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -28,13 +36,12 @@ import visitor_purge
 import logging
 import os
 from momentjs import momentjs
-from logging.handlers import RotatingFileHandler, SMTPHandler
+from logging.handlers import RotatingFileHandler
 from pythonjsonlogger import jsonlogger
 from models.users.decorators import requires_admin, ajax_requires_admin
 
 app = Flask(__name__)
 app.config.from_object('config_default')
-app.config.from_envvar('APPLICATION_SETTINGS')
 app.jinja_env.globals['momentjs'] = momentjs
 app.jinja_env.globals['ENV'] = app.config['ENV']
 #CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
@@ -131,9 +138,6 @@ app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 from computation.api import analysis_blueprint
 app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
 
-if os.environ["ENV"] == "development":
-    from computation.example import computation_test_blueprint
-    app.register_blueprint(computation_test_blueprint, url_prefix='/computation')
 
 def db_backup_job():
     app.logger.info('Database backup underway.')

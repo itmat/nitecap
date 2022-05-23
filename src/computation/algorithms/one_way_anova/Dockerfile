@@ -1,4 +1,4 @@
 FROM public.ecr.aws/lambda/python:latest
-RUN pip install -U pip && pip install simplejson scipy
+RUN pip install --no-cache-dir simplejson scipy
 COPY . ./
 CMD ["handler.handler"]

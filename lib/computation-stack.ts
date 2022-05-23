@@ -178,7 +178,7 @@ export class ComputationStack extends cdk.Stack {
 
     // Computation engine
 
-    let ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain"];
+    let ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain", "upside"];
 
     let computationLambdas = new Map<string, lambda.DockerImageFunction>();
     for (let algorithm of ALGORITHMS) {
@@ -196,7 +196,6 @@ export class ComputationStack extends cdk.Stack {
                 file: `algorithms/${algorithm}/Dockerfile`,
               }
             ),
-            tracing: lambda.Tracing.ACTIVE,
             environment: {
               CONNECTION_TABLE_NAME: connectionTable.tableName,
               NOTIFICATION_API_ENDPOINT: `https://${this.notificationApi.ref}.execute-api.${this.region}.amazonaws.com/default`,
@@ -251,8 +250,7 @@ export class ComputationStack extends cdk.Stack {
       "ComputationStateMachine",
       {
         definition: algorithmChoice,
-        timeout: cdk.Duration.hours(2),
-        tracingEnabled: true,
+        timeout: cdk.Duration.hours(2)
       }
     );
   }

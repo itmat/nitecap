@@ -24,7 +24,6 @@ RUN pip --no-cache-dir install -r requirements.txt
 
 WORKDIR /var/www/flask_apps/nitecap
 COPY --chown=www-data . .
-COPY --chown=www-data .env_example .env
 
 # Prepare apache
 COPY apache/nitecap.conf /etc/apache2/sites-available/

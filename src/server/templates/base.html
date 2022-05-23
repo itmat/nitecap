@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script>console.log("{{ config['ENV'] }}")</script>
-    {% if config['ENV'] == 'production' %}
+    {% if config['ENV'] == 'PROD' %}
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-138419827-1"></script>
         <script>

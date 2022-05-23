@@ -44,17 +44,13 @@ export type ContainerInstance = { instanceId: string; volumeId: string };
 
 export class ServerStack extends cdk.Stack {
   readonly containerInstance: ContainerInstance;
-  readonly serverSecretKey: secretsmanager.Secret;
   readonly service: ecs_patterns.ApplicationLoadBalancedEc2Service;
 
   constructor(scope: Construct, id: string, props: ServerStackProps) {
     super(scope, id, props);
 
     const environment = props.environment;
-
-    // Server secrets
-
-    this.serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
+    const serverSecretKey = new secretsmanager.Secret(this, "ServerSecretKey");
 
     // Server permissions
 
@@ -66,7 +62,6 @@ export class ServerStack extends cdk.Stack {
     props.computationStateMachine.grantRead(serverRole);
     props.computationStateMachine.grantStartExecution(serverRole);
     props.emailSuppressionList.grantReadData(serverRole);
-    this.serverSecretKey.grantRead(serverRole);
 
     serverRole.addToPolicy(
       new iam.PolicyStatement({
@@ -98,7 +93,6 @@ export class ServerStack extends cdk.Stack {
     let serverEnvironmentVariables = {
       ...environment.server.variables,
       AWS_DEFAULT_REGION: this.region,
-      SERVER_SECRET_KEY_ARN: this.serverSecretKey.secretArn,
       SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
       COMPUTATION_STATE_MACHINE_ARN:
         props.computationStateMachine.stateMachineArn,
@@ -106,7 +100,7 @@ export class ServerStack extends cdk.Stack {
       EMAIL_SENDER: `no-reply@${props.subdomainName}`,
       EMAIL_CONFIGURATION_SET_NAME: props.emailConfigurationSetName,
       EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
-    }
+    };
 
     let serverContainer = serverTask.addContainer("ServerContainer", {
       image: ecs.ContainerImage.fromAsset(
@@ -115,6 +109,7 @@ export class ServerStack extends cdk.Stack {
       ),
       memoryLimitMiB: 3328,
       environment: serverEnvironmentVariables,
+      secrets: { SECRET_KEY: ecs.Secret.fromSecretsManager(serverSecretKey) },
       portMappings: [
         {
           containerPort: 5000,
@@ -149,7 +144,7 @@ export class ServerStack extends cdk.Stack {
       capacity: {
         maxCapacity: 1,
         instanceType: ec2.InstanceType.of(
-          ec2.InstanceClass.C6I,
+          ec2.InstanceClass.C6A,
           ec2.InstanceSize.LARGE
         ),
         machineImage: ecs.EcsOptimizedImage.amazonLinux2(

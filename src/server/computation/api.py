@@ -18,7 +18,7 @@ s3 = boto3.resource("s3")
 s3_client = boto3.client("s3", config=Config(s3={"addressing_style": "virtual"}))
 sfn = boto3.client("stepfunctions")
 
-ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain"]
+ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain", "upside"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
 SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
 
@@ -83,7 +83,7 @@ def submit_analysis(user):
         "computeWaveProperties": compute_wave_properties,
     }
 
-    if environment == "development" or environment == "DEV":
+    if environment == "DEV":
         analysis.update(**parameters)
 
     return run(analysis)
@@ -154,14 +154,7 @@ def store_spreadsheet_to_s3(spreadsheet):
         s3.Object(
             SPREADSHEET_BUCKET_NAME,
             f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/original",
-        ).upload_fileobj(
-            original,
-            ExtraArgs={
-                "Metadata": {
-                    "Filename": spreadsheet.original_filename,
-                }
-            },
-        )
+        ).upload_fileobj(original)
 
     cycle_length = 24
 
@@ -171,6 +164,7 @@ def store_spreadsheet_to_s3(spreadsheet):
         "sample_collection_times": [
             t * cycle_length / spreadsheet.timepoints for t in spreadsheet.x_values
         ],
+        "submitted_file_name": spreadsheet.original_filename,
     }
 
     viewId = spreadsheet.edit_version

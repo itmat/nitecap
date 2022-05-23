@@ -1,4 +1,0 @@
-install.packages("remotes", repos = "http://cran.us.r-project.org"); # Using version 2.2.0
-remotes::install_version("stringr", "1.4.0", repos = "http://cran.us.r-project.org");
-remotes::install_version('readr', "1.1.0", repos = "http://cran.us.r-project.org");
-remotes::install_github("https://github.com/gangwug/MetaCycle");

@@ -2,8 +2,8 @@ import boto3
 import datetime
 import pathlib
 import random
+import requests
 import shutil
-import smtplib
 import string
 from string import Template
 from flask import url_for, request
@@ -222,33 +222,15 @@ class User(db.Model):
                           "Please request a password reset later or notify us of the problem.")
         return errors
 
-    def send_email_via_smtp(self, subject, sender, content):
-        """
-        Sends an email to the user.  Note that the host and port indicate a local SMTP service (like sendmail) and a
-        insecure connection.  The assumption is that sendmail will be configured to relay the email via ssl.
-        :param subject: The email subject line
-        :param sender: The address of the sender (input via an environmental variable)
-        :param content: The email body.
-        :return: Any problem with delivery is noted with an error flag.
-        """
-        error = False
-        email = EmailMessage()
-        email['Subject'] = subject
-        email['From'] = sender
-        email['To'] = self.email
-        email.set_content(content)
+    def email_is_in_supression_list(self) -> bool:
+        return "Item" in suppression_list.get_item(Key={"email": self.email})
 
-        # If sendmail fails for any reason, we drop the user from the db so that the user may re-register.
-        try:
-            s = smtplib.SMTP(host=os.environ.get('SMTP_SERVER_HOST'), port=25)
-            # s.starttls()
-            # s.login('you@gmail.com', 'password')
-            s.send_message(email)
-            s.quit()
-        except Exception as e:
-            current_app.logger.error(f"Email delivery failed: {e}")
-            error = True
-        return error
+    def email_is_in_spam_list(self) -> bool:
+        response = requests.request(
+            "GET", f"https://api.stopforumspam.org/api?email[]={self.email}"
+        )
+
+        return "<appears>yes</appears>" in response.text
 
     def send_email(self, subject, sender, content):
         """
@@ -260,10 +242,10 @@ class User(db.Model):
         """
         error = False
 
-        # First check if the email is in the suppression list
-        try:
-            suppression_list.get_item(Key={"email": self.email})["Item"]
-        except KeyError:
+        if self.email_is_in_supression_list() or self.email_is_in_spam_list():
+            current_app.logger.info(f"Email in suppression or spam list: {self.email}")
+            error = True
+        else:
             try:
                 ses.send_email(
                     Source=sender,
@@ -280,8 +262,6 @@ class User(db.Model):
             except Exception as exception:
                 current_app.logger.error(f"Email delivery failed: {exception}")
                 error = True
-        else:
-            error = True
             
         return error
 
