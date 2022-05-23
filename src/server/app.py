@@ -1,23 +1,33 @@
 #!/usr/bin/env python
 import os
 
-from dotenv import load_dotenv
-from pathlib import Path
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import werkzeug
 import json
 # Uncomment to allow CORS
 #from flask_cors import CORS
 
-# Load from .env file if present (for local development)
-load_dotenv(Path(__file__).parent / ".env")
-
 from db import db
 import logging
-import os
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
 from pythonjsonlogger import jsonlogger
+
+# Load environment variables (for local development)
+if os.environ["ENV"] == "DEV":
+    with open("outputs.json") as outputs:
+        outputs = json.load(outputs)
+
+    for stack in outputs:
+        if stack.endswith("ServerStack"):
+            outputs = outputs[stack]
+
+    for variable in outputs["EnvironmentVariables"].split():
+        if variable not in os.environ:
+            os.environ[variable] = outputs[variable.replace("_", "")]
+
+    if "SECRET_KEY" not in os.environ:
+        os.environ["SECRET_KEY"] = "SECRET_KEY"
 
 app = Flask(__name__)
 app.config.from_object('config_default')

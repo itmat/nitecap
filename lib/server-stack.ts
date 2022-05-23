@@ -233,5 +233,9 @@ export class ServerStack extends cdk.Stack {
     )) {
       new cdk.CfnOutput(this, variableName, { value: variableValue });
     }
+
+    new cdk.CfnOutput(this, "EnvironmentVariables", {
+      value: Object.keys(serverEnvironmentVariables).join(" "),
+    });
   }
 }
