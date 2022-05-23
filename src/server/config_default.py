@@ -19,8 +19,3 @@ BANNER_CONTENT = os.environ.get('BANNER_CONTENT', '')
 BANNER_VISIBLE = bool(os.environ.get('BANNER_VISIBLE', ''))
 SESSION_COOKIE_SAMESITE='Lax'
 USE_HTTPS = (ENV == 'PROD')
-
-# For job system
-NUM_JOB_WORKERS = 2
-JOB_TIMEOUT = 30 * 60 # Seconds
-JOB_DROP_TIME = 24 * 60 * 60 # Seconds
