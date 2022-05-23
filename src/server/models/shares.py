@@ -51,6 +51,13 @@ class Share(db.Model):
         db.session.add(self)
         db.session.commit()
 
+    def delete(self):
+        """
+        Remove this spreadsheet from the database
+        """
+        db.session.delete(self)
+        db.session.commit()
+
     @classmethod
     def find_by_id(cls, _id):
         return cls.query.filter_by(id=_id).first()
