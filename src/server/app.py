@@ -4,8 +4,6 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import werkzeug
 import json
-# Uncomment to allow CORS
-#from flask_cors import CORS
 
 from db import db
 import logging
@@ -33,7 +31,6 @@ app = Flask(__name__)
 app.config.from_object('config_default')
 app.jinja_env.globals['momentjs'] = momentjs
 app.jinja_env.globals['ENV'] = app.config['ENV']
-#CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
 
 class ReverseProxied:
     """
