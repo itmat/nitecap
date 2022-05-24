@@ -488,12 +488,16 @@ class Spreadsheet(db.Model):
         user_directory_path = user.get_user_directory_path()
         Path(user_directory_path).mkdir(parents=True, exist_ok=True)
 
+        temporary_spreadsheet_folder_name = f"{uuid.uuid4().hex}"
+        temporary_share_spreadsheet_data_path = Path(user.get_user_directory_path()) / temporary_spreadsheet_folder_name
+        relative_temporary_share_spreadsheet_data_path = Path(user.get_user_directory_name()) / temporary_spreadsheet_folder_name
+
+
         # Create temporary paths for the share spreadsheet data directory and its included uploaded and processed
         # files and copy over the original spreadsheet data directory.
-        temporary_share_spreadsheet_data_path = os.path.join(user_directory_path,  uuid.uuid4().hex)
         shutil.copytree(
             spreadsheet.get_spreadsheet_data_folder(),
-            Path(os.environ["UPLOAD_FOLDER"])/temporary_share_spreadsheet_data_path,
+            temporary_share_spreadsheet_data_path,
         )
 
         # Create the share object - all path reflect the temporary share paths (i.e., paths containing uuid)
@@ -510,18 +514,20 @@ class Spreadsheet(db.Model):
                                         column_labels_str=spreadsheet.column_labels_str,
                                         categorical_data=spreadsheet.categorical_data,
                                         last_access=None,
-                                        spreadsheet_data_path=temporary_share_spreadsheet_data_path,
+                                        spreadsheet_data_path=str(relative_temporary_share_spreadsheet_data_path),
                                         user_id=user.id)
         spreadsheet_share.save_to_db()
 
         # Recover the shared spreadsheet id and rename the spreadsheet data path accordingly.
-        spreadsheet_share_data_path = os.path.join(user_directory_path,
-                                             spreadsheet_share.get_spreadsheet_data_directory_conventional_name())
+
+        spreadsheet_folder_name = spreadsheet_share.get_spreadsheet_data_directory_conventional_name()
+        spreadsheet_share_data_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
         os.rename(temporary_share_spreadsheet_data_path, spreadsheet_share_data_path)
+        relative_spreadsheet_share_data_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
-        spreadsheet_share.spreadsheet_data_path = spreadsheet_share_data_path
+        spreadsheet_share.spreadsheet_data_path = str(relative_spreadsheet_share_data_path)
         spreadsheet_share.save_to_db()
 
         # Re-upload to s3. Import here to avoid circular import

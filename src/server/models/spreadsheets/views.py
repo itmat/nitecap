@@ -98,8 +98,10 @@ def upload_file():
             current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
             return jsonify({"errors": [FILE_UPLOAD_ERROR]}), 500
 
-        directory_path = pathlib.Path(os.path.join(user.get_user_directory_path(), f"{uuid.uuid4().hex}"))
+        spreadsheet_folder_name = f"{uuid.uuid4().hex}"
+        directory_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         directory_path.mkdir(parents=True, exist_ok=True)
+        relative_directory_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
@@ -125,7 +127,7 @@ def upload_file():
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_name,
-                                      spreadsheet_data_path=str(directory_path),
+                                      spreadsheet_data_path=str(relative_directory_path),
                                       user_id=user_id)
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
@@ -136,13 +138,14 @@ def upload_file():
         spreadsheet.save_to_db()
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
-        spreadsheet_data_path = os.path.join(user.get_user_directory_path(),
-                                             spreadsheet.get_spreadsheet_data_directory_conventional_name())
+        spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
+        spreadsheet_data_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         os.rename(directory_path, spreadsheet_data_path)
+        relative_spreadsheet_data_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
-        spreadsheet.spreadsheet_data_path = spreadsheet_data_path
+        spreadsheet.spreadsheet_data_path = str(relative_spreadsheet_data_path)
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
 
@@ -974,8 +977,10 @@ def upload_mpv_file():
             return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row,
                                    errors=[FILE_UPLOAD_ERROR])
 
-        directory_path = pathlib.Path(os.path.join(user.get_user_directory_path(), f"{uuid.uuid4().hex}"))
+        spreadsheet_folder_name = f"{uuid.uuid4().hex}"
+        directory_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         directory_path.mkdir(parents=True, exist_ok=True)
+        relative_directory_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
@@ -1000,7 +1005,7 @@ def upload_mpv_file():
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_path,
-                                      spreadsheet_data_path=str(directory_path),
+                                      spreadsheet_data_path=str(relative_directory_path),
                                       categorical_data=json.dumps(categorical_data),
                                       user_id=user_id)
         except NitecapException as ne:
@@ -1012,13 +1017,14 @@ def upload_mpv_file():
         spreadsheet.save_to_db()
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
-        spreadsheet_data_path = os.path.join(user.get_user_directory_path(),
-                                             spreadsheet.get_spreadsheet_data_directory_conventional_name())
+        spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
+        spreadsheet_data_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         os.rename(directory_path, spreadsheet_data_path)
+        relative_spreadsheet_data_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
-        spreadsheet.spreadsheet_data_path = spreadsheet_data_path
+        spreadsheet.spreadsheet_data_path = relative_spreadsheet_data_path
         spreadsheet.uploaded_file_path = os.path.join(spreadsheet_data_path, os.path.basename(file_path))
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
