@@ -1,4 +1,4 @@
-FROM python:3.9-buster
+FROM python:3.10.4-slim
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN groupmod -g 1001 www-data \
   && usermod -u 1001 -g 1001 www-data \
   && apt-get update \
+  && apt-get -y upgrade \
   && apt-get install -y apt-utils \
   && apt-get install -y libmagic-dev \
   && apt-get install -y apache2 \
@@ -20,11 +21,9 @@ RUN groupmod -g 1001 www-data \
 # Install the python packages we use
 ADD requirements.txt .
 RUN pip --no-cache-dir install -r requirements.txt
-RUN mkdir /var/www/flask_apps/logs
 
 WORKDIR /var/www/flask_apps/nitecap
 COPY --chown=www-data . .
-COPY --chown=www-data .env_example .env
 
 # Prepare apache
 COPY apache/nitecap.conf /etc/apache2/sites-available/
