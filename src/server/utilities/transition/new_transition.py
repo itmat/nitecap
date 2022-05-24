@@ -119,6 +119,11 @@ with app.app.app_context():
                 bad_spreadsheets.append(spreadsheet)
                 continue
 
+            if spreadsheet.column_labels_str and ('ID' not in spreadsheet.column_labels_str):
+                bad_spreadsheets.append(spreadsheet)
+                print(f"Spreadsheet {spreadsheet.id} has missing ID column str despite having column labels - deleting")
+                continue
+
             uploaded_file_path = spreadsheet.get_uploaded_file_path()
             if not uploaded_file_path.exists():
                 print(f"WARNING: failed to find uploaded file for {spreadsheet.id} at {uploaded_file_path}")
