@@ -3,6 +3,8 @@ import datetime
 import functools
 import sys
 
+from pathlib import Path
+
 sys.path.append("/var/www/flask_apps/nitecap")
 
 print = functools.partial(print, flush=True)
@@ -13,6 +15,57 @@ from sqlalchemy.sql import text
 from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
 from models.shares import Share
+
+  #######  
+
+import boto3
+import os
+import time
+
+from computation.api import ALGORITHMS, run, store_spreadsheet_to_s3
+
+WAIT_DURATION = 0.01
+
+λ = boto3.client("lambda")
+ssm = boto3.client("ssm")
+
+
+def run_analyses(spreadsheet):
+    userId = str(spreadsheet.user.id)
+    spreadsheetId = spreadsheet.id
+    viewId = spreadsheet.edit_version
+
+    for algorithm in ALGORITHMS:
+        analysis = {
+            "userId": userId,
+            "algorithm": algorithm,
+            "spreadsheetId": spreadsheetId,
+            "viewId": viewId,
+        }
+
+        print(f"Running analysis: {analysis}")
+
+        run(analysis)
+        time.sleep(WAIT_DURATION)
+
+
+def transfer_spreadsheet_to_S3(spreadsheet):
+    print(
+        f"Transferring spreadsheet {spreadsheet.id} from user {spreadsheet.user.id} to S3"
+    )
+
+    spreadsheet.init_on_load()
+    store_spreadsheet_to_s3(spreadsheet)
+
+    del spreadsheet.df
+    time.sleep(WAIT_DURATION)
+
+
+def get_snapshot_lambda_name():
+    response = ssm.get_parameter(Name=os.environ["SNAPSHOT_LAMBDA_NAME_PARAMETER"])
+    return response["Parameter"]["Value"]
+
+  #######  
 
 DRY_RUN = False
 
@@ -36,12 +89,12 @@ with app.app.app_context():
     """)
 
     print("Dropping specified users")
-    with open("users_to_delete.txt") as users_to_delete:
+    with open(Path(__file__).parent / "users_to_delete.txt") as users_to_delete:
         user_emails = [line.strip() for line in users_to_delete.readlines()]
         for email in user_emails:
             user = User.find_by_email(email)
             if user:
-                print("Deleting user {user.id} {user.email}")
+                print(f"Deleting user {user.id} {user.email}")
                 if not DRY_RUN:
                     user.delete()
 
@@ -125,3 +178,21 @@ with app.app.app_context():
                     share.delete()
                 print(f"Removing share {share.id} missing corresponding spreadsheet {id} (possibly spreadsheet was deleted)")
                 continue
+
+    db.session.commit()
+
+    print("Upload the spreadsheets to the S3 bucket")
+    for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
+        transfer_spreadsheet_to_S3(spreadsheet)
+
+while True:
+    try:
+        λ.invoke(FunctionName=get_snapshot_lambda_name(), InvocationType="Event")
+        print("Invoked the snapshot lambda")
+        break
+    except (
+        λ.exceptions.ResourceNotFoundException,
+        λ.exceptions.ResourceNotReadyException,
+    ):
+        print("Waiting for the snapshot lambda to be constructed")
+        time.sleep(10)
