@@ -2,6 +2,7 @@
 import datetime
 import functools
 import sys
+import pathlib
 
 sys.path.append("/var/www/flask_apps/nitecap")
 
@@ -14,7 +15,7 @@ from models.spreadsheets.spreadsheet import Spreadsheet
 from models.users.user import User
 from models.shares import Share
 
-DRY_RUN = False
+DRY_RUN = True
 
 db.init_app(app.app)
 
@@ -109,10 +110,29 @@ with app.app.app_context():
             print(f"Spreadsheet {spreadsheet.id} has no valid user ({spreadsheet.user_id}), deleting.")
             if not DRY_RUN:
                 spreadsheet.delete()
-    
-    command = 'SELECT file_path FROM spreadsheets WHERE file_path LIKE "/%";'
-    result = list(db.session.execute(text(command)))
-    print(f"Found {len(result)} spreadsheets with an absolute file_path")
+
+    print("Coercing absolute file paths to relative paths")
+    base_dir = "/nitecap_web/uploads"
+    for spreadsheet in db.session.query(Spreadsheet).order_by(Spreadsheet.id):
+        if spreadsheet.file_path and spreadsheet.file_path.startswith("/"):
+            new_file_path = str(pathlib.Path(spreadsheet.file_path).relative_to(base_dir))
+            print(f"Converting file_path: {spreadsheet.file_path} to {new_file_path}")
+            if not DRY_RUN:
+                spreadsheet.file_path = new_file_path
+                db.session.add(spreadsheet)
+        if spreadsheet.spreadsheet_data_path and spreadsheet.spreadsheet_data_path.startswith("/"):
+            new_spreadsheet_data_path = str(pathlib.Path(spreadsheet.spreadsheet_data_path).relative_to(base_dir))
+            print(f"Converting spreadsheet_data_path: {spreadsheet.spreadsheet_data_path} to {new_spreadsheet_data_path}")
+            if not DRY_RUN:
+                spreadsheet.spreadsheet_data_path = new_spreadsheet_data_path
+                db.session.add(spreadsheet)
+        if spreadsheet.uploaded_file_path and spreadsheet.uploaded_file_path.startswith("/"):
+            new_uploaded_file_path = str(pathlib.Path(spreadsheet.uploaded_file_path).relative_to(base_dir))
+            print(f"Converting uploaded_file_path: {spreadsheet.uploaded_file_path} to {new_uploaded_file_path}")
+            if not DRY_RUN:
+                spreadsheet.uploaded_file_path = new_uploaded_file_path
+                db.session.add(spreadsheet)
+    db.session.commit()
 
     bad_shares = []
     for share in db.session.query(Share).order_by(Share.id):
