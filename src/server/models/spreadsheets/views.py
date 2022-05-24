@@ -521,7 +521,7 @@ def delete(user=None):
 
     try:
         spreadsheet.delete_from_db()
-        shutil.rmtree(spreadsheet.spreadsheet_data_path)
+        shutil.rmtree(spreadsheet.get_spreadsheet_data_folder())
     except Exception as e:
         current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
                                  f"expunged.", e)
