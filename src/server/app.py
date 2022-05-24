@@ -71,6 +71,14 @@ def handle_404(e):
 def create_tables():
     db.create_all()
 
+    if os.environ["ENV"] == "DEV":
+        # Create a test user with the specified username+password (both "testuser")
+        from models.users.user import User
+        user, _, _ = User.register_user("testuser", "testuser@nitecap.org", "testuser")
+        if not user.activated:
+            user.activated = 1
+            user.save_to_db()
+
 
 @app.route('/', methods=['GET'])
 def home():
