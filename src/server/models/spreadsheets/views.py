@@ -520,8 +520,7 @@ def delete(user=None):
         return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     try:
-        spreadsheet.delete_from_db()
-        shutil.rmtree(spreadsheet.get_spreadsheet_data_folder())
+        spreadsheet.delete()
     except Exception as e:
         current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
                                  f"expunged.", e)
