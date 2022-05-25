@@ -27,6 +27,7 @@ def cosinor(data, sample_collection_times, cycle_length=24):
         y, t = remove_missing_values(y, sample_collection_times)
 
         if y.size < 3:
+            x.append([np.nan, np.nan, np.nan])
             p.append(np.nan)
             continue
 
