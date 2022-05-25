@@ -1,13 +1,7 @@
 import numpy as np
 import statsmodels.api as sm
 
-
-def remove_missing_values(y, sample_collection_times):
-    indices_of_finite_values_of_y = np.isfinite(y)
-    return (
-        y[indices_of_finite_values_of_y],
-        sample_collection_times[indices_of_finite_values_of_y],
-    )
+from utilities import enough_timepoints, remove_missing_values
 
 
 def cosinor(data, sample_collection_times, cycle_length=24):
@@ -26,7 +20,7 @@ def cosinor(data, sample_collection_times, cycle_length=24):
     for y in data:
         y, t = remove_missing_values(y, sample_collection_times)
 
-        if y.size < 3:
+        if not enough_timepoints(t, cycle_length):
             x.append([np.nan, np.nan, np.nan])
             p.append(np.nan)
             continue

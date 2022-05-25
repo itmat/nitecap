@@ -7,6 +7,8 @@ from pathlib import Path
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import STAP
 
+from utilities import find_indices_with_enough_timepoints
+
 numpy2ri.activate()
 
 R.r.library("multtest")
@@ -31,15 +33,24 @@ def rain(data, sample_collection_times, cycle_length=24):
 
     p = []
     while batch := list(islice(data, BATCH_SIZE)):
-        y = np.array(batch).T
-        p.extend(
+        y = np.array(batch)
+
+        indices_with_enough_timepoints = find_indices_with_enough_timepoints(
+            y, sample_collection_times, cycle_length
+        )
+
+        P = np.full(len(y), np.nan)
+        P.put(
+            indices_with_enough_timepoints,
             RAIN.rain(
-                y,
+                y[indices_with_enough_timepoints].T,
                 period=cycle_length,
                 deltat=Δt,
                 measure_sequence=measure_sequence,
                 na_rm=bool(np.isnan(y).any()),
-            ).rx2("pVal")
+            ).rx2("pVal"),
         )
+
+        p.extend(P)
 
     return [p]
