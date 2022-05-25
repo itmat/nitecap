@@ -9,7 +9,6 @@ import * as sns from "aws-cdk-lib/aws-sns";
 import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 
 import { Construct } from "constructs";
-import { Environment } from "./environment";
 
 import { ComputationStack } from "./computation-stack";
 import { DomainStack } from "./domain-stack";
@@ -18,7 +17,6 @@ import { PersistentStorageStack } from "./persistent-storage-stack";
 import { ServerStack } from "./server-stack";
 
 type OperationStackProps = cdk.StackProps & {
-  environment: Environment;
   domainStack: DomainStack;
   computationStack: ComputationStack;
   emailStack: EmailStack;
@@ -30,11 +28,9 @@ export class OperationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: OperationStackProps) {
     super(scope, id, props);
 
-    const environment = props.environment;
-
     // Backup
 
-    let backupPlan = backup.BackupPlan.dailyWeeklyMonthly5YearRetention(
+    let backupPlan = backup.BackupPlan.dailyMonthly1YearRetention(
       this,
       `${this.stackName}-BackupPlan`,
       props.persistentStorageStack.backupVault
