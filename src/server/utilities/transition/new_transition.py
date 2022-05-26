@@ -68,7 +68,7 @@ def get_snapshot_lambda_name():
 
   #######  
 
-DRY_RUN = True
+DRY_RUN = False
 
 db.init_app(app.app)
 

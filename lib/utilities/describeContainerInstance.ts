@@ -46,7 +46,7 @@ export default function describeContainerInstance(
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ["ecs:DescribeContainerInstances"],
-            resources: [containerInstanceArn],
+            resources: ["*"],
           }),
         ],
       },
