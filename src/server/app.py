@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, jsonify
 import werkzeug
 import json
 
@@ -9,11 +9,12 @@ from db import db
 import logging
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from pythonjsonlogger import jsonlogger
 
 # Load environment variables (for local development)
 if os.environ["ENV"] == "DEV":
-    with open("outputs.json") as outputs:
+    with open(Path(__file__).parents[2] / "outputs.json") as outputs:
         outputs = json.load(outputs)
 
     for stack in outputs:
@@ -71,10 +72,11 @@ def handle_404(e):
 def create_tables():
     db.create_all()
 
-    if os.environ["ENV"] == "DEV":
-        # Create a test user with the specified username+password (both "testuser")
-        from models.users.user import User
-        user, _, _ = User.register_user("testuser", "testuser@nitecap.org", "testuser")
+    # Create test users specified in the testing configuration file
+    from models.users.user import User
+
+    for test_user in json.loads(os.environ["TEST_USERS"]):
+        user, _, _ = User.register_user(test_user["name"], test_user["email"], test_user["password"])
         if not user.activated:
             user.activated = 1
             user.save_to_db()

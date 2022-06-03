@@ -25,6 +25,8 @@ import setupLogging from "./utilities/setupLogging";
 
 import { Environment } from "./environment";
 
+import test from "../cypress/.env";
+
 export type ServerStackProps = cdk.StackProps & {
   environment: Environment;
   computationStateMachine: sfn.StateMachine;
@@ -90,8 +92,11 @@ export class ServerStack extends cdk.Stack {
       ],
     });
 
+    let testUsers = environment.production ? [] : test.users
+
     let serverEnvironmentVariables = {
-      ...environment.server.variables,
+      ENV: "PROD",
+      TEST_USERS: JSON.stringify(testUsers),
       AWS_DEFAULT_REGION: this.region,
       SPREADSHEET_BUCKET_NAME: props.spreadsheetBucket.bucketName,
       COMPUTATION_STATE_MACHINE_ARN:
@@ -100,6 +105,7 @@ export class ServerStack extends cdk.Stack {
       EMAIL_SENDER: `no-reply@${props.subdomainName}`,
       EMAIL_CONFIGURATION_SET_NAME: props.emailConfigurationSetName,
       EMAIL_SUPPRESSION_LIST_NAME: props.emailSuppressionList.tableName,
+      ...environment.server.variables,
     };
 
     let serverContainer = serverTask.addContainer("ServerContainer", {
