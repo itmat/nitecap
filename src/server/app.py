@@ -12,21 +12,6 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from pythonjsonlogger import jsonlogger
 
-# Load environment variables (for local development)
-if os.environ["ENV"] == "DEV":
-    with open(Path(__file__).parents[2] / "outputs.json") as outputs:
-        outputs = json.load(outputs)
-
-    for stack in outputs:
-        if stack.endswith("ServerStack"):
-            outputs = outputs[stack]
-
-    for variable in outputs["EnvironmentVariables"].split():
-        if variable not in os.environ:
-            os.environ[variable] = outputs[variable.replace("_", "")]
-
-    if "SECRET_KEY" not in os.environ:
-        os.environ["SECRET_KEY"] = "SECRET_KEY"
 
 app = Flask(__name__)
 app.config.from_object('config_default')

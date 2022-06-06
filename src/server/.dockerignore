@@ -1,4 +1,5 @@
 .dockerignore
 .gitignore
 pathway_analysis
+utilities/run_local_server.py
 Dockerfile
