@@ -21,11 +21,9 @@ from itsdangerous import JSONWebSignatureSerializer as Serializer
 import constants
 from exceptions import NitecapException
 from models.spreadsheets.spreadsheet import Spreadsheet
-from models.users.decorators import requires_login, requires_admin, requires_account, ajax_requires_login, \
-    ajax_requires_account, ajax_requires_account_or_share, ajax_requires_admin
+from models.users.decorators import requires_account, ajax_requires_login, ajax_requires_account, ajax_requires_account_or_share
 from models.users.user import User
 from models.shares import Share
-from models.jobs import Job
 from timer_decorator import timeit
 import computation.api
 
@@ -100,8 +98,10 @@ def upload_file():
             current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
             return jsonify({"errors": [FILE_UPLOAD_ERROR]}), 500
 
-        directory_path = pathlib.Path(os.path.join(user.get_user_directory_path(), f"{uuid.uuid4().hex}"))
+        spreadsheet_folder_name = f"{uuid.uuid4().hex}"
+        directory_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         directory_path.mkdir(parents=True, exist_ok=True)
+        relative_directory_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
@@ -127,7 +127,7 @@ def upload_file():
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_name,
-                                      spreadsheet_data_path=str(directory_path),
+                                      spreadsheet_data_path=str(relative_directory_path),
                                       user_id=user_id)
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
@@ -138,13 +138,14 @@ def upload_file():
         spreadsheet.save_to_db()
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
-        spreadsheet_data_path = os.path.join(user.get_user_directory_path(),
-                                             spreadsheet.get_spreadsheet_data_directory_conventional_name())
+        spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
+        spreadsheet_data_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         os.rename(directory_path, spreadsheet_data_path)
+        relative_spreadsheet_data_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
-        spreadsheet.spreadsheet_data_path = spreadsheet_data_path
+        spreadsheet.spreadsheet_data_path = str(relative_spreadsheet_data_path)
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
 
@@ -519,8 +520,7 @@ def delete(user=None):
         return jsonify({"error": SPREADSHEET_NOT_FOUND_MESSAGE}), 404
 
     try:
-        spreadsheet.delete_from_db()
-        shutil.rmtree(spreadsheet.spreadsheet_data_path)
+        spreadsheet.delete()
     except Exception as e:
         current_app.logger.error(f"The data for spreadsheet {spreadsheet_id} could not all be successfully "
                                  f"expunged.", e)
@@ -726,86 +726,6 @@ def copy_share(token, user=None):
     return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet_ids_str))
 
 
-@spreadsheet_blueprint.route('/get_upside', methods=['POST'])
-@timeit
-@ajax_requires_account_or_share
-def get_upside(user=None):
-    # TODO: remove this eventually when using the computation backend
-
-    comparisons_directory = os.path.join(user.get_user_directory_path(), "comparisons")
-    if not os.path.exists(comparisons_directory):
-        os.makedirs(comparisons_directory, exist_ok=True)
-
-    spreadsheet_ids = json.loads(request.data)['spreadsheet_ids']
-
-    # Run Upside dampening analysis, if it hasn't already been stored to disk
-    upside_p_list = []
-    upside_q_list = []
-    spreadsheets = []
-
-    # Check user ownership over these spreadsheets
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_id)
-        if not spreadsheet:
-            current_app.logger.warn(f"Attempted access for spreadsheet {spreadsheet_id} not owned by user {user.id}")
-            return jsonify({'error': "No such spreadsheet"})
-
-        spreadsheet.init_on_load()
-        spreadsheets.append(spreadsheet)
-
-    dfs, combined_index, row_numbers = Spreadsheet.join_spreadsheets(spreadsheets)
-
-    anova_p = None
-    anova_q = None
-    main_effect_p = None
-    main_effect_q = None
-    for primary, secondary in [(0, 1), (1, 0)]:
-        primary_id, secondary_id = spreadsheet_ids[primary], spreadsheet_ids[secondary]
-        file_path = os.path.join(comparisons_directory, f"{primary_id}v{secondary_id}.comparison.parquet")
-        try:
-            # Load comparison results
-            comp_data = pyarrow.parquet.read_pandas(file_path).to_pandas()
-            #Align indexes with spreadsheets
-            comp_data = comp_data.loc[combined_index]
-            # Populate the values
-            upside_p_list.append(comp_data["upside_p"].values.tolist())
-            upside_q_list.append(comp_data["upside_q"].values.tolist())
-            anova_p = comp_data["two_way_anova_p"]
-            anova_q = comp_data["two_way_anova_q"]
-            phase_p = comp_data["phase_p"]
-            main_effect_p = comp_data["main_effect_p"]
-            main_effect_q = comp_data["main_effect_q"]
-            phase_q = comp_data["phase_q"]
-            amplitude_p = comp_data["amplitude_p"]
-            amplitude_q = comp_data["amplitude_q"]
-            current_app.logger.info(f"Loaded upside values from file {file_path}")
-        except (OSError, KeyError) as e: # Parquet file could not be read (hasn't been written yet)
-            # Trigger the job to compute these
-            job_params = [user.id, spreadsheet_ids, [spreadsheet.edit_version for spreadsheet in spreadsheets]]
-            job = Job.find_or_make("comparison", job_params)
-            status = job.run()
-            if status in ['failed', 'timed_out']:
-                return jsonify({'status': status}), 500
-            if status == 'completed':
-                # If it says completed, we actually return 'running' since we couldn't
-                # load the data off the disk so just need to try again
-                status = 'running'
-            return jsonify({'status': status}), 200
-
-    return dumps({'status': 'completed',
-                'upside_p': upside_p_list,
-                'upside_q': upside_q_list,
-                'two_way_anova_p': anova_p.tolist(),
-                'two_way_anova_q': anova_q.tolist(),
-                'main_effect_p': main_effect_p.tolist(),
-                'main_effect_q': main_effect_q.tolist(),
-                'phase_p': phase_p.tolist(),
-                'phase_q': phase_q.tolist(),
-                'amplitude_p': amplitude_p.tolist(),
-                'amplitude_q': amplitude_q.tolist()
-            })
-
-
 @spreadsheet_blueprint.route('/run_pca', methods=['POST'])
 @ajax_requires_account_or_share
 def run_pca(user=None):
@@ -1007,41 +927,6 @@ def bulk_delete(user=None):
         spreadsheet_removed_ids.append(spreadsheet_id)
     return jsonify({'spreadsheet_removed_ids': spreadsheet_removed_ids, 'errors': errors})
 
-
-@spreadsheet_blueprint.route('/display_visitor_spreadsheets', methods=['GET'])
-@requires_admin
-def display_visitor_spreadsheets():
-    """
-    Standard endpoint - lists the spreadsheets belonging to visiting users.  Administrative function only.
-    """
-    users = User.find_visitors()
-    return render_template('spreadsheets/display_visitor_spreadsheets.html', users=users)
-
-
-@spreadsheet_blueprint.route('/delete_visitor_spreadsheets', methods=['POST'])
-@ajax_requires_admin
-def delete_visitor_spreadsheets():
-    """
-    AJAX endpoint - deletes the database table entry and the files associated with each of the
-    spreadsheets whose ids are provided via a json object { spreadsheet_list: [spreadsheet ids].  That the
-    spreadsheet belongs to a visiting user, is checked before removal and only those belonging to the visiting user
-    are removed.  If removal is incomplete, the error is noted but removals of other spreadsheets continue.  If any
-    problem occurred for any removal a 500 status code will be returned along with an error message.  Administrative
-    function only.
-    :return: json object - { errors: [error msgs] } with a status code of 500 if errors occurred and 200 otherwise.
-    """
-    errors = []
-    spreadsheet_ids = json.loads(request.data).get('spreadsheet_list', None)
-    for spreadsheet_id in spreadsheet_ids:
-        spreadsheet = Spreadsheet.find_by_id(spreadsheet_id)
-        if spreadsheet and spreadsheet.user.visitor:
-            error = spreadsheet.delete()
-            if error:
-                errors.append(error)
-    status_code = 500 if errors else 200
-    return jsonify({'errors': errors}), status_code
-
-
 @spreadsheet_blueprint.route('/upload_mpv_file', methods=['GET', 'POST'])
 def upload_mpv_file():
     current_app.logger.info('Uploading mpv spreadsheet')
@@ -1091,8 +976,10 @@ def upload_mpv_file():
             return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row,
                                    errors=[FILE_UPLOAD_ERROR])
 
-        directory_path = pathlib.Path(os.path.join(user.get_user_directory_path(), f"{uuid.uuid4().hex}"))
+        spreadsheet_folder_name = f"{uuid.uuid4().hex}"
+        directory_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         directory_path.mkdir(parents=True, exist_ok=True)
+        relative_directory_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
@@ -1117,7 +1004,7 @@ def upload_mpv_file():
                                       original_filename=upload_file.filename,
                                       file_mime_type=file_mime_type,
                                       uploaded_file_path=file_path,
-                                      spreadsheet_data_path=str(directory_path),
+                                      spreadsheet_data_path=str(relative_directory_path),
                                       categorical_data=json.dumps(categorical_data),
                                       user_id=user_id)
         except NitecapException as ne:
@@ -1129,13 +1016,14 @@ def upload_mpv_file():
         spreadsheet.save_to_db()
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
-        spreadsheet_data_path = os.path.join(user.get_user_directory_path(),
-                                             spreadsheet.get_spreadsheet_data_directory_conventional_name())
+        spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
+        spreadsheet_data_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
         os.rename(directory_path, spreadsheet_data_path)
+        relative_spreadsheet_data_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
-        spreadsheet.spreadsheet_data_path = spreadsheet_data_path
+        spreadsheet.spreadsheet_data_path = relative_spreadsheet_data_path
         spreadsheet.uploaded_file_path = os.path.join(spreadsheet_data_path, os.path.basename(file_path))
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()

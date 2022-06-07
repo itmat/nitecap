@@ -1,7 +1,6 @@
 import os
 from datetime import timedelta
 
-DEBUG = True
 ENV = os.environ.get("ENV", "PROD")
 DEBUG = (ENV == "DEV")
 DATABASE_FILE = os.environ['DATABASE_FILE']
@@ -15,14 +14,8 @@ JSONIFY_PRETTYPRINT_REGULAR = False
 PROPAGATE_EXCEPTIONS = True
 MAX_CONTENT_LENGTH = 80 * 1024 * 1024
 SECRET_KEY = os.environ["SECRET_KEY"]
-ADMIN_LIST = os.environ.get('ADMINS', '').split(",")
 PERMANENT_SESSION_LIFETIME = timedelta(days=31)
 BANNER_CONTENT = os.environ.get('BANNER_CONTENT', '')
 BANNER_VISIBLE = bool(os.environ.get('BANNER_VISIBLE', ''))
 SESSION_COOKIE_SAMESITE='Lax'
 USE_HTTPS = (ENV == 'PROD')
-
-# For job system
-NUM_JOB_WORKERS = 2
-JOB_TIMEOUT = 30 * 60 # Seconds
-JOB_DROP_TIME = 24 * 60 * 60 # Seconds

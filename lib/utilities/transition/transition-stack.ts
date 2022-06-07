@@ -1,4 +1,4 @@
-import * as cdk from "aws-cdk-lib/core";
+import * as cdk from "aws-cdk-lib";
 import * as cr from "aws-cdk-lib/custom-resources";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
@@ -25,7 +25,7 @@ export class TransitionStack extends cdk.Stack {
       props.serverStackProps;
 
     let transitionServerProps: ServerStackProps = {
-      environment: JSON.parse(JSON.stringify(environment)),     // deep copy
+      environment: JSON.parse(JSON.stringify(environment)), // deep copy
       ...serverStackPropsWithoutEnvironment,
     };
 
@@ -64,7 +64,7 @@ export class TransitionStack extends cdk.Stack {
     let snapshotLambda = new lambda.Function(this, "SnapshotLambda", {
       code: lambda.Code.fromAsset(path.join(__dirname, ".")),
       handler: "take_snapshot.handler",
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_9,
       timeout: cdk.Duration.minutes(15),
       environment: {
         SNAPSHOT_ID_PARAMETER_NAME:
@@ -144,7 +144,7 @@ export class TransitionStack extends cdk.Stack {
     );
 
     transitionWaitCondition.addDependsOn(
-      putSnapshotLambdaNameParameter.node.defaultChild?.node._actualNode      // TODO: fix this
+      putSnapshotLambdaNameParameter.node.defaultChild?.node
         .defaultChild as cdk.CfnResource
     );
   }

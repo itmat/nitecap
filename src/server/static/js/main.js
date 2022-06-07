@@ -110,7 +110,10 @@ function computeZScores(ordering) {
                 return (x - mean) / std;
             } );
 
-            if (num_reps === 0) { z_scores = NaN; }
+            if (num_reps === 0) {
+                // No non-NaNs, assigne verything to NaN
+                z_scores = row.map(function(x) { return NaN; });
+            }
 
             return z_scores;
         } );

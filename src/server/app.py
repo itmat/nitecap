@@ -1,50 +1,22 @@
 #!/usr/bin/env python
 import os
 
-<<<<<<< HEAD
-from dotenv import load_dotenv, find_dotenv
-
-# Load from .env file if present (for local development)
-load_dotenv(find_dotenv(usecwd=True))
-
-# Retrieve the secret key
-SECRET_KEY_ARN = os.environ["SERVER_SECRET_KEY_ARN"]
-SECRET_VALUE = boto3.client("secretsmanager").get_secret_value(SecretId=SECRET_KEY_ARN)
-os.environ["SECRET_KEY"] = SECRET_VALUE["SecretString"]
-
-from email.message import EmailMessage
-
-from apscheduler.triggers.cron import CronTrigger
-=======
-from apscheduler.triggers.cron import CronTrigger
-from dotenv import load_dotenv
-from pathlib import Path
->>>>>>> origin/develop
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, jsonify
 import werkzeug
 import json
-# Uncomment to allow CORS
-#from flask_cors import CORS
-
-# Load from .env file if present (for local development)
-load_dotenv(Path(__file__).parent / ".env")
 
 from db import db
-from apscheduler.schedulers.background import BackgroundScheduler
-import backup
-import visitor_purge
 import logging
-import os
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from pythonjsonlogger import jsonlogger
-from models.users.decorators import requires_admin, ajax_requires_admin
+
 
 app = Flask(__name__)
 app.config.from_object('config_default')
 app.jinja_env.globals['momentjs'] = momentjs
 app.jinja_env.globals['ENV'] = app.config['ENV']
-#CORS(app, resources=r'/spreadsheets/*', headers='Content-Type')
 
 class ReverseProxied:
     """
@@ -85,6 +57,15 @@ def handle_404(e):
 def create_tables():
     db.create_all()
 
+    # Create test users specified in the testing configuration file
+    from models.users.user import User
+
+    for test_user in json.loads(os.environ["TEST_USERS"]):
+        user, _, _ = User.register_user(test_user["name"], test_user["email"], test_user["password"])
+        if not user.activated:
+            user.activated = 1
+            user.save_to_db()
+
 
 @app.route('/', methods=['GET'])
 def home():
@@ -115,12 +96,6 @@ def gallery():
 def user_guide():
     return render_template("user_guide.html")
 
-
-@app.route('/dashboard', methods=['GET'])
-@requires_admin
-def dashboard():
-    return redirect(url_for('users.display_users'))
-
 @app.errorhandler(413)
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
 def file_too_large(e):
@@ -137,33 +112,6 @@ app.register_blueprint(spreadsheet_blueprint, url_prefix='/spreadsheets')
 
 from computation.api import analysis_blueprint
 app.register_blueprint(analysis_blueprint, url_prefix='/analysis')
-
-
-def db_backup_job():
-    app.logger.info('Database backup underway.')
-    backup.backup(app.config['DATABASE'])
-    backup.clean_backups()
-    app.logger.info('Database backup complete.')
-
-
-def visitor_purge_job():
-    app.logger.info('Visitor purge underway.')
-    # TODO: this visitor purge is only in rehearse=True mode
-    # and so it does nothing. It needs to be updated to the new backend code
-    # and then enabled to run for real
-    ids = visitor_purge.purge(True, app.config['DATABASE'])
-    if ids:
-        app.logger.info(f"Visitor ids: {','.join(ids)} removed along with data and files.")
-    else:
-        app.logger.info(f"No old visitor spreadsheets were found.")
-    app.logger.info('Visitor spreadsheet purge complete.')
-
-
-scheduler = BackgroundScheduler()
-db_job = scheduler.add_job(db_backup_job, CronTrigger.from_crontab('5 0 * * *'))
-# Don't run the visitor purge until we update it
-#spreadsheet_job = scheduler.add_job(visitor_purge_job, CronTrigger.from_crontab('5 1 * * *'))
-scheduler.start()
 
 if __name__ == '__main__':
     app.logger.info("Starting app")

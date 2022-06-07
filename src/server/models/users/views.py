@@ -5,7 +5,7 @@ import requests
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, jsonify
 
 from models.users.user import User
-from models.users.decorators import requires_login, requires_admin
+from models.users.decorators import requires_login
 from flask import current_app
 
 user_blueprint = Blueprint('users', __name__)
@@ -294,52 +294,6 @@ def update_profile(user=None):
         return redirect(url_for("spreadsheets.display_spreadsheets"))
 
     return render_template('users/profile_form.html', username=user.username, email=user.email)
-
-
-@user_blueprint.route('/display_users', methods=['GET'])
-@requires_admin
-def display_users():
-    """
-    Administrative function only - displays a list of the site users.  Additionally, the number of
-    spreadsheets owned by each user is determined and displayed.
-    """
-    users = User.find_all_users()
-    user_counts_map = User.spreadsheet_counts()
-    return render_template('users/display_users.html', users=users, user_counts_map=user_counts_map)
-
-
-@user_blueprint.route('/delete', methods=['POST'])
-@requires_admin
-def delete():
-    """
-    Administrative ajax endpoint only - deletes the user provided and all of that user's spreadsheets.
-    """
-    user_id = json.loads(request.data).get('user_id', None)
-    if not user_id:
-        return jsonify({"error": MISSING_USER_ID_ERROR}), 400
-
-    user = User.find_by_id(user_id)
-    if user:
-        user.delete()
-    return '', 204
-
-
-@user_blueprint.route('/confirm', methods=['POST'])
-@requires_admin
-def confirm():
-    """
-    Administrative function only - confirms the user provided, expiration notwithstanding
-    """
-    user_id = json.loads(request.data).get('user_id', None)
-    if not user_id:
-        return jsonify({"error": MISSING_USER_ID_ERROR}), 400
-
-    # Visitors do need confirmations as they do not log in.
-    user = User.find_by_id(user_id)
-    if user and not user.is_visitor() and not user.activated:
-        user.activated = True
-        user.save_to_db()
-        return jsonify({'confirmed': True})
 
 
 @user_blueprint.route('/confirm_user/<string:token>', methods=['GET'])

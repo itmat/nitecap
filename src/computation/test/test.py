@@ -1,3 +1,4 @@
+# %%
 import sys
 import numpy as np
 import pandas as pd
@@ -17,19 +18,20 @@ pandas2ri.activate()
 spreadsheets = {}
 data_directories = ["6.6.4", "6.24.1", "8.9.2", "8.19.1", "24.48.2"]
 
+# %%
 for directory in data_directories:
     spreadsheet = {}
-    with open(f"data/{directory}/metadata.json") as file:
+    with open(f"test/data/{directory}/metadata.json") as file:
         spreadsheet["metadata"] = json.load(file)
 
     number_of_samples = len(spreadsheet["metadata"]["timepoints"])
 
     spreadsheet["dataframe"] = {
         "python": pd.read_csv(
-            f"data/{directory}/spreadsheet.tsv", index_col=0, sep="\t"
+            f"test/data/{directory}/spreadsheet.tsv", index_col=0, sep="\t"
         ),
         "R": pandas2ri.py2rpy_pandasdataframe(
-            pd.read_csv(f"data/{directory}/spreadsheet.tsv", sep="\t").iloc[
+            pd.read_csv(f"test/data/{directory}/spreadsheet.tsv", sep="\t").iloc[
                 :, : 1 + number_of_samples
             ]
         ),
@@ -41,7 +43,7 @@ for directory in data_directories:
 
     spreadsheets[directory] = spreadsheet
 
-
+# %%
 for data_directory, spreadsheet in spreadsheets.items():
     metadata = spreadsheet["metadata"]
 
@@ -96,7 +98,7 @@ for data_directory, spreadsheet in spreadsheets.items():
         inDF=spreadsheet["dataframe"]["R"],
     )
 
-    df["meta2d"] = np.array(meta2d_results[LS]["p"])
+    df["meta2d"] = np.array(meta2d_results[LS].rx2("p"))
 
     print(df[["ls_p", "meta2d", "p"]])
     print("Correlation matrix:")
@@ -119,7 +121,7 @@ for data_directory, spreadsheet in spreadsheets.items():
         inDF=spreadsheet["dataframe"]["R"],
     )
 
-    df["meta2d"] = np.array(results[JTK]["ADJ.P"])
+    df["meta2d"] = np.array(results[JTK].rx2("ADJ.P"))
 
     print(df[["jtk_p", "meta2d", "p"]])
     print("CORRELATION MATRIX")

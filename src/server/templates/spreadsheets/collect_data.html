@@ -55,7 +55,14 @@
                 // First validate the values
                 if (24 % timepoints.val() !== 0) {
                     nitecap_error_message.text(
-                        "The chosen values of " + timepoints.val() + " timepoints per cycle is unusual for 24 hour cycles. Before proceeding, please double check the value. (Note: do not count duplicate timepoints that are in different cycles, such as 0:00 and 24:00.)"
+                        "The chosen value of " + timepoints.val() + " timepoints per cycle is unusual for 24 hour cycles. Before proceeding, please double check the value. (Note: do not count duplicate timepoints that are in different cycles, such as 0:00 and 24:00.)"
+                    );
+                    nitecap_error.modal();
+                }
+
+                if (timepoints.val() < 4) {
+                    nitecap_error_message.text(
+                        "The chosen value of " + timepoints.val() + " timepoints per cycle is less than 4. Datasets with fewer than 4 timepoints may not produce valid rhythmic analysis p-values. Before proceeding, check that this value is correct."
                     );
                     nitecap_error.modal();
                 }

@@ -1,11 +1,13 @@
 import environment from "../.env";
 
+let user = environment.users[0]
+
 describe("Share links", () => {
   it("can create and view shares", () => {
     cy.visit(environment.baseUrl);
     cy.contains("Login").click();
-    cy.get("#username").type(environment.username);
-    cy.get("#password").type(environment.password);
+    cy.get("#username").type(user.name);
+    cy.get("#password").type(user.password);
     cy.contains("button", "Login").click();
     cy.get("body").contains("Saved Spreadsheets");
     cy.get("body").contains("Load Data").click();

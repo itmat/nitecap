@@ -5,6 +5,8 @@ from pathlib import Path
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import STAP
 
+from utilities import enough_timepoints, remove_missing_values
+
 numpy2ri.activate()
 
 START_PERIOD = 20
@@ -20,7 +22,9 @@ def jtk(data, sample_collection_times, compute_wave_properties=False):
     p, period, lag, amplitude = [], [], [], []
 
     for y in data:
-        if all(np.isnan(y)):
+        _, t = remove_missing_values(y, sample_collection_times)
+
+        if not enough_timepoints(t, (START_PERIOD + END_PERIOD) // 2):
             for property in (p, period, lag, amplitude):
                 property.append(np.nan)
         else:

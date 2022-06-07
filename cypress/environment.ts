@@ -1,7 +1,8 @@
+type User = { name: string; email: string; password: string };
+
 type Environment = {
   baseUrl: string;
-  username: string;
-  password: string;
+  users: User[];
 };
 
 export default Environment;

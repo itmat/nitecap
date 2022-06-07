@@ -6,7 +6,6 @@ import { EmailStack } from "../lib/email-stack";
 import { OperationStack } from "../lib/operation-stack";
 import { PersistentStorageStack } from "../lib/persistent-storage-stack";
 import { ServerStack } from "../lib/server-stack";
-import { SynchronizationStack } from "../lib/utilities/synchronization/synchronization-stack";
 import { TransitionStack } from "../lib/utilities/transition/transition-stack";
 import { TransitionParameterStack } from "../lib/utilities/transition/parameter-stack";
 
@@ -53,25 +52,19 @@ let serverStackProps = {
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
 
-// new TransitionStack(stage, "TransitionStack", {
-//   serverStackProps,
-//   parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
-// });
-
-// new SynchronizationStack(
-//   stage,
-//   "SynchronizationStack",
-//   { serverStackProps }
-// );
+new TransitionStack(stage, "TransitionStack", {
+  serverStackProps,
+  parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
+});
 
 let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
-// let stacks = {
-//   computationStack,
-//   domainStack,
-//   emailStack,
-//   persistentStorageStack,
-//   serverStack,
-// };
+let stacks = {
+  computationStack,
+  domainStack,
+  emailStack,
+  persistentStorageStack,
+  serverStack,
+};
 
-//new OperationStack(stage, "OperationStack", { environment, ...stacks });
+new OperationStack(stage, "OperationStack", { ...stacks });
