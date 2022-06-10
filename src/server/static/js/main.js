@@ -343,7 +343,7 @@ function rankArray(array, direction) {
 
     let sort_order =  array.map( function(x,i) {return i;} );
     sort_order = sort_order.sort(function(i,j) {
-        return compare(direction*array[i], direction*array[j], i, j);
+        return direction*compare(array[i], array[j], i, j);
     });
 
     let ranks = new Array(array.lengths);
