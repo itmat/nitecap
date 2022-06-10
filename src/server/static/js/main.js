@@ -671,7 +671,7 @@ function toTSV(map_of_columns) {
     let column_names = [...map_of_columns.keys()];
     let header = column_names.join("\t");
     let rows = [header];
-    for (let i = 0; i <= spreadsheet_length; i++) {
+    for (let i = 0; i < spreadsheet_length; i++) {
         let row = column_list.map(col => col[i]).join('\t');
         rows.push(row);
     }
