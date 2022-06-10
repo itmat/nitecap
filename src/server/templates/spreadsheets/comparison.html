@@ -1071,13 +1071,13 @@
                         if (stat.per_spreadsheet) {
                             for(spreadsheet of vm.spreadsheets) {
                                 let p = spreadsheet[stat.value.p];
+                                if (p === undefined) { continue; } // Not loaded yet
                                 Vue.set(spreadsheet, stat.value.q,  Object.freeze(vm.ps_to_qs(p)));
-                                console.log("Updating spreadsheet ", stat.value.q);
                             }
                         } else {
                             let p = vm.stats[stat.value.p];
+                            if (p === undefined) { continue; } // Not loaded yet
                             Vue.set(vm.stats, stat.value.q,  Object.freeze(vm.ps_to_qs(p)));
-                            console.log("Updating ", stat.value.q);
                         }
                     }
                 }
@@ -1767,7 +1767,6 @@
                 let spreadsheets_ids = analysis.spreadsheets.map(spreadsheet => spreadsheet.spreadsheet_id)
 
                 if (JSON.stringify(spreadsheets_ids) != JSON.stringify(this.config.spreadsheet_ids)) {
-                    console.log("Received data from wrong spreadsheet, ignoring", analysis);
                     return;
                 }
 
