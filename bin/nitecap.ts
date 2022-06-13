@@ -52,10 +52,10 @@ let serverStackProps = {
   spreadsheetBucket: persistentStorageStack.spreadsheetBucket,
 };
 
-new TransitionStack(stage, "TransitionStack", {
-  serverStackProps,
-  parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
-});
+// new TransitionStack(stage, "TransitionStack", {
+//   serverStackProps,
+//   parameters: new TransitionParameterStack(stage, "TransitionParameterStack"),
+// });
 
 let serverStack = new ServerStack(stage, "ServerStack", serverStackProps);
 
