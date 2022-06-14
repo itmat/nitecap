@@ -3,9 +3,9 @@ import boto3
 import docker
 import json
 import os
-import subprocess
 
 from docker.types import Mount
+from glob import glob
 from pathlib import Path
 
 code = Path(__file__).parents[3]
@@ -13,9 +13,7 @@ code = Path(__file__).parents[3]
 
 # Parse arguments
 
-parser = argparse.ArgumentParser(
-    description="Run development or Apache server"
-)
+parser = argparse.ArgumentParser(description="Run development or Apache server")
 parser.add_argument(
     "--apache", default=False, action="store_true", help="run Apache server"
 )
@@ -34,12 +32,9 @@ for stack in outputs:
         outputs = outputs[stack]
 
 for variable in outputs["EnvironmentVariables"].split():
-    if variable not in os.environ:
-        environment[variable] = outputs[variable.replace("_", "")]
+    environment[variable] = outputs[variable.replace("_", "")]
 
-if "SECRET_KEY" not in os.environ:
-    environment["SECRET_KEY"] = "SECRET_KEY"
-
+environment["SECRET_KEY"] = "SECRET_KEY"
 environment["ENV"] = "PROD" if arguments.apache else "DEV"
 
 
@@ -54,67 +49,70 @@ environment["AWS_DEFAULT_REGION"] = session.region_name
 
 
 SERVER = "nitecap"
+client = docker.DockerClient()
 
-if not arguments.apache:
-    # Adjust the ownership of stored files
-    subprocess.run(f"sudo chown -R vscode:vscode {os.environ['STORAGE']}", shell=True)
+# Find storage volume
 
-    # Adjust paths of directories which hold data
-    for directory in ("DATABASE_FOLDER", "LOGS_DIRECTORY_PATH", "UPLOAD_FOLDER"):
-        path = Path(environment[directory])
-        path = os.environ["STORAGE"] / path.relative_to("/nitecap_web")
-        path.mkdir(exist_ok=True)
+development_container = client.containers.get(os.environ["HOSTNAME"])
 
-        environment[directory] = path
+for mount in development_container.attrs["Mounts"]:
+    if mount["Destination"] == os.environ["STORAGE"]:
+        volume = client.volumes.get(mount["Name"])
+        storage = Mount("/nitecap_web", volume.id)
 
-    # Run the development server
-    try:
-        subprocess.run(
-            f"python3 app.py",
-            cwd=code / "src/server",
-            env=os.environ | environment,
-            shell=True,
-        )
-    except KeyboardInterrupt:
-        pass
+
+# Find workspaces mount
+
+for mount in development_container.attrs["Mounts"]:
+    if mount["Destination"].startswith("/workspaces"):
+        if mount["Type"] == "bind":
+            workspaces = Mount(mount["Destination"], mount["Source"], type="bind")
+        if mount["Type"] == "volume":
+            volume = client.volumes.get(mount["Name"])
+            workspaces = Mount("/workspaces", volume.id)
+
+
+# Stop and remove existing container
+
+try:
+    container = client.containers.get(SERVER)
+except docker.errors.NotFound:
+    pass
 else:
-    client = docker.DockerClient()
-
-    # Find storage volume
-    development_container = client.containers.get(os.environ["HOSTNAME"])
-
-    for mount in development_container.attrs["Mounts"]:
-        if mount["Destination"] == os.environ["STORAGE"]:
-            storage = client.volumes.get(mount["Name"])
-
-    # Adjust the ownership of stored files
-    subprocess.run(f"sudo chown -R 1001:1001 {os.environ['STORAGE']}", shell=True)
-
-    # Stop and remove existing container
-    try:
-        container = client.containers.get(SERVER)
-    except docker.errors.NotFound:
-        pass
-    else:
-        if container.status != "exited":
-            container.stop()
-        container.remove()
-
-    # Build image and create container
-    image, _ = client.images.build(path=str(code / "src/server"))
-
-    container = client.containers.create(
-        image,
-        name=SERVER,
-        mounts=[Mount("/nitecap_web", storage.id)],
-        ports={"5000/tcp": 5000},
-        environment=environment,
-    )
-
-    container.start()
-    print("The server is listening on port five thousand...")
-
-    try:
-        container.wait()
-    except KeyboardInterrupt:
+    if container.status != "exited":
         container.stop()
+    container.remove()
+
+
+# Create a new container
+
+configuration = dict(mounts=[storage])
+
+if arguments.apache:
+    image, _ = client.images.build(path=str(code / "src/server"))
+else:
+    image = client.images.get(development_container.attrs["Image"])
+    environment = os.environ | environment
+    configuration["mounts"].append(workspaces)
+    configuration["command"] = "python3 app.py"
+    configuration["working_dir"] = glob("/workspaces/*/src/server").pop()
+
+container = client.containers.create(
+    image,
+    name=SERVER,
+    ports={"5000/tcp": 5000},
+    environment=environment,
+    **configuration,
+)
+
+
+# Run the container
+
+container.start()
+print("The server is listening on port five thousand...")
+
+try:
+    for line in map(bytes.decode, container.logs(stream=True)):
+        print(line.removesuffix("\n"))
+except KeyboardInterrupt:
+    container.stop()
