@@ -24,7 +24,7 @@ arguments = parser.parse_args()
 
 environment = {}
 
-with open(code / "outputs.json") as outputs:
+with open(code / "cdk.outputs.json") as outputs:
     outputs = json.load(outputs)
 
 for stack in outputs:
@@ -45,7 +45,6 @@ credentials = session.get_credentials()
 
 environment["AWS_ACCESS_KEY_ID"] = credentials.access_key
 environment["AWS_SECRET_ACCESS_KEY"] = credentials.secret_key
-environment["AWS_DEFAULT_REGION"] = session.region_name
 
 
 SERVER = "nitecap"
@@ -89,13 +88,13 @@ else:
 configuration = dict(mounts=[storage])
 
 if arguments.apache:
-    image, _ = client.images.build(path=str(code / "src/server"))
+    image, _ = client.images.build(path=str(code / "nitecap/server"))
 else:
     image = client.images.get(development_container.attrs["Image"])
     environment = os.environ | environment
     configuration["mounts"].append(workspaces)
     configuration["command"] = "python3 app.py"
-    configuration["working_dir"] = glob("/workspaces/*/src/server").pop()
+    configuration["working_dir"] = glob("/workspaces/*/nitecap/server").pop()
 
 container = client.containers.create(
     image,

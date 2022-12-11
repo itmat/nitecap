@@ -3,7 +3,7 @@
 Explore, analyze, and share high-throughput omics circadian datasets through an easy-to-use [web interface](https://nitecap.org).
 
 <p align="center" style="padding: 0em;"> 
-  <img src="src/server/static/images/slides.gif" alt="Sample signal">
+  <img src="nitecap/server/static/images/slides.gif" alt="Sample signal">
 </p>
 
 [**Nitecap**](https://nitecap.org) is an exploratory circadian data analysis tool aimed at high-throughput omics data.
@@ -24,17 +24,17 @@ while others are run on the server and in the user's web browser.
 ### 1. Computational backend
 Algorithms are executed in Lambda functions which are written in Python.
 Algorithms written in R are executed using [rpy2](https://rpy2.github.io/).
-The code for the computational backend and algorithms can be found in the [src/computation](/src/computation/) directory.
+The code for the computational backend and algorithms can be found in the [nitecap/computation](/nitecap/computation/) directory.
 Some algorithms (such as PCA) are part of the server and some are running in the user's web browser.
 
 
 ### 2. Server
 The server is imagined as a containerized application.
-The code for the server resides in the [src/server](src/server/)</code> directory.
+The code for the server resides in the [nitecap/server](/nitecap/server/)</code> directory.
 
 ### 3. Infrastructure
-The infrastructure is specified in TypeScript using AWS Cloud Development Kit ([CDK](https://aws.amazon.com/cdk/)).
-The code describing infrastructure can be found in the [lib](lib/) directory.
+The infrastructure is specified using AWS Cloud Development Kit ([CDK](https://aws.amazon.com/cdk/)).
+The code describing infrastructure (stacks) can be found in the [nitecap](/nitecap/) directory.
 
 ## Contributions and support
 

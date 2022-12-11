@@ -1,4 +1,4 @@
 {
   "python.formatting.provider": "black",
-  "jupyter.notebookFileRoot": "${workspaceFolder}/src/computation"
+  "jupyter.notebookFileRoot": "${workspaceFolder}/nitecap/computation"
 }

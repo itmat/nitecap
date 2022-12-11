@@ -1,6 +1,6 @@
-FROM mcr.microsoft.com/vscode/devcontainers/base:hirsute
+FROM mcr.microsoft.com/vscode/devcontainers/python:3.10-bullseye
 
-ENV R=R-4.2.0
+ENV R=R-4.2.2
 
 ENV JOBS=8
 
@@ -32,10 +32,8 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
  && ./aws/install                                                                                                                   \
  && rm -rf awscliv2.zip aws
 
-COPY src/server/requirements.txt .
-
-RUN pip install -r requirements.txt                                                                                                 \
- && pip install docker ipykernel statsmodels rpy2
+COPY nitecap/server/requirements.txt .
+RUN pip install -r requirements.txt
 
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/R/lib/
 
