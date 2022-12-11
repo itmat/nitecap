@@ -1,1 +1,1 @@
-python utilities/transition/new_transition.py & python utilities/transition/server.py && fg
+python utilities/transition/test_transition.py & python utilities/transition/server.py && fg
