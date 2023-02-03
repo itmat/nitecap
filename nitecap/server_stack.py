@@ -232,16 +232,10 @@ class ServerStack(cdk.Stack):
         )
 
         if not configuration.production:
-            server_security_group = ec2.SecurityGroup(
-                self, "ServerSecurityGroup", vpc=server_vpc
-            )
-
             for cidr_block in configuration.allowed_cidr_blocks:
-                server_security_group.add_ingress_rule(
+                self.service.load_balancer.connections.allow_from(
                     ec2.Peer.ipv4(cidr_block), ec2.Port.all_tcp()
                 )
-
-            self.service.load_balancer.add_security_group(server_security_group)
 
         for variable_name, variable_value in environment_variables.items():
             cdk.CfnOutput(self, variable_name, value=variable_value)
