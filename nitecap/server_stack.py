@@ -206,11 +206,13 @@ class ServerStack(cdk.Stack):
             )
         )
 
-        server_certificate = acm.DnsValidatedCertificate(
+        server_certificate = acm.Certificate(
             self,
             "Certificate",
-            hosted_zone=hosted_zone,
             domain_name=configuration.domain_name,
+            validation=acm.CertificateValidation.from_dns(
+                hosted_zone=hosted_zone,
+            ),
         )
 
         self.service = ecs_patterns.ApplicationLoadBalancedEc2Service(
