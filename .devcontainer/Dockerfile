@@ -2,8 +2,6 @@ FROM mcr.microsoft.com/vscode/devcontainers/python:3.11-bullseye
 
 ENV R=R-4.2.2
 
-ENV JOBS=8
-
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update                                                                                                                  \
@@ -16,13 +14,13 @@ RUN apt-get install -y libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-
 RUN wget -q -O - https://cran.r-project.org/src/base/$(echo $R | cut -c 1-3)/$R.tar.gz | tar xzf -                                  \
  && cd $R                                                                                                                           \
  && ./configure --enable-R-shlib --disable-prebuilt-html --without-x                                                                \
- && make -j $JOBS                                                                                                                   \
+ && make -j $(nproc)                                                                                                                \
  && make install                                                                                                                    \
  && rm -rf /$R
 
 ENV R_HOME=/usr/local/lib/R
 
-RUN echo "options(repos=c(CRAN='https://cloud.r-project.org'), Ncpus=$JOBS)" >> $R_HOME/etc/Rprofile.site
+RUN echo "options(repos=c(CRAN='https://cloud.r-project.org'), Ncpus=$(nproc))" >> $R_HOME/etc/Rprofile.site
 
 RUN R -e "install.packages(c('BiocManager', 'MetaCycle'))"
 RUN R -e "BiocManager::install('rain')"
