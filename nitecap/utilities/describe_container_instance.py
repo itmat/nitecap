@@ -29,7 +29,6 @@ def describe_container_instance(cluster: ecs.Cluster):
                 cluster.autoscaling_group.auto_scaling_group_arn
             ),
         ),
-        install_latest_aws_sdk=False,
     )
 
     cluster_container_instances_list.node.add_dependency(cluster)
@@ -52,7 +51,6 @@ def describe_container_instance(cluster: ecs.Cluster):
             physical_resource_id=cr.PhysicalResourceId.of(container_instance_arn),
             output_paths=["containerInstances.0.ec2InstanceId"],
         ),
-        install_latest_aws_sdk=False,
     )
 
     container_instance_id = cluster_container_instances_descriptions.get_response_field(
@@ -72,7 +70,6 @@ def describe_container_instance(cluster: ecs.Cluster):
                 "Reservations.0.Instances.0.BlockDeviceMappings.1.Ebs.VolumeId"
             ],
         ),
-        install_latest_aws_sdk=False,
     )
 
     container_instance_volume_id = ec2_instances_descriptions.get_response_field(
