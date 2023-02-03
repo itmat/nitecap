@@ -22,12 +22,13 @@ if [ ! -d $AWS_DIRECTORY ]; then
     echo "output=json"                                      >> $AWS_DIRECTORY/config
 fi
 
-npm install -g aws-cdk@2.54.0
+npm install
 
 sudo pip install -r requirements-dev.txt
 sudo pip install -r requirements.txt
 
 echo "alias ll='ls -l --color=auto'" >> ~/.bashrc
+echo 'export PATH=$PATH:'$PWD'/node_modules/aws-cdk/bin:'$PWD'/node_modules/cypress/bin' >> ~/.bashrc
 echo 'export PYTHONPATH='$PWD'/nitecap/computation:'$PWD'/nitecap/server' >> ~/.bashrc
 echo 'export PYTHONDONTWRITEBYTECODE=1' >> ~/.bashrc
 
