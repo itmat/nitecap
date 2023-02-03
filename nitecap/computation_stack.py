@@ -155,7 +155,7 @@ class ComputationStack(cdk.Stack):
             },
         )
 
-        notification_api_stage.add_depends_on(notification_api_account)
+        notification_api_stage.add_dependency(notification_api_account)
 
         notification_api_deployment = apigateway.CfnDeployment(
             self,
@@ -164,8 +164,8 @@ class ComputationStack(cdk.Stack):
             stage_name=notification_api_stage.stage_name,
         )
 
-        notification_api_deployment.add_depends_on(notification_api_default_route)
-        notification_api_deployment.add_depends_on(notification_api_disconnect_route)
+        notification_api_deployment.add_dependency(notification_api_default_route)
+        notification_api_deployment.add_dependency(notification_api_disconnect_route)
 
         # Computation engine
 
