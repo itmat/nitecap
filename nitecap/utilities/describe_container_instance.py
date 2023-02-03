@@ -12,7 +12,9 @@ class ContainerInstance:
     volume_id: str
 
 
-def describe_container_instance(stack: cdk.Stack, cluster: ecs.Cluster):
+def describe_container_instance(cluster: ecs.Cluster):
+    stack = cluster.stack
+
     cluster_container_instances_list = cr.AwsCustomResource(
         stack,
         "ClusterContainerInstancesList",
@@ -23,7 +25,9 @@ def describe_container_instance(stack: cdk.Stack, cluster: ecs.Cluster):
             service="ECS",
             action="listContainerInstances",
             parameters={"cluster": cluster.cluster_arn},
-            physical_resource_id=cr.PhysicalResourceId.of(cluster.cluster_arn),
+            physical_resource_id=cr.PhysicalResourceId.of(
+                cluster.autoscaling_group.auto_scaling_group_arn
+            ),
         ),
         install_latest_aws_sdk=False,
     )

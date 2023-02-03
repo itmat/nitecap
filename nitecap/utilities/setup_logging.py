@@ -6,7 +6,8 @@ import aws_cdk.aws_logs as logs
 from ..configuration import Configuration
 
 
-def setup_logging(stack: cdk.Stack, cluster: ecs.Cluster, configuration: Configuration):
+def setup_logging(cluster: ecs.Cluster, configuration: Configuration):
+    stack = cluster.stack
 
     if configuration.production:
         removal_policy = cdk.RemovalPolicy.RETAIN

@@ -196,9 +196,9 @@ class ServerStack(cdk.Stack):
             configuration.server.storage.device_mount_point,
         )
 
-        setup_logging(self, server_cluster, configuration)
+        setup_logging(server_cluster, configuration)
 
-        self.container_instance = describe_container_instance(self, server_cluster)
+        self.container_instance = describe_container_instance(server_cluster)
 
         server_task.add_placement_constraint(
             ecs.PlacementConstraint.member_of(
