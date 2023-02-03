@@ -97,11 +97,8 @@ class ServerStack(cdk.Stack):
             ],
         )
 
-        test_users = [] if configuration.production else configuration.server.test_users
-
-        environment_variables = {
+        environment_variables = dict(configuration.server.environment_variables) | {
             "ENV": "PROD",
-            "TEST_USERS": json.dumps(test_users, default=OmegaConf.to_container),
             "AWS_DEFAULT_REGION": self.region,
             "SPREADSHEET_BUCKET_NAME": spreadsheet_bucket.bucket_name,
             "COMPUTATION_STATE_MACHINE_ARN": computation_state_machine.state_machine_arn,
@@ -109,7 +106,10 @@ class ServerStack(cdk.Stack):
             "EMAIL_SENDER": f"no-reply@{configuration.domain_name}",
             "EMAIL_CONFIGURATION_SET_NAME": email_configuration_set_name,
             "EMAIL_SUPPRESSION_LIST_NAME": email_suppression_list.table_name,
-        } | dict(configuration.server.environment_variables)
+            "TEST_USERS": json.dumps(
+                configuration.testing.users, default=OmegaConf.to_container
+            ),
+        }
 
         server_container = server_task.add_container(
             "ServerContainer",

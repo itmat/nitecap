@@ -38,19 +38,24 @@ class Environment:
 class Server:
     storage: Storage
     environment_variables: Environment
-    test_users: list[User] = field(default_factory=list)
+
+
+@dataclass
+class Testing:
+    url: str
+    users: list[User] = field(default_factory=list)
 
 
 @dataclass
 class Configuration:
     domain_name: str
     server: Server
+    testing: Testing
     allowed_cidr_blocks: list[str]
-    transition: bool = False
     production: bool = False
+    transition: dict = field(default_factory=dict)
     account: str = os.environ["CDK_DEFAULT_ACCOUNT"]
     region: str = os.environ["CDK_DEFAULT_REGION"]
-    previous_server_storage_snapshot_id: Optional[str] = None
 
 
 configuration_store = hydra.core.config_store.ConfigStore.instance()
