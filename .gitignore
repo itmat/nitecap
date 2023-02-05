@@ -23,3 +23,8 @@ nitecap/configuration/*
 
 # Credentials
 .devcontainer/credentials/*
+
+# Testing
+cypress/downloads
+cypress/screenshots
+cypress/videos

@@ -1,7 +1,8 @@
 {
   "devDependencies": {
     "aws-cdk": "2.63.0",
-    "cypress": "^12.5.0",
-    "cypress-file-upload": "^5.0.8"
+    "cypress": "^12.5.1",
+    "cypress-file-upload": "^5.0.8",
+    "js-yaml": "^4.1.0"
   }
 }

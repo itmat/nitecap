@@ -1,10 +1,8 @@
-import environment from "../.env";
-
-let user = environment.users[0]
+let [user] = Cypress.config("testUsers")
 
 describe("Share links", () => {
   it("can create and view shares", () => {
-    cy.visit(environment.baseUrl);
+    cy.visit("/");
     cy.contains("Login").click();
     cy.get("#username").type(user.name);
     cy.get("#password").type(user.password);

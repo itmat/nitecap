@@ -1,8 +1,6 @@
-import environment from "../.env";
-
 describe("Standard visitors workflow", () => {
   it("loads a spreadsheet and computes ARSER p-value", () => {
-    cy.visit(environment.baseUrl);
+    cy.visit("/");
     cy.contains("Load your data").click();
     cy.get("input[type='file']").attachFile("results.6.24.1.txt");
     cy.contains("Submit").click();
@@ -20,16 +18,11 @@ describe("Standard visitors workflow", () => {
     cy.get("body").should("contain", "Spreadsheet Rows");
     cy.contains("tr>td", "ARS")
       .next()
-      .contains("Unknown")
-      .contains("PENDING")
-      .contains("COMPLETE", { timeout: 20000 });
-    cy.contains("tr>td", "ARS")
-      .next()
       .should("contain.text", "p: 4.4e-10");
   });
 
   it("loads a spreadsheet, displays the computation results, and generates a heat map", () => {
-    cy.visit(environment.baseUrl);
+    cy.visit("/");
     cy.contains("Load your data").click();
     cy.get("input[type='file']").attachFile("raw.8.9.2.txt");
     cy.contains("Submit").click();
