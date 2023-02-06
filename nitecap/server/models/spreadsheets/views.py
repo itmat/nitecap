@@ -313,7 +313,7 @@ def show_spreadsheet(spreadsheet_id, user=None, config=None):
     spreadsheets = []
 
     try:
-        spreadsheet_ids = [int(ID) for ID in spreadsheet_id.split(',')]
+        spreadsheet_ids = spreadsheet_id.split(',')
     except ValueError:
         errors.append("Unknown spreadsheet id(s)")
         return render_template('spreadsheets/user_spreadsheets.html', user=user, errors=errors)
@@ -592,7 +592,7 @@ def consume_share(token):
 
         if valid:
             current_app.logger.error(f"User attempted to access an old share token for spreadsheets {spreadsheet_ids} and user_id {user_id}")
-            spreadsheet_ids_str = ','.join(str(id) for id in spreadsheet_ids)
+            spreadsheet_ids_str = ','.join(spreadsheet_ids)
             url = url_for(".show_spreadsheet", spreadsheet_id=spreadsheet_ids_str, _external=True)
             errors.append("The URL you received no longer works as a share due to system upgrades. "
                 "A permanent share can be obtained from the original spreadsheet's uploader. "
@@ -607,7 +607,7 @@ def consume_share(token):
 
 
     sharing_user = User.find_by_id(share.user_id)
-    spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
+    spreadsheet_ids = share.spreadsheet_ids_str.split(',')
     config = json.loads(share.config_json)
 
     spreadsheets = []
@@ -684,7 +684,7 @@ def copy_share(token, user=None):
                       "another share")
         return render_template('spreadsheets/upload_file.html', error=errors)
     sharing_user = User.find_by_id(share.user_id)
-    spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
+    spreadsheet_ids = share.spreadsheet_ids_str.split(',')
 
     # TODO: we don't use the config when copying
     #config = json.loads(share.config_json)
@@ -722,7 +722,7 @@ def copy_share(token, user=None):
             return render_template('spreadsheets/upload_file.html', errors=errors)
 
     # Show the copied spreadsheets
-    spreadsheet_ids_str = ','.join(str(id) for id in shared_spreadsheet_ids)
+    spreadsheet_ids_str = ','.join(shared_spreadsheet_ids)
     return redirect(url_for('spreadsheets.show_spreadsheet', spreadsheet_id=spreadsheet_ids_str))
 
 

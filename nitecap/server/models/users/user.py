@@ -5,6 +5,8 @@ import random
 import requests
 import shutil
 import string
+import uuid
+
 from string import Template
 from flask import url_for, request
 
@@ -12,6 +14,7 @@ from security import check_encrypted_password, encrypt_password
 from db import db
 import os
 from email.message import EmailMessage
+from sqlalchemy.dialects.postgresql import UUID
 from itsdangerous import TimedJSONWebSignatureSerializer as TimedSerializer
 from flask import current_app
 
@@ -31,10 +34,7 @@ EMAIL_CONFIGURATION_SET_NAME = os.environ["EMAIL_CONFIGURATION_SET_NAME"]
 
 class User(db.Model):
     __tablename__ = "users"
-    __table_args__ = {
-        "sqlite_autoincrement": True,
-    }
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = db.Column(db.String(150), nullable=False, unique=True)
     email = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(100), nullable=False)

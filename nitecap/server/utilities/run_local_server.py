@@ -36,6 +36,9 @@ for variable in outputs["EnvironmentVariables"].split():
 
 environment["SECRET_KEY"] = "SECRET_KEY"
 environment["ENV"] = "PROD" if arguments.apache else "DEV"
+environment["DATABASE_SECRET"] = boto3.client("secretsmanager").get_secret_value(
+    SecretId=outputs["DatabaseSecretArn"]
+)["SecretString"]
 
 
 # Retrieve AWS credentials

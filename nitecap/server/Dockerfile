@@ -11,6 +11,7 @@ RUN groupmod -g 1001 www-data \
   && apt-get install -y libmagic-dev \
   && apt-get install -y apache2 \
   && apt-get install -y apache2-dev \
+  && apt-get install -y python3-dev libpq-dev postgresql-client \
   && apt-get install -y sqlite3 \
   && apt-get install -y dumb-init \
   && apt-get clean \

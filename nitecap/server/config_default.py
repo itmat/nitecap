@@ -1,14 +1,12 @@
 import os
+import json
 from datetime import timedelta
+
+database = json.loads(os.environ["DATABASE_SECRET"])
 
 ENV = os.environ.get("ENV", "PROD")
 DEBUG = (ENV == "DEV")
-DATABASE_FILE = os.environ['DATABASE_FILE']
-DATABASE_FOLDER = os.environ.get('DATABASE_FOLDER', '')
-if DATABASE_FOLDER:
-    DATABASE_FOLDER += os.sep
-DATABASE = DATABASE_FOLDER + DATABASE_FILE
-SQLALCHEMY_DATABASE_URI = "sqlite:///" + DATABASE
+SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg://{database['username']}:{database['password']}@{database['host']}:{database['port']}/{database['dbname']}"
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 JSONIFY_PRETTYPRINT_REGULAR = False
 PROPAGATE_EXCEPTIONS = True

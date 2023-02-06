@@ -10,6 +10,7 @@ import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_ecs as ecs
 import aws_cdk.aws_ecs_patterns as ecs_patterns
 import aws_cdk.aws_iam as iam
+import aws_cdk.aws_rds as rds
 import aws_cdk.aws_route53 as route53
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_secretsmanager as secretsmanager
@@ -50,6 +51,97 @@ class ServerStack(cdk.Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         server_secret_key = secretsmanager.Secret(self, "ServerSecretKey")
+
+        vpc = ec2.Vpc(
+            self,
+            "Vpc",
+            subnet_configuration=[
+                ec2.SubnetConfiguration(
+                    name="ServerSubnet", subnet_type=ec2.SubnetType.PUBLIC
+                )
+            ],
+        )
+
+        # Server hardware
+
+        delete_ebs_volume_on_server_instance_termination = (
+            False if configuration.production or configuration.transition else True
+        )
+
+        server_cluster = ecs.Cluster(
+            self,
+            "ServerCluster",
+            vpc=vpc,
+            capacity=ecs.AddCapacityOptions(
+                max_capacity=1,
+                instance_type=ec2.InstanceType.of(
+                    ec2.InstanceClass.C6A, ec2.InstanceSize.LARGE
+                ),
+                machine_image=ecs.EcsOptimizedImage.amazon_linux2(
+                    ecs.AmiHardwareType.STANDARD, cached_in_context=True
+                ),
+                block_devices=[
+                    autoscaling.BlockDevice(
+                        device_name=configuration.server.storage.device_name,
+                        volume=autoscaling.BlockDeviceVolume.ebs_from_snapshot(
+                            snapshot_id_parameter.string_value,
+                            delete_on_termination=delete_ebs_volume_on_server_instance_termination,
+                        ),
+                    )
+                ],
+            ),
+        )
+
+        mount_ebs_volume(
+            server_cluster,
+            configuration.server.storage.device_name,
+            configuration.server.storage.device_mount_point,
+        )
+
+        self.container_instance = describe_container_instance(server_cluster)
+
+        # SSH access
+
+        server_cluster.connections.allow_from(
+            ec2.Peer.ipv4(service_ip_range("EC2_INSTANCE_CONNECT", self.region)),
+            ec2.Port.tcp(22),
+        )
+
+        server_cluster.autoscaling_group.add_user_data(
+            "yum install -y ec2-instance-connect"
+        )
+
+        # Database
+
+        database_instance = rds.DatabaseInstance(
+            self,
+            "DatabaseInstance",
+            vpc=vpc,
+            engine=rds.DatabaseInstanceEngine.postgres(
+                version=rds.PostgresEngineVersion.VER_14_5
+            ),
+            allocated_storage=30,
+            instance_type=ec2.InstanceType.of(
+                ec2.InstanceClass.T3, ec2.InstanceSize.MICRO
+            ),
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            database_name="nitecap",
+            publicly_accessible=False if configuration.production else True,
+            delete_automated_backups=False if configuration.production else True,
+            removal_policy=(
+                cdk.RemovalPolicy.SNAPSHOT
+                if configuration.production
+                else cdk.RemovalPolicy.DESTROY
+            ),
+        )
+
+        database_instance.connections.allow_default_port_from(server_cluster)
+
+        if not configuration.production:
+            for cidr_block in configuration.allowed_cidr_blocks:
+                database_instance.connections.allow_default_port_from(
+                    ec2.Peer.ipv4(cidr_block)
+                )
 
         # Server permissions
 
@@ -93,7 +185,7 @@ class ServerStack(cdk.Stack):
                     host=ecs.Host(
                         source_path=configuration.server.storage.device_mount_point
                     ),
-                )
+                ),
             ],
         )
 
@@ -118,7 +210,12 @@ class ServerStack(cdk.Stack):
             ),
             memory_limit_mib=3328,
             environment=environment_variables,
-            secrets={"SECRET_KEY": ecs.Secret.from_secrets_manager(server_secret_key)},
+            secrets={
+                "DATABASE_SECRET": ecs.Secret.from_secrets_manager(
+                    database_instance.secret
+                ),
+                "SECRET_KEY": ecs.Secret.from_secrets_manager(server_secret_key),
+            },
             logging=ecs.LogDriver.aws_logs(stream_prefix="ServerTaskLogs"),
             port_mappings=[
                 ecs.PortMapping(container_port=5000, protocol=ecs.Protocol.TCP)
@@ -139,72 +236,13 @@ class ServerStack(cdk.Stack):
             )
         )
 
-        # Server hardware
-
-        server_vpc = ec2.Vpc(
-            self,
-            "ServerVpc",
-            subnet_configuration=[
-                ec2.SubnetConfiguration(
-                    name="ServerSubnet", subnet_type=ec2.SubnetType.PUBLIC
-                )
-            ],
-        )
-
-        ebs_delete_on_termination = (
-            False if configuration.production or configuration.transition else True
-        )
-
-        server_cluster = ecs.Cluster(
-            self,
-            "ServerCluster",
-            vpc=server_vpc,
-            capacity=ecs.AddCapacityOptions(
-                max_capacity=1,
-                instance_type=ec2.InstanceType.of(
-                    ec2.InstanceClass.C6A, ec2.InstanceSize.LARGE
-                ),
-                machine_image=ecs.EcsOptimizedImage.amazon_linux2(
-                    ecs.AmiHardwareType.STANDARD, cached_in_context=True
-                ),
-                block_devices=[
-                    autoscaling.BlockDevice(
-                        device_name=configuration.server.storage.device_name,
-                        volume=autoscaling.BlockDeviceVolume.ebs_from_snapshot(
-                            snapshot_id_parameter.string_value,
-                            delete_on_termination=ebs_delete_on_termination,
-                        ),
-                    )
-                ],
-            ),
-        )
-
-        # SSH connection
-
-        server_cluster.connections.allow_from(
-            ec2.Peer.ipv4(service_ip_range("EC2_INSTANCE_CONNECT", self.region)),
-            ec2.Port.tcp(22),
-        )
-
-        server_cluster.autoscaling_group.add_user_data(
-            "yum install -y ec2-instance-connect"
-        )
-
-        mount_ebs_volume(
-            server_cluster,
-            configuration.server.storage.device_name,
-            configuration.server.storage.device_mount_point,
-        )
-
-        setup_logging(server_cluster, configuration)
-
-        self.container_instance = describe_container_instance(server_cluster)
-
         server_task.add_placement_constraint(
             ecs.PlacementConstraint.member_of(
                 f"ec2InstanceId == '{self.container_instance.instance_id}'"
             )
         )
+
+        setup_logging(server_cluster, configuration)
 
         server_certificate = acm.Certificate(
             self,
@@ -241,6 +279,10 @@ class ServerStack(cdk.Stack):
 
         for variable_name, variable_value in environment_variables.items():
             cdk.CfnOutput(self, variable_name, value=variable_value)
+
+        cdk.CfnOutput(
+            self, "DatabaseSecretArn", value=database_instance.secret.secret_arn
+        )
 
         cdk.CfnOutput(
             self, "EnvironmentVariables", value=" ".join(environment_variables.keys())

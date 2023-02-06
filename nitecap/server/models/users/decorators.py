@@ -118,7 +118,7 @@ def ajax_requires_account_or_share(func):
                 return jsonify({"error": "The URL you received does not work.  It may have been mangled in transit.  Please request "
                               "another share"}), 401
             sharing_user = User.find_by_id(share.user_id)
-            shared_spreadsheet_ids = [int(id) for id in share.spreadsheet_ids_str.split(',')]
+            shared_spreadsheet_ids = share.spreadsheet_ids_str.split(',')
             if set(spreadsheet_ids).issubset(shared_spreadsheet_ids):
                 # Spreadsheets match, grant the access under the sharing user's account
                 kwargs['user'] = sharing_user

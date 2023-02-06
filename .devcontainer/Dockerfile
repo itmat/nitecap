@@ -5,7 +5,7 @@ ENV R=R-4.2.2
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update                                                                                                                  \
- && apt-get install -y apache2-dev black gfortran pip                                                                               \
+ && apt-get install -y apache2-dev black gfortran pip postgresql-client                                                             \
  && apt-get install -y libbz2-dev libcurl4-openssl-dev libgmp-dev liblzma-dev libpcre2-dev libreadline-dev libxt-dev
 
 # For end-to-end testing

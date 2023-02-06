@@ -77,7 +77,7 @@ def submit_analysis(user):
         raise ValueError
 
     analysis = {
-        "userId": str(user.id),
+        "userId": user.id,
         "algorithm": parameters["algorithm"],
         "spreadsheets": parameters["spreadsheets"],
         "computeWaveProperties": compute_wave_properties,

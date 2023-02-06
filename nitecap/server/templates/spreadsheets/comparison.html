@@ -25,7 +25,7 @@
         share_token = "{{ share_token }}";
         initial_config = {{ config | tojson }};
 
-        user_id = {{user_id| safe}};
+        user_id = "{{user_id| safe}}";
         logged_in = !{{user_is_visitor| tojson}};
 
         initial_config.original_spreadsheet_ids = {{ spreadsheet_ids | safe }};

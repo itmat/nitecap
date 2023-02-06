@@ -26,8 +26,6 @@ class Storage:
 class Environment:
     LOG_LEVEL: str
     LOGS_DIRECTORY_PATH: str
-    DATABASE_FOLDER: str
-    DATABASE_FILE: str
     UPLOAD_FOLDER: str
     RECAPTCHA_SITE_KEY: str
     RECAPTCHA_SECRET_KEY: str

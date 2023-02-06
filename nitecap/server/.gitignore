@@ -7,13 +7,10 @@ venv*
 .DS_Store
 .idea
 data
-*.db
 *.so
 *.pem
 *.egg-info
 build/
 .env
-nitecap.db
 cwl_*
 app_data/uploads/*
-app_data/db/*

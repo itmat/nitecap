@@ -110,7 +110,7 @@
                                     "</span>Processing...");
 
             // Build the parameter list for the AJAX call.
-            let spreadsheet_id = {{ spreadsheet.id }};
+            let spreadsheet_id = "{{ spreadsheet.id }}";
             let id_columns = [];
             let data = nitecap_form.serialize().split('&');
             data.forEach(function(item) {

@@ -7,15 +7,16 @@ from sqlalchemy import orm
 from db import db
 from models.users.user import User
 from flask import current_app
+from sqlalchemy.dialects.postgresql import UUID
 
 TOKEN_SIZE = 75 # bytes
 
 class Share(db.Model):
     __tablename__ = 'shares'
     id = db.Column(db.String(100), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(UUID(as_uuid=False), db.ForeignKey("users.id"), nullable=False)
     #user = db.relationship("User")
-    spreadsheet_ids_str = db.Column(db.String(250), nullable=False) #comma-separated list of integer spreadsheet ids
+    spreadsheet_ids_str = db.Column(db.String(2000), nullable=False) #comma-separated list of spreadsheet ids
     config_json = db.Column(db.String(500), nullable=False)
     date_shared = db.Column(db.DateTime, nullable=False)
     last_access = db.Column(db.DateTime, nullable=False)
@@ -31,7 +32,7 @@ class Share(db.Model):
         :param last_access: Date of last access to the share
         '''
         self.user_id = user_id
-        self.spreadsheet_ids_str = ','.join(str(id) for id in spreadsheet_ids)
+        self.spreadsheet_ids_str = ','.join(spreadsheet_ids)
         self.date_shared = date_shared or datetime.datetime.utcnow()
         self.last_access = last_access or datetime.datetime.utcnow()
         self.config_json = json.dumps(config)

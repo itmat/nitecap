@@ -18,6 +18,7 @@ import constants
 
 from db import db
 from exceptions import NitecapException
+from sqlalchemy.dialects.postgresql import UUID
 import nitecap.util
 from flask import current_app
 
@@ -27,10 +28,7 @@ MAX_JTK_COLUMNS = 85
 
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
-    __table_args__ = {
-        "sqlite_autoincrement": True,
-    }
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
     descriptive_name = db.Column(db.String(250), nullable=False)
     num_timepoints = db.Column(db.Integer)
     timepoints = db.Column(db.Integer)
@@ -47,7 +45,7 @@ class Spreadsheet(db.Model):
     note = db.Column(db.String(5000))
     spreadsheet_data_path = db.Column(db.String(250))
     categorical_data = db.Column(db.String(5000))
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(UUID(as_uuid=False), db.ForeignKey("users.id"), nullable=False)
     user = db.relationship("User", back_populates="spreadsheet")
     edit_version = db.Column(db.Integer, default=0)
 
