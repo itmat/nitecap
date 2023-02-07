@@ -1,9 +1,5 @@
 {% extends "base.html" %}
 
-{% block head %}
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-{% endblock %}
-
 {% block content %}
 <div class="page-header">
     <h1>Resend User Confirmation <small>Missing or Expired Confirmation Email</small></h1>
@@ -33,7 +29,6 @@
     <p>You may resend a confirmation email to the email address we have for you on file, <em>{{ email }}</em>,
         by clicking on the button below.  Please note that any prior links we sent you will be expired.</p>
     <input type="hidden" name="email" id="email"  value="{{ email }}">
-    <div class="g-recaptcha" data-sitekey="{{recaptcha_site_key}}"></div>
     <button type="submit" class="btn btn-primary">Resend Confirmation</button>
 </form>
 

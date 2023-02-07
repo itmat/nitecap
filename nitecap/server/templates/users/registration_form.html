@@ -3,7 +3,6 @@
 {% block head %}
     <meta name="description" content="Explore, analyze, and share high-throughput omics circadian datasets through an easy-to-use web interface.">
     <title> Register Account - Nitecap</title>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 {% endblock %}
 
 {% block content %}
@@ -48,9 +47,6 @@
             <input type="password" id="password" name="password" class="form-control" maxlength="100"
                    style="width:25rem" required />
         </div>
-
-        <div class="g-recaptcha" data-sitekey="{{recaptcha_site_key}}"></div>
-
         <button type="submit" class="btn btn-primary">Register</button>
     </form>
 

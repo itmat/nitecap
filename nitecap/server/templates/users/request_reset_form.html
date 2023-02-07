@@ -1,9 +1,5 @@
 {% extends "base.html" %}
 
-{% block head %}
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-{% endblock %}
-
 {% block content %}
 <div class="page-header">
     <h1>Password Reset Request</h1>
@@ -35,7 +31,6 @@
         <input type="email" id="email" name="email" maxlength="150" class="form-control" value="{{email}}"
                placeholder="email address" style="width:25rem" required />
     </div>
-    <div class="g-recaptcha" data-sitekey="{{recaptcha_site_key}}"></div>
     <button type="submit" class="btn btn-primary">Request Password Reset</button>
 </form>
 

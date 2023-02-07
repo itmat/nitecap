@@ -27,8 +27,6 @@ class Environment:
     LOG_LEVEL: str
     LOGS_DIRECTORY_PATH: str
     UPLOAD_FOLDER: str
-    RECAPTCHA_SITE_KEY: str
-    RECAPTCHA_SECRET_KEY: str
     SNAPSHOT_LAMBDA_NAME_PARAMETER: str = "N/A"
 
 

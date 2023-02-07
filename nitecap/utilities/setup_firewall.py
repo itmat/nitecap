@@ -35,6 +35,52 @@ def setup_firewall(load_balancer: elb.ApplicationLoadBalancer):
     unix_rule_set = managed_rule("UnixRuleSet", priority=5)
     sql_injection_rule_set = managed_rule("SQLiRuleSet", priority=6)
 
+    captcha_rule = waf.CfnWebACL.RuleProperty(
+        name=f"{load_balancer.stack.stack_name}CaptchaRule",
+        priority=7,
+        statement=waf.CfnWebACL.StatementProperty(
+            or_statement=waf.CfnWebACL.OrStatementProperty(
+                statements=[
+                    waf.CfnWebACL.StatementProperty(
+                        byte_match_statement=waf.CfnWebACL.ByteMatchStatementProperty(
+                            field_to_match=waf.CfnWebACL.FieldToMatchProperty(
+                                uri_path={}
+                            ),
+                            search_string=endpoint,
+                            positional_constraint="STARTS_WITH",
+                            text_transformations=[
+                                waf.CfnWebACL.TextTransformationProperty(
+                                    priority=1, type="NORMALIZE_PATH"
+                                ),
+                                waf.CfnWebACL.TextTransformationProperty(
+                                    priority=2, type="LOWERCASE"
+                                ),
+                            ],
+                        )
+                    )
+                    for endpoint in [
+                        "/users/register",
+                        "/users/resend_confirmation",
+                        "/users/reset_password",
+                    ]
+                ]
+            )
+        ),
+        action=waf.CfnWebACL.RuleActionProperty(
+            captcha=waf.CfnWebACL.CaptchaActionProperty()
+        ),
+        captcha_config=waf.CfnWebACL.CaptchaConfigProperty(
+            immunity_time_property=waf.CfnWebACL.ImmunityTimePropertyProperty(
+                immunity_time=600
+            )
+        ),
+        visibility_config=waf.CfnWebACL.VisibilityConfigProperty(
+            metric_name=f"CaptchaRuleMetric",
+            cloud_watch_metrics_enabled=True,
+            sampled_requests_enabled=True,
+        ),
+    )
+
     web_acl = waf.CfnWebACL(
         load_balancer.stack,
         f"{load_balancer.stack.stack_name}ACL",
@@ -46,6 +92,7 @@ def setup_firewall(load_balancer: elb.ApplicationLoadBalancer):
             linux_rule_set,
             unix_rule_set,
             sql_injection_rule_set,
+            captcha_rule,
         ],
         default_action=waf.CfnWebACL.DefaultActionProperty(
             allow=waf.CfnWebACL.AllowActionProperty()
