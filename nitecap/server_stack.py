@@ -26,6 +26,7 @@ from .utilities import (
     describe_container_instance,
     mount_ebs_volume,
     service_ip_range,
+    setup_firewall,
     setup_logging,
 )
 
@@ -270,6 +271,8 @@ class ServerStack(cdk.Stack):
         self.service.target_group.set_attribute(
             "deregistration_delay.timeout_seconds", "0"
         )
+
+        setup_firewall(self.service.load_balancer)
 
         if not configuration.production:
             for cidr_block in configuration.allowed_cidr_blocks:
