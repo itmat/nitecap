@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+
 import boto3
 import json
 import os
 
 from pathlib import Path
 
-code = Path(__file__).parents[3]
+code = Path(__file__).parents[4]
 
 
 with open(code / "cdk.outputs.json") as outputs:

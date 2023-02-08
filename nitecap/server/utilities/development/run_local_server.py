@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import boto3
 import docker
@@ -8,7 +10,7 @@ from docker.types import Mount
 from glob import glob
 from pathlib import Path
 
-code = Path(__file__).parents[3]
+code = Path(__file__).parents[4]
 
 
 # Parse arguments
