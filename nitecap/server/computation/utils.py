@@ -4,7 +4,7 @@ import simplejson as json
 
 from io import BytesIO
 
-SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
+ANALYTICS_BUCKET_NAME = os.environ["ANALYTICS_BUCKET_NAME"]
 
 s3 = boto3.resource("s3")
 
@@ -12,7 +12,7 @@ s3 = boto3.resource("s3")
 def get_analysis_parameters(userId, analysisId):
     parameters = BytesIO()
     s3.Object(
-        SPREADSHEET_BUCKET_NAME,
+        ANALYTICS_BUCKET_NAME,
         f"{userId}/analyses/{analysisId}/parameters",
     ).download_fileobj(parameters)
 

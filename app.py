@@ -46,7 +46,7 @@ def main(configuration: Configuration):
     computation_stack = ComputationStack(
         stage,
         "ComputationStack",
-        spreadsheet_bucket=persistent_storage_stack.spreadsheet_bucket,
+        analytics_bucket=persistent_storage_stack.analytics_bucket,
     )
 
     server_stack_arguments = dict(
@@ -57,7 +57,7 @@ def main(configuration: Configuration):
         hosted_zone=domain_stack.hosted_zone,
         snapshot_id_parameter=persistent_storage_stack.snapshot_id_parameter,
         email_configuration_set_name=email_stack.configuration_set_name,
-        spreadsheet_bucket=persistent_storage_stack.spreadsheet_bucket,
+        analytics_bucket=persistent_storage_stack.analytics_bucket,
         storage_bucket=persistent_storage_stack.storage_bucket,
     )
 

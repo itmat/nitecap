@@ -52,7 +52,7 @@ class PersistentStorageStack(cdk.Stack):
             removal_policy=removal_policy,
         )
 
-        self.spreadsheet_bucket = s3.Bucket(self, "SpreadsheetBucket", **bucket_properties)
+        self.analytics_bucket = s3.Bucket(self, "AnalyticsBucket", **bucket_properties)
         self.storage_bucket = s3.Bucket(self, "StorageBucket", **bucket_properties)
 
         self.email_suppression_list = dynamodb.Table(

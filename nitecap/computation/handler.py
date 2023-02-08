@@ -14,7 +14,7 @@ from processor import parallel_compute as parallel
 from notifier import send_notification_via_websockets
 
 s3 = boto3.resource("s3")
-SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
+ANALYTICS_BUCKET_NAME = os.environ["ANALYTICS_BUCKET_NAME"]
 
 
 @dataclass
@@ -26,7 +26,7 @@ class Spreadsheet:
 def load_spreadsheet(userId, spreadsheetId, viewId):
     data = BytesIO()
     s3.Object(
-        SPREADSHEET_BUCKET_NAME,
+        ANALYTICS_BUCKET_NAME,
         f"{userId}/spreadsheets/{spreadsheetId}/views/{viewId}/data",
     ).download_fileobj(data)
 
@@ -34,7 +34,7 @@ def load_spreadsheet(userId, spreadsheetId, viewId):
 
     metadata = BytesIO()
     s3.Object(
-        SPREADSHEET_BUCKET_NAME,
+        ANALYTICS_BUCKET_NAME,
         f"{userId}/spreadsheets/{spreadsheetId}/views/{viewId}/metadata",
     ).download_fileobj(metadata)
 
@@ -129,7 +129,7 @@ def handler(event, context):
             results = json.dumps({"p": p}, ignore_nan=True)
 
     s3.Object(
-        SPREADSHEET_BUCKET_NAME, f"{userId}/analyses/{analysisId}/results"
+        ANALYTICS_BUCKET_NAME, f"{userId}/analyses/{analysisId}/results"
     ).upload_fileobj(BytesIO(results.encode()))
 
     send_notification({"status": "COMPLETED"})

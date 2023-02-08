@@ -20,7 +20,7 @@ sfn = boto3.client("stepfunctions")
 
 ALGORITHMS = ["cosinor", "differential_cosinor", "ls", "arser", "jtk", "one_way_anova", "two_way_anova", "rain", "upside"]
 COMPUTATION_STATE_MACHINE_ARN = os.environ["COMPUTATION_STATE_MACHINE_ARN"]
-SPREADSHEET_BUCKET_NAME = os.environ["SPREADSHEET_BUCKET_NAME"]
+ANALYTICS_BUCKET_NAME = os.environ["ANALYTICS_BUCKET_NAME"]
 
 environment = os.environ["ENV"]
 
@@ -34,7 +34,7 @@ def run(analysis):
 
     try:
         s3.Object(
-            SPREADSHEET_BUCKET_NAME,
+            ANALYTICS_BUCKET_NAME,
             f"{analysis['userId']}/analyses/{analysisId}/parameters",
         ).upload_fileobj(
             BytesIO(json.dumps({"analysisId": analysisId, **analysis}).encode())
@@ -96,7 +96,7 @@ def get_results_url(user, analysisId):
         response = s3_client.generate_presigned_url(
             "get_object",
             Params={
-                "Bucket": SPREADSHEET_BUCKET_NAME,
+                "Bucket": ANALYTICS_BUCKET_NAME,
                 "Key": f"{user.id}/analyses/{analysisId}/results",
             },
         )
@@ -129,7 +129,7 @@ def get_analysis_status(user, analysisId):
 
     try:
         s3_client.head_object(
-            Bucket=SPREADSHEET_BUCKET_NAME,
+            Bucket=ANALYTICS_BUCKET_NAME,
             Key=f"{user.id}/analyses/{analysisId}/results",
         )
         return "COMPLETED"
@@ -152,7 +152,7 @@ def store_spreadsheet_to_s3(spreadsheet):
 
     with open(spreadsheet.get_uploaded_file_path(), "rb") as original:
         s3.Object(
-            SPREADSHEET_BUCKET_NAME,
+            ANALYTICS_BUCKET_NAME,
             f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/original",
         ).upload_fileobj(original)
 
@@ -170,11 +170,11 @@ def store_spreadsheet_to_s3(spreadsheet):
     viewId = spreadsheet.edit_version
 
     s3.Object(
-        SPREADSHEET_BUCKET_NAME,
+        ANALYTICS_BUCKET_NAME,
         f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/views/{viewId}/data",
     ).upload_fileobj(BytesIO(data.encode()))
 
     s3.Object(
-        SPREADSHEET_BUCKET_NAME,
+        ANALYTICS_BUCKET_NAME,
         f"{spreadsheet.user.id}/spreadsheets/{spreadsheet.id}/views/{viewId}/metadata",
     ).upload_fileobj(BytesIO(json.dumps(metadata).encode()))

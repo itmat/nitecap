@@ -44,7 +44,7 @@ class ServerStack(cdk.Stack):
         hosted_zone: route53.IHostedZone,
         snapshot_id_parameter: ssm.StringParameter,
         email_configuration_set_name: str,
-        spreadsheet_bucket: s3.Bucket,
+        analytics_bucket: s3.Bucket,
         storage_bucket: s3.Bucket,
         application_docker_file: Optional[str] = None,
         additional_permissions: Optional[list[iam.PolicyStatement]] = None,
@@ -153,7 +153,7 @@ class ServerStack(cdk.Stack):
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
         )
 
-        spreadsheet_bucket.grant_read_write(server_role)
+        analytics_bucket.grant_read_write(server_role)
         storage_bucket.grant_read_write(server_role)
         computation_state_machine.grant_read(server_role)
         computation_state_machine.grant_start_execution(server_role)
@@ -195,7 +195,7 @@ class ServerStack(cdk.Stack):
         environment_variables = dict(configuration.server.environment_variables) | {
             "ENV": "PROD",
             "AWS_DEFAULT_REGION": self.region,
-            "SPREADSHEET_BUCKET_NAME": spreadsheet_bucket.bucket_name,
+            "ANALYTICS_BUCKET_NAME": analytics_bucket.bucket_name,
             "COMPUTATION_STATE_MACHINE_ARN": computation_state_machine.state_machine_arn,
             "NOTIFICATION_API_ENDPOINT": f"wss://{notification_api.ref}.execute-api.{self.region}.amazonaws.com/default",
             "EMAIL_SENDER": f"no-reply@{configuration.domain_name}",

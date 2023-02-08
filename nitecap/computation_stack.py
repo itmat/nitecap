@@ -21,7 +21,7 @@ class ComputationStack(cdk.Stack):
         scope: Construct,
         construct_id: str,
         *,
-        spreadsheet_bucket: s3.Bucket,
+        analytics_bucket: s3.Bucket,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -193,14 +193,14 @@ class ComputationStack(cdk.Stack):
                 environment={
                     "CONNECTION_TABLE_NAME": connection_table.table_name,
                     "NOTIFICATION_API_ENDPOINT": f"https://{self.notification_api.ref}.execute-api.{self.region}.amazonaws.com/default",
-                    "SPREADSHEET_BUCKET_NAME": spreadsheet_bucket.bucket_name,
+                    "ANALYTICS_BUCKET_NAME": analytics_bucket.bucket_name,
                 },
             )
             for algorithm in ALGORITHMS
         }
 
         for computation_lambda in computation_lambdas.values():
-            spreadsheet_bucket.grant_read_write(computation_lambda)
+            analytics_bucket.grant_read_write(computation_lambda)
             connection_table.grant_read_data(computation_lambda)
 
             computation_lambda.add_to_role_policy(
