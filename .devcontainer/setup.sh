@@ -23,6 +23,7 @@ if [ ! -d $AWS_DIRECTORY ]; then
 fi
 
 npm install
+npx cypress install
 
 sudo pip install -r requirements-dev.txt
 sudo pip install -r requirements.txt
