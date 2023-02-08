@@ -1,5 +1,6 @@
 import boto3
 import datetime
+import json
 import pathlib
 import random
 import requests
@@ -8,6 +9,7 @@ import string
 import uuid
 
 from string import Template
+from time import time
 from flask import url_for, request
 
 from security import check_encrypted_password, encrypt_password
@@ -15,7 +17,8 @@ from db import db
 import os
 from email.message import EmailMessage
 from sqlalchemy.dialects.postgresql import UUID
-from itsdangerous import TimedJSONWebSignatureSerializer as TimedSerializer
+from authlib.jose import JsonWebSignature
+from authlib.jose.errors import BadSignatureError
 from flask import current_app
 
 CONFIRMATION_EXPIRATION_DELTA = 6 * 60 * 60
@@ -273,8 +276,14 @@ class User(db.Model):
         :param expires_sec: The number of seconds until the token expires
         :return: a short-lived, encrypted token
         """
-        s = TimedSerializer(os.environ['SECRET_KEY'], expires_sec)
-        return s.dumps({'user_id': self.id}).decode('utf-8')
+
+        payload = {"user_id": self.id, "iat": int(time()), "exp": expires_sec}
+
+        token = JsonWebSignature().serialize_compact(
+            {"alg": "HS256"}, json.dumps(payload), os.environ["SECRET_KEY"]
+        )
+
+        return token.decode("utf-8")
 
     def get_reset_token(self, expires_sec=PASSWORD_RESET_EXPIRATION_DELTA):
         """
@@ -284,8 +293,14 @@ class User(db.Model):
         :param expires_sec: The number of seconds until the token expires
         :return: a short-lived, encrypted token
         """
-        s = TimedSerializer(os.environ['SECRET_KEY'], expires_sec)
-        return s.dumps({'user_id': self.id}).decode('utf-8')
+        
+        payload = {"user_id": self.id, "iat": int(time()), "exp": expires_sec}
+
+        token = JsonWebSignature().serialize_compact(
+            {"alg": "HS256"}, json.dumps(payload), os.environ["SECRET_KEY"]
+        )
+        
+        return token.decode("utf-8")
 
     @staticmethod
     def verify_user_token(token):
@@ -295,12 +310,19 @@ class User(db.Model):
         :param token: token used for user confirmation or password reset.
         :return: The user identified in the token or None
         """
-        s = TimedSerializer(os.environ['SECRET_KEY'])
+
         try:
-            user_id = s.loads(token)['user_id']
-        except:
+            payload = JsonWebSignature().deserialize_compact(
+                token, os.environ["SECRET_KEY"], decode=json.loads
+            )["payload"]
+        except BadSignatureError:
             return None
-        return User.find_by_id(user_id)
+        
+        # Check freshness
+        if payload["iat"] + payload["exp"] < time():
+            return None
+        
+        return User.find_by_id(payload["user_id"])
 
     def reset_password(self, password):
         self.password = encrypt_password(password)
