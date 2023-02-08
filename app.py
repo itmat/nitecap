@@ -58,6 +58,7 @@ def main(configuration: Configuration):
         snapshot_id_parameter=persistent_storage_stack.snapshot_id_parameter,
         email_configuration_set_name=email_stack.configuration_set_name,
         spreadsheet_bucket=persistent_storage_stack.spreadsheet_bucket,
+        storage_bucket=persistent_storage_stack.storage_bucket,
     )
 
     if configuration.transition:

@@ -29,9 +29,7 @@ class PersistentStorageStack(cdk.Stack):
         if not configuration.production:
             allowed_cors_origin.append("http://localhost:5000")
 
-        self.spreadsheet_bucket = s3.Bucket(
-            self,
-            "SpreadsheetBucket",
+        bucket_properties = dict(
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             encryption=s3.BucketEncryption.S3_MANAGED,
             lifecycle_rules=[
@@ -53,6 +51,9 @@ class PersistentStorageStack(cdk.Stack):
             auto_delete_objects=False if configuration.production else True,
             removal_policy=removal_policy,
         )
+
+        self.spreadsheet_bucket = s3.Bucket(self, "SpreadsheetBucket", **bucket_properties)
+        self.storage_bucket = s3.Bucket(self, "StorageBucket", **bucket_properties)
 
         self.email_suppression_list = dynamodb.Table(
             self,

@@ -45,6 +45,7 @@ class ServerStack(cdk.Stack):
         snapshot_id_parameter: ssm.StringParameter,
         email_configuration_set_name: str,
         spreadsheet_bucket: s3.Bucket,
+        storage_bucket: s3.Bucket,
         application_docker_file: Optional[str] = None,
         additional_permissions: Optional[list[iam.PolicyStatement]] = None,
         **kwargs,
@@ -153,6 +154,7 @@ class ServerStack(cdk.Stack):
         )
 
         spreadsheet_bucket.grant_read_write(server_role)
+        storage_bucket.grant_read_write(server_role)
         computation_state_machine.grant_read(server_role)
         computation_state_machine.grant_start_execution(server_role)
         email_suppression_list.grant_read_data(server_role)
@@ -199,6 +201,7 @@ class ServerStack(cdk.Stack):
             "EMAIL_SENDER": f"no-reply@{configuration.domain_name}",
             "EMAIL_CONFIGURATION_SET_NAME": email_configuration_set_name,
             "EMAIL_SUPPRESSION_LIST_NAME": email_suppression_list.table_name,
+            "STORAGE_LOCATION": f"s3://{storage_bucket.bucket_name}",
             "TEST_USERS": json.dumps(
                 configuration.testing.users, default=OmegaConf.to_container
             ),
