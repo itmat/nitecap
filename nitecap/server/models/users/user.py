@@ -1,7 +1,6 @@
 import boto3
 import datetime
 import json
-import pathlib
 import random
 import requests
 import shutil
@@ -11,6 +10,7 @@ import uuid
 from string import Template
 from time import time
 from flask import url_for, request
+from cloudpathlib import AnyPath as Path
 
 from security import check_encrypted_password, encrypt_password
 from db import db
@@ -471,7 +471,7 @@ class User(db.Model):
         This directory path is constructed by convention - not saved to the db.
         :return: path to the user's directory.
         """
-        return str(pathlib.Path(os.environ.get('UPLOAD_FOLDER'))/self.get_user_directory_name())
+        return str(Path(os.environ.get('UPLOAD_FOLDER'))/self.get_user_directory_name())
 
     def reassign_visitor_spreadsheets(self, visitor):
         """

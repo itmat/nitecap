@@ -6,7 +6,7 @@ import os
 import shutil
 import uuid
 from pandas.errors import ParserError
-from pathlib import Path
+from cloudpathlib import AnyPath as Path
 import re
 from string import Template
 

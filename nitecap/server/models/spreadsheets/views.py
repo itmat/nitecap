@@ -1,9 +1,8 @@
 import json
 import os
-import pathlib
 import shutil
 import uuid
-from pathlib import Path
+from cloudpathlib import AnyPath as Path
 import io
 from string import Template
 
@@ -98,9 +97,9 @@ def upload_file():
             return jsonify({"errors": [FILE_UPLOAD_ERROR]}), 500
 
         spreadsheet_folder_name = f"{uuid.uuid4().hex}"
-        directory_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
+        directory_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
         directory_path.mkdir(parents=True, exist_ok=True)
-        relative_directory_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
+        relative_directory_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
@@ -138,9 +137,9 @@ def upload_file():
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
         spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
-        spreadsheet_data_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
+        spreadsheet_data_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
         os.rename(directory_path, spreadsheet_data_path)
-        relative_spreadsheet_data_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
+        relative_spreadsheet_data_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.
@@ -189,7 +188,7 @@ def collect_data(spreadsheet_id, user=None):
         spreadsheet.identify_columns(column_labels)
 
         # Check for any comparisons already computed and delete those for recomputation
-        comparisons_directory = pathlib.Path(os.path.join(user.get_user_directory_path(), "comparisons"))
+        comparisons_directory = Path(os.path.join(user.get_user_directory_path(), "comparisons"))
         if comparisons_directory.exists():
             for path in comparisons_directory.glob(f"*v{spreadsheet.id}.comparison.parquet"):
                 path.unlink()
@@ -944,9 +943,9 @@ def upload_mpv_file():
                                    errors=[FILE_UPLOAD_ERROR])
 
         spreadsheet_folder_name = f"{uuid.uuid4().hex}"
-        directory_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
+        directory_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
         directory_path.mkdir(parents=True, exist_ok=True)
-        relative_directory_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
+        relative_directory_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
@@ -984,9 +983,9 @@ def upload_mpv_file():
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
         spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
-        spreadsheet_data_path = pathlib.Path(user.get_user_directory_path()) / spreadsheet_folder_name
+        spreadsheet_data_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
         os.rename(directory_path, spreadsheet_data_path)
-        relative_spreadsheet_data_path = pathlib.Path(user.get_user_directory_name()) / spreadsheet_folder_name
+        relative_spreadsheet_data_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
         # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
         # updates.

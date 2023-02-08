@@ -9,7 +9,6 @@ from db import db
 import logging
 from momentjs import momentjs
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
 from pythonjsonlogger import jsonlogger
 
 
