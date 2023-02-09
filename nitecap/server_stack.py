@@ -287,6 +287,10 @@ class ServerStack(cdk.Stack):
             cdk.CfnOutput(self, variable_name, value=variable_value)
 
         cdk.CfnOutput(
+            self, "Configuration", value=self.node.try_get_context("configuration")
+        )
+
+        cdk.CfnOutput(
             self, "DatabaseSecretArn", value=database_instance.secret.secret_arn
         )
 

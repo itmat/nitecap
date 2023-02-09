@@ -1,10 +1,17 @@
-const { defineConfig } = require("cypress");
+let { defineConfig } = require("cypress");
 
-const yaml = require("js-yaml");
-const fs = require("fs");
+let yaml = require("js-yaml");
+let fs = require("fs");
 
-const testing = yaml.load(
-  fs.readFileSync(`nitecap/configuration/${process.env.configuration}.yaml`)
+let outputs = require("./cdk.outputs.json");
+let configuration;
+
+for (stack in outputs)
+  if (stack.endsWith("ServerStack"))
+    configuration = outputs[stack]["Configuration"];
+
+let testing = yaml.load(
+  fs.readFileSync(`nitecap/configuration/${configuration}.yaml`)
 ).testing;
 
 module.exports = defineConfig({
