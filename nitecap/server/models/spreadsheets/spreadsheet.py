@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import uuid
+from typing import Optional
 from pandas.errors import ParserError
 from cloudpathlib import AnyPath as Path
 import re
@@ -17,8 +18,10 @@ import constants
 
 
 from db import db
-from exceptions import NitecapException
+from sqlalchemy import String, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
+from exceptions import NitecapException
 import nitecap.util
 from flask import current_app
 
@@ -28,25 +31,25 @@ MAX_JTK_COLUMNS = 85
 
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
-    id = db.Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
-    descriptive_name = db.Column(db.String(250), nullable=False)
-    num_timepoints = db.Column(db.Integer)
-    timepoints = db.Column(db.Integer)
-    repeated_measures = db.Column(db.Boolean, nullable=False, default=False)
-    header_row = db.Column(db.Integer, nullable=False, default=1)
-    original_filename = db.Column(db.String(250), nullable=False)
-    file_mime_type = db.Column(db.String(250), nullable=False)
-    file_path = db.Column(db.String(250))
-    uploaded_file_path = db.Column(db.String(250), nullable=False)
-    date_uploaded = db.Column(db.DateTime, nullable=False)
-    column_labels_str = db.Column(db.String(2500))
-    last_access = db.Column(db.DateTime, nullable=False)
-    ids_unique = db.Column(db.Boolean, nullable=False, default=0) # Deprecated - can't remove without modifying the DB since it is nonnullable
-    note = db.Column(db.String(5000))
-    spreadsheet_data_path = db.Column(db.String(250))
-    categorical_data = db.Column(db.String(5000))
-    user_id = db.Column(UUID(as_uuid=False), db.ForeignKey("users.id"), nullable=False)
-    user = db.relationship("User", back_populates="spreadsheet")
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    descriptive_name: Mapped[str] = mapped_column(String(250))
+    num_timepoints: Mapped[int]
+    timepoints: Mapped[int]
+    repeated_measures: Mapped[bool] = mapped_column(default=False)
+    header_row: Mapped[int] = mapped_column(default=1)
+    original_filename: Mapped[Optional[str]] = mapped_column(String(250))
+    file_mime_type: Mapped[Optional[str]] = mapped_column(String(250))
+    file_path: Mapped[Optional[str]] = mapped_column(String(250))
+    uploaded_file_path: Mapped[str] = mapped_column(String(250))
+    date_uploaded: Mapped[str] = mapped_column(DateTime)
+    column_labels_str: Mapped[Optional[str]] = mapped_column(String(2500))
+    last_access: Mapped[DateTime] = mapped_column(db.DateTime)
+    ids_unique: Mapped[bool] = mapped_column(default=0) # Deprecated - can't remove without modifying the DB since it is nonnullable
+    note: Mapped[Optional[str]] = mapped_column(String(5000))
+    spreadsheet_data_path: Mapped[Optional[str]] = mapped_column(String(250))
+    categorical_data: Mapped[Optional[str]] = mapped_column(String(5000))
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=False), db.ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="spreadsheet")
     edit_version = db.Column(db.Integer, default=0)
 
     ID_COLUMN = "ID"
