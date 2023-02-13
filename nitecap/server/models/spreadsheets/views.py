@@ -1,6 +1,5 @@
 import json
 import os
-import shutil
 import uuid
 from cloudpathlib import AnyPath as Path
 import datetime
@@ -21,6 +20,7 @@ from models.users.user import User
 from models.shares import Share
 from timer_decorator import timeit
 import computation.api
+from nitecap import anypath_shutil
 
 spreadsheet_blueprint = Blueprint('spreadsheets', __name__)
 
@@ -908,7 +908,7 @@ def upload_mpv_file():
                                       user_id=user_id)
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
-            shutil.rmtree(directory_path)
+            anypath_shutil.rmtree(directory_path)
             return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row, errors=[FILE_UPLOAD_ERROR])
 
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.

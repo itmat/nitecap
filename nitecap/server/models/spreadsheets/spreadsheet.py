@@ -3,7 +3,6 @@ import datetime
 import itertools
 import json
 import os
-import shutil
 import uuid
 from typing import Optional, TYPE_CHECKING
 from pandas.errors import ParserError
@@ -23,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from exceptions import NitecapException
 import nitecap.util
+from nitecap import anypath_shutil
 from flask import current_app
 if TYPE_CHECKING:
     from models.users.user import User
@@ -453,7 +453,7 @@ class Spreadsheet(db.Model):
         spreadsheet_data_path = self.get_spreadsheet_data_folder()
         try:
             if spreadsheet_data_path.exists():
-                shutil.rmtree(spreadsheet_data_path)
+                anypath_shutil.rmtree(spreadsheet_data_path)
             else:
                 current_app.logger.info(f"Trying to delete spreadhseet {self.id} but no data folder - skipping")
             self.delete_from_db()
@@ -492,7 +492,7 @@ class Spreadsheet(db.Model):
 
         # Create temporary paths for the share spreadsheet data directory and its included uploaded and processed
         # files and copy over the original spreadsheet data directory.
-        shutil.copytree(
+        anypath_shutil.copytree(
             spreadsheet.get_spreadsheet_data_folder(),
             new_spreadsheet.get_spreadsheet_data_folder(),
         )
