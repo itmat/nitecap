@@ -41,8 +41,8 @@ EMAIL_CONFIGURATION_SET_NAME = os.environ["EMAIL_CONFIGURATION_SET_NAME"]
 class User(db.Model):
     __tablename__ = "users"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
-    username: Mapped[str] = mapped_column(String(150), unique=True)
-    email: Mapped[str] = mapped_column(String(150), unique=True)
+    username: Mapped[str] = mapped_column(String(150), unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(150), unique=True, index=True)
     password: Mapped[str] = mapped_column(String(100))
     last_access: Mapped[datetime.datetime]
     visitor: Mapped[bool] = mapped_column(default=True)
