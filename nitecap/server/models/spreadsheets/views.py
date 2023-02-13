@@ -577,7 +577,7 @@ def consume_share(token):
     share = Share.find_by_id(token)
 
     sharing_user = User.find_by_id(share.user_id)
-    spreadsheet_ids = share.spreadsheet_ids_str.split(',')
+    spreadsheet_ids = share.spreadsheet_ids
     config = json.loads(share.config_json)
 
     spreadsheets = []
@@ -654,7 +654,7 @@ def copy_share(token, user=None):
                       "another share")
         return render_template('spreadsheets/upload_file.html', error=errors)
     sharing_user = User.find_by_id(share.user_id)
-    spreadsheet_ids = share.spreadsheet_ids_str.split(',')
+    spreadsheet_ids = share.spreadsheet_ids
 
     # TODO: we don't use the config when copying
     #config = json.loads(share.config_json)

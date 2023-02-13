@@ -4,7 +4,7 @@ import secrets
 import uuid
 
 from sqlalchemy import String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import db
@@ -15,7 +15,7 @@ class Share(db.Model):
     __tablename__ = 'shares'
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(db.ForeignKey("users.id"))
-    spreadsheet_ids_str: Mapped[str] = mapped_column(String(2000)) #comma-separated list of spreadsheet ids
+    spreadsheet_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=False)))
     config_json: Mapped[str] = mapped_column(String(500))
     date_shared: Mapped[datetime.datetime]
     last_access: Mapped[datetime.datetime]
@@ -31,7 +31,7 @@ class Share(db.Model):
         :param last_access: Date of last access to the share
         '''
         self.user_id = user_id
-        self.spreadsheet_ids_str = ','.join(spreadsheet_ids)
+        self.spreadsheet_ids = spreadsheet_ids
         self.date_shared = date_shared or datetime.datetime.utcnow()
         self.last_access = last_access or datetime.datetime.utcnow()
         self.config_json = json.dumps(config)
