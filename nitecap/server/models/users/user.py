@@ -15,7 +15,6 @@ from cloudpathlib import AnyPath as Path
 from security import check_encrypted_password, encrypt_password
 from db import db
 import os
-from email.message import EmailMessage
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String

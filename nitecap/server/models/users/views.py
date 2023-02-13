@@ -1,7 +1,3 @@
-import json
-import os
-import requests
-
 from flask import Blueprint, request, session, url_for, redirect, render_template, flash, jsonify
 
 from models.users.user import User

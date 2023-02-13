@@ -29,8 +29,6 @@ if TYPE_CHECKING:
 
 from timer_decorator import timeit
 
-MAX_JTK_COLUMNS = 85
-
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -296,10 +294,6 @@ class Spreadsheet(db.Model):
         first_id = id_indices[0]
         concats = self.df.iloc[:,first_id].astype(str).str.cat(self.df.iloc[:,id_indices[1:]].astype(str), ' | ').tolist()
         return concats
-
-    def find_unique_ids(self):
-        ids = self.get_ids()
-        return [item for item, count in collections.Counter(ids).items() if count == 1]
 
     def has_metadata(self):
         ''' Returns whether the spreadsheet metadata has been filled in '''
