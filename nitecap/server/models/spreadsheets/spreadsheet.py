@@ -46,7 +46,6 @@ class Spreadsheet(db.Model):
     date_uploaded: Mapped[datetime.datetime]
     column_labels_str: Mapped[Optional[str]] = mapped_column(String(2500))
     last_access: Mapped[datetime.datetime]
-    ids_unique: Mapped[bool] = mapped_column(default=0) # Deprecated - can't remove without modifying the DB since it is nonnullable
     note: Mapped[Optional[str]] = mapped_column(String(5000))
     spreadsheet_data_path: Mapped[str] = mapped_column(String(250))
     categorical_data: Mapped[Optional[str]] = mapped_column(String(5000))
