@@ -40,7 +40,7 @@ class Spreadsheet(db.Model):
     repeated_measures: Mapped[bool] = mapped_column(default=False)
     header_row: Mapped[int] = mapped_column(default=1)
     original_filename: Mapped[str] = mapped_column(String(250))
-    file_mime_type: Mapped[Optional[str]] = mapped_column(String(250))
+    file_mime_type: Mapped[str] = mapped_column(String(250))
     file_path: Mapped[Optional[str]] = mapped_column(String(250))
     uploaded_file_path: Mapped[str] = mapped_column(String(250))
     date_uploaded: Mapped[datetime.datetime]
@@ -49,7 +49,7 @@ class Spreadsheet(db.Model):
     note: Mapped[Optional[str]] = mapped_column(String(5000))
     spreadsheet_data_path: Mapped[str] = mapped_column(String(250))
     categorical_data: Mapped[Optional[str]] = mapped_column(String(5000))
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(db.ForeignKey("users.id"))
+    user_id: Mapped[uuid.UUID] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="_spreadsheets")
     edit_version: Mapped[int] = mapped_column(default=0)
 
@@ -65,8 +65,8 @@ class Spreadsheet(db.Model):
 
     @timeit
     def __init__(self, descriptive_name, num_timepoints, timepoints, repeated_measures, header_row, original_filename,
-                 file_mime_type, uploaded_file_path, date_uploaded, file_path=None, column_labels=None,
-                 last_access=None, user_id=None,
+                 file_mime_type, uploaded_file_path, date_uploaded, user_id, file_path=None,
+                 column_labels=None, last_access=None,
                  spreadsheet_data_path='', categorical_data=''):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
