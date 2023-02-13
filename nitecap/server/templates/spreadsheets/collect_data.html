@@ -11,7 +11,7 @@
     $(document).ready ( function() {
 
         columns = {{ (spreadsheet.df.columns.tolist()) | safe }};
-        default_selections_str = "{{ spreadsheet.column_labels_str | safe }}";
+        default_selections = {{ spreadsheet.column_labels | safe }};
 
         {% if not spreadsheet.num_timepoints or not spreadsheet.timepoints %}
             $("#selectors").css("visibility", "hidden");
@@ -95,9 +95,8 @@
         timepoints.on('change', updateLabels);
 
         // Initialize selections
-        if (default_selections_str) {
+        if (default_selections.length > 0) {
             let options = getLabelOptions(num_timepoints.val(), timepoints.val());
-            let default_selections = default_selections_str.split(",");
             populate_selects(options, default_selections);
         } else {
             updateLabels();

@@ -189,7 +189,7 @@ def collect_data(spreadsheet_id, user=None):
         if errors:
             return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet, errors=errors)
 
-        spreadsheet.identify_columns(column_labels)
+        spreadsheet.set_column_labels(column_labels)
 
         # Check for any comparisons already computed and delete those for recomputation
         comparisons_directory = Path(os.path.join(user.get_user_directory_path(), "comparisons"))

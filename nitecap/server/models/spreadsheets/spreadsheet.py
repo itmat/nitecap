@@ -20,7 +20,7 @@ import constants
 from db import db
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from exceptions import NitecapException
 import nitecap.util
 from flask import current_app
@@ -44,7 +44,7 @@ class Spreadsheet(db.Model):
     file_path: Mapped[Optional[str]] = mapped_column(String(250))
     uploaded_file_path: Mapped[str] = mapped_column(String(250))
     date_uploaded: Mapped[datetime.datetime]
-    column_labels_str: Mapped[Optional[str]] = mapped_column(String(2500))
+    column_labels: Mapped[list[str]] = mapped_column(ARRAY(String(250)), default=list)
     last_access: Mapped[datetime.datetime]
     note: Mapped[Optional[str]] = mapped_column(String(5000))
     spreadsheet_data_path: Mapped[str] = mapped_column(String(250))
@@ -65,7 +65,7 @@ class Spreadsheet(db.Model):
 
     @timeit
     def __init__(self, descriptive_name, num_timepoints, timepoints, repeated_measures, header_row, original_filename,
-                 file_mime_type, uploaded_file_path, date_uploaded, file_path=None, column_labels_str=None,
+                 file_mime_type, uploaded_file_path, date_uploaded, file_path=None, column_labels=None,
                  last_access=None, user_id=None,
                  spreadsheet_data_path='', categorical_data=''):
         """
@@ -84,7 +84,7 @@ class Spreadsheet(db.Model):
         :param uploaded_file_path: File path to the processed spreadsheet data, relative to spreadsheet_data_path
         :param file_path: file path to the processed spreadsheet data, relative to spreadsheet_data_path
         (note that this file is a tab delimited plain text file with the extension working.txt
-        :param column_labels_str: A comma delimited listing of the column labels used to identify timepoint and id
+        :param column_labels: A comma delimited listing of the column labels used to identify timepoint and id
         columns.
         :param last_access: A timestamp indicating when the spreadsheet was last accessed (actually last updated)
         :param user_id: The id of the spreadsheet's owner.  Visitors have individual (although more transitory)
@@ -103,7 +103,7 @@ class Spreadsheet(db.Model):
         self.file_mime_type = file_mime_type
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
-        self.column_labels_str = column_labels_str
+        self.column_labels = column_labels or list()
         self.last_access = last_access or datetime.datetime.utcnow()
         self.note = ''
         self.spreadsheet_data_path = spreadsheet_data_path
@@ -158,10 +158,8 @@ class Spreadsheet(db.Model):
                 current_app.logger.error(e)
                 self.error = True
 
-        self.column_labels = None if not self.column_labels_str else self.column_labels_str.split(",")
-
-        if self.column_labels_str:
-            self.identify_columns(self.column_labels)
+        if len(self.column_labels) > 0:
+            self.identify_columns()
 
     def is_categorical(self):
         ''' Returns True if this is a Categorical (MPV) spreadsheet. False if not.'''
@@ -195,26 +193,26 @@ class Spreadsheet(db.Model):
             current_app.logger.exception(e)
             raise NitecapException("The file provided could not be parsed.")
 
-    def identify_columns(self, column_labels):
+    def set_column_labels(self, column_labels):
+        self.column_labels = column_labels
+        self.identify_columns()
+
+    def identify_columns(self):
         if self.categorical_data:
             # Categorical / MPV spreadsheet
             self.possible_assignments = self.get_categorical_data_labels()[len(Spreadsheet.NON_DATA_COLUMNS):] # dropping non-data columns
             data_columns = self.get_data_columns(indexes=True)
-            self.group_assignments = [self.possible_assignments.index(column_labels[col]) for col in data_columns]
+            self.group_assignments = [self.possible_assignments.index(self.column_labels[col]) for col in data_columns]
 
             # Generate the group-membership data for each category variable
             categorical_data = json.loads(self.categorical_data)
             category_labels = [{'variable': category['variable'],
                                  'labels':  [value['name'] for value in category['values']]}
                                 for category in categorical_data]
-            column_labels = [column_labels[col].split(' ') for col in data_columns]
+            column_labels = [self.column_labels[col].split(' ') for col in data_columns]
             self.group_membership = {category['variable']: [category['labels'].index(labels[num]) for labels in column_labels]
                                         for num, category in enumerate(category_labels)}
             return
-
-        # column labels saved as comma delimited string in db
-        self.column_labels_str = ",".join(column_labels)
-        self.column_labels = column_labels
 
         self.timepoint_assignments = {col: self.label_to_timepoint(label) for col, label in zip(self.df.columns, self.column_labels)}
         x_values = [value for value in self.timepoint_assignments.values() if value is not None]
@@ -308,11 +306,11 @@ class Spreadsheet(db.Model):
         if self.is_categorical():
             return (
                 self.categorical_data != '' and
-                self.column_labels_str != ''
+                len(self.column_labels) > 0
             )
         else:
             return (
-                self.column_labels_str != '' and
+                len(self.column_labels) > 0 and
                 self.timepoints is not None and
                 self.num_timepoints is not None
             )
@@ -512,7 +510,7 @@ class Spreadsheet(db.Model):
                                         uploaded_file_path=spreadsheet.uploaded_file_path,
                                         date_uploaded=datetime.datetime.utcnow(),
                                         file_path=spreadsheet.file_path,
-                                        column_labels_str=spreadsheet.column_labels_str,
+                                        column_labels=spreadsheet.column_labels,
                                         categorical_data=spreadsheet.categorical_data,
                                         last_access=None,
                                         spreadsheet_data_path=str(relative_temporary_share_spreadsheet_data_path),
