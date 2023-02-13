@@ -5,7 +5,7 @@ import json
 import os
 import shutil
 import uuid
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from pandas.errors import ParserError
 from cloudpathlib import AnyPath as Path
 import re
@@ -18,12 +18,14 @@ import constants
 
 
 from db import db
-from sqlalchemy import String, DateTime
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from exceptions import NitecapException
 import nitecap.util
 from flask import current_app
+if TYPE_CHECKING:
+    from models.users.user import User
 
 from timer_decorator import timeit
 
@@ -33,24 +35,24 @@ class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
     descriptive_name: Mapped[str] = mapped_column(String(250))
-    num_timepoints: Mapped[int]
-    timepoints: Mapped[int]
+    num_timepoints: Mapped[Optional[int]]
+    timepoints: Mapped[Optional[int]]
     repeated_measures: Mapped[bool] = mapped_column(default=False)
     header_row: Mapped[int] = mapped_column(default=1)
-    original_filename: Mapped[Optional[str]] = mapped_column(String(250))
+    original_filename: Mapped[str] = mapped_column(String(250))
     file_mime_type: Mapped[Optional[str]] = mapped_column(String(250))
     file_path: Mapped[Optional[str]] = mapped_column(String(250))
     uploaded_file_path: Mapped[str] = mapped_column(String(250))
-    date_uploaded: Mapped[str] = mapped_column(DateTime)
+    date_uploaded: Mapped[datetime.datetime]
     column_labels_str: Mapped[Optional[str]] = mapped_column(String(2500))
-    last_access: Mapped[DateTime] = mapped_column(db.DateTime)
+    last_access: Mapped[datetime.datetime]
     ids_unique: Mapped[bool] = mapped_column(default=0) # Deprecated - can't remove without modifying the DB since it is nonnullable
     note: Mapped[Optional[str]] = mapped_column(String(5000))
-    spreadsheet_data_path: Mapped[Optional[str]] = mapped_column(String(250))
+    spreadsheet_data_path: Mapped[str] = mapped_column(String(250))
     categorical_data: Mapped[Optional[str]] = mapped_column(String(5000))
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=False), db.ForeignKey("users.id"))
-    user: Mapped["User"] = relationship(back_populates="spreadsheet")
-    edit_version = db.Column(db.Integer, default=0)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(db.ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="_spreadsheets")
+    edit_version: Mapped[int] = mapped_column(default=0)
 
     ID_COLUMN = "ID"
     IGNORE_COLUMN = "Ignore"
@@ -64,9 +66,9 @@ class Spreadsheet(db.Model):
 
     @timeit
     def __init__(self, descriptive_name, num_timepoints, timepoints, repeated_measures, header_row, original_filename,
-                 file_mime_type, uploaded_file_path, file_path=None, column_labels_str=None,
+                 file_mime_type, uploaded_file_path, date_uploaded, file_path=None, column_labels_str=None,
                  last_access=None, user_id=None,
-                 date_uploaded=None, spreadsheet_data_path='', categorical_data=''):
+                 spreadsheet_data_path='', categorical_data=''):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
         method (only __new__).  Many of the parameters are filled in only after the spreadsheet has been instantiated
@@ -102,13 +104,12 @@ class Spreadsheet(db.Model):
         self.file_mime_type = file_mime_type
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
-        self.date_uploaded = date_uploaded
         self.column_labels_str = column_labels_str
         self.last_access = last_access or datetime.datetime.utcnow()
         self.note = ''
         self.spreadsheet_data_path = spreadsheet_data_path
         self.categorical_data = categorical_data
-        self.date_uploaded = date_uploaded or datetime.datetime.utcnow()
+        self.date_uploaded = date_uploaded
         self.user_id = user_id
 
     def setup_processed_spreadsheet(self):

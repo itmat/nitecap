@@ -1,25 +1,24 @@
 import json
 import datetime
 import secrets
+import uuid
 
-from sqlalchemy import orm
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import db
-from models.users.user import User
-from flask import current_app
-from sqlalchemy.dialects.postgresql import UUID
 
 TOKEN_SIZE = 75 # bytes
 
 class Share(db.Model):
     __tablename__ = 'shares'
-    id = db.Column(db.String(100), primary_key=True)
-    user_id = db.Column(UUID(as_uuid=False), db.ForeignKey("users.id"), nullable=False)
-    #user = db.relationship("User")
-    spreadsheet_ids_str = db.Column(db.String(2000), nullable=False) #comma-separated list of spreadsheet ids
-    config_json = db.Column(db.String(500), nullable=False)
-    date_shared = db.Column(db.DateTime, nullable=False)
-    last_access = db.Column(db.DateTime, nullable=False)
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(db.ForeignKey("users.id"))
+    spreadsheet_ids_str: Mapped[str] = mapped_column(String(2000)) #comma-separated list of spreadsheet ids
+    config_json: Mapped[str] = mapped_column(String(500))
+    date_shared: Mapped[datetime.datetime]
+    last_access: Mapped[datetime.datetime]
 
     def __init__(self, spreadsheet_ids, user_id, config, id=None, date_shared=None, last_access=None):
         '''

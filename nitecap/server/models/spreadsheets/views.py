@@ -4,6 +4,7 @@ import shutil
 import uuid
 from cloudpathlib import AnyPath as Path
 import io
+import datetime
 from string import Template
 
 import magic
@@ -117,16 +118,19 @@ def upload_file():
         # may only be able to identify it as such when pandas fails to parse it while creating a spreadsheet object.
         # We throw the directory containing the file away and report the error.
         try:
-            spreadsheet = Spreadsheet(descriptive_name=upload_file.filename,
-                                      timepoints=None,
-                                      num_timepoints=None,
-                                      repeated_measures=False,
-                                      header_row=header_row,
-                                      original_filename=upload_file.filename,
-                                      file_mime_type=file_mime_type,
-                                      uploaded_file_path=file_name,
-                                      spreadsheet_data_path=str(relative_directory_path),
-                                      user_id=user_id)
+            spreadsheet = Spreadsheet(
+                                descriptive_name=upload_file.filename,
+                                timepoints=None,
+                                num_timepoints=None,
+                                repeated_measures=False,
+                                header_row=header_row,
+                                original_filename=upload_file.filename,
+                                file_mime_type=file_mime_type,
+                                uploaded_file_path=file_name,
+                                spreadsheet_data_path=str(relative_directory_path),
+                                user_id=user_id,
+                                date_uploaded=datetime.datetime.utcnow(),
+                            )
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
             shutil.rmtree(directory_path)

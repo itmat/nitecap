@@ -17,9 +17,13 @@ from db import db
 import os
 from email.message import EmailMessage
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String
 from authlib.jose import JsonWebSignature
 from authlib.jose.errors import BadSignatureError
 from flask import current_app
+
+from models.spreadsheets.spreadsheet import Spreadsheet
 
 CONFIRMATION_EXPIRATION_DELTA = 6 * 60 * 60
 PASSWORD_RESET_EXPIRATION_DELTA = 30 * 60
@@ -37,21 +41,21 @@ EMAIL_CONFIGURATION_SET_NAME = os.environ["EMAIL_CONFIGURATION_SET_NAME"]
 
 class User(db.Model):
     __tablename__ = "users"
-    id = db.Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
-    username = db.Column(db.String(150), nullable=False, unique=True)
-    email = db.Column(db.String(150), nullable=False, unique=True)
-    password = db.Column(db.String(100), nullable=False)
-    last_access = db.Column(db.DateTime)
-    visitor = db.Column(db.Boolean, default=True)
-    activated=db.Column(db.Boolean, nullable=False, default=False)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    username: Mapped[str] = mapped_column(String(150), unique=True)
+    email: Mapped[str] = mapped_column(String(150), unique=True)
+    password: Mapped[str] = mapped_column(String(100))
+    last_access: Mapped[datetime.datetime]
+    visitor: Mapped[bool] = mapped_column(default=True)
+    activated: Mapped[bool] = mapped_column(default=False)
+
+    _spreadsheets: Mapped[list[Spreadsheet]] = relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan", back_populates="user")
 
     USER_DIRECTORY_NAME_TEMPLATE = Template('user_$user_id')
 
-    spreadsheet = db.relationship("Spreadsheet", lazy='dynamic', cascade="all, delete-orphan", back_populates="user")
-
     @property
     def spreadsheets(self):
-        return self.spreadsheet
+        return self._spreadsheets
 
     def __init__(self, username, email, password, visitor=True, last_access=None):
         """
@@ -355,7 +359,7 @@ class User(db.Model):
         return cls.query.filter_by(id=_id).first()
 
     def find_user_spreadsheet_by_id(self, spreadsheet_id):
-        return self.spreadsheet.filter_by(id=spreadsheet_id).first()
+        return self.spreadsheets.filter_by(id=spreadsheet_id).first()
 
     def save_to_db(self):
         db.session.add(self)
