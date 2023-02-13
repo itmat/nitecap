@@ -425,8 +425,7 @@ class User(db.Model):
         share.  We also remove the user directory before removing the user since sqlite3 auto-increments to obtain ids
         and could potentially re-use this one if it is the last id generated.
         """
-        if os.path.exists(self.get_user_directory_path()):
-            shutil.rmtree(self.get_user_directory_path())
+        current_app.logger.info(f"Deleting user {self.id}")
         self.delete_from_db()
 
     @staticmethod
@@ -436,20 +435,6 @@ class User(db.Model):
         :return: random string of PASSWORD_LENGTH characters
         """
         return ''.join(random.choice(PASSWORD_CHAR_SET) for _ in range(PASSWORD_LENGTH))
-
-    def get_user_directory_name(self):
-        """
-        Return the name of the user directory (not the absolute path)
-        """
-        return User.USER_DIRECTORY_NAME_TEMPLATE.substitute(user_id=self.id)
-
-    def get_user_directory_path(self):
-        """
-        Helper method to identify the path to the user's directory where the user's spreadsheet data is maintained.
-        This directory path is constructed by convention - not saved to the db.
-        :return: path to the user's directory.
-        """
-        return str(Path(os.environ.get('UPLOAD_FOLDER'))/self.get_user_directory_name())
 
     def reassign_visitor_spreadsheets(self, visitor):
         """
@@ -462,26 +447,17 @@ class User(db.Model):
         # Import here to avoid circular imports
         from computation.api import store_spreadsheet_to_s3
 
-        user_directory_name = self.get_user_directory_name()
-        user_directory_path = self.get_user_directory_path()
-
         # Iterate over all spreadsheets belonging to to visitor
         for spreadsheet in visitor.spreadsheets:
-
-            # Create spreadsheet data directory under user directory and move visitor spreadsheet data there.
-            visitor_spreadsheet_directory_name = spreadsheet.get_spreadsheet_data_directory_name()
-            new_spreadsheet_data_folder = os.path.join(user_directory_path, visitor_spreadsheet_directory_name)
-            shutil.move(spreadsheet.get_spreadsheet_data_folder(), new_spreadsheet_data_folder)
-
             # Update spreadsheet owner, repoint all spreadsheet paths to owner's directory and save
             spreadsheet.user_id = self.id
-            spreadsheet.spreadsheet_data_path = os.path.join(user_directory_name, visitor_spreadsheet_directory_name)
             spreadsheet.save_to_db()
 
             # Needs to be re-uploaded to the new user's 'folder'
             if spreadsheet.has_metadata():
                 spreadsheet.init_on_load()
                 store_spreadsheet_to_s3(spreadsheet)
+                #TODO: does this still need to be done?
 
         # Finally discard the visitor directory path and remove the visitor from the database
         visitor.delete()

@@ -29,23 +29,24 @@ if TYPE_CHECKING:
 
 from timer_decorator import timeit
 
+def get_new_spreadsheet_id():
+    return str(uuid.uuid4())
+
 class Spreadsheet(db.Model):
     __tablename__ = "spreadsheets"
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=False), primary_key=True, default=get_new_spreadsheet_id)
     descriptive_name: Mapped[str] = mapped_column(String(250))
     num_timepoints: Mapped[Optional[int]]
     timepoints: Mapped[Optional[int]]
     repeated_measures: Mapped[bool] = mapped_column(default=False)
     header_row: Mapped[int] = mapped_column(default=1)
     original_filename: Mapped[str] = mapped_column(String(250))
-    file_mime_type: Mapped[str] = mapped_column(String(250))
     file_path: Mapped[Optional[str]] = mapped_column(String(250))
     uploaded_file_path: Mapped[str] = mapped_column(String(250))
     date_uploaded: Mapped[datetime.datetime]
     column_labels: Mapped[list[str]] = mapped_column(ARRAY(String(250)), default=list)
     last_access: Mapped[datetime.datetime]
     note: Mapped[Optional[str]] = mapped_column(String(5000))
-    spreadsheet_data_path: Mapped[str] = mapped_column(String(250))
     categorical_data: Mapped[Optional[str]] = mapped_column(String(5000))
     user_id: Mapped[uuid.UUID] = mapped_column(db.ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="_spreadsheets")
@@ -63,9 +64,9 @@ class Spreadsheet(db.Model):
 
     @timeit
     def __init__(self, descriptive_name, num_timepoints, timepoints, repeated_measures, header_row, original_filename,
-                 file_mime_type, uploaded_file_path, date_uploaded, user_id, file_path=None,
+                 uploaded_file_path, date_uploaded, user_id, file_path=None,
                  column_labels=None, last_access=None,
-                 spreadsheet_data_path='', categorical_data=''):
+                 categorical_data='', spreadsheet_id=None):
         """
         This method runs only when a Spreadsheet is instantiated for the first time.  SQLAlchemy does not employ this
         method (only __new__).  Many of the parameters are filled in only after the spreadsheet has been instantiated
@@ -78,9 +79,8 @@ class Spreadsheet(db.Model):
         :param repeated_measures:
         :param header_row: The how (indexed from 1) where the header info is found (should be a single row)
         :param original_filename: The name of the file originally uploaded.
-        :param file_mime_type: The file's mime type (used to distinguish Excel spreadsheets from plain text files)
-        :param uploaded_file_path: File path to the processed spreadsheet data, relative to spreadsheet_data_path
-        :param file_path: file path to the processed spreadsheet data, relative to spreadsheet_data_path
+        :param uploaded_file_path: File path to the processed spreadsheet data, relative to the spreadsheet data folder
+        :param file_path: file path to the processed spreadsheet data, relative to the spreadsheet's data folder
         (note that this file is a tab delimited plain text file with the extension working.txt
         :param column_labels: A comma delimited listing of the column labels used to identify timepoint and id
         columns.
@@ -88,8 +88,6 @@ class Spreadsheet(db.Model):
         :param user_id: The id of the spreadsheet's owner.  Visitors have individual (although more transitory)
         accounts and consequently a user id.
         :param date_uploaded:  The timestamp at which the original spreadsheet was uploaded.
-        :param spreadsheet_data_path: path of the folder containing the spreadsheet data, relative to
-            the app's configured upload folder
         """
         current_app.logger.info('Setting up spreadsheet object')
         self.descriptive_name = descriptive_name
@@ -98,16 +96,15 @@ class Spreadsheet(db.Model):
         self.repeated_measures = repeated_measures
         self.header_row = int(header_row)
         self.original_filename = original_filename
-        self.file_mime_type = file_mime_type
         self.file_path = file_path
         self.uploaded_file_path = uploaded_file_path
         self.column_labels = column_labels or list()
         self.last_access = last_access or datetime.datetime.utcnow()
         self.note = ''
-        self.spreadsheet_data_path = spreadsheet_data_path
         self.categorical_data = categorical_data
         self.date_uploaded = date_uploaded
         self.user_id = user_id
+        self.id = spreadsheet_id or get_new_spreadsheet_id()
 
     def setup_processed_spreadsheet(self):
         """
@@ -166,20 +163,19 @@ class Spreadsheet(db.Model):
     @timeit
     def set_df(self):
         """
-        Use the uploaded file's mimetype to determine whether the file in an Excel spreadsheet or the file's
-        extension to determine whether the plain text file in comma or tab delimiated and load the dataframe
-        appropriately.
+        Use the uploaded file's extension to determine whether the file in an Excel spreadsheet or csv or tsv
+        and load the dataframe appropriately.
         """
 
         try:
-            # Spreadsheet is an Excel file (initial sheet only is used)
-            if self.file_mime_type in constants.EXCEL_MIME_TYPES:
+            extension = Spreadsheet.get_file_extension(self.original_filename).lower()
+            if extension in constants.EXCEL_EXTENSIONS:
+                # Spreadsheet is an Excel file (initial sheet only is used)
                 current_app.logger.info(f"Trying to load excel from {self.get_uploaded_file_path()}")
                 self.df = pd.read_excel(str(self.get_uploaded_file_path()),
                                         header=self.header_row - 1,
                                         index_col=False)
             else:
-                extension = Spreadsheet.get_file_extension(self.original_filename)
                 sep = "\t"
                 if extension.lower() in constants.COMMA_DELIMITED_EXTENSIONS:
                     sep = ","
@@ -450,12 +446,13 @@ class Spreadsheet(db.Model):
         file footprint.
         :return: an error message or None in the case of no error
         """
+        current_app.logger.info(f"Deleting spreadsheet {self.id}")
         error = None
         error_message = f"The data for spreadsheet {self.id} could not all be successfully expunged."
 
         spreadsheet_data_path = self.get_spreadsheet_data_folder()
         try:
-            if Path(spreadsheet_data_path).exists():
+            if spreadsheet_data_path.exists():
                 shutil.rmtree(spreadsheet_data_path)
             else:
                 current_app.logger.info(f"Trying to delete spreadhseet {self.id} but no data folder - skipping")
@@ -476,60 +473,39 @@ class Spreadsheet(db.Model):
         :return: the new shared spreadsheet
         """
 
-        # Get the user directory path for the user receiving the share and create that user directory if it doesn't
-        # already exist.
-        user_directory_path = user.get_user_directory_path()
-        Path(user_directory_path).mkdir(parents=True, exist_ok=True)
-
-        temporary_spreadsheet_folder_name = f"{uuid.uuid4().hex}"
-        temporary_share_spreadsheet_data_path = Path(user.get_user_directory_path()) / temporary_spreadsheet_folder_name
-        relative_temporary_share_spreadsheet_data_path = Path(user.get_user_directory_name()) / temporary_spreadsheet_folder_name
-
+        # Create the share object - all path reflect the temporary share paths (i.e., paths containing uuid)
+        new_spreadsheet = Spreadsheet(
+            descriptive_name=spreadsheet.descriptive_name,
+            timepoints=spreadsheet.timepoints,
+            num_timepoints=spreadsheet.num_timepoints,
+            repeated_measures=spreadsheet.repeated_measures,
+            header_row=spreadsheet.header_row,
+            original_filename=spreadsheet.original_filename,
+            uploaded_file_path=spreadsheet.uploaded_file_path,
+            date_uploaded=datetime.datetime.utcnow(),
+            file_path=spreadsheet.file_path,
+            column_labels=spreadsheet.column_labels,
+            categorical_data=spreadsheet.categorical_data,
+            last_access=None,
+            user_id=user.id,
+        )
 
         # Create temporary paths for the share spreadsheet data directory and its included uploaded and processed
         # files and copy over the original spreadsheet data directory.
         shutil.copytree(
             spreadsheet.get_spreadsheet_data_folder(),
-            temporary_share_spreadsheet_data_path,
+            new_spreadsheet.get_spreadsheet_data_folder(),
         )
 
-        # Create the share object - all path reflect the temporary share paths (i.e., paths containing uuid)
-        spreadsheet_share = Spreadsheet(descriptive_name=spreadsheet.descriptive_name,
-                                        timepoints=spreadsheet.timepoints,
-                                        num_timepoints=spreadsheet.num_timepoints,
-                                        repeated_measures=spreadsheet.repeated_measures,
-                                        header_row=spreadsheet.header_row,
-                                        original_filename=spreadsheet.original_filename,
-                                        file_mime_type=spreadsheet.file_mime_type,
-                                        uploaded_file_path=spreadsheet.uploaded_file_path,
-                                        date_uploaded=datetime.datetime.utcnow(),
-                                        file_path=spreadsheet.file_path,
-                                        column_labels=spreadsheet.column_labels,
-                                        categorical_data=spreadsheet.categorical_data,
-                                        last_access=None,
-                                        spreadsheet_data_path=str(relative_temporary_share_spreadsheet_data_path),
-                                        user_id=user.id)
-        spreadsheet_share.save_to_db()
-
-        # Recover the shared spreadsheet id and rename the spreadsheet data path accordingly.
-
-        spreadsheet_folder_name = spreadsheet_share.get_spreadsheet_data_directory_conventional_name()
-        spreadsheet_share_data_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
-        os.rename(temporary_share_spreadsheet_data_path, spreadsheet_share_data_path)
-        relative_spreadsheet_share_data_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
-
-        # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
-        # updates.
-        spreadsheet_share.spreadsheet_data_path = str(relative_spreadsheet_share_data_path)
-        spreadsheet_share.save_to_db()
+        new_spreadsheet.save_to_db()
 
         # Re-upload to s3. Import here to avoid circular import
         from computation.api import store_spreadsheet_to_s3
         if spreadsheet.has_metadata():
-            spreadsheet_share.init_on_load()
-            store_spreadsheet_to_s3(spreadsheet_share)
+            new_spreadsheet.init_on_load()
+            store_spreadsheet_to_s3(new_spreadsheet)
 
-        return spreadsheet_share
+        return new_spreadsheet
 
     def get_timepoint_labels(self):
         return set(filter(lambda column_label:
@@ -594,23 +570,6 @@ class Spreadsheet(db.Model):
                 errors.append("Timepoints must be the same for the comparison of multiple spreadsheets.")
         return errors
 
-    def get_spreadsheet_data_directory_conventional_name(self):
-        """
-        Helper method to return the conventional name for this spreadsheet's data directory.  Note that the
-        spreadsheet's current spreadsheet data path may be a uuid because the spreadsheet data path is created before
-        the spreadsheet object is saved to the db.  So the spreadsheet id is not initially known.
-        :return: conventional name for spreadsheet directory.
-        """
-        return Spreadsheet.SPREADSHEET_DIRECTORY_NAME_TEMPLATE.substitute(spreadsheet_id=self.id)
-
-    def get_spreadsheet_data_directory_name(self):
-        """
-        Helper method to obtain the spreadsheet data directory name from the spreadsheet data directory path.  Note that
-        this is either a uuid or the conventional name depending upon when it is called.
-        :return: spreadsheet data directory name
-        """
-        return os.path.basename(self.spreadsheet_data_path)
-
     @staticmethod
     def get_processed_spreadsheet_name():
         """
@@ -626,21 +585,19 @@ class Spreadsheet(db.Model):
         """
         if self.file_path == '':
             return None
-        return Path(self.get_spreadsheet_data_folder()) / self.file_path
+        return self.get_spreadsheet_data_folder() / self.file_path
 
     def get_uploaded_file_path(self):
         """
         Returns the absolute path to the uploaded file, if any, else None
         """
-        if self.uploaded_file_path == '':
-            return None
-        return Path(self.get_spreadsheet_data_folder()) / self.uploaded_file_path
+        return self.get_spreadsheet_data_folder() / self.uploaded_file_path
 
     def get_spreadsheet_data_folder(self):
         """
         Returns the absolute path to the spreadsheet data folder
         """
-        return Path(os.environ['UPLOAD_FOLDER']) / self.spreadsheet_data_path
+        return Path(os.environ['UPLOAD_FOLDER']) / self.id
 
     def get_categorical_data_labels(self):
         """

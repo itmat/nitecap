@@ -8,7 +8,7 @@ from string import Template
 
 import magic
 import numpy
-from flask import Blueprint, request, session, url_for, redirect, render_template, send_file, flash, jsonify
+from flask import Blueprint, request, session, url_for, redirect, render_template, flash, jsonify
 from flask import current_app
 import simplejson
 from sklearn.decomposition import PCA
@@ -93,22 +93,9 @@ def upload_file():
             current_app.logger.error("Spreadsheet load issue, unable to identify or generate a user.")
             return jsonify({"errors": [FILE_UPLOAD_ERROR]}), 500
 
-        spreadsheet_folder_name = f"{uuid.uuid4().hex}"
-        directory_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
-        directory_path.mkdir(parents=True, exist_ok=True)
-        relative_directory_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
-
         # Rename the uploaded file and reattach the extension
         extension = Spreadsheet.get_file_extension(upload_file.filename)
-        file_name = f"uploaded_spreadsheet{extension}"
-        file_path = os.path.join(directory_path, file_name)
-        upload_file.save(file_path)
-
-        # If the mime type validation fails, remove the directory containing the uploaded file from the disk
-        file_mime_type, errors = validate_mime_type(file_path)
-        if errors:
-            shutil.rmtree(directory_path)
-            return jsonify({"errors": errors}), 400
+        uploaded_file_name = f"uploaded_spreadsheet{extension}"
 
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it as such when pandas fails to parse it while creating a spreadsheet object.
@@ -121,29 +108,21 @@ def upload_file():
                                 repeated_measures=False,
                                 header_row=header_row,
                                 original_filename=upload_file.filename,
-                                file_mime_type=file_mime_type,
-                                uploaded_file_path=file_name,
-                                spreadsheet_data_path=str(relative_directory_path),
+                                uploaded_file_path=uploaded_file_name,
                                 user_id=user_id,
                                 date_uploaded=datetime.datetime.utcnow(),
                             )
         except NitecapException as ne:
             current_app.logger.error(f"NitecapException {ne}")
-            shutil.rmtree(directory_path)
             return jsonify({"errors": [FILE_UPLOAD_ERROR]}), 400
 
-        # Save the spreadsheet file to the database using the temporary spreadsheet data path (using the uuid)
-        spreadsheet.save_to_db()
+        # Place the uploaded file in the right spot for the new spreadsheet
+        directory_path = spreadsheet.get_spreadsheet_data_folder()
+        directory_path.mkdir()
+        upload_file_path = directory_path / uploaded_file_name
+        upload_file.save(upload_file_path)
 
-        # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
-        spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
-        spreadsheet_data_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
-        os.rename(directory_path, spreadsheet_data_path)
-        relative_spreadsheet_data_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
-
-        # Update spreadsheet paths using the spreadsheet id and create the processed spreadsheet and finally, save the
-        # updates.
-        spreadsheet.spreadsheet_data_path = str(relative_spreadsheet_data_path)
+        # Have the spreadsheet prepare itself from the uploaded spreadsheet
         spreadsheet.setup_processed_spreadsheet()
         spreadsheet.save_to_db()
 
@@ -186,15 +165,6 @@ def collect_data(spreadsheet_id, user=None):
             return render_template('spreadsheets/collect_data.html', spreadsheet=spreadsheet, errors=errors)
 
         spreadsheet.set_column_labels(column_labels)
-
-        # Check for any comparisons already computed and delete those for recomputation
-        comparisons_directory = Path(os.path.join(user.get_user_directory_path(), "comparisons"))
-        if comparisons_directory.exists():
-            for path in comparisons_directory.glob(f"*v{spreadsheet.id}.comparison.parquet"):
-                path.unlink()
-            for path in comparisons_directory.glob(f"{spreadsheet.id}v*.comparison.parquet"):
-                path.unlink()
-
 
         # Trigger recomputations as necessary
         spreadsheet.increment_edit_version()
@@ -242,36 +212,6 @@ def allowed_file(filename):
     """
     extension = Spreadsheet.get_file_extension(filename)
     return extension is not None
-
-
-@timeit
-def validate_mime_type(file_path):
-    """
-    Helper method to determine the mime type of the uploaded file.  It appears that the mime type can only be verified
-    for a saved file.  So the path to the saved uploaded file is provided. A check is made that the mime type is among
-    those allowed for an uploaded spreadsheet.  The mime type of underlying file that is compressed is also checked.
-    :param file_path: file path of saved uploaded file
-    :return: A tuple, containing the discovered mime type and an array containing an error message if an error was
-     found and an empty array otherwise
-    """
-
-    # It appears that we can only verify the mime type of a file once saved.  We will delete it if it is found not
-    # to be one of the accepted file mime types.
-    errors = []
-    disallowed_mime_type = f"Only comma or tab delimited files or Excel spreadsheets are accepted.  " \
-                           f"They may be gzipped."
-    x = magic.Magic(mime=True)
-    z = magic.Magic(mime=True, uncompress=True)
-    file_mime_type = x.from_file(file_path)
-    current_app.logger.info(f"Upload file type: {file_mime_type}")
-    if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-        errors.append(disallowed_mime_type)
-    elif file_mime_type in constants.COMPRESSED_MIME_TYPES:
-        file_mime_type = z.from_file(file_path)
-        if file_mime_type not in constants.ALLOWED_MIME_TYPES:
-            errors.append(disallowed_mime_type)
-    return file_mime_type, errors
-
 
 def access_not_permitted(endpoint, user, spreadsheet_id):
     """
@@ -952,12 +892,6 @@ def upload_mpv_file():
         file_path = os.path.join(directory_path, f"uploaded_spreadsheet{extension}")
         upload_file.save(file_path)
 
-        # If the mime type validation fails, remove the directory containing the uploaded file from the disk
-        file_mime_type, errors = validate_mime_type(file_path)
-        if errors:
-            shutil.rmtree(directory_path)
-            return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row, errors=errors)
-
         # For some files masquerading as one of the acceptable file types by virtue of its file extension, we
         # may only be able to identify it as such when pandas fails to parse it while creating a spreadsheet object.
         # We throw the directory containing the file away and report the error.
@@ -968,7 +902,6 @@ def upload_mpv_file():
                                       repeated_measures=False,
                                       header_row=int(data_row)-1,
                                       original_filename=upload_file.filename,
-                                      file_mime_type=file_mime_type,
                                       uploaded_file_path=file_path,
                                       spreadsheet_data_path=str(relative_directory_path),
                                       categorical_data=json.dumps(categorical_data),
@@ -978,12 +911,9 @@ def upload_mpv_file():
             shutil.rmtree(directory_path)
             return render_template('spreadsheets/upload_mpv_file.html', data_row=data_row, errors=[FILE_UPLOAD_ERROR])
 
-        # Save the spreadsheet file to the database using the temporary spreadsheet data path (using the uuid)
-        spreadsheet.save_to_db()
-
         # Recover the spreadsheet id and rename the spreadsheet directory accordingly.
         spreadsheet_folder_name =  spreadsheet.get_spreadsheet_data_directory_conventional_name()
-        spreadsheet_data_path = Path(user.get_user_directory_path()) / spreadsheet_folder_name
+        spreadsheet_data_path = user.get_user_directory_path() / spreadsheet_folder_name
         os.rename(directory_path, spreadsheet_data_path)
         relative_spreadsheet_data_path = Path(user.get_user_directory_name()) / spreadsheet_folder_name
 
