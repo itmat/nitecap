@@ -780,7 +780,7 @@ def get_valid_comparisons(user=None):
     # We just look at the first spreadsheet
     spreadsheet = user.find_user_spreadsheet_by_id(spreadsheet_ids[0])
     if not spreadsheet:
-        return access_not_permitted(get_valid_comparisons.__name__, user, spreadsheet_id)
+        return access_not_permitted(get_valid_comparisons.__name__, user, spreadsheet_ids[0])
 
     # Check what other spreadsheets the user has
     valid_comparisons = []
