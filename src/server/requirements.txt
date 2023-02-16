@@ -13,7 +13,7 @@ python-magic==0.4.26
 requests==2.27.1
 scipy==1.8.1
 SQLAlchemy==1.4.36
-Werkzeug==2.1.2
+Werkzeug==2.2.3
 scikit-learn==1.1.1
 pyarrow==8.0.0
 statsmodels==0.13.2
